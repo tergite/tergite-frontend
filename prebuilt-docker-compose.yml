@@ -44,3 +44,5 @@ services:
     command: "-config.expand-env=true -config.file=/etc/promtail/config.yaml"
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -14,6 +14,8 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+- Add external loki logger support for promtail for linux
+
 ## [2025.06.2] - 2025-06-17
 
 ### Fixed
