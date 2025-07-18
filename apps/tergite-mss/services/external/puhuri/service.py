@@ -19,7 +19,7 @@ This client is useful to enable the following user stories
 - Puhuri project admin can create new projects that have the WACQT quantum computer offering indirectly in MSS (polling every few minutes or so)
 - Puhuri project admin can add new users to a project indirectly in the WACQT quantum computer if that project has a the WACQT quantum computer offering
 - Puhuri project admin can order for new QPU seconds for the the WACQT quantum computer and be allocated the same extra QPU seconds in the WACQT quantum computer indirectly
-- Puhuri project admin can view the QPU seconds left in their project since the WACQT quantum computer updates Puhuri of per-project 
+- Puhuri project admin can view the QPU seconds left in their project since the WACQT quantum computer updates Puhuri of per-project
     resource usage at a given interval or the moment an experiment is done
 """
 import asyncio

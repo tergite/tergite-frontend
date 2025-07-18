@@ -84,9 +84,11 @@ def _order_by_many(data: List[AuthProvider], fields: List[str]) -> List[AuthProv
 
     def get_key(item) -> tuple:
         return tuple(
-            getattr(item, field, None)
-            if not field.startswith("-")
-            else _to_hash(getattr(item, field[1:], None), negated=True)
+            (
+                getattr(item, field, None)
+                if not field.startswith("-")
+                else _to_hash(getattr(item, field[1:], None), negated=True)
+            )
             for field in fields
         )
 
