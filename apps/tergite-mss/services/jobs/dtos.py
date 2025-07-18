@@ -12,7 +12,18 @@
 """Data Transfer Objects for the quantum jobs service"""
 import enum
 from datetime import datetime
-from typing import Any, Callable, List, Literal, Optional, Set, TypedDict
+from typing import (
+    Any,
+    Callable,
+    List,
+    Literal,
+    Optional,
+    Set,
+    TypedDict,
+    TypeAlias,
+    Tuple,
+    Union,
+)
 
 from beanie import PydanticObjectId
 from fastapi import Query
@@ -24,6 +35,9 @@ from utils.models import create_partial_model
 
 from .utils import get_uuid4_str
 
+IQPoint: TypeAlias = Tuple[float, float]  # [re, im]  (len = 2)
+IQMemory: TypeAlias = List[List[List[IQPoint]]]  # exp -> shot -> IQ points
+HexMemory:TypeAlias = List[List[str]] # exp -> shot -> str ( channel -> bit) 
 
 class CreatedJobResponse(TypedDict):
     """The response when a new job is created"""
@@ -100,7 +114,7 @@ class JobResult(BaseModel):
         extra="allow",
     )
 
-    memory: List[List[str]] = []
+    memory: Union[HexMemory, IQMemory] = []
 
 
 class Job(JobCreate):

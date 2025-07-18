@@ -397,7 +397,7 @@ async def _get_user_email_id_map(user_emails: List[str]) -> Dict[str, str]:
 
 
 async def _get_full_admin_project(
-    project: Union[ProjectAdminView, Project]
+    project: Union[ProjectAdminView, Project],
 ) -> ProjectAdminView:
     """Returns a project admin view with user_emails and admin_email fields filled
 

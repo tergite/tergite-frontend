@@ -88,9 +88,11 @@ def order_by_many(
 
     def get_key(item) -> tuple:
         return tuple(
-            item.get(field)
-            if not field.startswith("-")
-            else _to_hash(item[field[1:]], negated=True)
+            (
+                item.get(field)
+                if not field.startswith("-")
+                else _to_hash(item[field[1:]], negated=True)
+            )
             for field in fields
         )
 

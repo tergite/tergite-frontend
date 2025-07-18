@@ -43,9 +43,11 @@ _CREATE_JOB_PAYLOADS = [
     (
         {
             "device": device,
-            "calibration_date": "2024-05-23T09:12:00.733Z"
-            if idx % 2 == 0
-            else "2025-04-23T09:12:00.743Z",
+            "calibration_date": (
+                "2024-05-23T09:12:00.733Z"
+                if idx % 2 == 0
+                else "2025-04-23T09:12:00.743Z"
+            ),
         }
     )
     for idx, device in enumerate(_DEVICES)

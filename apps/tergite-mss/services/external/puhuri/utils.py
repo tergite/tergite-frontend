@@ -9,8 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Utilities for use in the puhuri external service
-"""
+"""Utilities for use in the puhuri external service"""
 import asyncio
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -297,7 +296,7 @@ def remove_nones(data: Dict[str, Optional[Any]], __new: Any):
 
 
 def extract_project_metadata(
-    resources: List[Dict[str, Any]]
+    resources: List[Dict[str, Any]],
 ) -> List[PuhuriProjectMetadata]:
     """Extracts the project metadata from a list of resources
 

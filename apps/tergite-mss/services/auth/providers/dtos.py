@@ -1,4 +1,5 @@
 """Data Transfer Objects for the auth providers"""
+
 from fastapi import Query
 from pydantic import BaseModel
 
