@@ -129,29 +129,22 @@ It also needs to be the same domain that your `MSS_URL` environment variable is 
 
 **A big culprit is the localhost vs 127.0.0.1. Make sure you use 127.0.0.1 in all both your `.env` and `mss_config.toml`. Visit the browser also at 127.0.0.1:3000**
 
-#### - How does BCC get authenticated?
+#### - How does BCC (backend) get authenticated?
 
 - A client (say [tergite](https://github.com/tergite/tergite)) sends a `POST`
   request is sent to `/jobs` on MSS (this app) with an `app_token` in its `Authorization` header
 - A new job entry is created in the database, together with a new unique `job_id`.
-- MSS notifies BCC of the `job_id` and its associated `app_token` by sending a `POST` request to `/auth` endpoint
-  of [BCC](https://github.com/tergite/tergite-backend).
-- In the response to the client, MSS returns the `/jobs` url for the given BCC backend
-- The client then sends its experiment data to the BCC `/jobs` url, with the same `app_token` in
-  its `Authorization` header and the same `job_id` in the experiment data.
-- BCC checks if the `job_id` and the `app_token` are first of all associated, and if no other experiment data has
-  been sent already with the same `job_id`-`app_token` pair. This is to ensure no user attempts to fool the system
-  by using the same `job_id` for multiple experiments, which is theoretically possible.
-- If BCC is comfortable with the results of the check, it allows the job to be submitted. Otherwise, either a 401
-  or a 403 HTTP error is thrown.
-- The same `job_id`-`app_token` pair is used to download raw logfiles from BCC at `/logfiles/{job_id}` endpoint.
-  This time, BCC just checks that the pair match but it does not check if the pair was used already.
-- This is the same behaviour when reading the job results at `jobs/{job_id}/result`
-  or the job status at `jobs/{job_id}/status` or the entire job entry at `jobs/{job_id}` in BCC.
-- This is also the same behaviour when attempting to delete the job at `/jobs/{job_id}` or to cancel it at
-  `/jobs/{job_id}/cancel` in BCC.
-
-**Note: One must set the `MSS_TOKEN` environment variable in Tergite backend or else it will not be able to communicate with the Tergite frontend**
+- MSS then requests BCC for a user token via a POST to `/token`, passing it the `user_id` and the `job_id`, plus some headers signed by MSS's private key
+- BCC verifies that the headers are indeed signed by MSS's private key since BCC has a copy of MSS's public RSA key.
+- BCC creates a token for the user and if the user does not exist yet, a new one with a random password and email is created
+- BCC encrypts that token with MSS's public key so that only MSS can read it, and then sends it back to the requester.
+- MSS decrypts the token, and alongside the `upload_url` (which is the `/jobs` url for the given BCC backend), sends it to the client application.
+- The client application then posts the job for the given job_id to the backend with the given token in the `Authorization` header.
+- Currently, we have not limited this token to be used only once so technically a user could send different experiments
+  but with the same job_id. However, the token itself has a short time span to reduce the extent of this.
+  In future, we might limit each token to only one request.
+- A similar flow is used to download raw logfiles from BCC at `/logfiles/{job_id}` endpoint.
+- For all other BCC endpoints, they must be accessed via MSS on behalf of the user.
 
 ## Puhuri
 
