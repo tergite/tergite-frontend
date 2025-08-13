@@ -44,3 +44,7 @@ class DbValidationError(BaseMssException):
 
 class NotFoundError(BaseMssException):
     """Exception when a record is not found"""
+
+
+class InvalidRequestIDError(BaseMssException):
+    """Exception when the request id in the header is invalid"""

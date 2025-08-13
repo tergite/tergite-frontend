@@ -7,6 +7,11 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Changed the response to job creation `/jobs` POST endpoint, to return a JWT access token also
+- BREAKING: Changed the authentication with BCC to use private key signed signatures in headers
+
 ## [2025.06.2] - 2025-06-17
 
 - No change

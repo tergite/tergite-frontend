@@ -7,6 +7,9 @@ from typing import Dict, List, Optional
 import tomli
 from pydantic import AnyHttpUrl, BaseModel, MongoDsn
 
+_PROJECT_ROOT = Path(__file__).parent.parent
+_DEFAULT_PRIV_KEY_FILE = _PROJECT_ROOT / "private-mss-key.pem"
+
 
 class DatetimePrecision(str, enum.Enum):
     """Possible datetime precision values: additional components of the time to include when isoformat is called
@@ -38,6 +41,8 @@ class BccConfig(BaseModel):
     url: AnyHttpUrl = "http://127.0.0.1:8002"
     # request timeout in seconds beyond which a timeout error is raised; default = 10
     timeout: int = 10
+    # the path to the private key file to authenticate this client's requests; default "private-mss-key.pem"
+    private_key_file: str = str(_DEFAULT_PRIV_KEY_FILE)
 
 
 class PuhuriConfig(BaseModel):

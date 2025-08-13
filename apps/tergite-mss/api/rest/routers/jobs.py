@@ -29,6 +29,7 @@ from api.rest.dependencies import (
     CurrentStrictProjectUserIds,
     MongoDbDep,
     ProjectDbDep,
+    ReqeustIdDep,
 )
 from services import jobs as jobs_service
 from services.external import puhuri as puhuri_service
@@ -117,11 +118,9 @@ async def create_one(
     bcc_clients_map: BccClientsMapDep,
     project_user_id_pair: CurrentStrictProjectUserIds,
     payload: JobCreate,
+    request_id: ReqeustIdDep,
 ):
     """Creates a job in the given backend and given calibration_date in the body"""
-    app_token = get_bearer_token(
-        request, raise_if_error=settings.CONFIG.auth.is_enabled
-    )
     try:
         bcc_client = bcc_clients_map[payload.device]
     except KeyError:
@@ -130,7 +129,11 @@ async def create_one(
     project_id, user_id = project_user_id_pair
     job = Job(**payload.model_dump(), project_id=project_id, user_id=user_id)
     return await jobs_service.create_job(
-        db, bcc_client=bcc_client, job=job, app_token=app_token
+        db,
+        bcc_client=bcc_client,
+        job=job,
+        user_id=user_id,
+        request_id=request_id,
     )
 
 

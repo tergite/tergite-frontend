@@ -10,16 +10,35 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Clients for accessing certain HTTP services"""
+import base64
 import logging
+import time
 from json import JSONDecodeError
-from typing import Dict, List
+from typing import Dict, List, NotRequired, Optional, TypedDict
 
 import httpx
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
 from utils.config import BccConfig
 from utils.exc import ServiceUnavailableError
 
 _BCC_CLIENTS: Dict[str, "BccClient"] = {}
+_MSS_PRIVATE_KEYS: Dict[str, RSAPrivateKey] = {}
+
+
+_BccClientHeaders = TypedDict(
+    "_BccClientHeaders",
+    {
+        "x-mss-request-id": str,
+        "x-mss-timestamp": str,
+        "x-mss-signature": str,
+        "x-mss-user-id": str,
+        "x-mss-is-admin": NotRequired[str],
+    },
+)
+"""The headers sent via the BCC http client"""
 
 
 async def create_clients(configs: List[BccConfig]):
@@ -30,7 +49,10 @@ async def create_clients(configs: List[BccConfig]):
     """
     global _BCC_CLIENTS
     await close_clients()
-    _BCC_CLIENTS = {item.name: BccClient(base_url=f"{item.url}") for item in configs}
+    _BCC_CLIENTS = {
+        item.name: BccClient(base_url=f"{item.url}", key_file=item.private_key_file)
+        for item in configs
+    }
 
 
 async def close_clients():
@@ -57,29 +79,44 @@ class BccClient:
         base_url: the base URL for the given BCC instance
     """
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, key_file: str):
+        self._key_file = key_file
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
 
-    async def save_credentials(self, job_id: str, app_token: str):
-        """Registers a given job with BCC so that BCC can expect it
+    async def get_token(self, job_id: str, user_id: str, request_id: str) -> str:
+        """Retrieves the JWT for the given job_id and user_id from BCC
 
         Args:
             job_id: the id of the job
-            app_token: the app token associated with the job id
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+
+        Returns:
+            the JWT from BCC (or the backend)
 
         Raises:
-            ValueError: job id '{job_id}' already exists
             ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
         """
         try:
+            headers = _create_headers(
+                private_key_file=self._key_file, request_id=request_id, user_id=user_id
+            )
             response = await self._client.post(
-                "/auth", json={"job_id": job_id, "app_token": app_token}
+                "/token", json={"job_id": job_id, "user_id": user_id}, headers=headers
             )
 
             if response.is_error:
                 message = _extract_error_message(response)
                 raise ValueError(message)
+
+            encrypted_access_token = response.json()["access_token"]
+            access_token = _decrypt_msg(
+                private_key_file=self._key_file, msg=encrypted_access_token
+            )
+
+            return access_token
         except (httpx.ConnectError, httpx.ConnectTimeout) as exp:
             logging.error(exp)
             raise ServiceUnavailableError("device is currently unavailable")
@@ -103,3 +140,102 @@ def _extract_error_message(response: httpx.Response) -> str:
         return response_json.get("detail", response_json)
     except JSONDecodeError:
         return response.text
+
+
+def _create_headers(
+    private_key_file: str,
+    request_id: str,
+    user_id: str = "",
+    is_admin: Optional[bool] = None,
+) -> _BccClientHeaders:
+    """Creates headers to show that the request is a valid one from MSS
+
+    Args:
+        private_key_file: the path to the private key file
+        request_id: the unique identifier of the current request
+        user_id: the unique identifier of the user
+        is_admin: whether the request should show that the user is an admin
+
+    Returns:
+        The dictionary of headers that show a given request is from MSS
+    """
+    timestamp = time.time()
+    message = f"{user_id}-{request_id}-{timestamp}"
+    signature = _create_signature(private_key_file, message=message)
+    headers = {
+        "x-mss-request-id": request_id,
+        "x-mss-timestamp": f"{timestamp}",
+        "x-mss-signature": signature,
+        "x-mss-user-id": user_id,
+    }
+    if is_admin is not None:
+        headers["x-mss-is-admin"] = f"{is_admin}"
+
+    return headers
+
+
+def _create_signature(key_file: str, message: str) -> str:
+    """Creates an MSS-signed signature given a message
+
+    Args:
+        key_file: the path to the private RSA key
+        message: the message from MSS
+
+    Returns:
+        the string form of the signature
+    """
+    mss_private_key = _get_private_key(key_file)
+    signature = mss_private_key.sign(
+        message.encode(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256(),
+    )
+    return base64.b64encode(signature).decode()
+
+
+def _get_private_key(key_file: str) -> RSAPrivateKey:
+    """Loads the private key for MSS
+
+    Args:
+        key_file: the path to the private key file
+
+    Returns:
+        the private key of the MSS
+    """
+    global _MSS_PRIVATE_KEYS
+
+    try:
+        return _MSS_PRIVATE_KEYS[key_file]
+    except KeyError:
+        with open(key_file, "rb") as file:
+            key = _MSS_PRIVATE_KEYS[key_file] = serialization.load_pem_private_key(
+                file.read(), password=None
+            )
+        return key
+
+
+def _decrypt_msg(
+    private_key_file: str,
+    msg: str,
+) -> str:
+    """Decrypts the given message that has been encrypted with the MSS public key
+
+    Args:
+        msg: the message to decrypt
+        private_key_file: the file path to the RSA private key PEM file
+
+    Returns:
+        the plain message
+    """
+    key = _get_private_key(private_key_file)
+    plain_msg = key.decrypt(
+        msg.encode(),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
+    return plain_msg.decode()

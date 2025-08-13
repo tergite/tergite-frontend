@@ -56,7 +56,8 @@ async def create_job(
     db: AsyncIOMotorDatabase,
     bcc_client: BccClient,
     job: Job,
-    app_token: Optional[str] = None,
+    user_id: str,
+    request_id: str,
 ) -> CreatedJobResponse:
     """Creates a new job for the given backend
 
@@ -64,7 +65,8 @@ async def create_job(
         db: the mongo database from where to create the job
         bcc_client: the HTTP client for accessing BCC
         job: the job object to create
-        app_token: the associated with this new job. It is None if no auth is required
+        user_id: the unique identifier of the user
+        request_id: the unique identifier of the current request
 
     Returns:
         the created job details
@@ -76,7 +78,9 @@ async def create_job(
                 See :meth:`utils.http_clients.BccClient.save_credentials`
     """
     logging.info(f"Creating new job with id: {job.job_id}")
-    await bcc_client.save_credentials(job_id=job.job_id, app_token=f"{app_token}")
+    token = await bcc_client.get_token(
+        job_id=job.job_id, user_id=user_id, request_id=request_id
+    )
     await mongodb_utils.insert_one(collection=db.jobs, document=job.model_dump())
 
     upload_url = _without_special_docker_host_domain(f"{bcc_client.base_url}/jobs")
@@ -84,6 +88,7 @@ async def create_job(
     return {
         "job_id": job.job_id,
         "upload_url": upload_url,
+        "access_token": token,
     }
 
 

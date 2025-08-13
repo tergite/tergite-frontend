@@ -29,6 +29,8 @@ name = "simulator-arusha"
 url = "http://127.0.0.1:8002"
 # request timeout in seconds beyond which a timeout error is raised; default = 10
 timeout = 10
+# the path to the private key file to authenticate this client's requests; default "private-mss-key.pem" in project root
+private_key_file = "/path/to/private-mss-key.pem"
 
 # Add as many backends as you wish to have
 [[backends]]
