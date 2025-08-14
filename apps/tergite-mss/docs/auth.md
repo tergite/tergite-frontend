@@ -67,20 +67,13 @@ Here is an interaction diagram of QAL9000 auth showcasing authentication via [My
 
 #### - How do we bypass authentication in development?
 
-We use feature flag `auth.is_enabled` property in the `mss-config.toml` file, setting it to `false`
+~~We use feature flag `auth.is_enabled` property in the `mss-config.toml` file, setting it to `false`~~
 
-```toml
-is_enabled = false
-```
-
-**Note: Most endpoints will still require authentication because they depend on the current user**
-
-#### - How do we ensure that in production, authentication is always turned on?
-
-On startup, we raise a ValueError when `auth.is_enabled = false` in the `mss-config.toml` file yet  
-config variable `environment = production` and log it.
+We no longer support disabling authentication.
 
 #### - How do we allow other Tergite components (e.g. tergite backend) to access MSS, without user intervention?
+
+[//]: # (In future, we could change to using asymmetric keys &#40;public, private&#41; but that would mean MSS keeping public keys for each BCC)
 
 Use app tokens created by any user who had the 'system' role. These app (API) token are created in the tergite dashboard.
 Any such token is saved in the `MSS_TOKEN` environment variable in the backend's `.env` file.

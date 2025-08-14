@@ -11,6 +11,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 - BREAKING: Changed the response to job creation `/jobs` POST endpoint, to return a JWT access token also
 - BREAKING: Changed the authentication with BCC to use private key signed signatures in headers
+- BREAKING: Removed the option to disable authentication as it is a requirement for BCC
 
 ## [2025.06.2] - 2025-06-17
 

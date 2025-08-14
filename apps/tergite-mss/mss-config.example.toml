@@ -41,8 +41,6 @@ url = "http://127.0.0.1:8004"
 timeout = 2
 
 [auth]
-# turn auth OFF or ON, default=true
-is_enabled = true
 # Secret for signing JWT tokens. https://jwt.io/introduction
 jwt_secret = "some hidden secret"
 # Time-to-live for the JWT tokens created by this app, default=3600

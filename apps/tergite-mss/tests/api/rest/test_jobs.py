@@ -181,47 +181,6 @@ def test_create_job_without_bcc(db, client, payload, app_token_header, bcc):
         assert jobs_after_creation == []
 
 
-@pytest.mark.parametrize("payload", _CREATE_JOB_PAYLOADS)
-def test_create_job_with_auth_disabled(mock_bcc, db, no_auth_client, payload, freezer):
-    """Post to /jobs/ creates a job in the given device even when auth is disabled"""
-    device = payload["device"]
-    expected_bcc_base_url = TEST_BACKENDS_MAP[device]["url"]
-    jobs_before_creation = find_in_collection(
-        db,
-        collection_name=_COLLECTION,
-        fields_to_exclude=_EXCLUDED_FIELDS,
-    )
-    timestamp = get_current_timestamp_str()
-
-    # using context manager to ensure on_startup runs
-    with no_auth_client as client:
-        response = client.post(f"/jobs/", json=payload)
-        json_response = response.json()
-        new_job_id = json_response["job_id"]
-        expected_job = {
-            "job_id": new_job_id,
-            "device": device,
-            "status": "pending",
-            "calibration_date": payload["calibration_date"],
-            "created_at": timestamp,
-            "updated_at": timestamp,
-        }
-        jobs_after_creation = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-        )
-
-        assert response.status_code == 200
-        assert response.json() == {
-            "job_id": str(new_job_id),
-            "upload_url": f"{expected_bcc_base_url}/jobs",
-        }
-
-        assert jobs_before_creation == []
-        assert jobs_after_creation == [expected_job]
-
-
 @pytest.mark.parametrize("skip, limit, sort, search", _PAGINATE_AND_SEARCH_PARAMS)
 def test_find_jobs(
     db,

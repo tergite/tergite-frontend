@@ -23,16 +23,12 @@ from utils.api import PaginatedListResponse
 from utils.config import Oauth2ClientConfig
 
 
-def include_auth_router(root_router: Union[APIRouter, FastAPI], is_enabled: bool):
-    """Includes auth router on the root router if `is_enabled` is True
+def include_auth_router(root_router: Union[APIRouter, FastAPI]):
+    """Includes auth router on the root router
 
     Args:
         root_router: the root router to add the auth router to
-        is_enabled: whether the router is enabled or not
     """
-    if not is_enabled:
-        return
-
     router = APIRouter(prefix="/auth", tags=["auth"])
 
     # Oauth clients for authentication

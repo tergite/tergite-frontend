@@ -88,7 +88,7 @@ app.add_exception_handler(UnknownBccError, to_http_error(400))
 app.add_exception_handler(TooManyListQueryParams, to_http_error(400))
 
 # routes
-include_auth_router(app, is_enabled=settings.CONFIG.auth.is_enabled)
+include_auth_router(app)
 app.include_router(calibrations_router)
 app.include_router(devices_router)
 app.include_router(my_router)

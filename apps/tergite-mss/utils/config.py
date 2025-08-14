@@ -144,9 +144,6 @@ class Oauth2ClientConfig(BaseModel, extra="allow"):
 class AuthConfig(BaseModel):
     """Configration for auth"""
 
-    # turn auth OFF or ON, default=true
-    is_enabled: bool = True
-
     # Secret for signing JWT tokens. https://jwt.io/introduction
     jwt_secret: str = "some hidden secret"
 

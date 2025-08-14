@@ -1,14 +1,9 @@
-import json
-from json import JSONDecodeError
-
 from tests._utils.env import (
     TEST_BACKENDS,
     TEST_DB_NAME,
     TEST_DISABLED_PUHURI_MSS_CONFIG_FILE,
     TEST_JWT_SECRET,
     TEST_MONGODB_URL,
-    TEST_MSS_CONFIG_FILE,
-    TEST_NO_AUTH_MSS_CONFIG_FILE,
     TEST_PUHURI_CONFIG_ENDPOINT,
     setup_test_env,
 )
@@ -20,9 +15,11 @@ setup_test_env()
 stub_pydantic_match_type_for_freezegun()
 
 import importlib
+import json
 import multiprocessing
 import random
 from datetime import datetime, timezone
+from json import JSONDecodeError
 from os import environ
 from typing import Any, Dict, List
 from unittest.mock import Mock
@@ -206,21 +203,6 @@ def client(db) -> TestClient:
 
     init_test_auth(db)
     yield TestClient(app)
-
-
-@pytest.fixture
-def no_auth_client(db) -> TestClient:
-    """A test client for fast api without auth"""
-    environ["MSS_CONFIG_FILE"] = TEST_NO_AUTH_MSS_CONFIG_FILE
-    importlib.reload(settings)
-    from api.rest import app
-
-    init_test_auth(db)
-    yield TestClient(app)
-
-    # reset
-    environ["MSS_CONFIG_FILE"] = TEST_MSS_CONFIG_FILE
-    importlib.reload(settings)
 
 
 @pytest.fixture

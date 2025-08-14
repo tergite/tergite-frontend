@@ -20,10 +20,6 @@ import tomli
 from .fixtures import get_fixture_path
 
 TEST_MSS_CONFIG_FILE = get_fixture_path("config.test.toml")
-TEST_PROD_NO_AUTH_MSS_CONFIG_FILE = get_fixture_path(
-    "prod_config_with_no_auth.test.toml"
-)
-TEST_NO_AUTH_MSS_CONFIG_FILE = get_fixture_path("disabled_auth_config.test.toml")
 TEST_DISABLED_PUHURI_MSS_CONFIG_FILE = get_fixture_path(
     "disabled_puhuri_config.test.toml"
 )
