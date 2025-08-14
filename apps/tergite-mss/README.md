@@ -50,6 +50,18 @@ pip install -e .
 cp mss-config.example.toml mss-config.toml
 ```
 
+- If you don't have a key certificate pair for MSS, generate them
+  and copy the public key certificate to the backend machine in the tergite-backend folder.
+
+```shell
+openssl genpkey -algorithm RSA -out mss_private_key.pem -pkeyopt rsa_keygen_bits:4096
+openssl rsa -pubout -in mss_private_key.pem -out mss_public_key.pem
+# scp mss_public_key.pem backend-host:~/tergite-backend/mss_public_key.pem
+```
+
+_Note: You can change the path where this private key file is found by
+setting the `PRIVATE_KEY_FILE` environment variable._
+
 - Run start script
 
 ```shell

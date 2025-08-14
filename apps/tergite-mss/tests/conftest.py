@@ -1,3 +1,6 @@
+import json
+from json import JSONDecodeError
+
 from tests._utils.env import (
     TEST_BACKENDS,
     TEST_DB_NAME,
@@ -57,6 +60,12 @@ from tests._utils.auth import (
     get_jwt_token,
     init_test_auth,
     insert_if_not_exist,
+)
+from tests._utils.bcc import (
+    create_bcc_client_jwt_token,
+    encrypt_jwt_token,
+    get_bcc_client_verified_headers,
+    verify_mss_signature,
 )
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.modules import remove_modules
@@ -412,8 +421,8 @@ def invalid_chalmers_user(respx_mock):
 def mock_bcc(respx_mock):
     """A mock BCC service"""
     for backend in TEST_BACKENDS:
-        respx_mock.post(f"{backend['url']}/auth").mock(
-            return_value=httpx.Response(status_code=200, json={"message": "ok"})
+        respx_mock.post(f"{backend['url']}/token").mock(
+            side_effect=_mock_bcc_token_endpoint
         )
 
     yield respx_mock
@@ -423,7 +432,7 @@ def mock_bcc(respx_mock):
 def mock_unavailable_bcc(respx_mock):
     """A mock BCC service that is unavailable"""
     for backend in TEST_BACKENDS:
-        respx_mock.post(f"{backend['url']}/auth").mock(side_effect=httpx.ConnectError)
+        respx_mock.post(f"{backend['url']}/token").mock(side_effect=httpx.ConnectError)
 
     yield respx_mock
 
@@ -432,7 +441,9 @@ def mock_unavailable_bcc(respx_mock):
 def mock_timed_out_bcc(respx_mock):
     """A mock BCC service that times out"""
     for backend in TEST_BACKENDS:
-        respx_mock.post(f"{backend['url']}/auth").mock(side_effect=httpx.ConnectTimeout)
+        respx_mock.post(f"{backend['url']}/token").mock(
+            side_effect=httpx.ConnectTimeout
+        )
 
     yield respx_mock
 
@@ -526,7 +537,6 @@ def setup_puhuri_sync(
         kwargs: the key-word arguments to pass to puhuri_sync.main
     """
     setup_test_env()
-    # FIXME: It seems very important that 'services' is removed
     remove_modules(["settings", "api", "utils", "tests", "waldur_client", "services"])
     import waldur_client
 
@@ -537,3 +547,34 @@ def setup_puhuri_sync(
     from api.scripts import puhuri_sync
 
     puhuri_sync.main(args, **kwargs)
+
+
+def _mock_bcc_token_endpoint(request: httpx.Request):
+    """Mock BCC token endpoint
+
+    Args:
+        request: the httpx request
+
+    Returns:
+        dict of access token and type
+    """
+    try:
+        headers = get_bcc_client_verified_headers(request)
+        body = json.loads(request.content)
+        assert headers["x-mss-user-id"] == body["user_id"]
+        token = create_bcc_client_jwt_token(**body)
+        encrypted_token = encrypt_jwt_token(token)
+        return httpx.Response(
+            status_code=200,
+            json={"access_token": encrypted_token, "token_type": "bearer"},
+        )
+    except ValueError as exp:
+        return httpx.Response(
+            status_code=401, json={"detail": f"user not authenticated {exp}"}
+        )
+    except (KeyError, JSONDecodeError, TypeError, AssertionError) as exp:
+        return httpx.Response(
+            status_code=400, json={"detail": f"malformed request body {exp}"}
+        )
+    except Exception as exp:
+        raise exp

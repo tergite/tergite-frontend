@@ -17,6 +17,7 @@ from typing import Dict, List, Optional
 import pytest
 from beanie import PydanticObjectId
 from pytest_lazyfixture import lazy_fixture
+from pytest_mock import MockerFixture
 
 from services.auth import Project
 from tests._utils.auth import TEST_PROJECT_EXT_ID, get_db_record
@@ -113,8 +114,12 @@ def test_create_job(
     app_token_header,
     current_user_id,
     freezer,
+    mocker: MockerFixture,
 ):
     """Post to /jobs/ creates a job in the given backend"""
+    import jwt
+
+    jwt_encode_spy = mocker.spy(jwt, "encode")
     device = payload["device"]
     expected_bcc_base_url = TEST_BACKENDS_MAP[device]["url"]
     jobs_before_creation = find_in_collection(
@@ -144,11 +149,14 @@ def test_create_job(
             collection_name=_COLLECTION,
             fields_to_exclude=_EXCLUDED_FIELDS,
         )
+        plain_token = jwt_encode_spy.spy_return
+        mocker.stop(jwt_encode_spy)
 
         assert response.status_code == 200
         assert response.json() == {
             "job_id": str(new_job_id),
             "upload_url": f"{expected_bcc_base_url}/jobs",
+            "access_token": plain_token,
         }
 
         assert jobs_before_creation == []

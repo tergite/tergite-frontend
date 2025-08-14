@@ -30,6 +30,8 @@ TEST_DISABLED_PUHURI_MSS_CONFIG_FILE = get_fixture_path(
 with Path(TEST_MSS_CONFIG_FILE).open(mode="rb") as _oauth_conf_file:
     TEST_APP_CONFIG = tomli.load(_oauth_conf_file)
 
+TEST_MSS_PUBLIC_KEY_PATH = get_fixture_path("mss_public_key.pem")
+TEST_MSS_PRIVATE_KEY_PATH = get_fixture_path("mss_private_key.pem")
 
 TEST_PUHURI_CONFIG_ENDPOINT = TEST_APP_CONFIG["auth"]["clients"][2][
     "openid_configuration_endpoint"
@@ -50,6 +52,7 @@ def setup_test_env():
     It should be run before any imports
     """
     environ["MSS_CONFIG_FILE"] = TEST_MSS_CONFIG_FILE
+    environ["PRIVATE_KEY_FILE"] = TEST_MSS_PRIVATE_KEY_PATH
 
 
 class BackendConfDict(TypedDict):

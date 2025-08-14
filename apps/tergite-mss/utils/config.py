@@ -1,6 +1,7 @@
 """Utility for loading configurations for the app"""
 
 import enum
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -8,7 +9,7 @@ import tomli
 from pydantic import AnyHttpUrl, BaseModel, MongoDsn
 
 _PROJECT_ROOT = Path(__file__).parent.parent
-_DEFAULT_PRIV_KEY_FILE = _PROJECT_ROOT / "private-mss-key.pem"
+_DEFAULT_PRIV_KEY_FILE = str(_PROJECT_ROOT / "private-mss-key.pem")
 
 
 class DatetimePrecision(str, enum.Enum):
@@ -41,8 +42,6 @@ class BccConfig(BaseModel):
     url: AnyHttpUrl = "http://127.0.0.1:8002"
     # request timeout in seconds beyond which a timeout error is raised; default = 10
     timeout: int = 10
-    # the path to the private key file to authenticate this client's requests; default "private-mss-key.pem"
-    private_key_file: str = str(_DEFAULT_PRIV_KEY_FILE)
 
 
 class PuhuriConfig(BaseModel):
@@ -215,3 +214,8 @@ class AppConfig(BaseModel, extra="allow"):
             conf.pop("general", {}),
         )
         return cls.model_validate(conf)
+
+
+def get_private_key_file() -> str:
+    """Gets the private key file for this instance"""
+    return os.environ.get("PRIVATE_KEY_FILE", default=_DEFAULT_PRIV_KEY_FILE)

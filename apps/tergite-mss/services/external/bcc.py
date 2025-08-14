@@ -21,15 +21,15 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
-from utils.config import BccConfig
+from utils.config import BccConfig, get_private_key_file
 from utils.exc import ServiceUnavailableError
 
 _BCC_CLIENTS: Dict[str, "BccClient"] = {}
 _MSS_PRIVATE_KEYS: Dict[str, RSAPrivateKey] = {}
 
 
-_BccClientHeaders = TypedDict(
-    "_BccClientHeaders",
+BccClientHeaders = TypedDict(
+    "BccClientHeaders",
     {
         "x-mss-request-id": str,
         "x-mss-timestamp": str,
@@ -49,8 +49,9 @@ async def create_clients(configs: List[BccConfig]):
     """
     global _BCC_CLIENTS
     await close_clients()
+    private_key_file = get_private_key_file()
     _BCC_CLIENTS = {
-        item.name: BccClient(base_url=f"{item.url}", key_file=item.private_key_file)
+        item.name: BccClient(base_url=f"{item.url}", key_file=private_key_file)
         for item in configs
     }
 
@@ -147,7 +148,7 @@ def _create_headers(
     request_id: str,
     user_id: str = "",
     is_admin: Optional[bool] = None,
-) -> _BccClientHeaders:
+) -> BccClientHeaders:
     """Creates headers to show that the request is a valid one from MSS
 
     Args:
@@ -230,8 +231,9 @@ def _decrypt_msg(
         the plain message
     """
     key = _get_private_key(private_key_file)
+    cipher_bytes = base64.b64decode(msg)
     plain_msg = key.decrypt(
-        msg.encode(),
+        cipher_bytes,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
