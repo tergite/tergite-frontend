@@ -62,7 +62,6 @@ from tests._utils.bcc import (
     create_bcc_client_jwt_token,
     encrypt_jwt_token,
     get_bcc_client_verified_headers,
-    verify_mss_signature,
 )
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.modules import remove_modules

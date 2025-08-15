@@ -14,7 +14,7 @@ import base64
 import logging
 import time
 from json import JSONDecodeError
-from typing import Dict, List, NotRequired, Optional, TypedDict
+from typing import Dict, List, NotRequired, Optional, Tuple, TypedDict
 
 import httpx
 from cryptography.hazmat.primitives import hashes, serialization
@@ -85,7 +85,9 @@ class BccClient:
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
 
-    async def get_token(self, job_id: str, user_id: str, request_id: str) -> str:
+    async def get_token(
+        self, job_id: str, user_id: str, request_id: str
+    ) -> Tuple[str, str]:
         """Retrieves the JWT for the given job_id and user_id from BCC
 
         Args:
@@ -94,7 +96,7 @@ class BccClient:
             request_id: the unique identifier of the current request
 
         Returns:
-            the JWT from BCC (or the backend)
+            the pair of the encrypted JWT and the plain JWT
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
@@ -112,12 +114,10 @@ class BccClient:
                 message = _extract_error_message(response)
                 raise ValueError(message)
 
-            encrypted_access_token = response.json()["access_token"]
-            access_token = _decrypt_msg(
-                private_key_file=self._key_file, msg=encrypted_access_token
-            )
+            encrypted_token = response.json()["access_token"]
+            token = _decrypt_msg(private_key_file=self._key_file, msg=encrypted_token)
 
-            return access_token
+            return encrypted_token, token
         except (httpx.ConnectError, httpx.ConnectTimeout) as exp:
             logging.error(exp)
             raise ServiceUnavailableError("device is currently unavailable")

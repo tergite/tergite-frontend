@@ -136,6 +136,8 @@ class Job(JobCreate):
     timestamps: Optional[JobTimestamps] = None
     download_url: Optional[str] = None
     result: Optional[JobResult] = None
+    # encrypted JWT token for use to get logfiles from BCC, and submit job to BCC
+    access_token: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 

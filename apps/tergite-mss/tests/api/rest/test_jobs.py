@@ -117,9 +117,13 @@ def test_create_job(
     mocker: MockerFixture,
 ):
     """Post to /jobs/ creates a job in the given backend"""
+    import base64
+
     import jwt
 
     jwt_encode_spy = mocker.spy(jwt, "encode")
+    base64_b64encode_spy = mocker.spy(base64, "b64encode")
+
     device = payload["device"]
     expected_bcc_base_url = TEST_BACKENDS_MAP[device]["url"]
     jobs_before_creation = find_in_collection(
@@ -134,6 +138,18 @@ def test_create_job(
         response = client.post(f"/jobs/", json=payload, headers=app_token_header)
         json_response = response.json()
         new_job_id = json_response["job_id"]
+        jobs_after_creation = find_in_collection(
+            db,
+            collection_name=_COLLECTION,
+            fields_to_exclude=_EXCLUDED_FIELDS,
+        )
+        plain_token = jwt_encode_spy.spy_return
+        encrypted_token_bytes = base64_b64encode_spy.spy_return
+        encrypted_token = encrypted_token_bytes.decode()
+
+        mocker.stop(jwt_encode_spy)
+        mocker.stop(base64_b64encode_spy)
+
         expected_job = {
             "project_id": str(project_id),
             "job_id": new_job_id,
@@ -143,14 +159,8 @@ def test_create_job(
             "calibration_date": payload["calibration_date"],
             "updated_at": timestamp,
             "created_at": timestamp,
+            "access_token": encrypted_token,
         }
-        jobs_after_creation = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-        )
-        plain_token = jwt_encode_spy.spy_return
-        mocker.stop(jwt_encode_spy)
 
         assert response.status_code == 200
         assert response.json() == {
