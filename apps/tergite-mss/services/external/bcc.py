@@ -10,23 +10,18 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Clients for accessing certain HTTP services"""
-import base64
 import logging
 import time
 from json import JSONDecodeError
 from typing import Dict, List, NotRequired, Optional, Tuple, TypedDict
 
 import httpx
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
 from utils.config import BccConfig, get_private_key_file
+from utils.crypto import decrypt_message, sign_message
 from utils.exc import ServiceUnavailableError
 
 _BCC_CLIENTS: Dict[str, "BccClient"] = {}
-_MSS_PRIVATE_KEYS: Dict[str, RSAPrivateKey] = {}
-
 
 BccClientHeaders = TypedDict(
     "BccClientHeaders",
@@ -49,11 +44,7 @@ async def create_clients(configs: List[BccConfig]):
     """
     global _BCC_CLIENTS
     await close_clients()
-    private_key_file = get_private_key_file()
-    _BCC_CLIENTS = {
-        item.name: BccClient(base_url=f"{item.url}", key_file=private_key_file)
-        for item in configs
-    }
+    _BCC_CLIENTS = {item.name: BccClient(base_url=f"{item.url}") for item in configs}
 
 
 async def close_clients():
@@ -80,8 +71,7 @@ class BccClient:
         base_url: the base URL for the given BCC instance
     """
 
-    def __init__(self, base_url: str, key_file: str):
-        self._key_file = key_file
+    def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
 
@@ -103,8 +93,11 @@ class BccClient:
             ValueError: unauthenticated user
         """
         try:
+            private_key_file = get_private_key_file()
             headers = _create_headers(
-                private_key_file=self._key_file, request_id=request_id, user_id=user_id
+                private_key_file=private_key_file,
+                request_id=request_id,
+                user_id=user_id,
             )
             response = await self._client.post(
                 "/token", json={"job_id": job_id, "user_id": user_id}, headers=headers
@@ -115,7 +108,9 @@ class BccClient:
                 raise ValueError(message)
 
             encrypted_token = response.json()["access_token"]
-            token = _decrypt_msg(private_key_file=self._key_file, msg=encrypted_token)
+            token = decrypt_message(
+                private_key_file=private_key_file, msg=encrypted_token
+            )
 
             return encrypted_token, token
         except (httpx.ConnectError, httpx.ConnectTimeout) as exp:
@@ -162,7 +157,7 @@ def _create_headers(
     """
     timestamp = time.time()
     message = f"{user_id}-{request_id}-{timestamp}"
-    signature = _create_signature(private_key_file, message=message)
+    signature = sign_message(private_key_file, message=message)
     headers = {
         "x-mss-request-id": request_id,
         "x-mss-timestamp": f"{timestamp}",
@@ -173,71 +168,3 @@ def _create_headers(
         headers["x-mss-is-admin"] = f"{is_admin}"
 
     return headers
-
-
-def _create_signature(key_file: str, message: str) -> str:
-    """Creates an MSS-signed signature given a message
-
-    Args:
-        key_file: the path to the private RSA key
-        message: the message from MSS
-
-    Returns:
-        the string form of the signature
-    """
-    mss_private_key = _get_private_key(key_file)
-    signature = mss_private_key.sign(
-        message.encode(),
-        padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
-        ),
-        hashes.SHA256(),
-    )
-    return base64.b64encode(signature).decode()
-
-
-def _get_private_key(key_file: str) -> RSAPrivateKey:
-    """Loads the private key for MSS
-
-    Args:
-        key_file: the path to the private key file
-
-    Returns:
-        the private key of the MSS
-    """
-    global _MSS_PRIVATE_KEYS
-
-    try:
-        return _MSS_PRIVATE_KEYS[key_file]
-    except KeyError:
-        with open(key_file, "rb") as file:
-            key = _MSS_PRIVATE_KEYS[key_file] = serialization.load_pem_private_key(
-                file.read(), password=None
-            )
-        return key
-
-
-def _decrypt_msg(
-    private_key_file: str,
-    msg: str,
-) -> str:
-    """Decrypts the given message that has been encrypted with the MSS public key
-
-    Args:
-        msg: the message to decrypt
-        private_key_file: the file path to the RSA private key PEM file
-
-    Returns:
-        the plain message
-    """
-    key = _get_private_key(private_key_file)
-    cipher_bytes = base64.b64decode(msg)
-    plain_msg = key.decrypt(
-        cipher_bytes,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None,
-        ),
-    )
-    return plain_msg.decode()

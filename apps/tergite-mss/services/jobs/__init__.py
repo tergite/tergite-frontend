@@ -24,6 +24,8 @@ from pymongo import ReturnDocument
 
 from services.external.bcc import BccClient
 from utils import mongodb as mongodb_utils
+from utils.config import get_private_key_file
+from utils.crypto import decrypt_message
 from utils.exc import NotFoundError
 
 from ..auth import Project
@@ -33,12 +35,15 @@ if TYPE_CHECKING:
     from ..auth.projects.database import ProjectDatabase
 
 
-async def get_one(db: AsyncIOMotorDatabase, job_id: UUID) -> Job:
+async def get_one(
+    db: AsyncIOMotorDatabase, job_id: UUID, is_token_decrypted: bool = False
+) -> Job:
     """Gets a job by job_id
 
     Args:
         db: the mongo database from where to get the job
         job_id: the `job_id` of the job to be returned
+        is_token_decrypted: whether the token returned is decrypted
 
     Raises:
         utils.exc.NotFoundError: no matches for '{search_filter}'.
@@ -47,9 +52,16 @@ async def get_one(db: AsyncIOMotorDatabase, job_id: UUID) -> Job:
     Returns:
         the job as a dict
     """
-    return await mongodb_utils.find_one(
+    result = await mongodb_utils.find_one(
         db.jobs, {"job_id": str(job_id)}, schema=Job, dropped_fields=("_id",)
     )
+    if is_token_decrypted and result.access_token:
+        private_key_file = get_private_key_file()
+        result.access_token = decrypt_message(
+            private_key_file=private_key_file, msg=result.access_token
+        )
+
+    return result
 
 
 async def create_job(
@@ -98,10 +110,13 @@ async def get_latest_many(
     filters: Optional[dict] = None,
     limit: Optional[int] = None,
     skip: int = 0,
-    exclude: Tuple[str] = (),
+    exclude: Tuple[str] = ("access_token",),
     sort: List[str] = (),
 ) -> List[Job]:
     """Retrieves the latest jobs up to the given limit
+
+    By default, the access_token is not returned when many jobs are requested for.
+    This is because such requests are usually not to submit the job but rather to view it.
 
     Args:
         db: the mongo database from where to get the jobs

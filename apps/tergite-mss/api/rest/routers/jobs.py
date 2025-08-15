@@ -40,7 +40,7 @@ from services.jobs.dtos import (
     JobStatusResponse,
     JobUpdate,
 )
-from utils.api import PaginatedListResponse, get_bearer_token
+from utils.api import PaginatedListResponse
 from utils.exc import UnknownBccError
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -88,7 +88,7 @@ async def get_one(db: MongoDbDep, project: CurrentLaxProjectDep, job_id: UUID):
         project: the current project that the associated API token is associated with
         job_id: the job_id of the job
     """
-    return await jobs_service.get_one(db, job_id=job_id)
+    return await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)
 
 
 @router.get("/{job_id}/status")
@@ -165,4 +165,4 @@ async def update_one(
             await puhuri_service.save_qpu_usage(
                 db, job_id=job_id, project=project, qpu_usage=qpu_usage
             )
-    return await jobs_service.get_one(db, job_id=job_id)
+    return await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)

@@ -7,6 +7,12 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+### Added
+
+- Added `access_token` field to the job schema. 
+  It is encrypted when in database but plain when requested for by anyone who has access to the job
+  (including other members of the project).
+
 ### Changed
 
 - BREAKING: Changed the response to job creation `/jobs` POST endpoint, to return a JWT access token also
