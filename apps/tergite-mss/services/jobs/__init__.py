@@ -16,6 +16,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple
 from uuid import UUID
 
@@ -23,8 +24,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
 from services.external.bcc import BccClient
+from settings import PRIVATE_KEY_FILE
 from utils import mongodb as mongodb_utils
-from utils.config import get_private_key_file
 from utils.crypto import decrypt_message
 from utils.exc import NotFoundError
 
@@ -36,7 +37,10 @@ if TYPE_CHECKING:
 
 
 async def get_one(
-    db: AsyncIOMotorDatabase, job_id: UUID, is_token_decrypted: bool = False
+    db: AsyncIOMotorDatabase,
+    job_id: UUID,
+    is_token_decrypted: bool = False,
+    private_key_file: Path = PRIVATE_KEY_FILE,
 ) -> Job:
     """Gets a job by job_id
 
@@ -44,6 +48,7 @@ async def get_one(
         db: the mongo database from where to get the job
         job_id: the `job_id` of the job to be returned
         is_token_decrypted: whether the token returned is decrypted
+        private_key_file: the path to the private key
 
     Raises:
         utils.exc.NotFoundError: no matches for '{search_filter}'.
@@ -56,7 +61,6 @@ async def get_one(
         db.jobs, {"job_id": str(job_id)}, schema=Job, dropped_fields=("_id",)
     )
     if is_token_decrypted and result.access_token:
-        private_key_file = get_private_key_file()
         result.access_token = decrypt_message(
             private_key_file=private_key_file, msg=result.access_token
         )

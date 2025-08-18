@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 """Utilities for cryptography"""
 import base64
+from pathlib import Path
 from typing import Dict
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -20,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 _MSS_PRIVATE_KEYS: Dict[str, RSAPrivateKey] = {}
 
 
-def sign_message(key_file: str, message: str) -> str:
+def sign_message(key_file: Path, message: str) -> str:
     """Creates an MSS-signed signature given a message
 
     Args:
@@ -42,7 +43,7 @@ def sign_message(key_file: str, message: str) -> str:
 
 
 def decrypt_message(
-    private_key_file: str,
+    private_key_file: Path,
     msg: str,
 ) -> str:
     """Decrypts the given message that has been encrypted with the MSS public key
@@ -67,7 +68,7 @@ def decrypt_message(
     return plain_msg.decode()
 
 
-def _get_private_key(key_file: str) -> RSAPrivateKey:
+def _get_private_key(key_file: Path) -> RSAPrivateKey:
     """Loads the private key for MSS
 
     Args:
@@ -78,11 +79,13 @@ def _get_private_key(key_file: str) -> RSAPrivateKey:
     """
     global _MSS_PRIVATE_KEYS
 
+    key_file_str = str(key_file)
+
     try:
-        return _MSS_PRIVATE_KEYS[key_file]
+        return _MSS_PRIVATE_KEYS[key_file_str]
     except KeyError:
         with open(key_file, "rb") as file:
-            key = _MSS_PRIVATE_KEYS[key_file] = serialization.load_pem_private_key(
+            key = _MSS_PRIVATE_KEYS[key_file_str] = serialization.load_pem_private_key(
                 file.read(), password=None
             )
         return key

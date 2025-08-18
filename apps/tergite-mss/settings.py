@@ -12,10 +12,19 @@
 # that they have been altered from the originals.
 import logging
 import os
+from pathlib import Path
 
 from utils.config import AppConfig
 
+_ROOT = Path(__file__).parent
+
 _MSS_CONFIG_FILE = os.environ.get("MSS_CONFIG_FILE", default="mss-config.toml")
+PRIVATE_KEY_FILE = Path(
+    os.getenv("PRIVATE_KEY_FILE", default=_ROOT / "private-mss-key.pem")
+).resolve()
+if not PRIVATE_KEY_FILE.exists():
+    raise ValueError(f"private key file '{PRIVATE_KEY_FILE}' does not exist")
+
 CONFIG: AppConfig = AppConfig.from_toml(_MSS_CONFIG_FILE)
 
 _is_production = CONFIG.environment == "production"

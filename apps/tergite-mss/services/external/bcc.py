@@ -13,11 +13,13 @@
 import logging
 import time
 from json import JSONDecodeError
+from pathlib import Path
 from typing import Dict, List, NotRequired, Optional, Tuple, TypedDict
 
 import httpx
 
-from utils.config import BccConfig, get_private_key_file
+from settings import PRIVATE_KEY_FILE
+from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
 from utils.exc import ServiceUnavailableError
 
@@ -76,7 +78,11 @@ class BccClient:
         self._client = httpx.AsyncClient(base_url=base_url)
 
     async def get_token(
-        self, job_id: str, user_id: str, request_id: str
+        self,
+        job_id: str,
+        user_id: str,
+        request_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
     ) -> Tuple[str, str]:
         """Retrieves the JWT for the given job_id and user_id from BCC
 
@@ -84,6 +90,7 @@ class BccClient:
             job_id: the id of the job
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
 
         Returns:
             the pair of the encrypted JWT and the plain JWT
@@ -93,7 +100,6 @@ class BccClient:
             ValueError: unauthenticated user
         """
         try:
-            private_key_file = get_private_key_file()
             headers = _create_headers(
                 private_key_file=private_key_file,
                 request_id=request_id,
@@ -139,7 +145,7 @@ def _extract_error_message(response: httpx.Response) -> str:
 
 
 def _create_headers(
-    private_key_file: str,
+    private_key_file: Path,
     request_id: str,
     user_id: str = "",
     is_admin: Optional[bool] = None,
