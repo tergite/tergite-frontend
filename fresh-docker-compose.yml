@@ -12,8 +12,10 @@ services:
       - "8002:${MSS_PORT:-80}"
     environment:
       - MSS_CONFIG_FILE=/code/mss-config.toml
+      - PRIVATE_KEY_FILE=/code/private-mss-key.pem
     volumes:
       - ./mss-config.toml:/code/mss-config.toml:ro
+      - ./private-mss-key.pem:/code/private-mss-key.pem:ro
     env_file:
       - .env
     extra_hosts:
