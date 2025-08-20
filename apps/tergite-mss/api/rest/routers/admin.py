@@ -23,6 +23,7 @@ from services.auth import (
     User,
     user_requests,
 )
+from services.external.bcc.dtos import BCCUserProfile, GeneralMessage, NewBCCUserInfo
 from utils.api import PaginatedListResponse
 
 from ..dependencies import CurrentSuperuserDep, CurrentUserDep, CurrentUserIdDep
@@ -103,6 +104,74 @@ async def get_user_requests(
         mode="json",
         exclude_data_none_fields=False,
     )
+
+
+@router.post("/bcc-users/{backend}")
+async def create_bcc_user(
+    backend: str,
+    data: NewBCCUserInfo,
+    requester: User = CurrentUserDep,
+) -> "BCCUserProfile":
+    """Creates a user in the given backend for info
+
+    Only MSS admin users can create users here
+
+    Args:
+        backend: the name of the backend
+        data: the information about the new user
+        requester: the admin user requesting this operation
+
+    Returns:
+        the created user
+    """
+    raise NotImplementedError("not implemented")
+
+
+@router.delete("/bcc-users/{backend}/{user_id}")
+async def remove_bcc_user(
+    backend: str,
+    user_id: str,
+    requester: User = CurrentUserDep,
+) -> GeneralMessage:
+    """Deletes the user of the given user_id
+
+    Only admins are allowed to remove users
+
+    Args:
+        backend: the name of the backend
+        user_id: the unique identifier of the user
+        requester: the admin user requesting this operation
+
+    Raises:
+        ItemNotFoundError: user not found
+
+    Returns:
+        A general message object with status
+    """
+    raise NotImplementedError("not implemented")
+
+
+@router.get("/bcc-users/{backend}/")
+async def view_bcc_users(
+    backend: str,
+    skip: int = Query(default=0),
+    limit: Optional[int] = Query(default=None),
+    requester: User = CurrentUserDep,
+) -> PaginatedListResponse[BCCUserProfile]:
+    """Views all users
+
+    Only MSS admin users can view this
+
+    Args:
+        backend: the name of the backend
+        skip: number of records to ignore at the top of the returned results; default is 0
+        limit: maximum number of records to return; default is None.
+        requester: the admin user requesting this operation
+
+    Returns:
+        the paginated list of the available bookings
+    """
+    raise NotImplementedError("not implemented")
 
 
 @router.put("/user-requests/{_id}", tags=["user-requests"])

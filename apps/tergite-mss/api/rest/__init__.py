@@ -18,7 +18,6 @@
 from fastapi import FastAPI
 from fastapi.requests import Request
 
-import settings
 from api.rest.utils import TergiteCORSMiddleware
 from services.auth.utils import TooManyListQueryParams
 from services.jobs.utils import get_uuid4_str
@@ -39,6 +38,7 @@ from .dependencies import (
 )
 from .routers.admin import router as admin_router
 from .routers.auth import include_auth_router
+from .routers.booking import router as booking_router
 from .routers.calibrations import router as calibrations_router
 from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
@@ -94,6 +94,7 @@ app.include_router(devices_router)
 app.include_router(my_router)
 app.include_router(admin_router)
 app.include_router(jobs_router)
+app.include_router(booking_router)
 
 
 @app.get("/")

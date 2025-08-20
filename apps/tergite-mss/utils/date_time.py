@@ -13,13 +13,11 @@
 
 
 from datetime import datetime, timezone
-from typing import Optional, Tuple
+from typing import Tuple
 
 from fastapi import HTTPException
 
 import settings
-
-_DATETIME_PRECISION = settings.CONFIG.datetime_precision
 
 
 def parse_datetime_string(datetime_str: str) -> datetime:
@@ -69,23 +67,27 @@ def is_in_month(
     return timestamp_date.month == month and timestamp_date.year == year
 
 
-def datetime_to_zulu(d: datetime) -> str:
+def datetime_to_zulu(d: datetime, precision=settings.CONFIG.datetime_precision) -> str:
     """
     Returns the given datetime object in string format with an ending Z.
+
+    Args:
+        d: the datetime to convert
+        precision: the number of additional terms of the time to include.
+            Valid options are 'auto', 'hours', 'minutes', 'seconds', 'milliseconds' and 'microseconds'.
+            Default: "auto"
     """
     # FIXME: MongoDB shaves off the nanoseconds automatically.
     #   to make things uniform in tests, we shave them off here also. But it is possible to store
     #   datetimes as int timestamps instead of dates in order to avoid loss of precision
     return (
-        d.astimezone(timezone.utc)
-        .isoformat(timespec=_DATETIME_PRECISION)
-        .replace("+00:00", "Z")
+        d.astimezone(timezone.utc).isoformat(timespec=precision).replace("+00:00", "Z")
     )
 
 
 def get_current_timestamp():
     """Returns current time in UTC string but with hours replaced with a Z"""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 DEFAULT_FROM_DATETIME_STR = datetime(2000, 1, 1, 0, 0, tzinfo=timezone.utc).isoformat()

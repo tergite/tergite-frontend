@@ -27,12 +27,15 @@ from api.rest.dependencies import (
     CurrentLaxProjectDep,
     CurrentStrictProjectDep,
     CurrentStrictProjectUserIds,
+    CurrentUserDep,
     MongoDbDep,
     ProjectDbDep,
     ReqeustIdDep,
 )
 from services import jobs as jobs_service
+from services.auth import User
 from services.external import puhuri as puhuri_service
+from services.external.bcc.dtos import CancellationDetails, GeneralMessage
 from services.jobs.dtos import (
     Job,
     JobCreate,
@@ -166,3 +169,46 @@ async def update_one(
                 db, job_id=job_id, project=project, qpu_usage=qpu_usage
             )
     return await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)
+
+
+@router.post("/{job_id}/cancel")
+async def cancel_job(
+    job_id: str,
+    details: CancellationDetails,
+    user: User = CurrentUserDep,
+) -> GeneralMessage:
+    """Cancels the job of given job_id if job belongs to current user or if user is admin
+
+    Args:
+        job_id: the unique identifier of the job
+        details: the extra information passed when canceling the job
+        user: the current logged-in user
+
+    Returns:
+        a general message showing status
+    Raises:
+        401: user not found
+        404: Job {job_id} not found
+        406: if the job has already been cancelled
+    """
+    raise NotImplementedError()
+
+
+@router.delete("/{job_id}")
+async def remove_job(
+    job_id: str,
+    user: User = CurrentUserDep,
+) -> GeneralMessage:
+    """Deletes the job of given job_id if job belongs to current user or if user is admin
+
+    Args:
+        job_id: the unique identifier of the job
+        user: the logged-in user
+
+    Returns:
+        a general message showing status
+    Raises:
+        401: user not found
+        404: Job {job_id} not found
+    """
+    raise NotImplementedError()
