@@ -14,10 +14,13 @@ import logging
 import time
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Dict, List, NotRequired, Optional, Tuple, TypedDict
+from typing import Dict, List, Literal, NotRequired, Optional, Tuple, TypedDict
+from uuid import UUID
 
 import httpx
+from beanie import PydanticObjectId
 
+from services.external.bcc.dtos import CancellationDetails, GeneralMessage
 from settings import PRIVATE_KEY_FILE
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
@@ -99,26 +102,122 @@ class BccClient:
             ServiceUnavailableError: device is currently unavailable
             ValueError: unauthenticated user
         """
+        response = await self._request(
+            "POST",
+            "/token",
+            user_id=user_id,
+            request_id=request_id,
+            json={"job_id": job_id, "user_id": user_id},
+        )
+        encrypted_token = response["access_token"]
+        token = decrypt_message(private_key_file=private_key_file, msg=encrypted_token)
+        return encrypted_token, token
+
+    async def cancel_job(
+        self,
+        job_id: str | UUID,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        body: CancellationDetails,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Attempts to cancel the job
+
+        Args:
+            job_id: the id of the job
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            body: the payload to post when cancelling
+            private_key_file: the path to the private key file
+
+        Returns:
+            the pair of the encrypted JWT and the plain JWT
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
+        """
+        payload = body.model_dump(mode="json")
+        return await self._request(
+            "POST",
+            f"/jobs/{job_id}/cancel",
+            user_id=user_id,
+            request_id=request_id,
+            json=payload,
+            private_key_file=private_key_file,
+        )
+
+    async def delete_job(
+        self,
+        job_id: str | UUID,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Attempts to delete the job
+
+        Args:
+            job_id: the id of the job
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+
+        Returns:
+            the pair of the encrypted JWT and the plain JWT
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
+        """
+        return await self._request(
+            "DELETE",
+            f"/jobs/{job_id}",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+        )
+
+    async def _request(
+        self,
+        method: Literal["POST", "GET", "PUT", "DELETE", "PATCH"],
+        url: str,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        json: Optional[dict] = None,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> dict:
+        """Attempts to cancel the job
+
+        Args:
+            method: the method to use when hitting the given URL.
+            url: the route to hit
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            json: the payload to post when cancelling
+            private_key_file: the path to the private key file
+
+        Returns:
+            the pair of the encrypted JWT and the plain JWT
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: some error when making query
+        """
         try:
             headers = _create_headers(
                 private_key_file=private_key_file,
                 request_id=request_id,
-                user_id=user_id,
+                user_id=f"{user_id}",
             )
-            response = await self._client.post(
-                "/token", json={"job_id": job_id, "user_id": user_id}, headers=headers
+            response = await self._client.request(
+                method, url, json=json, headers=headers
             )
 
             if response.is_error:
                 message = _extract_error_message(response)
                 raise ValueError(message)
 
-            encrypted_token = response.json()["access_token"]
-            token = decrypt_message(
-                private_key_file=private_key_file, msg=encrypted_token
-            )
-
-            return encrypted_token, token
+            return response.json()
         except (httpx.ConnectError, httpx.ConnectTimeout) as exp:
             logging.error(exp)
             raise ServiceUnavailableError("device is currently unavailable")

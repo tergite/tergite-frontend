@@ -85,9 +85,9 @@ def datetime_to_zulu(d: datetime, precision=settings.CONFIG.datetime_precision) 
     )
 
 
-def get_current_timestamp():
+def get_current_timestamp(precision=settings.CONFIG.datetime_precision):
     """Returns current time in UTC string but with hours replaced with a Z"""
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime_to_zulu(datetime.now(timezone.utc), precision=precision)
 
 
 DEFAULT_FROM_DATETIME_STR = datetime(2000, 1, 1, 0, 0, tzinfo=timezone.utc).isoformat()

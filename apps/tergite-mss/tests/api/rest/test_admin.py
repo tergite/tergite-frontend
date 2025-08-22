@@ -823,6 +823,134 @@ def test_non_admin_cannot_delete_project(
         assert get_db_record(db, Project, _id) is not None
 
 
+#
+# @pytest.mark.parametrize("pagination, client", _VIEW_MANY_PARAMS)
+# def test_admin_view_users(client, pagination: "_PaginationInfo"):
+#     """GET '/users' should show to an admin the paginated list of user profiles via MSS"""
+#     with client as client:
+#         users = _create_many_users(client, raw_users=USERS)
+#         user = users[0]
+#         user_id = user["id"]
+#
+#         skip = pagination["skip"]
+#         limit = pagination["limit"]
+#
+#         # non admins are not allowed
+#         response = _view_user_list(
+#             client, user_id=user_id, skip=skip, limit=limit, is_admin=False
+#         )
+#         assert response.status_code == 403
+#         assert response.json() == {"detail": "Forbidden"}
+#
+#         # admins are allowed
+#         response = _view_user_list(
+#             client, user_id=user_id, skip=skip, limit=limit, is_admin=True
+#         )
+#         actual_output = response.json()
+#
+#         expected = _paginate(users, skip=skip, limit=limit)
+#
+#         assert response.status_code == 200
+#         assert actual_output == expected
+#
+#
+# @pytest.mark.parametrize("client, redis_conn, worker, job", _SIMPLE_UPLOAD_JOB_PARAMS)
+# def test_admin_remove_user(
+#     client, worker, redis_conn, job, jobs_folder, mocker: MockerFixture
+# ):
+#     """DELETE '/users/{user_id}' by admin removes the user, and their bookings and jobs"""
+#     with client as client:
+#         users = [curr_user, other_user] = _create_many_users(client, USERS[:2])
+#         curr_user_id = curr_user["id"]
+#         other_user_id = other_user["id"]
+#
+#         # create many bookings for this user
+#         for booking in VALID_BOOKINGS[:TEST_MAX_SLOTS_PER_DAY]:
+#             _, result = _create_booking(client, user_id=curr_user_id, booking=booking)
+#
+#         # create a booking for other user
+#         _create_booking(
+#             client, user_id=other_user_id, booking={"starts_in": 8, "duration": 2}
+#         )
+#
+#         # wait for the first booking to start
+#         raw_jobs = _get_raw_jobs(job, durations=[0.23, 0.1, 0.23])
+#         job_metadata_list = _get_job_submission_metadata(
+#             client, jobs=raw_jobs, users=users, mocker=mocker, jobs_folder=jobs_folder
+#         )
+#         _submit_multiple_jobs_v2(
+#             client,
+#             data=job_metadata_list,
+#         )
+#
+#         # This also removes the user's pending bookings,
+#         # and cancels their pending jobs
+#         response = _remove_user(
+#             client, current_user_id=other_user_id, user_id=curr_user_id, is_admin=True
+#         )
+#         assert response.status_code == 200
+#         assert response.json() == {"status": "success", "detail": f"User deleted"}
+#
+#         response = _view_own_profile(client, user_id=curr_user_id)
+#         assert response.status_code == 404
+#         assert response.json() == {"detail": "user not found"}
+#
+#         # Run the queue; try to wait for waitlist to transfer things to execution queue
+#         _wait_on_rq_worker(worker, with_scheduler=True)
+#
+#         jobs_in_redis = _get_jobs_in_redis(redis_conn)
+#
+#         deleted_user_jobs = [
+#             job for job in jobs_in_redis if job.user_id == curr_user_id
+#         ]
+#         other_user_jobs = [job for job in jobs_in_redis if job.user_id != curr_user_id]
+#         failure_reason = "Cancelled on user deletion"
+#
+#         assert all([v.status == JobStatus.CANCELLED for v in deleted_user_jobs])
+#         assert all([v.failure_reason == failure_reason for v in deleted_user_jobs])
+#         assert all([v.status == JobStatus.SUCCESSFUL for v in other_user_jobs])
+#
+#
+# @pytest.mark.parametrize(
+#     "client, redis_conn, worker, job", _SIMPLE_UPLOAD_JOB_PARAMS[:-1]
+# )
+# def test_non_admin_remove_user(
+#     client, worker, redis_conn, job, jobs_folder, mocker: MockerFixture
+# ):
+#     """Non admin cannot remove the profile of any user"""
+#     with client as client:
+#         users = [curr_user, other_user] = _create_many_users(client, USERS[:2])
+#         curr_user_id = curr_user["id"]
+#         other_user_id = other_user["id"]
+#
+#         # create many bookings for this user
+#         for booking in VALID_BOOKINGS[:TEST_MAX_SLOTS_PER_DAY]:
+#             _, result = _create_booking(client, user_id=curr_user_id, booking=booking)
+#
+#         raw_jobs = _get_raw_jobs(job, durations=[0.23, 0.4, 0.3])
+#         job_metadata_list = _get_job_submission_metadata(
+#             client, jobs=raw_jobs, users=users, mocker=mocker, jobs_folder=jobs_folder
+#         )
+#         _submit_multiple_jobs_v2(client, data=job_metadata_list)
+#
+#         # Non-admins fail
+#         for user_id in (curr_user_id, other_user_id):
+#             response = _remove_user(
+#                 client, current_user_id=user_id, user_id=curr_user_id
+#             )
+#             assert response.status_code == 403
+#             assert response.json() == {"detail": "Forbidden"}
+#
+#         response = _view_own_profile(client, user_id=curr_user_id)
+#         assert response.status_code == 200
+#
+#         # Run the queue; try to wait for waitlist to transfer things to execution queue
+#         _wait_on_rq_worker(worker, with_scheduler=True)
+#
+#         jobs_in_redis = _get_jobs_in_redis(redis_conn)
+#         assert all([v.status == JobStatus.SUCCESSFUL for v in jobs_in_redis])
+
+
 def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
     """Converts a database item into an item that can be expected to be returned by HTTP server
 

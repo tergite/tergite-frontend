@@ -40,6 +40,7 @@ from services.jobs.dtos import (
     Job,
     JobCreate,
     JobQuery,
+    JobStatus,
     JobStatusResponse,
     JobUpdate,
 )
@@ -173,15 +174,21 @@ async def update_one(
 
 @router.post("/{job_id}/cancel")
 async def cancel_job(
-    job_id: str,
+    db: MongoDbDep,
+    job_id: UUID,
     details: CancellationDetails,
+    bcc_clients_map: BccClientsMapDep,
+    request_id: ReqeustIdDep,
     user: User = CurrentUserDep,
 ) -> GeneralMessage:
     """Cancels the job of given job_id if job belongs to current user or if user is admin
 
     Args:
+        db: the database in which records are stored
         job_id: the unique identifier of the job
         details: the extra information passed when canceling the job
+        request_id: the request id associated with this request
+        bcc_clients_map: the mapping containing clients that access backends on behalf of this application
         user: the current logged-in user
 
     Returns:
@@ -189,20 +196,47 @@ async def cancel_job(
     Raises:
         401: user not found
         404: Job {job_id} not found
+        404: no matches for {job_id: job_id}
         406: if the job has already been cancelled
     """
-    raise NotImplementedError()
+    job = await jobs_service.get_one(db, job_id=job_id)
+
+    try:
+        bcc_client = bcc_clients_map[job.device]
+    except KeyError:
+        raise UnknownBccError(f"Unknown backend '{job.device}'")
+
+    response = await bcc_client.cancel_job(
+        job_id, user_id=user.id, request_id=request_id, body=details
+    )
+    if response["status"] == "success":
+        await jobs_service.update_job(
+            db,
+            job_id=job_id,
+            payload=JobUpdate(
+                cancellation_reason=details.reason,
+                status=JobStatus.CANCELLED,
+            ),
+        )
+
+    return response
 
 
 @router.delete("/{job_id}")
 async def remove_job(
-    job_id: str,
+    db: MongoDbDep,
+    job_id: UUID,
+    bcc_clients_map: BccClientsMapDep,
+    request_id: ReqeustIdDep,
     user: User = CurrentUserDep,
 ) -> GeneralMessage:
     """Deletes the job of given job_id if job belongs to current user or if user is admin
 
     Args:
+        db: the database in which records are stored
         job_id: the unique identifier of the job
+        request_id: the request id associated with this request
+        bcc_clients_map: the mapping containing clients that access backends on behalf of this application
         user: the logged-in user
 
     Returns:
@@ -210,5 +244,18 @@ async def remove_job(
     Raises:
         401: user not found
         404: Job {job_id} not found
+        404: no matches for {job_id: job_id}
     """
-    raise NotImplementedError()
+    job = await jobs_service.get_one(db, job_id=job_id)
+    try:
+        bcc_client = bcc_clients_map[job.device]
+    except KeyError:
+        raise UnknownBccError(f"Unknown backend '{job.device}'")
+
+    response = await bcc_client.delete_job(
+        job_id, user_id=user.id, request_id=request_id
+    )
+    if response["status"] == "success":
+        await jobs_service.remove_job(db, job_id=job_id)
+
+    return response

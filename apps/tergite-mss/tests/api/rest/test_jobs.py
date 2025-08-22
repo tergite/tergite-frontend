@@ -21,7 +21,7 @@ from pytest_lazyfixture import lazy_fixture
 from pytest_mock import MockerFixture
 
 from services.auth import Project
-from tests._utils.auth import TEST_PROJECT_EXT_ID, get_db_record
+from tests._utils.auth import TEST_PROJECT_EXT_ID, TEST_USER_ID, get_db_record
 from tests._utils.date_time import (
     get_current_timestamp_str,
 )
@@ -382,6 +382,136 @@ def test_update_job_resource_usage_advanced(
     )
 
     assert actual_resource_usage == expected_resource_usage
+
+
+@pytest.mark.parametrize("job", _JOBS_LIST[:4])
+def test_cancel_job(db, client, user_jwt_cookie, job, mock_bcc, freezer):
+    """A POST to '/jobs/{id}/cancel' cancels the job of the job_id if the job belongs to the current user"""
+    with client as client:
+        raw_jobs = with_incremental_timestamps(
+            [job], fields=["created_at", "calibration_date"]
+        )
+        raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
+        user_id = TEST_USER_ID
+        raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
+        job_info = raw_jobs[0]
+        job_id = job_info["job_id"]
+        cancellation_reason = "just testing"
+
+        insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+
+        response = client.post(
+            f"/jobs/{job_id}/cancel",
+            json={"reason": cancellation_reason},
+            cookies=user_jwt_cookie,
+        )
+        got = response.json()
+        job_in_db = find_in_collection(
+            db,
+            collection_name=_COLLECTION,
+            fields_to_exclude=_EXCLUDED_FIELDS,
+            _filter={"job_id": job_id},
+        )[0]
+
+        assert response.status_code == 200
+        assert got == {
+            "status": "success",
+            "detail": f"Job of id {job_id} cancelled",
+        }
+
+        assert job_in_db == {
+            **job_info,
+            "status": "cancelled",
+            "cancellation_reason": cancellation_reason,
+        }
+
+
+@pytest.mark.parametrize("job", _JOBS_LIST[:4])
+def test_unauthenticated_cancel_job(db, client, job, mock_bcc, freezer):
+    """POST to `/jobs/{job_id}/cancel` raises 401 if not accessed with an authentic cookie"""
+    with client as client:
+        raw_jobs = with_incremental_timestamps(
+            [job], fields=["created_at", "calibration_date"]
+        )
+        raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
+        user_id = TEST_USER_ID
+        raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
+        job_info = raw_jobs[0]
+        job_id = job_info["job_id"]
+        cancellation_reason = "just testing"
+
+        insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+
+        payload = {"reason": cancellation_reason}
+        url = f"/jobs/{job_id}/cancel"
+
+        response = client.post(url, json=payload)
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
+
+        invalid_headers = {"Auhtorization": "Bearer some-wrong-token"}
+        response = client.post(url, headers=invalid_headers)
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
+
+
+@pytest.mark.parametrize("idx", range(4))
+def test_remove_job(db, client, user_jwt_cookie, idx: int, mock_bcc, freezer):
+    """DELETE to '/jobs/{job_id}' deletes the given job if job belongs to user"""
+    # using context manager to ensure on_startup runs
+    with client as client:
+        raw_jobs = with_incremental_timestamps(
+            _JOBS_LIST[:4], fields=["created_at", "calibration_date"]
+        )
+        raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
+        user_id = TEST_USER_ID
+        raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
+        job_id = raw_jobs[idx]["job_id"]
+
+        insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+
+        response = client.delete(f"/jobs/{job_id}", cookies=user_jwt_cookie)
+        got = response.json()
+        jobs_in_db = find_in_collection(
+            db,
+            collection_name=_COLLECTION,
+            fields_to_exclude=_EXCLUDED_FIELDS,
+            _filter={},
+        )
+        expected_jobs = [item for item in raw_jobs if item["job_id"] != job_id]
+
+        assert response.status_code == 200
+        assert got == {
+            "status": "success",
+            "detail": f"Job of id {job_id} deleted",
+        }
+
+        assert jobs_in_db == expected_jobs
+
+
+@pytest.mark.parametrize("idx", range(4))
+def test_unauthenticated_remove_job(db, client, idx: int, mock_bcc, freezer):
+    """Delete to /jobs/{job_id} returns 401 error when accessed outside MSS or without proper MSS headers"""
+    # using context manager to ensure on_startup runs
+    with client as client:
+        raw_jobs = with_incremental_timestamps(
+            _JOBS_LIST[:4], fields=["created_at", "calibration_date"]
+        )
+        raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
+        user_id = TEST_USER_ID
+        raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
+        job_id = raw_jobs[idx]["job_id"]
+
+        insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+
+        response = client.delete(f"/jobs/{job_id}")
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
+
+        invalid_headers = {"Auhtorization": "Bearer some-wrong-token"}
+        response = client.delete(f"/jobs/{job_id}", headers=invalid_headers)
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
 
 
 def _get_resource_usage(timestamps: Dict[str, Dict[str, str]]) -> Optional[float]:

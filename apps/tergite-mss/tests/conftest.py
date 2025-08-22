@@ -1,3 +1,5 @@
+import re
+
 from tests._utils.env import (
     TEST_BACKENDS,
     TEST_DB_NAME,
@@ -70,6 +72,7 @@ from tests._utils.waldur import MockWaldurClient
 _PUHURI_OPENID_CONFIG = load_json_fixture("puhuri_openid_config.json")
 PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
+JOB_LIST = load_json_fixture("job_list.json")
 TEST_NEXT_COOKIE_URL = "https://testserver/"
 
 
@@ -406,6 +409,13 @@ def mock_bcc(respx_mock):
             side_effect=_mock_bcc_token_endpoint
         )
 
+        for job in JOB_LIST:
+            respx_mock.post(f"{backend['url']}/jobs/{job["job_id"]}/cancel").mock(
+                side_effect=_mock_bcc_job_cancel_endpoint)
+
+            respx_mock.delete(f"{backend['url']}/jobs/{job["job_id"]}").mock(
+                side_effect=_mock_bcc_job_delete_endpoint)
+
     yield respx_mock
 
 
@@ -550,6 +560,59 @@ def _mock_bcc_token_endpoint(request: httpx.Request):
             json={"access_token": encrypted_token, "token_type": "bearer"},
         )
     except ValueError as exp:
+        return httpx.Response(
+            status_code=401, json={"detail": f"user not authenticated {exp}"}
+        )
+    except (KeyError, JSONDecodeError, TypeError, AssertionError) as exp:
+        return httpx.Response(
+            status_code=400, json={"detail": f"malformed request body {exp}"}
+        )
+    except Exception as exp:
+        raise exp
+
+def _mock_bcc_job_delete_endpoint(request: httpx.Request):
+    """Mock BCC job deletion endpoint
+
+    Args:
+        request: the httpx request
+
+    Returns:
+        dict of status and detail
+    """
+    try:
+        job_id = re.match(r"^.*/jobs/(.*)$", f"{request.url}").group(1)
+        get_bcc_client_verified_headers(request)
+        return httpx.Response(
+            status_code=200,
+            json={"status": "success", "detail": f"Job of id {job_id} deleted"},
+        )
+    except (ValueError, AssertionError) as exp:
+        return httpx.Response(
+            status_code=401, json={"detail": f"user not authenticated {exp}"}
+        )
+    except Exception as exp:
+        raise exp
+
+
+def _mock_bcc_job_cancel_endpoint(request: httpx.Request):
+    """Mock BCC job cancellation endpoint
+
+    Args:
+        request: the httpx request
+
+    Returns:
+        dict of status and detail
+    """
+    try:
+        job_id = re.match(r"^.*/jobs/(.*)/cancel$", f"{request.url}").group(1)
+        get_bcc_client_verified_headers(request)
+        # FIXME: We don't check anything, we just always just cancel. We could have checked if admin or owner but
+        #   that would almost be a full app and would require this function to have access to the database.
+        return httpx.Response(
+            status_code=200,
+            json={"status": "success", "detail": f"Job of id {job_id} cancelled"},
+        )
+    except (ValueError, AssertionError) as exp:
         return httpx.Response(
             status_code=401, json={"detail": f"user not authenticated {exp}"}
         )

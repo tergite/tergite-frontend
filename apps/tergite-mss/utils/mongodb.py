@@ -266,6 +266,31 @@ async def update_one(
     return result
 
 
+async def delete_many(collection: AsyncIOMotorCollection, _filter: dict):
+    """Deletes many documents in the given collection for the given filter
+
+    Args:
+        collection: the mongo AsyncIOMotorCollection to insert the documents into
+        _filter: the filter for the documents
+
+    Returns:
+        the number of documents that were deleted
+
+    Raises:
+        ValueError: server failed deleting documents
+        NotFoundError: no matches for {filter}
+    """
+    result = await collection.delete_many(filter=_filter)
+
+    if not result.acknowledged:
+        raise ValueError("server failed deleting documents")
+
+    if result.deleted_count == 0:
+        raise NotFoundError(f"no matches for {_filter}")
+
+    return result.deleted_count
+
+
 def _extract_filter_obj(document: Dict[str, Any], unique_fields: Tuple[str, ...]):
     """Extracts a filter object from a document, given a set of unique fields
 
