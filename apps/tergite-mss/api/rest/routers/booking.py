@@ -18,10 +18,16 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep
+from api.rest.dependencies import (
+    BccClientsMapDep,
+    CurrentUserDep,
+    CurrentUserIdDep,
+    ReqeustIdDep,
+)
 from services.auth import User
 from services.external.bcc.dtos import Booking, GeneralMessage, NewBookingInfo
 from utils.api import PaginatedListResponse
+from utils.exc import UnknownBccError
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -30,19 +36,33 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 async def create_booking(
     backend: str,
     data: NewBookingInfo,
+    bcc_clients_map: BccClientsMapDep,
+    request_id: ReqeustIdDep,
     user_id: str = CurrentUserIdDep,
+    requester: User = CurrentUserDep,
 ) -> Booking:
     """Creates a booking for the user of the given token
 
     Args:
         backend: the device on which to book
-        user_id: the current signed-in user
         data: the information about the new booking
+        bcc_clients_map: the map of BCC clients that have access to backends
+        request_id: the unique identifier of the request
+        user_id: the current signed-in user
+        requester: the user requesting this operation
 
     Returns:
         the newly created booking
     """
-    raise NotImplementedError("not implemented")
+    try:
+        bcc_client = bcc_clients_map[backend]
+    except KeyError:
+        raise UnknownBccError(f"Unknown backend '{backend}'")
+
+    response = await bcc_client.create_user(
+        user_id=requester.id, request_id=request_id, data=data
+    )
+    return response
 
 
 @router.post("/bookings/{backend}/{booking_id}/cancel")

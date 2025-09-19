@@ -1,5 +1,3 @@
-import re
-
 from tests._utils.env import (
     TEST_BACKENDS,
     TEST_DB_NAME,
@@ -20,6 +18,7 @@ import importlib
 import json
 import multiprocessing
 import random
+import re
 from datetime import datetime, timezone
 from json import JSONDecodeError
 from os import environ
@@ -410,11 +409,13 @@ def mock_bcc(respx_mock):
         )
 
         for job in JOB_LIST:
-            respx_mock.post(f"{backend['url']}/jobs/{job["job_id"]}/cancel").mock(
-                side_effect=_mock_bcc_job_cancel_endpoint)
+            respx_mock.post(f"{backend['url']}/jobs/{job['job_id']}/cancel").mock(
+                side_effect=_mock_bcc_job_cancel_endpoint
+            )
 
-            respx_mock.delete(f"{backend['url']}/jobs/{job["job_id"]}").mock(
-                side_effect=_mock_bcc_job_delete_endpoint)
+            respx_mock.delete(f"{backend['url']}/jobs/{job['job_id']}").mock(
+                side_effect=_mock_bcc_job_delete_endpoint
+            )
 
     yield respx_mock
 
@@ -569,6 +570,7 @@ def _mock_bcc_token_endpoint(request: httpx.Request):
         )
     except Exception as exp:
         raise exp
+
 
 def _mock_bcc_job_delete_endpoint(request: httpx.Request):
     """Mock BCC job deletion endpoint

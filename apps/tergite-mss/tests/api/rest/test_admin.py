@@ -12,10 +12,11 @@
 """Integration tests for the routes for the admin"""
 import copy
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Generic, List, Optional, TypedDict
 
 import pytest
 from pytest_lazyfixture import lazy_fixture
+from typing_extensions import TypeVar
 
 from services.auth import Project
 from services.auth.projects.dtos import DeletedProject
@@ -111,6 +112,8 @@ _EXTRA_PROJECT_DEFAULTS = {
     "user_emails": None,
     "admin_email": None,
 }
+_PAGINATION: List["_PaginationInfo"] = load_json_fixture("pagination.json")
+T = TypeVar("T")
 
 
 @pytest.mark.parametrize("user_id, cookies", _USER_ID_COOKIES_FIXTURE)
@@ -823,37 +826,29 @@ def test_non_admin_cannot_delete_project(
         assert get_db_record(db, Project, _id) is not None
 
 
-#
-# @pytest.mark.parametrize("pagination, client", _VIEW_MANY_PARAMS)
-# def test_admin_view_users(client, pagination: "_PaginationInfo"):
-#     """GET '/users' should show to an admin the paginated list of user profiles via MSS"""
-#     with client as client:
-#         users = _create_many_users(client, raw_users=USERS)
-#         user = users[0]
-#         user_id = user["id"]
-#
-#         skip = pagination["skip"]
-#         limit = pagination["limit"]
-#
-#         # non admins are not allowed
-#         response = _view_user_list(
-#             client, user_id=user_id, skip=skip, limit=limit, is_admin=False
-#         )
-#         assert response.status_code == 403
-#         assert response.json() == {"detail": "Forbidden"}
-#
-#         # admins are allowed
-#         response = _view_user_list(
-#             client, user_id=user_id, skip=skip, limit=limit, is_admin=True
-#         )
-#         actual_output = response.json()
-#
-#         expected = _paginate(users, skip=skip, limit=limit)
-#
-#         assert response.status_code == 200
-#         assert actual_output == expected
-#
-#
+@pytest.mark.parametrize("pagination", _PAGINATION)
+def test_admin_view_users(client, admin_jwt_cookie, user_jwt_cookie, pagination):
+    """GET '/admin/bcc-users/{backend}' should show to an admin the paginated list of user profiles via MSS"""
+    with client as client:
+        # non admins are not allowed
+        response = client.get("/admin/bcc-users/loke/", cookies=user_jwt_cookie)
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.get("/admin/bcc-users/loke/", cookies=admin_jwt_cookie)
+        actual_output = response.json()
+
+        skip = pagination["skip"]
+        limit = pagination["limit"]
+
+        users = [TEST_USER_DICT, TEST_SYSTEM_USER_DICT, TEST_SUPERUSER_DICT]
+        expected = _paginate(users, skip=skip, limit=limit)
+
+        assert response.status_code == 200
+        assert actual_output == expected
+
+
 # @pytest.mark.parametrize("client, redis_conn, worker, job", _SIMPLE_UPLOAD_JOB_PARAMS)
 # def test_admin_remove_user(
 #     client, worker, redis_conn, job, jobs_folder, mocker: MockerFixture
@@ -963,3 +958,36 @@ def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
     item = copy.deepcopy(db_item)
     item["id"] = str(item.pop("_id"))
     return item
+
+
+def _paginate(
+    data: List[T], skip: int = 0, limit: Optional[int] = None
+) -> "_PaginatedList[T]":
+    """Paginates the data basing on the skip and the limit params
+
+    Args:
+        skip: the number of records to skip
+        limit: the maximum number of records to return
+
+    Returns:
+        list of the data sliced according to the pagination info
+    """
+    slice_limit = limit
+    if isinstance(slice_limit, int):
+        slice_limit += skip
+    return {"skip": skip, "limit": limit, "data": data[skip:slice_limit]}
+
+
+class _PaginationInfo(TypedDict):
+    """The pagination info"""
+
+    skip: int
+    limit: Optional[float]
+
+
+class _PaginatedList(TypedDict, Generic[T]):
+    """The type for paginated responses"""
+
+    skip: int
+    limit: Optional[int]
+    data: List[T]

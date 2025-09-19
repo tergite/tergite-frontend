@@ -14,14 +14,35 @@ import logging
 import time
 from json import JSONDecodeError
 from pathlib import Path
-from typing import Dict, List, Literal, NotRequired, Optional, Tuple, TypedDict
+from typing import (
+    IO,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    NotRequired,
+    Optional,
+    Sequence,
+    Tuple,
+    TypedDict,
+)
 from uuid import UUID
 
 import httpx
 from beanie import PydanticObjectId
+from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
+from httpx._client import UseClientDefault
 
-from services.external.bcc.dtos import CancellationDetails, GeneralMessage
+from services.external.bcc.dtos import (
+    BCCUserProfile,
+    Booking,
+    CancellationDetails,
+    GeneralMessage,
+    NewBCCUserInfo,
+    NewBookingInfo,
+)
 from settings import PRIVATE_KEY_FILE
+from utils.api import PaginatedListResponse
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
 from utils.exc import ServiceUnavailableError
@@ -131,7 +152,7 @@ class BccClient:
             private_key_file: the path to the private key file
 
         Returns:
-            the pair of the encrypted JWT and the plain JWT
+            a general message showing status
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
@@ -163,7 +184,7 @@ class BccClient:
             private_key_file: the path to the private key file
 
         Returns:
-            the pair of the encrypted JWT and the plain JWT
+            a general message showing status
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
@@ -177,6 +198,196 @@ class BccClient:
             private_key_file=private_key_file,
         )
 
+    async def view_users(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> dict:
+        """View list of users
+
+        Args:
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+            skip: the number of records to skip
+            limit: the maximum number of records to return
+
+        Returns:
+            the paginated list of the available users
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
+        """
+        return await self._request(
+            "GET",
+            "/users",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            params={"skip": skip, "limit": limit},
+        )
+
+    async def create_user(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        data: NewBCCUserInfo,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> dict:
+        """Creates a user given the name and email
+
+        Only MSS admin users can create users here
+
+        Args:
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+            data: the information about the new user
+
+        Returns:
+            the created user
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
+        """
+        return await self._request(
+            "POST",
+            "/users",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            json=data.model_dump(mode="json"),
+        )
+
+    async def delete_user(
+        self,
+        bcc_user_id: str | UUID,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Attempts to delete the user
+
+        Args:
+            bcc_user_id: the id of the user
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+
+        Returns:
+            a general message showing status
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
+        """
+        return await self._request(
+            "DELETE",
+            f"/users/{bcc_user_id}",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+        )
+
+    async def create_booking(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        data: NewBookingInfo,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> dict:
+        """Creates a booking for the user of the given token
+
+        Args:
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+            data: the information about the new booking
+
+        Returns:
+            the newly created booking
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
+        """
+        return await self._request(
+            "POST",
+            "/bookings",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            json=data.model_dump(mode="json"),
+        )
+
+    async def cancel_booking(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        booking_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Cancels a booking of given id for the user
+
+        Args:
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+            booking_id: the unique identifier of the booking to cancel
+
+        Returns:
+            the general message object with the status
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
+        """
+        return await self._request(
+            "POST",
+            f"/bookings/{booking_id}/cancel",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+        )
+
+    async def view_bookings(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> dict:
+        """Views all available bookings
+
+        Args:
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+            skip: the number of records to skip
+            limit: the maximum number of records to return
+
+        Returns:
+            the paginated list of the available bookings
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
+        """
+        return await self._request(
+            "GET",
+            "/bookings",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            params={"skip": skip, "limit": limit},
+        )
+
     async def _request(
         self,
         method: Literal["POST", "GET", "PUT", "DELETE", "PATCH"],
@@ -185,6 +396,45 @@ class BccClient:
         request_id: str,
         json: Optional[dict] = None,
         private_key_file=PRIVATE_KEY_FILE,
+        files: Mapping[
+            str,
+            IO[bytes]
+            | bytes
+            | str
+            | tuple[str | None, IO[bytes] | bytes | str]
+            | tuple[str | None, IO[bytes] | bytes | str, str | None]
+            | tuple[str | None, IO[bytes] | bytes | str, str | None, Mapping[str, str]],
+        ]
+        | Sequence[
+            tuple[
+                str,
+                IO[bytes]
+                | bytes
+                | str
+                | tuple[str | None, IO[bytes] | bytes | str]
+                | tuple[str | None, IO[bytes] | bytes | str, str | None]
+                | tuple[
+                    str | None, IO[bytes] | bytes | str, str | None, Mapping[str, str]
+                ],
+            ]
+        ]
+        | None = None,
+        params: QueryParams
+        | Mapping[
+            str,
+            str | int | float | bool | None | Sequence[str | int | float | bool | None],
+        ]
+        | list[tuple[str, str | int | float | bool | None]]
+        | tuple[tuple[str, str | int | float | bool | None], ...]
+        | str
+        | bytes
+        | None = None,
+        timeout: float
+        | None
+        | tuple[float | None, float | None, float | None, float | None]
+        | Timeout
+        | UseClientDefault = USE_CLIENT_DEFAULT,
+        **kwargs,
     ) -> dict:
         """Attempts to cancel the job
 
@@ -195,6 +445,10 @@ class BccClient:
             request_id: the unique identifier of the current request
             json: the payload to post when cancelling
             private_key_file: the path to the private key file
+            files: files to pass in the request
+            params: the query params to add to the request
+            timeout: the timeout for the request
+            kwargs: the extra key-word arguments for sending the request
 
         Returns:
             the pair of the encrypted JWT and the plain JWT
@@ -210,7 +464,14 @@ class BccClient:
                 user_id=f"{user_id}",
             )
             response = await self._client.request(
-                method, url, json=json, headers=headers
+                method,
+                url,
+                json=json,
+                headers=headers,
+                files=files,
+                params=params,
+                timeout=timeout,
+                **kwargs,
             )
 
             if response.is_error:
