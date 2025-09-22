@@ -30,19 +30,17 @@ from uuid import UUID
 
 import httpx
 from beanie import PydanticObjectId
+from fastapi.exceptions import HTTPException
 from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
 from httpx._client import UseClientDefault
 
 from services.external.bcc.dtos import (
-    BCCUserProfile,
-    Booking,
     CancellationDetails,
     GeneralMessage,
     NewBCCUserInfo,
     NewBookingInfo,
 )
 from settings import PRIVATE_KEY_FILE
-from utils.api import PaginatedListResponse
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
 from utils.exc import ServiceUnavailableError
@@ -141,6 +139,7 @@ class BccClient:
         request_id: str,
         body: CancellationDetails,
         private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Attempts to cancel the job
 
@@ -150,6 +149,7 @@ class BccClient:
             request_id: the unique identifier of the current request
             body: the payload to post when cancelling
             private_key_file: the path to the private key file
+            is_admin: whether the user is an admin
 
         Returns:
             a general message showing status
@@ -166,6 +166,7 @@ class BccClient:
             request_id=request_id,
             json=payload,
             private_key_file=private_key_file,
+            is_admin=is_admin,
         )
 
     async def delete_job(
@@ -174,6 +175,7 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Attempts to delete the job
 
@@ -182,6 +184,7 @@ class BccClient:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
+            is_admin: whether the user is an admin
 
         Returns:
             a general message showing status
@@ -196,6 +199,7 @@ class BccClient:
             user_id=user_id,
             request_id=request_id,
             private_key_file=private_key_file,
+            is_admin=is_admin,
         )
 
     async def view_users(
@@ -203,6 +207,7 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
         skip: int = 0,
         limit: Optional[int] = None,
     ) -> dict:
@@ -212,6 +217,7 @@ class BccClient:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
+            is_admin: whether the current user is an admin
             skip: the number of records to skip
             limit: the maximum number of records to return
 
@@ -229,6 +235,7 @@ class BccClient:
             request_id=request_id,
             private_key_file=private_key_file,
             params={"skip": skip, "limit": limit},
+            is_admin=is_admin,
         )
 
     async def create_user(
@@ -237,6 +244,7 @@ class BccClient:
         request_id: str,
         data: NewBCCUserInfo,
         private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
     ) -> dict:
         """Creates a user given the name and email
 
@@ -247,6 +255,7 @@ class BccClient:
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
             data: the information about the new user
+            is_admin: whether the current user is an admin
 
         Returns:
             the created user
@@ -262,6 +271,7 @@ class BccClient:
             request_id=request_id,
             private_key_file=private_key_file,
             json=data.model_dump(mode="json"),
+            is_admin=is_admin,
         )
 
     async def delete_user(
@@ -270,6 +280,7 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Attempts to delete the user
 
@@ -278,6 +289,7 @@ class BccClient:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
+            is_admin: whether the current user is an admin
 
         Returns:
             a general message showing status
@@ -292,6 +304,7 @@ class BccClient:
             user_id=user_id,
             request_id=request_id,
             private_key_file=private_key_file,
+            is_admin=is_admin,
         )
 
     async def create_booking(
@@ -300,6 +313,7 @@ class BccClient:
         request_id: str,
         data: NewBookingInfo,
         private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
     ) -> dict:
         """Creates a booking for the user of the given token
 
@@ -308,6 +322,7 @@ class BccClient:
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
             data: the information about the new booking
+            is_admin: whether the current user is an admin
 
         Returns:
             the newly created booking
@@ -323,6 +338,7 @@ class BccClient:
             request_id=request_id,
             private_key_file=private_key_file,
             json=data.model_dump(mode="json"),
+            is_admin=is_admin,
         )
 
     async def cancel_booking(
@@ -331,6 +347,7 @@ class BccClient:
         request_id: str,
         booking_id: str,
         private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Cancels a booking of given id for the user
 
@@ -339,6 +356,7 @@ class BccClient:
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
             booking_id: the unique identifier of the booking to cancel
+            is_admin: whether the current user is an admin
 
         Returns:
             the general message object with the status
@@ -353,6 +371,7 @@ class BccClient:
             user_id=user_id,
             request_id=request_id,
             private_key_file=private_key_file,
+            is_admin=is_admin,
         )
 
     async def view_bookings(
@@ -360,6 +379,7 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
         skip: int = 0,
         limit: Optional[int] = None,
     ) -> dict:
@@ -369,6 +389,7 @@ class BccClient:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
+            is_admin: whether the current user is an admin
             skip: the number of records to skip
             limit: the maximum number of records to return
 
@@ -386,6 +407,7 @@ class BccClient:
             request_id=request_id,
             private_key_file=private_key_file,
             params={"skip": skip, "limit": limit},
+            is_admin=is_admin,
         )
 
     async def _request(
@@ -434,6 +456,7 @@ class BccClient:
         | tuple[float | None, float | None, float | None, float | None]
         | Timeout
         | UseClientDefault = USE_CLIENT_DEFAULT,
+        is_admin: Optional[bool] = None,
         **kwargs,
     ) -> dict:
         """Attempts to cancel the job
@@ -448,6 +471,7 @@ class BccClient:
             files: files to pass in the request
             params: the query params to add to the request
             timeout: the timeout for the request
+            is_admin: whether the request is from an admin user
             kwargs: the extra key-word arguments for sending the request
 
         Returns:
@@ -462,6 +486,7 @@ class BccClient:
                 private_key_file=private_key_file,
                 request_id=request_id,
                 user_id=f"{user_id}",
+                is_admin=is_admin,
             )
             response = await self._client.request(
                 method,
@@ -476,7 +501,7 @@ class BccClient:
 
             if response.is_error:
                 message = _extract_error_message(response)
-                raise ValueError(message)
+                raise HTTPException(status_code=response.status_code, detail=message)
 
             return response.json()
         except (httpx.ConnectError, httpx.ConnectTimeout) as exp:

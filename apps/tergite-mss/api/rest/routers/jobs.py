@@ -30,7 +30,7 @@ from api.rest.dependencies import (
     CurrentUserDep,
     MongoDbDep,
     ProjectDbDep,
-    ReqeustIdDep,
+    RequestIdDep,
 )
 from services import jobs as jobs_service
 from services.auth import User
@@ -122,7 +122,7 @@ async def create_one(
     bcc_clients_map: BccClientsMapDep,
     project_user_id_pair: CurrentStrictProjectUserIds,
     payload: JobCreate,
-    request_id: ReqeustIdDep,
+    request_id: RequestIdDep,
 ):
     """Creates a job in the given backend and given calibration_date in the body"""
     try:
@@ -178,7 +178,7 @@ async def cancel_job(
     job_id: UUID,
     details: CancellationDetails,
     bcc_clients_map: BccClientsMapDep,
-    request_id: ReqeustIdDep,
+    request_id: RequestIdDep,
     user: User = CurrentUserDep,
 ) -> GeneralMessage:
     """Cancels the job of given job_id if job belongs to current user or if user is admin
@@ -227,7 +227,7 @@ async def remove_job(
     db: MongoDbDep,
     job_id: UUID,
     bcc_clients_map: BccClientsMapDep,
-    request_id: ReqeustIdDep,
+    request_id: RequestIdDep,
     user: User = CurrentUserDep,
 ) -> GeneralMessage:
     """Deletes the job of given job_id if job belongs to current user or if user is admin

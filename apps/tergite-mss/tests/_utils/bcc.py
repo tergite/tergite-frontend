@@ -11,8 +11,9 @@
 # that they have been altered from the originals.
 """Utilities for mocking requests to BCC"""
 import base64
+import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import NotRequired, Optional, TypedDict
 
 import httpx
 import jwt
@@ -21,8 +22,10 @@ from cryptography.hazmat.primitives import hashes, padding, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from jwt import InvalidTokenError
+from pydantic import model_validator
 
 from services.external.bcc import BccClientHeaders
+from services.external.bcc.dtos import Booking
 from tests._utils.env import TEST_JWT_SECRET, TEST_MSS_PUBLIC_KEY_PATH
 
 _MSS_PUBLIC_KEY: Optional[RSAPublicKey] = None
@@ -147,6 +150,27 @@ def get_user_job_id_pair_from_token(token: str) -> tuple[str, str]:
         raise ValueError("not authenticated")
 
 
+def to_booking_payload(booking_info: "BasicBookingInfo") -> "BookingPayload":
+    """Converts the booking info to payload for creation of a new booking
+
+    Args:
+        booking_info: the basic booking info containing starts_in, duration
+
+    Returns:
+        the payload for creating a booking
+    """
+    starts_in = timedelta(seconds=booking_info["starts_in"])
+    duration = timedelta(seconds=booking_info["duration"])
+
+    current_timestamp = datetime.now(timezone.utc)
+    start_utc = current_timestamp + starts_in
+    end_utc = start_utc + duration
+    return {
+        "start_utc": start_utc.isoformat().replace("+00:00", "Z"),
+        "end_utc": end_utc.isoformat().replace("+00:00", "Z"),
+    }
+
+
 def _get_mss_public_key():
     """Loads the public key for MSS given the path to the key file
 
@@ -161,3 +185,31 @@ def _get_mss_public_key():
             _MSS_PUBLIC_KEY = serialization.load_pem_public_key(data)
 
     return _MSS_PUBLIC_KEY
+
+
+class CreatedBooking(Booking):
+    """Schema for the test created booking"""
+
+    id: str = str(uuid.uuid4())
+    total_duration: float = 0
+
+    @model_validator(mode="after")
+    def compute_duration(self):
+        """Computes the duration automatically from start_utc and end_utc"""
+        self.total_duration = (self.end_utc - self.start_utc).total_seconds()
+        return self
+
+
+class BasicBookingInfo(TypedDict):
+    """The simplified basic booking info"""
+
+    starts_in: float
+    duration: float
+    error_message: NotRequired[str]
+
+
+class BookingPayload(TypedDict):
+    """The payload for creation of a booking"""
+
+    start_utc: str
+    end_utc: str

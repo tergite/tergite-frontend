@@ -19,85 +19,100 @@ from typing import Optional
 from fastapi import APIRouter, Query
 
 from api.rest.dependencies import (
-    BccClientsMapDep,
+    BccClientDep,
     CurrentUserDep,
     CurrentUserIdDep,
-    ReqeustIdDep,
+    RequestIdDep,
 )
 from services.auth import User
 from services.external.bcc.dtos import Booking, GeneralMessage, NewBookingInfo
 from utils.api import PaginatedListResponse
-from utils.exc import UnknownBccError
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
-@router.post("/bookings/{backend}")
+@router.post("/{backend}", response_model=Booking)
 async def create_booking(
-    backend: str,
+    bcc_client: BccClientDep,
     data: NewBookingInfo,
-    bcc_clients_map: BccClientsMapDep,
-    request_id: ReqeustIdDep,
+    request_id: RequestIdDep,
     user_id: str = CurrentUserIdDep,
-    requester: User = CurrentUserDep,
-) -> Booking:
+):
     """Creates a booking for the user of the given token
 
     Args:
-        backend: the device on which to book
+        bcc_client: BccClient for the given backend
         data: the information about the new booking
-        bcc_clients_map: the map of BCC clients that have access to backends
         request_id: the unique identifier of the request
-        user_id: the current signed-in user
-        requester: the user requesting this operation
+        user_id: the ID of the current signed-in user
 
     Returns:
         the newly created booking
+
+    Raises:
+        UnknownBccError: Unknown backend '{backend}'
     """
-    try:
-        bcc_client = bcc_clients_map[backend]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{backend}'")
-
-    response = await bcc_client.create_user(
-        user_id=requester.id, request_id=request_id, data=data
+    return await bcc_client.create_booking(
+        user_id=user_id, request_id=request_id, data=data
     )
-    return response
 
 
-@router.post("/bookings/{backend}/{booking_id}/cancel")
+@router.post("/{backend}/{booking_id}/cancel")
 async def cancel_booking(
-    backend: str,
+    bcc_client: BccClientDep,
     booking_id: str,
-    user: User = CurrentUserDep,
+    request_id: RequestIdDep,
+    user_id: str = CurrentUserIdDep,
 ) -> GeneralMessage:
     """Cancels a booking of given id for the user of the given token
 
     Args:
-        backend: the name of the device on which the booking is to be done
+        bcc_client: BccClient for the given backend
         booking_id: the unique identifier of the booking to cancel
-        user: the current user
+        request_id: the unique identifier of the request
+        user_id: the id of the current signed-in user
 
     Returns:
         the general message object with the status
+
+    Raises:
+        UnknownBccError: Unknown backend '{backend}'
     """
-    raise NotImplementedError("not implemented")
+    return await bcc_client.cancel_booking(
+        user_id=user_id, request_id=request_id, booking_id=booking_id
+    )
 
 
-@router.get("/bookings/{backend}", dependencies=[CurrentUserIdDep])
+@router.get(
+    "/{backend}",
+    response_model=PaginatedListResponse[Booking],
+)
 async def view_bookings(
-    backend: str,
+    bcc_client: BccClientDep,
+    request_id: RequestIdDep,
+    requester: User = CurrentUserDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
-) -> PaginatedListResponse[Booking]:
+):
     """Views all available bookings of the given backend
 
     Args:
-        backend: the backend under consideration
+        bcc_client: BccClient for the given backend
+        request_id: the unique identifier of the request
+        requester: the current signed-in user
         skip: number of records to ignore at the top of the returned results; default is 0
         limit: maximum number of records to return; default is None.
 
     Returns:
         the paginated list of the available bookings
+
+    Raises:
+        UnknownBccError: Unknown backend '{backend}'
     """
-    raise NotImplementedError("not implemented")
+    return await bcc_client.view_bookings(
+        user_id=requester.id,
+        request_id=request_id,
+        skip=skip,
+        limit=limit,
+        is_admin=requester.is_superuser,
+    )

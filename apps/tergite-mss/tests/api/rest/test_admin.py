@@ -12,7 +12,7 @@
 """Integration tests for the routes for the admin"""
 import copy
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, TypedDict
+from typing import Any, Dict, List
 
 import pytest
 from pytest_lazyfixture import lazy_fixture
@@ -37,15 +37,18 @@ from ..._utils.auth import (
 )
 from ..._utils.date_time import get_timestamp_str
 from ..._utils.fixtures import load_json_fixture
+from ..._utils.mock_backend import BCC_USERS
 from ..._utils.mongodb import find_in_collection, insert_in_collection
-from ..._utils.records import prune
-from ...conftest import PROJECT_LIST, get_auth_cookie
+from ..._utils.records import paginate, prune
+from ...conftest import BACKEND_SLUGS, PROJECT_LIST, get_auth_cookie
 
 _REQ_STATUSES = ["pending", "rejected", "approved"]
 _USER_REQUEST_COLLECTION = "auth_user_requests"
 _USER_REQUESTS_IN_DB = load_json_fixture("user_requests.json")
 _PROJECT_CREATE_LIST = load_json_fixture("project_create_list.json")
 _PROJECT_UPDATE_LIST = load_json_fixture("project_update_list.json")
+_BCC_USERS = load_json_fixture("bcc_users.json")
+
 _QPU_TIME_USER_REQUESTS_IN_DB = [
     item for item in _USER_REQUESTS_IN_DB if item["type"] == "project-qpu-seconds"
 ]
@@ -112,7 +115,14 @@ _EXTRA_PROJECT_DEFAULTS = {
     "user_emails": None,
     "admin_email": None,
 }
-_PAGINATION: List["_PaginationInfo"] = load_json_fixture("pagination.json")
+_PAGINATION: List["PaginationInfo"] = load_json_fixture("pagination.json")
+
+_BCC_USERS_VIEW_PARAMS = [
+    (backend, pagination) for backend in BACKEND_SLUGS for pagination in _PAGINATION
+]
+_BCC_USERS_CREATE_PARAMS = [
+    (backend, payload) for backend in BACKEND_SLUGS for payload in _BCC_USERS
+]
 T = TypeVar("T")
 
 
@@ -826,124 +836,82 @@ def test_non_admin_cannot_delete_project(
         assert get_db_record(db, Project, _id) is not None
 
 
-@pytest.mark.parametrize("pagination", _PAGINATION)
-def test_admin_view_users(client, admin_jwt_cookie, user_jwt_cookie, pagination):
-    """GET '/admin/bcc-users/{backend}' should show to an admin the paginated list of user profiles via MSS"""
+@pytest.mark.parametrize("backend, user_payload", _BCC_USERS_CREATE_PARAMS)
+def test_admin_create_bcc_user(
+    client, backend, user_payload, user_jwt_cookie, admin_jwt_cookie, mock_bcc
+):
+    """POST to '/admin/bcc-users' by admins should create the user via MSS"""
     with client as client:
+        payload = {**user_payload, "id": TEST_USER_ID}
         # non admins are not allowed
-        response = client.get("/admin/bcc-users/loke/", cookies=user_jwt_cookie)
+        response = client.post(
+            f"/admin/bcc-users/{backend}", cookies=user_jwt_cookie, json=payload
+        )
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
 
         # admins are allowed
-        response = client.get("/admin/bcc-users/loke/", cookies=admin_jwt_cookie)
+        response = client.post(
+            f"/admin/bcc-users/{backend}", cookies=admin_jwt_cookie, json=payload
+        )
+        expected = {
+            "id": TEST_USER_ID,
+            "name": user_payload["name"],
+            "email": user_payload["email"],
+            "is_admin": False,
+        }
+
+        assert response.status_code == 200
+        assert response.json() == expected
+
+
+@pytest.mark.parametrize("backend, pagination", _BCC_USERS_VIEW_PARAMS)
+def test_admin_view_bcc_users(
+    client, admin_jwt_cookie, user_jwt_cookie, backend, pagination, mock_bcc
+):
+    """GET '/admin/bcc-users/{backend}' should show to an admin the paginated list of user profiles via MSS"""
+    with client as client:
+        params = {k: v for k, v in pagination.items() if v is not None}
+        # non admins are not allowed
+        response = client.get(
+            f"/admin/bcc-users/{backend}/", cookies=user_jwt_cookie, params=params
+        )
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.get(
+            f"/admin/bcc-users/{backend}/", cookies=admin_jwt_cookie, params=params
+        )
         actual_output = response.json()
 
         skip = pagination["skip"]
         limit = pagination["limit"]
 
-        users = [TEST_USER_DICT, TEST_SYSTEM_USER_DICT, TEST_SUPERUSER_DICT]
-        expected = _paginate(users, skip=skip, limit=limit)
+        expected = paginate(BCC_USERS, skip=skip, limit=limit)
 
         assert response.status_code == 200
         assert actual_output == expected
 
 
-# @pytest.mark.parametrize("client, redis_conn, worker, job", _SIMPLE_UPLOAD_JOB_PARAMS)
-# def test_admin_remove_user(
-#     client, worker, redis_conn, job, jobs_folder, mocker: MockerFixture
-# ):
-#     """DELETE '/users/{user_id}' by admin removes the user, and their bookings and jobs"""
-#     with client as client:
-#         users = [curr_user, other_user] = _create_many_users(client, USERS[:2])
-#         curr_user_id = curr_user["id"]
-#         other_user_id = other_user["id"]
-#
-#         # create many bookings for this user
-#         for booking in VALID_BOOKINGS[:TEST_MAX_SLOTS_PER_DAY]:
-#             _, result = _create_booking(client, user_id=curr_user_id, booking=booking)
-#
-#         # create a booking for other user
-#         _create_booking(
-#             client, user_id=other_user_id, booking={"starts_in": 8, "duration": 2}
-#         )
-#
-#         # wait for the first booking to start
-#         raw_jobs = _get_raw_jobs(job, durations=[0.23, 0.1, 0.23])
-#         job_metadata_list = _get_job_submission_metadata(
-#             client, jobs=raw_jobs, users=users, mocker=mocker, jobs_folder=jobs_folder
-#         )
-#         _submit_multiple_jobs_v2(
-#             client,
-#             data=job_metadata_list,
-#         )
-#
-#         # This also removes the user's pending bookings,
-#         # and cancels their pending jobs
-#         response = _remove_user(
-#             client, current_user_id=other_user_id, user_id=curr_user_id, is_admin=True
-#         )
-#         assert response.status_code == 200
-#         assert response.json() == {"status": "success", "detail": f"User deleted"}
-#
-#         response = _view_own_profile(client, user_id=curr_user_id)
-#         assert response.status_code == 404
-#         assert response.json() == {"detail": "user not found"}
-#
-#         # Run the queue; try to wait for waitlist to transfer things to execution queue
-#         _wait_on_rq_worker(worker, with_scheduler=True)
-#
-#         jobs_in_redis = _get_jobs_in_redis(redis_conn)
-#
-#         deleted_user_jobs = [
-#             job for job in jobs_in_redis if job.user_id == curr_user_id
-#         ]
-#         other_user_jobs = [job for job in jobs_in_redis if job.user_id != curr_user_id]
-#         failure_reason = "Cancelled on user deletion"
-#
-#         assert all([v.status == JobStatus.CANCELLED for v in deleted_user_jobs])
-#         assert all([v.failure_reason == failure_reason for v in deleted_user_jobs])
-#         assert all([v.status == JobStatus.SUCCESSFUL for v in other_user_jobs])
-#
-#
-# @pytest.mark.parametrize(
-#     "client, redis_conn, worker, job", _SIMPLE_UPLOAD_JOB_PARAMS[:-1]
-# )
-# def test_non_admin_remove_user(
-#     client, worker, redis_conn, job, jobs_folder, mocker: MockerFixture
-# ):
-#     """Non admin cannot remove the profile of any user"""
-#     with client as client:
-#         users = [curr_user, other_user] = _create_many_users(client, USERS[:2])
-#         curr_user_id = curr_user["id"]
-#         other_user_id = other_user["id"]
-#
-#         # create many bookings for this user
-#         for booking in VALID_BOOKINGS[:TEST_MAX_SLOTS_PER_DAY]:
-#             _, result = _create_booking(client, user_id=curr_user_id, booking=booking)
-#
-#         raw_jobs = _get_raw_jobs(job, durations=[0.23, 0.4, 0.3])
-#         job_metadata_list = _get_job_submission_metadata(
-#             client, jobs=raw_jobs, users=users, mocker=mocker, jobs_folder=jobs_folder
-#         )
-#         _submit_multiple_jobs_v2(client, data=job_metadata_list)
-#
-#         # Non-admins fail
-#         for user_id in (curr_user_id, other_user_id):
-#             response = _remove_user(
-#                 client, current_user_id=user_id, user_id=curr_user_id
-#             )
-#             assert response.status_code == 403
-#             assert response.json() == {"detail": "Forbidden"}
-#
-#         response = _view_own_profile(client, user_id=curr_user_id)
-#         assert response.status_code == 200
-#
-#         # Run the queue; try to wait for waitlist to transfer things to execution queue
-#         _wait_on_rq_worker(worker, with_scheduler=True)
-#
-#         jobs_in_redis = _get_jobs_in_redis(redis_conn)
-#         assert all([v.status == JobStatus.SUCCESSFUL for v in jobs_in_redis])
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_admin_remove_bcc_user(client, backend, admin_jwt_cookie, mock_bcc):
+    """DELETE '/admin/bcc-users/{backend}/{user_id}' by admin removes the user via MSS"""
+    with client as client:
+        url = f"/admin/bcc-users/{backend}/USER_ID_PLACEHOLDER"
+        response = client.delete(url, cookies=admin_jwt_cookie)
+        assert response.status_code == 200
+        assert response.json() == {"status": "success", "detail": f"User deleted"}
+
+
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_non_admin_remove_user(client, backend, user_jwt_cookie, mock_bcc):
+    """Non admin cannot remove the profile of any user"""
+    with client as client:
+        url = f"/admin/bcc-users/{backend}/USER_ID_PLACEHOLDER"
+        response = client.delete(url, cookies=user_jwt_cookie)
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
 
 
 def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
@@ -958,36 +926,3 @@ def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
     item = copy.deepcopy(db_item)
     item["id"] = str(item.pop("_id"))
     return item
-
-
-def _paginate(
-    data: List[T], skip: int = 0, limit: Optional[int] = None
-) -> "_PaginatedList[T]":
-    """Paginates the data basing on the skip and the limit params
-
-    Args:
-        skip: the number of records to skip
-        limit: the maximum number of records to return
-
-    Returns:
-        list of the data sliced according to the pagination info
-    """
-    slice_limit = limit
-    if isinstance(slice_limit, int):
-        slice_limit += skip
-    return {"skip": skip, "limit": limit, "data": data[skip:slice_limit]}
-
-
-class _PaginationInfo(TypedDict):
-    """The pagination info"""
-
-    skip: int
-    limit: Optional[float]
-
-
-class _PaginatedList(TypedDict, Generic[T]):
-    """The type for paginated responses"""
-
-    skip: int
-    limit: Optional[int]
-    data: List[T]

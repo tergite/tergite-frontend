@@ -15,14 +15,11 @@ setup_test_env()
 stub_pydantic_match_type_for_freezegun()
 
 import importlib
-import json
 import multiprocessing
 import random
-import re
 from datetime import datetime, timezone
-from json import JSONDecodeError
 from os import environ
-from typing import Any, Dict, List
+from typing import Any, Dict, Generator, List
 from unittest.mock import Mock
 
 import httpx
@@ -37,6 +34,7 @@ from httpx_oauth.clients import github, microsoft
 import settings
 from services.auth.projects.dtos import ProjectSource
 from services.external import puhuri
+from tests._utils import mock_backend
 from tests._utils.auth import (
     INVALID_CHALMERS_PROFILE,
     INVALID_GITHUB_PROFILE,
@@ -59,15 +57,12 @@ from tests._utils.auth import (
     init_test_auth,
     insert_if_not_exist,
 )
-from tests._utils.bcc import (
-    create_bcc_client_jwt_token,
-    encrypt_jwt_token,
-    get_bcc_client_verified_headers,
-)
 from tests._utils.fixtures import load_json_fixture
+from tests._utils.mock_backend import CREATED_BOOKINGS
 from tests._utils.modules import remove_modules
 from tests._utils.waldur import MockWaldurClient
 
+BACKEND_SLUGS = ("loke", "pingu")
 _PUHURI_OPENID_CONFIG = load_json_fixture("puhuri_openid_config.json")
 PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
@@ -198,12 +193,12 @@ def project_id(db) -> PydanticObjectId:
 
 
 @pytest.fixture
-def client(db) -> TestClient:
+def client(db) -> Generator[TestClient, Any, None]:
     """A test client for fast api"""
     from api.rest import app
 
     init_test_auth(db)
-    yield TestClient(app)
+    yield TestClient(app, follow_redirects=True)
 
 
 @pytest.fixture
@@ -405,16 +400,44 @@ def mock_bcc(respx_mock):
     """A mock BCC service"""
     for backend in TEST_BACKENDS:
         respx_mock.post(f"{backend['url']}/token").mock(
-            side_effect=_mock_bcc_token_endpoint
+            side_effect=mock_backend.get_token
         )
 
+        # users
+        respx_mock.post(f"{backend['url']}/users").mock(
+            side_effect=mock_backend.create_user
+        )
+
+        respx_mock.get(f"{backend['url']}/users").mock(
+            side_effect=mock_backend.view_users
+        )
+
+        respx_mock.delete(f"{backend['url']}/users/USER_ID_PLACEHOLDER").mock(
+            side_effect=mock_backend.delete_users
+        )
+
+        # bookings
+        respx_mock.post(f"{backend['url']}/bookings").mock(
+            side_effect=mock_backend.create_booking
+        )
+
+        respx_mock.get(f"{backend['url']}/bookings").mock(
+            side_effect=mock_backend.view_bookings
+        )
+
+        for booking in CREATED_BOOKINGS:
+            respx_mock.post(f"{backend['url']}/bookings/{booking['id']}/cancel").mock(
+                side_effect=mock_backend.cancel_booking
+            )
+
+        # jobs
         for job in JOB_LIST:
             respx_mock.post(f"{backend['url']}/jobs/{job['job_id']}/cancel").mock(
-                side_effect=_mock_bcc_job_cancel_endpoint
+                side_effect=mock_backend.cancel_job
             )
 
             respx_mock.delete(f"{backend['url']}/jobs/{job['job_id']}").mock(
-                side_effect=_mock_bcc_job_delete_endpoint
+                side_effect=mock_backend.delete_job
             )
 
     yield respx_mock
@@ -539,88 +562,3 @@ def setup_puhuri_sync(
     from api.scripts import puhuri_sync
 
     puhuri_sync.main(args, **kwargs)
-
-
-def _mock_bcc_token_endpoint(request: httpx.Request):
-    """Mock BCC token endpoint
-
-    Args:
-        request: the httpx request
-
-    Returns:
-        dict of access token and type
-    """
-    try:
-        headers = get_bcc_client_verified_headers(request)
-        body = json.loads(request.content)
-        assert headers["x-mss-user-id"] == body["user_id"]
-        token = create_bcc_client_jwt_token(**body)
-        encrypted_token = encrypt_jwt_token(token)
-        return httpx.Response(
-            status_code=200,
-            json={"access_token": encrypted_token, "token_type": "bearer"},
-        )
-    except ValueError as exp:
-        return httpx.Response(
-            status_code=401, json={"detail": f"user not authenticated {exp}"}
-        )
-    except (KeyError, JSONDecodeError, TypeError, AssertionError) as exp:
-        return httpx.Response(
-            status_code=400, json={"detail": f"malformed request body {exp}"}
-        )
-    except Exception as exp:
-        raise exp
-
-
-def _mock_bcc_job_delete_endpoint(request: httpx.Request):
-    """Mock BCC job deletion endpoint
-
-    Args:
-        request: the httpx request
-
-    Returns:
-        dict of status and detail
-    """
-    try:
-        job_id = re.match(r"^.*/jobs/(.*)$", f"{request.url}").group(1)
-        get_bcc_client_verified_headers(request)
-        return httpx.Response(
-            status_code=200,
-            json={"status": "success", "detail": f"Job of id {job_id} deleted"},
-        )
-    except (ValueError, AssertionError) as exp:
-        return httpx.Response(
-            status_code=401, json={"detail": f"user not authenticated {exp}"}
-        )
-    except Exception as exp:
-        raise exp
-
-
-def _mock_bcc_job_cancel_endpoint(request: httpx.Request):
-    """Mock BCC job cancellation endpoint
-
-    Args:
-        request: the httpx request
-
-    Returns:
-        dict of status and detail
-    """
-    try:
-        job_id = re.match(r"^.*/jobs/(.*)/cancel$", f"{request.url}").group(1)
-        get_bcc_client_verified_headers(request)
-        # FIXME: We don't check anything, we just always just cancel. We could have checked if admin or owner but
-        #   that would almost be a full app and would require this function to have access to the database.
-        return httpx.Response(
-            status_code=200,
-            json={"status": "success", "detail": f"Job of id {job_id} cancelled"},
-        )
-    except (ValueError, AssertionError) as exp:
-        return httpx.Response(
-            status_code=401, json={"detail": f"user not authenticated {exp}"}
-        )
-    except (KeyError, JSONDecodeError, TypeError, AssertionError) as exp:
-        return httpx.Response(
-            status_code=400, json={"detail": f"malformed request body {exp}"}
-        )
-    except Exception as exp:
-        raise exp

@@ -31,6 +31,7 @@ from services.auth.service import (
     GET_CURRENT_USER_ID,
 )
 from services.external import bcc
+from utils.exc import UnknownBccError
 from utils.mongodb import get_mongodb
 
 
@@ -38,6 +39,28 @@ async def get_default_mongodb():
     return get_mongodb(
         url=f"{settings.CONFIG.database.url}", name=settings.CONFIG.database.name
     )
+
+
+async def get_bcc_client(
+    backend: str,
+    bcc_clients_map: Dict[str, bcc.BccClient] = Depends(bcc.get_client_map),
+) -> bcc.BccClient:
+    """Dependency injector to return the BCC client
+
+    Args:
+        backend (str): the name of the backend
+        bcc_clients_map (BccClientsMap): the map of BCC clients
+
+    Returns:
+        bcc.BccClient: the BCC client
+
+    Raises:
+        UnknownBccError: Unknown backend '{backend}'
+    """
+    try:
+        return bcc_clients_map[backend]
+    except KeyError:
+        raise UnknownBccError(f"Unknown backend '{backend}'")
 
 
 CurrentSystemUserProjectDep = Annotated[User, Depends(GET_CURRENT_SYSTEM_USER_PROJECT)]
@@ -53,4 +76,5 @@ CurrentStrictProjectUserIds = Annotated[
 ProjectDbDep = Annotated[ProjectDatabase, Depends(get_project_db)]
 MongoDbDep = Annotated[AsyncIOMotorDatabase, Depends(get_default_mongodb)]
 BccClientsMapDep = Annotated[Dict[str, bcc.BccClient], Depends(bcc.get_client_map)]
-ReqeustIdDep = Annotated[str, Depends(get_request_id)]
+BccClientDep = Annotated[bcc.BccClient, Depends(get_bcc_client)]
+RequestIdDep = Annotated[str, Depends(get_request_id)]

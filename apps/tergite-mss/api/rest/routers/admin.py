@@ -28,11 +28,12 @@ from utils.api import PaginatedListResponse
 from utils.exc import UnknownBccError
 
 from ..dependencies import (
+    BccClientDep,
     BccClientsMapDep,
     CurrentSuperuserDep,
     CurrentUserDep,
     CurrentUserIdDep,
-    ReqeustIdDep,
+    RequestIdDep,
 )
 
 router = APIRouter(prefix="/admin")
@@ -115,10 +116,9 @@ async def get_user_requests(
 
 @router.post("/bcc-users/{backend}", response_model=BCCUserProfile)
 async def create_bcc_user(
-    backend: str,
+    bcc_client: BccClientDep,
     data: NewBCCUserInfo,
-    bcc_clients_map: BccClientsMapDep,
-    request_id: ReqeustIdDep,
+    request_id: RequestIdDep,
     requester: User = CurrentUserDep,
 ) -> dict:
     """Creates a user in the given backend for info
@@ -126,9 +126,8 @@ async def create_bcc_user(
     Only MSS admin users can create users here
 
     Args:
-        backend: the name of the backend
         data: the information about the new user
-        bcc_clients_map: the map of BCC clients that have access to backends
+        bcc_client: the BCC client for the given backend
         request_id: the unique identifier of the request
         requester: the admin user requesting this operation
 
@@ -138,23 +137,19 @@ async def create_bcc_user(
     Raises:
         UnknownBccError: Unknown backend '{backend}'
     """
-    try:
-        bcc_client = bcc_clients_map[backend]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{backend}'")
-
-    response = await bcc_client.create_user(
-        user_id=requester.id, request_id=request_id, data=data
+    return await bcc_client.create_user(
+        user_id=requester.id,
+        request_id=request_id,
+        data=data,
+        is_admin=requester.is_superuser,
     )
-    return response
 
 
 @router.delete("/bcc-users/{backend}/{user_id}")
 async def remove_bcc_user(
-    backend: str,
+    bcc_client: BccClientDep,
     user_id: str,
-    bcc_clients_map: BccClientsMapDep,
-    request_id: ReqeustIdDep,
+    request_id: RequestIdDep,
     requester: User = CurrentUserDep,
 ) -> GeneralMessage:
     """Deletes the user of the given user_id
@@ -162,9 +157,8 @@ async def remove_bcc_user(
     Only admins are allowed to remove users
 
     Args:
-        backend: the name of the backend
         user_id: the unique identifier of the user
-        bcc_clients_map: the map of BCC clients that have access to backends
+        bcc_client: the BCC client for the given backend
         request_id: the unique identifier of the request
         requester: the admin user requesting this operation
 
@@ -175,13 +169,11 @@ async def remove_bcc_user(
     Returns:
         A general message object with status
     """
-    try:
-        bcc_client = bcc_clients_map[backend]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{backend}'")
-
     response = await bcc_client.delete_user(
-        bcc_user_id=user_id, user_id=requester.id, request_id=request_id
+        bcc_user_id=user_id,
+        user_id=requester.id,
+        request_id=request_id,
+        is_admin=requester.is_superuser,
     )
     return response
 
@@ -190,20 +182,18 @@ async def remove_bcc_user(
     "/bcc-users/{backend}/", response_model=PaginatedListResponse[BCCUserProfile]
 )
 async def view_bcc_users(
-    backend: str,
-    bcc_clients_map: BccClientsMapDep,
-    request_id: ReqeustIdDep,
+    bcc_client: BccClientDep,
+    request_id: RequestIdDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
     requester: User = CurrentUserDep,
-) -> dict:
+):
     """Views all users
 
     Only MSS admin users can view this
 
     Args:
-        backend: the name of the backend
-        bcc_clients_map: the map of BCC clients that have access to backends
+        bcc_client: the BCC client for the given backend
         request_id: the unique identifier of the request
         skip: number of records to ignore at the top of the returned results; default is 0
         limit: maximum number of records to return; default is None.
@@ -215,15 +205,13 @@ async def view_bcc_users(
     Raises:
         UnknownBccError: Unknown backend '{backend}'
     """
-    try:
-        bcc_client = bcc_clients_map[backend]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{backend}'")
-
-    response = await bcc_client.view_users(
-        user_id=requester.id, request_id=request_id, skip=skip, limit=limit
+    return await bcc_client.view_users(
+        user_id=requester.id,
+        request_id=request_id,
+        skip=skip,
+        limit=limit,
+        is_admin=requester.is_superuser,
     )
-    return response
 
 
 @router.put("/user-requests/{_id}", tags=["user-requests"])
