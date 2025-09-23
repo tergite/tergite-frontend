@@ -37,7 +37,8 @@ from .utils import get_uuid4_str
 
 IQPoint: TypeAlias = Tuple[float, float]  # [re, im]  (len = 2)
 IQMemory: TypeAlias = List[List[List[IQPoint]]]  # exp -> shot -> IQ points
-HexMemory:TypeAlias = List[List[str]] # exp -> shot -> str ( channel -> bit) 
+HexMemory: TypeAlias = List[List[str]]  # exp -> shot -> str ( channel -> bit)
+
 
 class CreatedJobResponse(TypedDict):
     """The response when a new job is created"""
