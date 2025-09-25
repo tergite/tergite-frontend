@@ -29,6 +29,7 @@ from api.rest.dependencies import (
     CurrentStrictProjectUserIds,
     MongoDbDep,
     ProjectDbDep,
+    ReqeustIdDep,
 )
 from services import jobs as jobs_service
 from services.external import puhuri as puhuri_service
@@ -39,7 +40,7 @@ from services.jobs.dtos import (
     JobStatusResponse,
     JobUpdate,
 )
-from utils.api import PaginatedListResponse, get_bearer_token
+from utils.api import PaginatedListResponse
 from utils.exc import UnknownBccError
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -87,7 +88,7 @@ async def get_one(db: MongoDbDep, project: CurrentLaxProjectDep, job_id: UUID):
         project: the current project that the associated API token is associated with
         job_id: the job_id of the job
     """
-    return await jobs_service.get_one(db, job_id=job_id)
+    return await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)
 
 
 @router.get("/{job_id}/status")
@@ -117,11 +118,9 @@ async def create_one(
     bcc_clients_map: BccClientsMapDep,
     project_user_id_pair: CurrentStrictProjectUserIds,
     payload: JobCreate,
+    request_id: ReqeustIdDep,
 ):
     """Creates a job in the given backend and given calibration_date in the body"""
-    app_token = get_bearer_token(
-        request, raise_if_error=settings.CONFIG.auth.is_enabled
-    )
     try:
         bcc_client = bcc_clients_map[payload.device]
     except KeyError:
@@ -130,7 +129,11 @@ async def create_one(
     project_id, user_id = project_user_id_pair
     job = Job(**payload.model_dump(), project_id=project_id, user_id=user_id)
     return await jobs_service.create_job(
-        db, bcc_client=bcc_client, job=job, app_token=app_token
+        db,
+        bcc_client=bcc_client,
+        job=job,
+        user_id=user_id,
+        request_id=request_id,
     )
 
 
@@ -162,4 +165,4 @@ async def update_one(
             await puhuri_service.save_qpu_usage(
                 db, job_id=job_id, project=project, qpu_usage=qpu_usage
             )
-    return await jobs_service.get_one(db, job_id=job_id)
+    return await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)

@@ -79,7 +79,6 @@ class AppTokenAuthenticator:
         async def current_project_dependency(*args, **options):
             auth_metadata = await self._authenticate(
                 *args,
-                optional=(not settings.CONFIG.auth.is_enabled),
                 active=active,
                 ignore_qpu_seconds=ignore_qpu_seconds,
                 user_roles=user_roles,
@@ -118,7 +117,6 @@ class AppTokenAuthenticator:
             """
             auth_metadata = await self._authenticate(
                 *args,
-                optional=(not settings.CONFIG.auth.is_enabled),
                 active=active,
                 ignore_qpu_seconds=ignore_qpu_seconds,
                 user_roles=user_roles,
@@ -139,7 +137,6 @@ class AppTokenAuthenticator:
         self,
         *args,
         project_manager: ProjectAppTokenManager,
-        optional: bool = False,
         active: bool = False,
         ignore_qpu_seconds: bool = False,
         user_roles: Tuple[UserRole] = (),
@@ -183,7 +180,7 @@ class AppTokenAuthenticator:
             else:
                 return AuthMetadata(project=project, user=user, token=token)
 
-        if not project_user_pair and not optional:
+        if not project_user_pair:
             raise HTTPException(status_code=status_code, detail=error_msg)
         return AuthMetadata()
 

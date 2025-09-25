@@ -122,18 +122,11 @@ _STALE_AUTH_COOKIE_REGEX = re.compile(
 )
 
 
-def test_is_auth_enabled(client):
-    """When `auth.is_enabled=true` in config, application cannot be accessed without authentication"""
+def test_no_auth_root(client):
+    """GET '/' cannot be accessed without authentication"""
     with client as client:
         response = client.get("/")
         assert response.status_code == 401
-
-
-def test_not_is_auth_enabled(no_auth_client):
-    """When `auth.is_enabled=false` in config, application can be accessed without authentication"""
-    with no_auth_client as client:
-        response = client.get("/")
-        assert response.status_code == 200
 
 
 def test_github_cookie_authorize(client):

@@ -12,24 +12,28 @@
 # that they have been altered from the originals.
 import logging
 import os
+from pathlib import Path
 
 from utils.config import AppConfig
 
+_ROOT = Path(__file__).parent
+
 _MSS_CONFIG_FILE = os.environ.get("MSS_CONFIG_FILE", default="mss-config.toml")
+PRIVATE_KEY_FILE = Path(
+    os.getenv("PRIVATE_KEY_FILE", default=_ROOT / "private-mss-key.pem")
+).resolve()
+if not PRIVATE_KEY_FILE.exists():
+    raise ValueError(f"private key file '{PRIVATE_KEY_FILE}' does not exist")
+
 CONFIG: AppConfig = AppConfig.from_toml(_MSS_CONFIG_FILE)
 
 _is_production = CONFIG.environment == "production"
-_is_auth_enabled = CONFIG.auth.is_enabled
 _is_puhuri_enabled = CONFIG.puhuri.is_enabled
 
 # Logger
 _logger_level = logging.INFO if _is_production else logging.WARN
 root_logger = logging.getLogger()
 root_logger.setLevel(_logger_level)
-
-# raise errors in case of wrong settings
-if not _is_auth_enabled and _is_production:
-    raise ValueError("'auth.is_enabled' has been set to false in production.")
 
 # PUHURI synchronization
 if _is_puhuri_enabled and not CONFIG.puhuri.waldur_api_uri:

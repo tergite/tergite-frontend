@@ -1,3 +1,14 @@
+# This code is part of Tergite
+#
+# (C) Copyright Chalmers Next Labs 2025
+#
+# This code is licensed under the Apache License, Version 2.0. You may
+# obtain a copy of this license in the LICENSE.txt file in the root directory
+# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
 """Utility for loading configurations for the app"""
 
 import enum
@@ -139,9 +150,6 @@ class Oauth2ClientConfig(BaseModel, extra="allow"):
 
 class AuthConfig(BaseModel):
     """Configration for auth"""
-
-    # turn auth OFF or ON, default=true
-    is_enabled: bool = True
 
     # Secret for signing JWT tokens. https://jwt.io/introduction
     jwt_secret: str = "some hidden secret"

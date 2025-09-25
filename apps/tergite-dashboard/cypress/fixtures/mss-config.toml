@@ -29,8 +29,6 @@ name = "qiskit_pulse_1q"
 url = "http://qiskit_pulse_1q:8000"
 
 [auth]
-# turn auth OFF or ON, default=true
-is_enabled = true
 cookie_domain = "127.0.0.1"
 cookie_name = "tergiteauth"
 jwt_secret = "some-jwt-secret-for-generating-token-for-testing"

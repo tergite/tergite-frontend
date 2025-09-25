@@ -11,15 +11,31 @@
 # that they have been altered from the originals.
 """Clients for accessing certain HTTP services"""
 import logging
+import time
 from json import JSONDecodeError
-from typing import Dict, List
+from pathlib import Path
+from typing import Dict, List, NotRequired, Optional, Tuple, TypedDict
 
 import httpx
 
+from settings import PRIVATE_KEY_FILE
 from utils.config import BccConfig
+from utils.crypto import decrypt_message, sign_message
 from utils.exc import ServiceUnavailableError
 
 _BCC_CLIENTS: Dict[str, "BccClient"] = {}
+
+BccClientHeaders = TypedDict(
+    "BccClientHeaders",
+    {
+        "x-mss-request-id": str,
+        "x-mss-timestamp": str,
+        "x-mss-signature": str,
+        "x-mss-user-id": str,
+        "x-mss-is-admin": NotRequired[str],
+    },
+)
+"""The headers sent via the BCC http client"""
 
 
 async def create_clients(configs: List[BccConfig]):
@@ -61,25 +77,48 @@ class BccClient:
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
 
-    async def save_credentials(self, job_id: str, app_token: str):
-        """Registers a given job with BCC so that BCC can expect it
+    async def get_token(
+        self,
+        job_id: str,
+        user_id: str,
+        request_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> Tuple[str, str]:
+        """Retrieves the JWT for the given job_id and user_id from BCC
 
         Args:
             job_id: the id of the job
-            app_token: the app token associated with the job id
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+
+        Returns:
+            the pair of the encrypted JWT and the plain JWT
 
         Raises:
-            ValueError: job id '{job_id}' already exists
             ServiceUnavailableError: device is currently unavailable
+            ValueError: unauthenticated user
         """
         try:
+            headers = _create_headers(
+                private_key_file=private_key_file,
+                request_id=request_id,
+                user_id=user_id,
+            )
             response = await self._client.post(
-                "/auth", json={"job_id": job_id, "app_token": app_token}
+                "/token", json={"job_id": job_id, "user_id": user_id}, headers=headers
             )
 
             if response.is_error:
                 message = _extract_error_message(response)
                 raise ValueError(message)
+
+            encrypted_token = response.json()["access_token"]
+            token = decrypt_message(
+                private_key_file=private_key_file, msg=encrypted_token
+            )
+
+            return encrypted_token, token
         except (httpx.ConnectError, httpx.ConnectTimeout) as exp:
             logging.error(exp)
             raise ServiceUnavailableError("device is currently unavailable")
@@ -103,3 +142,35 @@ def _extract_error_message(response: httpx.Response) -> str:
         return response_json.get("detail", response_json)
     except JSONDecodeError:
         return response.text
+
+
+def _create_headers(
+    private_key_file: Path,
+    request_id: str,
+    user_id: str = "",
+    is_admin: Optional[bool] = None,
+) -> BccClientHeaders:
+    """Creates headers to show that the request is a valid one from MSS
+
+    Args:
+        private_key_file: the path to the private key file
+        request_id: the unique identifier of the current request
+        user_id: the unique identifier of the user
+        is_admin: whether the request should show that the user is an admin
+
+    Returns:
+        The dictionary of headers that show a given request is from MSS
+    """
+    timestamp = time.time()
+    message = f"{user_id}-{request_id}-{timestamp}"
+    signature = sign_message(private_key_file, message=message)
+    headers = {
+        "x-mss-request-id": request_id,
+        "x-mss-timestamp": f"{timestamp}",
+        "x-mss-signature": signature,
+        "x-mss-user-id": user_id,
+    }
+    if is_admin is not None:
+        headers["x-mss-is-admin"] = f"{is_admin}"
+
+    return headers

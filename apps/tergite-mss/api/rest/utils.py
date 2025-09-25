@@ -11,9 +11,14 @@
 # that they have been altered from the originals.
 
 """Some utility functions for the routers"""
+import uuid
+
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.datastructures import Headers, MutableHeaders
+from starlette.requests import Request
 from starlette.types import Message, Send
+
+from utils.exc import InvalidRequestIDError
 
 
 class TergiteCORSMiddleware(CORSMiddleware):
@@ -41,3 +46,43 @@ class TergiteCORSMiddleware(CORSMiddleware):
             self.allow_explicit_origin(headers, origin)
 
         await send(message)
+
+
+async def get_request_id(request: Request) -> str:
+    """Extracts value of the X-Request-ID header
+
+    Args:
+        request: the FastAPI request object
+
+    Returns:
+        the string in the X-Request-ID
+
+    Raises:
+        InvalidRequestIDError: "No request ID provided"
+        InvalidRequestIDError: "The request ID '{request_id}' is not a valid UUID4"
+    """
+    try:
+        request_id = request.state.request_id
+        if not _is_valid_uuid4(request_id):
+            raise InvalidRequestIDError(
+                f"The request ID '{request_id}' is not a valid UUID4"
+            )
+        return request_id
+    except AttributeError:
+        raise InvalidRequestIDError(f"The request ID '' is not a valid UUID4")
+
+
+def _is_valid_uuid4(value):
+    """Validates the given string is a valid UUID4
+
+    Args:
+        value: the value to validate
+
+    Returns:
+        True if the value is a valid UUID4 string else false
+    """
+    try:
+        temp_uuid = uuid.UUID(value, version=4)
+    except (ValueError, TypeError):
+        return False
+    return str(temp_uuid) == value

@@ -17,6 +17,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing_extensions import Annotated
 
 import settings
+from api.rest.utils import get_request_id
 from services.auth import Project, ProjectDatabase, User, get_project_db
 
 # from api.database import get_mongodb
@@ -52,3 +53,4 @@ CurrentStrictProjectUserIds = Annotated[
 ProjectDbDep = Annotated[ProjectDatabase, Depends(get_project_db)]
 MongoDbDep = Annotated[AsyncIOMotorDatabase, Depends(get_default_mongodb)]
 BccClientsMapDep = Annotated[Dict[str, bcc.BccClient], Depends(bcc.get_client_map)]
+ReqeustIdDep = Annotated[str, Depends(get_request_id)]

@@ -20,7 +20,6 @@ from tests._utils.mongodb import find_in_collection, insert_in_collection
 from tests._utils.records import (
     filter_by_equality,
     get_record,
-    order_by,
     order_by_many,
     pop_field,
     with_incremental_timestamps,

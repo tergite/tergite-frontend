@@ -19,9 +19,9 @@ from typing import (
     Literal,
     Optional,
     Set,
-    TypedDict,
-    TypeAlias,
     Tuple,
+    TypeAlias,
+    TypedDict,
     Union,
 )
 
@@ -37,13 +37,15 @@ from .utils import get_uuid4_str
 
 IQPoint: TypeAlias = Tuple[float, float]  # [re, im]  (len = 2)
 IQMemory: TypeAlias = List[List[List[IQPoint]]]  # exp -> shot -> IQ points
-HexMemory:TypeAlias = List[List[str]] # exp -> shot -> str ( channel -> bit) 
+HexMemory: TypeAlias = List[List[str]]  # exp -> shot -> str ( channel -> bit)
+
 
 class CreatedJobResponse(TypedDict):
     """The response when a new job is created"""
 
     job_id: str
     upload_url: str
+    access_token: str
 
 
 class TimestampPair(BaseModel):
@@ -134,6 +136,8 @@ class Job(JobCreate):
     timestamps: Optional[JobTimestamps] = None
     download_url: Optional[str] = None
     result: Optional[JobResult] = None
+    # encrypted JWT token for use to get logfiles from BCC, and submit job to BCC
+    access_token: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 

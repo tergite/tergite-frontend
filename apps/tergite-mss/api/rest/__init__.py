@@ -16,10 +16,12 @@
 # that they have been altered from the originals.
 
 from fastapi import FastAPI
+from fastapi.requests import Request
 
 import settings
 from api.rest.utils import TergiteCORSMiddleware
 from services.auth.utils import TooManyListQueryParams
+from services.jobs.utils import get_uuid4_str
 from utils.api import to_http_error
 from utils.exc import (
     DbValidationError,
@@ -46,6 +48,7 @@ from .routers.me import router as my_router
 app = FastAPI(**get_app_kwargs())
 
 
+# middleware
 app.add_middleware(
     TergiteCORSMiddleware,
     allow_origins=["*"],
@@ -53,6 +56,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_request_id_header(request: Request, call_next):
+    """Adds an `x-request-id` header
+
+    It will get it from `x-mss-request-id` if that is present or generate a new one
+
+    Args:
+        request: the current FastAPI request object
+        call_next: the callback that calls the next middleware or route handler
+    """
+    request_id = get_uuid4_str()
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
 
 # exception handlers
 app.add_exception_handler(NotFoundError, to_http_error(404))
@@ -67,7 +88,7 @@ app.add_exception_handler(UnknownBccError, to_http_error(400))
 app.add_exception_handler(TooManyListQueryParams, to_http_error(400))
 
 # routes
-include_auth_router(app, is_enabled=settings.CONFIG.auth.is_enabled)
+include_auth_router(app)
 app.include_router(calibrations_router)
 app.include_router(devices_router)
 app.include_router(my_router)

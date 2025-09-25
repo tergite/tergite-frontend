@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the jobs router"""
+import copy
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -17,6 +18,7 @@ from typing import Dict, List, Optional
 import pytest
 from beanie import PydanticObjectId
 from pytest_lazyfixture import lazy_fixture
+from pytest_mock import MockerFixture
 
 from services.auth import Project
 from tests._utils.auth import TEST_PROJECT_EXT_ID, get_db_record
@@ -35,6 +37,7 @@ from tests._utils.records import (
 )
 
 _JOBS_LIST = load_json_fixture("job_list.json")
+_JOB_BCC_TOKEN_MAP: Dict[str, dict] = load_json_fixture("bcc_jwt_tokens.json")
 _JOB_TIMESTAMPED_UPDATES = load_json_fixture("job_timestamped_updates.json")
 _JOB_UPDATES = load_json_fixture("job_updates.json")
 _JOB_IDS = [item["job_id"] for item in _JOBS_LIST]
@@ -91,13 +94,17 @@ def test_read_job(db, client, job_id: str, no_qpu_app_token_header, freezer):
     all_jobs = with_current_timestamps(
         _JOBS_LIST, fields=("created_at", "updated_at", "calibration_date")
     )
+    all_jobs = _with_bcc_tokens(all_jobs)
+    expected = _get_job(all_jobs, job_id=job_id)
+    if job_id in _JOB_BCC_TOKEN_MAP:
+        expected["access_token"] = _JOB_BCC_TOKEN_MAP[job_id]["plain"]
+
     insert_in_collection(database=db, collection_name=_COLLECTION, data=all_jobs)
 
     # using context manager to ensure on_startup runs
     with client as client:
         response = client.get(f"/jobs/{job_id}", headers=no_qpu_app_token_header)
         got = response.json()
-        expected = list(filter(lambda x: x["job_id"] == job_id, all_jobs))[0]
 
         assert response.status_code == 200
         assert got == expected
@@ -113,8 +120,16 @@ def test_create_job(
     app_token_header,
     current_user_id,
     freezer,
+    mocker: MockerFixture,
 ):
     """Post to /jobs/ creates a job in the given backend"""
+    import base64
+
+    import jwt
+
+    jwt_encode_spy = mocker.spy(jwt, "encode")
+    base64_b64encode_spy = mocker.spy(base64, "b64encode")
+
     device = payload["device"]
     expected_bcc_base_url = TEST_BACKENDS_MAP[device]["url"]
     jobs_before_creation = find_in_collection(
@@ -129,6 +144,18 @@ def test_create_job(
         response = client.post(f"/jobs/", json=payload, headers=app_token_header)
         json_response = response.json()
         new_job_id = json_response["job_id"]
+        jobs_after_creation = find_in_collection(
+            db,
+            collection_name=_COLLECTION,
+            fields_to_exclude=_EXCLUDED_FIELDS,
+        )
+        plain_token = jwt_encode_spy.spy_return
+        encrypted_token_bytes = base64_b64encode_spy.spy_return
+        encrypted_token = encrypted_token_bytes.decode()
+
+        mocker.stop(jwt_encode_spy)
+        mocker.stop(base64_b64encode_spy)
+
         expected_job = {
             "project_id": str(project_id),
             "job_id": new_job_id,
@@ -138,17 +165,14 @@ def test_create_job(
             "calibration_date": payload["calibration_date"],
             "updated_at": timestamp,
             "created_at": timestamp,
+            "access_token": encrypted_token,
         }
-        jobs_after_creation = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-        )
 
         assert response.status_code == 200
         assert response.json() == {
             "job_id": str(new_job_id),
             "upload_url": f"{expected_bcc_base_url}/jobs",
+            "access_token": plain_token,
         }
 
         assert jobs_before_creation == []
@@ -171,47 +195,6 @@ def test_create_job_without_bcc(db, client, payload, app_token_header, bcc):
         assert response.json() == {"detail": "device is currently unavailable"}
         # no job created
         assert jobs_after_creation == []
-
-
-@pytest.mark.parametrize("payload", _CREATE_JOB_PAYLOADS)
-def test_create_job_with_auth_disabled(mock_bcc, db, no_auth_client, payload, freezer):
-    """Post to /jobs/ creates a job in the given device even when auth is disabled"""
-    device = payload["device"]
-    expected_bcc_base_url = TEST_BACKENDS_MAP[device]["url"]
-    jobs_before_creation = find_in_collection(
-        db,
-        collection_name=_COLLECTION,
-        fields_to_exclude=_EXCLUDED_FIELDS,
-    )
-    timestamp = get_current_timestamp_str()
-
-    # using context manager to ensure on_startup runs
-    with no_auth_client as client:
-        response = client.post(f"/jobs/", json=payload)
-        json_response = response.json()
-        new_job_id = json_response["job_id"]
-        expected_job = {
-            "job_id": new_job_id,
-            "device": device,
-            "status": "pending",
-            "calibration_date": payload["calibration_date"],
-            "created_at": timestamp,
-            "updated_at": timestamp,
-        }
-        jobs_after_creation = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-        )
-
-        assert response.status_code == 200
-        assert response.json() == {
-            "job_id": str(new_job_id),
-            "upload_url": f"{expected_bcc_base_url}/jobs",
-        }
-
-        assert jobs_before_creation == []
-        assert jobs_after_creation == [expected_job]
 
 
 @pytest.mark.parametrize("skip, limit, sort, search", _PAGINATE_AND_SEARCH_PARAMS)
@@ -277,15 +260,22 @@ def test_find_jobs(
 @pytest.mark.parametrize("raw_payload", _JOB_UPDATES)
 def test_update_job(db, client, raw_payload: dict, app_token_header, freezer):
     """PUT to /jobs/{job_id} updates the job with the given object, it ignores job_id"""
+    job_id = raw_payload["job_id"]
     raw_jobs = with_incremental_timestamps(
         _JOBS_LIST, fields=["created_at", "calibration_date"]
     )
     raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
+
+    raw_jobs = _with_bcc_tokens(raw_jobs)
+    expected_job = _get_job(raw_jobs, job_id=job_id)
+    expected_response = copy.deepcopy(expected_job)
+    if job_id in _JOB_BCC_TOKEN_MAP:
+        expected_response["access_token"] = _JOB_BCC_TOKEN_MAP[job_id]["plain"]
+
     insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
 
     ignored_fields = ["unexpected_field", "random_field", "job_id"]
     payload = {**raw_payload, "job_id": f"{uuid.uuid4()}"}
-    job_id = raw_payload["job_id"]
 
     # using context manager to ensure on_startup runs
     with client as client:
@@ -295,9 +285,11 @@ def test_update_job(db, client, raw_payload: dict, app_token_header, freezer):
             headers=app_token_header,
         )
         got = response.json()
-        expected_job = list(filter(lambda x: x["job_id"] == job_id, raw_jobs))[0]
         actual_update, _ = prune(raw_payload, ignored_fields)
         expected_job.update(
+            actual_update,
+        )
+        expected_response.update(
             actual_update,
         )
 
@@ -309,7 +301,7 @@ def test_update_job(db, client, raw_payload: dict, app_token_header, freezer):
         )[0]
 
         assert response.status_code == 200
-        assert got == expected_job
+        assert got == expected_response
         assert job_after_update == expected_job
 
 
@@ -403,3 +395,36 @@ def _get_resource_usage(timestamps: Dict[str, Dict[str, str]]) -> Optional[float
         return round((finished_timestamp - started_timestamp).total_seconds(), 1)
     except AttributeError:
         return 0
+
+
+def _with_bcc_tokens(data: List[dict]) -> List[dict]:
+    """Returns the list of records with access_tokens added basing on the _JOB_BCC_TOKEN_MAP
+
+    Args:
+        data: the list of the job records
+
+    Returns:
+        the list of the updated records
+    """
+    return [
+        item
+        if item["job_id"] not in _JOB_BCC_TOKEN_MAP
+        else {**item, "access_token": _JOB_BCC_TOKEN_MAP[item["job_id"]]["encrypted"]}
+        for item in data
+    ]
+
+
+def _get_job(records: List[dict], job_id: str) -> dict:
+    """Gets a copy of the job of the given job_id
+
+    Args:
+        records: the list of records from which to get the job
+
+    Raises:
+        KeyError: job of job_id: {job_id} does not exist
+    """
+    try:
+        value = list(filter(lambda x: x["job_id"] == job_id, records))[0]
+        return copy.deepcopy(value)
+    except IndexError:
+        raise KeyError(f"job of job_id: {job_id} does not exist")
