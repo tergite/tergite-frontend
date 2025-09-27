@@ -6,6 +6,8 @@ import jobList from "../cypress/fixtures/jobs.json";
 import projectList from "../cypress/fixtures/projects.json";
 import tokenList from "../cypress/fixtures/tokens.json";
 import userList from "../cypress/fixtures/users.json";
+import bccUsersFixture from "../cypress/fixtures/bcc-users.json";
+import bookingsFixture from "../cypress/fixtures/bookings.json";
 import userRequestList from "../cypress/fixtures/user-requests.json";
 import { type ParsedQs } from "qs";
 import {
@@ -16,22 +18,32 @@ import {
 import {
   AppToken,
   AuthProvider,
+  Booking,
   DbRecord,
   Device,
   DeviceCalibration,
   ErrorInfo,
   Job,
+  NewBCCUserInfo,
+  NewBookingInfo,
   Project,
   User,
   UserRequest,
   UserRole,
 } from "../types";
+import { randomUUID } from "crypto";
 
 const jwtSecret = process.env.JWT_SECRET ?? "no-token-really-noooo";
 const authAudience = process.env.AUTH_AUDIENCE ?? "no-auth-audience-noooo";
 const cookieName: string = process.env.VITE_COOKIE_NAME ?? "tergiteauth";
 const cookieDomain = process.env.VITE_COOKIE_DOMAIN;
 const jwtAlgorithm = "HS256";
+const bccUserList = deviceList
+  .map(({ name }) => bccUsersFixture.map((v) => toBccUserInDb(v, name)))
+  .flat(1);
+const bookingList = deviceList
+  .map(({ name }) => bookingsFixture.map((v) => toBookingInDb(v, name)))
+  .flat(1);
 
 /**
  * Generate a valid test JWT for the given user
@@ -99,8 +111,10 @@ class MockDb {
     devices: [...(deviceList as Device[])],
     calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
     jobs: [...(jobList as Job[])],
+    bookings: [...(bookingList as BookingInDb[])],
     user_requests: [...(userRequestList as UserRequest[])],
     auth_providers: [...(authProviderList as AuthProvider[])],
+    bcc_users: [...(bccUserList as BccUserInDb[])],
   };
   deleted: { [k: string | ItemType]: DeletedIndex } = {
     projects: {},
@@ -109,8 +123,10 @@ class MockDb {
     devices: {},
     calibrations: {},
     jobs: {},
+    bookings: {},
     user_requests: {},
     auth_providers: {},
+    bcc_users: {},
   };
 
   constructor() {
@@ -138,8 +154,10 @@ class MockDb {
       devices: [...(deviceList as Device[])],
       calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
       jobs: [...(jobList as Job[])],
+      bookings: [...(bookingList as BookingInDb[])],
       user_requests: [...(userRequestList as UserRequest[])],
       auth_providers: [...(authProviderList as AuthProvider[])],
+      bcc_users: [...(bccUserList as BccUserInDb[])],
     };
     this.deleted = {
       projects: {},
@@ -148,8 +166,10 @@ class MockDb {
       devices: {},
       calibrations: {},
       jobs: {},
+      bookings: {},
       user_requests: {},
       auth_providers: {},
+      bcc_users: {},
     };
   }
 
@@ -471,10 +491,12 @@ export function bulkUpdate<T extends Record<string, unknown>>(
 type ItemType =
   | "projects"
   | "users"
+  | "bcc_users"
   | "tokens"
   | "devices"
   | "calibrations"
   | "jobs"
+  | "bookings"
   | "user_requests"
   | "auth_providers";
 
@@ -488,4 +510,90 @@ type AsyncRequestHandler = (
 ) => Promise<void>;
 interface HttpError extends ErrorInfo {
   status: number;
+}
+
+/**
+ * Converts basic booking data into payload sent when creating a booking
+ *
+ * @param data - the basic booking info using relative time
+ */
+export function toBookingPayload({
+  starts_in,
+  duration,
+}: BookingInfo): NewBookingInfo {
+  const now = new Date().getTime();
+  const startTimestamp = new Date(now + starts_in * 1000);
+  const endTimestamp = new Date(startTimestamp.getTime() + duration * 1000);
+
+  return {
+    start_utc: startTimestamp.toISOString(),
+    end_utc: endTimestamp.toISOString(),
+  };
+}
+
+/**
+ * Converts basic booking info containing duration and start, to booking as saved in database
+ *
+ * @param record - the basic booking info
+ */
+function toBookingInDb(record: BookingInfo, backend: string): BookingInDb {
+  const bookingPayload = toBookingPayload(record);
+  return {
+    ...bookingPayload,
+    backend,
+    total_duration: record.duration,
+    id: randomUUID(),
+  };
+}
+
+/**
+ * Converts basic user info into the user record as saved in the database
+ *
+ * @param record - the basic user information
+ * @param backend - the backend name
+ * @param is_admin - whether the user is admin or not
+ * @returns - the user as saved in the database
+ */
+function toBccUserInDb(
+  record: BccUserInfo,
+  backend: string,
+  is_admin: boolean = false
+): BccUserInDb {
+  return {
+    ...record,
+    is_admin,
+    backend,
+    id: randomUUID(),
+  };
+}
+
+/**
+ * Basic relative info for the booking
+ */
+interface BookingInfo {
+  starts_in: number;
+  duration: number;
+}
+
+/**
+ * Basic relative info for the user
+ */
+interface BccUserInfo {
+  name: string;
+  email: string;
+  password: string;
+}
+
+/**
+ * The schema of the BCC user as stored in the database
+ */
+export interface BccUserInDb extends NewBCCUserInfo {
+  backend: string;
+}
+
+/**
+ * The schema for the Booking as saved in the database
+ */
+export interface BookingInDb extends Booking {
+  backend: string;
 }

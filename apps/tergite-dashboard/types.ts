@@ -115,6 +115,32 @@ export interface Device extends DbRecord {
   is_active?: boolean;
 }
 
+/**
+ * Properties of the bookings
+ */
+export interface NewBookingInfo {
+  start_utc: string;
+  end_utc: string;
+}
+
+export interface Booking extends NewBookingInfo {
+  id: string;
+  total_duration: number;
+  user_id?: string;
+  user_fullname?: string;
+}
+
+export interface BccUserProfile {
+  id: string;
+  name: string;
+  email: string;
+  is_admin: boolean;
+}
+
+export interface NewBCCUserInfo extends BccUserProfile {
+  password: string;
+}
+
 export enum UserRequestStatus {
   APPROVED = "approved",
   REJECTED = "rejected",

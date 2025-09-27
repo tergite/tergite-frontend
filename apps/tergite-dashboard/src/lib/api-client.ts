@@ -21,6 +21,7 @@ import {
   AdminProject,
   UpdateProjectPutBody,
   AdminCreateProjectBody,
+  Booking,
 } from "../../types";
 import { normalizeCalibrationData, extendAppToken } from "./utils";
 
@@ -260,6 +261,60 @@ export function myProjectsQpuTimeRequestsQuery(options: {
     queryKey,
     queryFn: async () =>
       await getProjectQpuTimeRequests(baseUrl, projectIds, status),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
+ * the react query for getting bookings of given backend
+ * @param options - extra options for filtering the requests
+ *            - baseUrl - the base URL of the API
+ *            - user_id - the ID of the user whose bookings ar eto be got
+ *            - min_start_utc - the minimum start UTC datetime for getting a range of bookings
+ *            - max_start_utc - the maximum start UTC datetime for getting a range of bookings
+ *            - skip - the number of records to skip
+ *            - limit - the maximum number of records to return
+ */
+export function bookingsOfBackendQuery(options: {
+  backend: string;
+  baseUrl?: string;
+  user_id?: string;
+  min_start_utc?: string;
+  max_start_utc?: string;
+  skip?: string;
+  limit?: string;
+}) {
+  const {
+    baseUrl = apiBaseUrl,
+    skip = "0",
+    backend,
+    limit,
+    user_id,
+    min_start_utc,
+    max_start_utc,
+  } = options;
+  const queryKey = [
+    baseUrl,
+    "bookings",
+    backend,
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    limit,
+    skip,
+  ];
+
+  return queryOptions({
+    queryKey,
+    queryFn: async () =>
+      await getBookingsOfBackend(baseUrl, backend, {
+        user_id,
+        min_start_utc,
+        max_start_utc,
+        limit,
+        skip,
+      }),
     refetchInterval,
     throwOnError: true,
   });
@@ -787,6 +842,36 @@ async function getAdminProjects(
   const queryString = getQueryString(options);
   const { data } = await authenticatedFetch<PaginatedData<AdminProject[]>>(
     `${baseUrl}/admin/projects/?${queryString}`
+  );
+
+  return data;
+}
+
+/**
+ * Retrieves the bookings
+ * @param baseUrl - the API base URL
+ * @param backend - the backend from which to get the bookings
+ * @param options - extra options for filtering the requests
+ *            - min_start_utc - the minimum start_utc timestamp
+ *            - max_start_utc - the maximum start_utc timestamp
+ *            - user_id - the id of the user who owns the booking
+ *            - skip - the number of records to skip
+ *            - limit - the maximum number of records to return
+ */
+async function getBookingsOfBackend(
+  baseUrl: string = apiBaseUrl,
+  backend: string,
+  options: {
+    user_id?: string;
+    min_start_utc?: string;
+    max_start_utc?: string;
+    skip?: string;
+    limit?: string;
+  }
+): Promise<Booking[]> {
+  const queryString = getQueryString(options);
+  const { data } = await authenticatedFetch<PaginatedData<Booking[]>>(
+    `${baseUrl}/bookings/${backend}?${queryString}`
   );
 
   return data;

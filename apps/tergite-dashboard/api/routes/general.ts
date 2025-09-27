@@ -2,6 +2,8 @@ import { Router } from "express";
 import cors from "cors";
 import {
   archiveDb,
+  BccUserInDb,
+  BookingInDb,
   conformsToFilter,
   createCookieHeader,
   getAuthenticatedUserId,
@@ -31,6 +33,10 @@ import {
   AdminProject,
   UpdateProjectPutBody,
   AdminCreateProjectBody,
+  BccUserProfile,
+  NewBCCUserInfo,
+  NewBookingInfo,
+  Booking,
 } from "../../types";
 import { randomUUID } from "crypto";
 import { DateTime } from "luxon";
@@ -214,7 +220,8 @@ router.put(
     }
 
     const { body, params } = req;
-    const filterFn = (v) => conformsToFilter(v, { user_id, id: params.id });
+    const filterFn = (v: AppToken) =>
+      conformsToFilter(v, { user_id, id: params.id });
     const oldToken = mockDb.getOne<AppToken>("tokens", filterFn);
     if (!oldToken) {
       res.status(404).json({ detail: `Not Found` });
@@ -714,6 +721,215 @@ router.delete(
 
     // no content
     res.status(204).send();
+  })
+);
+
+router.get(
+  "/admin/bcc-users/:backend/",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { skip: skipAsString, limit: limitAsString } = req.query;
+    const { backend } = req.params;
+    const skip = skipAsString ? parseInt(skipAsString as string) : undefined;
+    const limit = limitAsString ? parseInt(limitAsString as string) : undefined;
+
+    const bccUsers = mockDb.getMany<BccUserInDb>(
+      "bcc_users",
+      (v) => v.backend === backend,
+      skip,
+      limit
+    );
+
+    const data: BccUserProfile[] = bccUsers.map(
+      ({ password, backend, ...rest }) => ({
+        ...rest,
+      })
+    );
+    res.json({ skip, limit, data });
+  })
+);
+
+router.post(
+  "/admin/bcc-users/:backend",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const body = req.body as NewBCCUserInfo;
+    const { backend } = req.params;
+    const bccUsersWithSameEmail = mockDb.getMany<BccUserInDb>(
+      "bcc_users",
+      (v) => v.email === body.email && v.backend === backend
+    );
+
+    if (bccUsersWithSameEmail.length > 0) {
+      res.status(409).json({ detail: `Conflict` });
+      return;
+    }
+
+    const bccUser = mockDb.create<BccUserInDb>("bcc_users", {
+      ...body,
+      backend,
+    });
+
+    res.json(bccUser);
+  })
+);
+
+router.delete(
+  "/admin/bcc-users/:backend/:id",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { id: bccUserId, backend } = req.params;
+
+    const bccUser = mockDb.getOne<BccUserInDb>("bcc_users", (v) =>
+      conformsToFilter(v, { backend, id: bccUserId })
+    );
+    if (!bccUser) {
+      res.status(404).json({ detail: `NotFound` });
+      return;
+    }
+
+    mockDb.del("bcc_users", bccUserId);
+
+    res.json({ status: "success", detail: "User deleted" });
+  })
+);
+
+router.post(
+  "/bookings/:backend",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const body = req.body as NewBookingInfo;
+    const { backend } = req.params;
+
+    const result = mockDb.create<BookingInDb>("bookings", {
+      ...body,
+      backend,
+    });
+
+    const { backend: _, ...booking } = result;
+    res.json(booking);
+  })
+);
+
+router.post(
+  "/bookings/:backend/:id/cancel",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const isUserAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
+    const { id: bookingId, backend } = req.params;
+
+    const booking = mockDb.getOne<BookingInDb>(
+      "bookings",
+      (v) =>
+        conformsToFilter(v, { backend, id: bookingId }) &&
+        (v.user_id == userId || isUserAdmin)
+    );
+    if (!booking) {
+      res
+        .status(404)
+        .json({ detail: `the booking of id ${bookingId} was not found` });
+      return;
+    }
+
+    const startTimestamp = DateTime.fromISO(booking.start_utc);
+    const endTimestamp = DateTime.fromISO(booking.end_utc);
+    const now = DateTime.now();
+
+    if (startTimestamp <= now && endTimestamp >= now) {
+      res
+        .status(400)
+        .json({ detail: `the booking of id ${bookingId} is already active` });
+      return;
+    } else if (endTimestamp < now) {
+      res
+        .status(400)
+        .json({ detail: `the booking of id ${bookingId} is already complete` });
+      return;
+    }
+
+    mockDb.del("bookings", bookingId);
+    res.json({
+      status: "success",
+      detail: `Booking of id ${bookingId} cancelled`,
+    });
+  })
+);
+
+router.get(
+  "/bookings/:backend",
+  use(async (req, res) => {
+    // TODO: Add filtering by date or something, also in backend and MSS
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const {
+      skip: skipAsString,
+      limit: limitAsString,
+      min_start_utc: minStartUtcAsString,
+      max_start_utc: maxStartUtcAsString,
+    } = req.query;
+    const { backend } = req.params;
+    const skip = skipAsString ? parseInt(skipAsString as string) : undefined;
+    const limit = limitAsString ? parseInt(limitAsString as string) : undefined;
+    const minStartUtc =
+      minStartUtcAsString && DateTime.fromISO(`${minStartUtcAsString}`);
+    const maxStartUtc =
+      maxStartUtcAsString && DateTime.fromISO(`${maxStartUtcAsString}`);
+
+    const bookingsInDb = mockDb.getMany<BookingInDb>(
+      "bookings",
+      (v) =>
+        v.backend === backend &&
+        (minStartUtc ? DateTime.fromISO(v.start_utc) >= minStartUtc : true) &&
+        (maxStartUtc ? DateTime.fromISO(v.start_utc) <= maxStartUtc : true),
+      skip,
+      limit
+    );
+
+    const data: Booking[] = bookingsInDb.map(({ backend, ...rest }) => ({
+      ...rest,
+    }));
+    res.json({ skip, limit, data });
   })
 );
 
