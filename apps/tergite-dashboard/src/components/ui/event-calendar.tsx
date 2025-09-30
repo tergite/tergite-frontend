@@ -3,16 +3,12 @@ import { CalendarOptions } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
 
 export default function EventCalendar({
-  plugins,
-  initialView,
+  plugins = [dayGridPlugin],
+  initialView = "dayGridMonth",
   ...props
 }: Props) {
   return (
-    <FullCalendar
-      plugins={[dayGridPlugin]}
-      initialView="dayGridMonth"
-      {...props}
-    />
+    <FullCalendar plugins={plugins} initialView={initialView} {...props} />
   );
 }
 

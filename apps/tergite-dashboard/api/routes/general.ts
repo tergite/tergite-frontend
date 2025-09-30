@@ -751,7 +751,7 @@ router.get(
     );
 
     const data: BccUserProfile[] = bccUsers.map(
-      ({ password, backend, ...rest }) => ({
+      ({ password: _p, backend: _b, ...rest }) => ({
         ...rest,
       })
     );
@@ -926,7 +926,7 @@ router.get(
       limit
     );
 
-    const data: Booking[] = bookingsInDb.map(({ backend, ...rest }) => ({
+    const data: Booking[] = bookingsInDb.map(({ backend: _, ...rest }) => ({
       ...rest,
     }));
     res.json({ skip, limit, data });

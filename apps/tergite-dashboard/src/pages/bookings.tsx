@@ -1,14 +1,13 @@
 import EventCalendar from "@/components/ui/event-calendar";
 import { bookingsOfBackendQuery } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
-import { EventSourceInput } from "@fullcalendar/core";
-import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { LoaderFunctionArgs, useLoaderData } from "react-router-dom";
 import { AppState } from "types";
 
 export function Bookings() {
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient();
   const queryOptions = useLoaderData() as BookingsData;
   const { data: bookigs = [] } = useQuery(bookingsOfBackendQuery(queryOptions));
   const calendarEvents = useMemo(
@@ -38,7 +37,7 @@ interface BookingsData {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(_appState: AppState, _queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(
     async ({ params, request }: LoaderFunctionArgs) => {
       const { backend = "" } = params;
