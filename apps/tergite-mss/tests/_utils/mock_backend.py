@@ -12,6 +12,7 @@
 """Utilities for mocking requests to BCC"""
 import json
 import re
+from datetime import datetime
 from json import JSONDecodeError
 from typing import List
 
@@ -282,7 +283,27 @@ def view_bookings(request: httpx.Request):
         if limit is not None:
             limit = int(limit)
 
-        result = paginate(CREATED_BOOKINGS, skip=skip, limit=limit)
+        min_start_utc = request.url.params.get("min_start_utc") or None
+        max_start_utc = request.url.params.get("max_start_utc") or None
+        filtered_results = CREATED_BOOKINGS
+
+        if min_start_utc is not None:
+            filtered_results = [
+                v
+                for v in filtered_results
+                if datetime.fromisoformat(v["start_utc"])
+                >= datetime.fromisoformat(min_start_utc)
+            ]
+
+        if max_start_utc is not None:
+            filtered_results = [
+                v
+                for v in filtered_results
+                if datetime.fromisoformat(v["start_utc"])
+                <= datetime.fromisoformat(max_start_utc)
+            ]
+
+        result = paginate(filtered_results, skip=skip, limit=limit)
         return httpx.Response(
             status_code=200,
             json=result,

@@ -24,13 +24,29 @@ from tests.conftest import BACKEND_SLUGS
 
 _PAGINATION: List[PaginationInfo] = load_json_fixture("pagination.json")
 
+_FILTERS_AND_RESULTS = [
+    ({}, CREATED_BOOKINGS),
+    ({"min_start_utc": CREATED_BOOKINGS[1]["start_utc"]}, CREATED_BOOKINGS[1:]),
+    ({"min_start_utc": CREATED_BOOKINGS[2]["start_utc"]}, CREATED_BOOKINGS[2:]),
+    ({"max_start_utc": CREATED_BOOKINGS[1]["start_utc"]}, CREATED_BOOKINGS[:2]),
+    (
+        {
+            "min_start_utc": CREATED_BOOKINGS[1]["start_utc"],
+            "max_start_utc": CREATED_BOOKINGS[1]["start_utc"],
+        },
+        CREATED_BOOKINGS[1:2],
+    ),
+]
 _BOOKINGS_CREATE_PARAMS = [
     (backend, payload)
     for backend in BACKEND_SLUGS
     for payload in VALID_BOOKING_PAYLOADS
 ]
 _BOOKINGS_VIEW_PARAMS = [
-    (backend, pagination) for backend in BACKEND_SLUGS for pagination in _PAGINATION
+    (backend, pagination, filters, expected_records)
+    for backend in BACKEND_SLUGS
+    for pagination in _PAGINATION
+    for filters, expected_records in _FILTERS_AND_RESULTS
 ]
 _BOOKINGS_CANCEL_PARAMS = [
     (backend, booking) for backend in BACKEND_SLUGS for booking in CREATED_BOOKINGS
@@ -74,36 +90,48 @@ def test_unauthenticated_create_booking(
         assert response.json() == {"detail": "Unauthorized"}
 
 
-@pytest.mark.parametrize("backend, pagination", _BOOKINGS_VIEW_PARAMS)
+@pytest.mark.parametrize(
+    "backend, pagination, filters, expected_records", _BOOKINGS_VIEW_PARAMS
+)
 def test_view_bookings(
-    client, backend, user_jwt_cookie, pagination: PaginationInfo, mock_bcc
+    client,
+    backend,
+    user_jwt_cookie,
+    pagination: PaginationInfo,
+    filters,
+    expected_records,
+    mock_bcc,
 ):
     """GET "/bookings/{backend}" shows paginated list of all available bookings"""
     with client as client:
         limit = pagination["limit"]
         skip = pagination["skip"]
         params = {k: v for k, v in pagination.items() if v is not None}
+        params.update(filters)
 
         # view bookings
         response = client.get(
             f"/bookings/{backend}", cookies=user_jwt_cookie, params=params
         )
         actual_output = response.json()
-        expected = paginate(CREATED_BOOKINGS, skip=skip, limit=limit)
+        expected = paginate(expected_records, skip=skip, limit=limit)
 
         assert response.status_code == 200
         assert actual_output == expected
 
 
-@pytest.mark.parametrize("backend, pagination", _BOOKINGS_VIEW_PARAMS)
+@pytest.mark.parametrize(
+    "backend, pagination, filters, expected_records", _BOOKINGS_VIEW_PARAMS
+)
 def test_unauthenticated_view_bookings(
-    client, backend, pagination: PaginationInfo, mock_bcc
+    client, backend, pagination: PaginationInfo, filters, expected_records, mock_bcc
 ):
     """Viewing bookings without authenticated user errors out"""
     with client as client:
         headers = {"Authorization": f"Bearer {TEST_USER_ID}"}
         url = f"/bookings/{backend}"
         params = {k: v for k, v in pagination.items() if v is not None}
+        params.update(filters)
         response = client.get(url, headers=headers, params=params)
 
         assert response.status_code == 401

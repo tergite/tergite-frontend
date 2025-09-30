@@ -15,6 +15,12 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Add filtering bookings by minimum/maximum start timestamps
+
+## [2025.09.0] - 2025-09-30
+
+### Added
+
 - Added `access_token` field to the job schema. 
   It is encrypted when in database but plain when requested for by anyone who has access to the job
   (including other members of the project).

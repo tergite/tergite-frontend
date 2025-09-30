@@ -14,6 +14,7 @@
 
 These query the BCC on behalf of the user, thus they use the BCC client.
 """
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Query
@@ -93,6 +94,8 @@ async def view_bookings(
     requester: User = CurrentUserDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
+    min_start_utc: Optional[datetime] = Query(default=None),
+    max_start_utc: Optional[datetime] = Query(default=None),
 ):
     """Views all available bookings of the given backend
 
@@ -102,6 +105,8 @@ async def view_bookings(
         requester: the current signed-in user
         skip: number of records to ignore at the top of the returned results; default is 0
         limit: maximum number of records to return; default is None.
+        min_start_utc: the earliest start timestamp to include in the returned results; default is None
+        max_start_utc: the latest end timestamp to include in the returned results; default is None
 
     Returns:
         the paginated list of the available bookings
@@ -115,4 +120,6 @@ async def view_bookings(
         skip=skip,
         limit=limit,
         is_admin=requester.is_superuser,
+        min_start_utc=min_start_utc,
+        max_start_utc=max_start_utc,
     )

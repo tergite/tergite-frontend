@@ -12,10 +12,12 @@
 """Clients for accessing certain HTTP services"""
 import logging
 import time
+from datetime import datetime
 from json import JSONDecodeError
 from pathlib import Path
 from typing import (
     IO,
+    Any,
     Dict,
     List,
     Literal,
@@ -382,6 +384,8 @@ class BccClient:
         is_admin: Optional[bool] = None,
         skip: int = 0,
         limit: Optional[int] = None,
+        min_start_utc: Optional[datetime] = None,
+        max_start_utc: Optional[datetime] = None,
     ) -> dict:
         """Views all available bookings
 
@@ -392,6 +396,8 @@ class BccClient:
             is_admin: whether the current user is an admin
             skip: the number of records to skip
             limit: the maximum number of records to return
+            min_start_utc: the minimum start time in UTC
+            max_start_utc: the maximum start time in UTC
 
         Returns:
             the paginated list of the available bookings
@@ -400,13 +406,19 @@ class BccClient:
             ServiceUnavailableError: device is currently unavailable
             ValueError: unauthenticated user
         """
+        params: Dict[str, Any] = {"skip": skip, "limit": limit}
+        if min_start_utc is not None:
+            params["min_start_utc"] = min_start_utc.isoformat()
+        if max_start_utc is not None:
+            params["max_start_utc"] = max_start_utc.isoformat()
+
         return await self._request(
             "GET",
             "/bookings",
             user_id=user_id,
             request_id=request_id,
             private_key_file=private_key_file,
-            params={"skip": skip, "limit": limit},
+            params=params,
             is_admin=is_admin,
         )
 
