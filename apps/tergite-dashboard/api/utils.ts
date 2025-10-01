@@ -38,11 +38,24 @@ const authAudience = process.env.AUTH_AUDIENCE ?? "no-auth-audience-noooo";
 const cookieName: string = process.env.VITE_COOKIE_NAME ?? "tergiteauth";
 const cookieDomain = process.env.VITE_COOKIE_DOMAIN;
 const jwtAlgorithm = "HS256";
+const firstUser = userList[0];
+const firstUserId = firstUser["id"];
+const firstUsername = firstUser["email"].split("@")[0];
+const firstUserIsAdmin = firstUser["roles"].includes("admin");
+
 const bccUserList = deviceList
-  .map(({ name }) => bccUsersFixture.map((v) => toBccUserInDb(v, name)))
+  .map(({ name: backend }) =>
+    bccUsersFixture.map((v) =>
+      toBccUserInDb(v, backend, firstUserId, firstUserIsAdmin)
+    )
+  )
   .flat(1);
 const bookingList = deviceList
-  .map(({ name }) => bookingsFixture.map((v) => toBookingInDb(v, name)))
+  .map(({ name: backend }) =>
+    bookingsFixture.map((v) =>
+      toBookingInDb(v, backend, firstUserId, firstUsername)
+    )
+  )
   .flat(1);
 
 /**
@@ -535,12 +548,21 @@ export function toBookingPayload({
  * Converts basic booking info containing duration and start, to booking as saved in database
  *
  * @param record - the basic booking info
+ * @param user_id - the identifier of the user who booked
+ * @param username - the username of the user who booked
  */
-function toBookingInDb(record: BookingInfo, backend: string): BookingInDb {
+function toBookingInDb(
+  record: BookingInfo,
+  backend: string,
+  user_id: string,
+  username: string
+): BookingInDb {
   const bookingPayload = toBookingPayload(record);
   return {
     ...bookingPayload,
     backend,
+    user_id,
+    username,
     total_duration: record.duration,
     id: randomUUID(),
   };
@@ -551,19 +573,21 @@ function toBookingInDb(record: BookingInfo, backend: string): BookingInDb {
  *
  * @param record - the basic user information
  * @param backend - the backend name
+ * @param id - the identifier of the bcc user
  * @param is_admin - whether the user is admin or not
  * @returns - the user as saved in the database
  */
 function toBccUserInDb(
   record: BccUserInfo,
   backend: string,
+  id: string,
   is_admin: boolean = false
 ): BccUserInDb {
   return {
     ...record,
     is_admin,
     backend,
-    id: randomUUID(),
+    id,
   };
 }
 

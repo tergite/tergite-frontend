@@ -827,16 +827,24 @@ router.delete(
 router.post(
   "/bookings/:backend",
   use(async (req, res) => {
-    const userId = await getAuthenticatedUserId(req.cookies);
-    if (!userId) {
+    const user_id = await getAuthenticatedUserId(req.cookies);
+    if (!user_id) {
       return respond401(res);
     }
 
     const body = req.body as NewBookingInfo;
     const { backend } = req.params;
 
+    const user = mockDb.getOne<User>("users", (v) => v.id === user_id);
+    if (!user) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
     const result = mockDb.create<BookingInDb>("bookings", {
       ...body,
+      username: user.email.split("@")[0],
+      user_id,
       backend,
     });
 

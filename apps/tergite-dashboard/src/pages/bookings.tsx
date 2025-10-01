@@ -9,15 +9,17 @@ import { AppState } from "types";
 export function Bookings() {
   // const queryClient = useQueryClient();
   const queryOptions = useLoaderData() as BookingsData;
-  const { data: bookigs = [] } = useQuery(bookingsOfBackendQuery(queryOptions));
+  const { data: bookings = [] } = useQuery(
+    bookingsOfBackendQuery(queryOptions)
+  );
   const calendarEvents = useMemo(
     () =>
-      bookigs.map((v) => ({
-        title: v.user_fullname,
+      bookings.map((v) => ({
+        title: v.username,
         start: v.start_utc,
         end: v.end_utc,
       })),
-    [bookigs]
+    [bookings]
   );
 
   return (

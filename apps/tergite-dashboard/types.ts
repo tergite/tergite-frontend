@@ -127,7 +127,7 @@ export interface Booking extends NewBookingInfo {
   id: string;
   total_duration: number;
   user_id?: string;
-  user_fullname?: string;
+  username?: string;
 }
 
 export interface BccUserProfile {

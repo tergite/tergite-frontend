@@ -1,10 +1,10 @@
 import FullCalendar from "@fullcalendar/react";
 import { CalendarOptions } from "@fullcalendar/core";
-import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
 
 export default function EventCalendar({
-  plugins = [dayGridPlugin],
-  initialView = "dayGridMonth",
+  plugins = [timeGridPlugin],
+  initialView = "timeGridWeek",
   ...props
 }: Props) {
   return (
