@@ -58,7 +58,6 @@ async def insert_one(
         the inserted document
     """
     document = record.model_dump()
-
     # Save historical calibrations
     # We use insert_one_if_not_exists to ensure idempotency
     await mongodb_utils.insert_one_if_not_exists(
