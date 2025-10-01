@@ -24,6 +24,7 @@ from api.rest.dependencies import (
     CurrentUserDep,
     CurrentUserIdDep,
     RequestIdDep,
+    UserDbDep,
 )
 from services.auth import User
 from services.external.bcc.dtos import Booking, GeneralMessage, NewBookingInfo
@@ -32,17 +33,19 @@ from utils.api import PaginatedListResponse
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
-@router.post("/{backend}", response_model=Booking)
+@router.post("/{backend}")
 async def create_booking(
     bcc_client: BccClientDep,
+    user_db: UserDbDep,
     data: NewBookingInfo,
     request_id: RequestIdDep,
     user_id: str = CurrentUserIdDep,
-):
+) -> Booking:
     """Creates a booking for the user of the given token
 
     Args:
         bcc_client: BccClient for the given backend
+        user_db: UserDatabase instance for this application
         data: the information about the new booking
         request_id: the unique identifier of the request
         user_id: the ID of the current signed-in user
@@ -54,7 +57,7 @@ async def create_booking(
         UnknownBccError: Unknown backend '{backend}'
     """
     return await bcc_client.create_booking(
-        user_id=user_id, request_id=request_id, data=data
+        user_db=user_db, user_id=user_id, request_id=request_id, data=data
     )
 
 
@@ -90,6 +93,7 @@ async def cancel_booking(
 )
 async def view_bookings(
     bcc_client: BccClientDep,
+    user_db: UserDbDep,
     request_id: RequestIdDep,
     requester: User = CurrentUserDep,
     skip: int = Query(default=0),
@@ -101,6 +105,7 @@ async def view_bookings(
 
     Args:
         bcc_client: BccClient for the given backend
+        user_db: UserDatabase instance for this application
         request_id: the unique identifier of the request
         requester: the current signed-in user
         skip: number of records to ignore at the top of the returned results; default is 0
@@ -115,6 +120,7 @@ async def view_bookings(
         UnknownBccError: Unknown backend '{backend}'
     """
     return await bcc_client.view_bookings(
+        user_db=user_db,
         user_id=requester.id,
         request_id=request_id,
         skip=skip,

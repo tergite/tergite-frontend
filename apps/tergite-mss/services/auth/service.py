@@ -46,6 +46,7 @@ JWT_AUTH = users.UserBasedAuth[users.dtos.User, PydanticObjectId](
 GET_CURRENT_USER = JWT_AUTH.current_user(active=True)
 GET_CURRENT_USER_ID = JWT_AUTH.current_user_id()
 GET_CURRENT_SUPERUSER = JWT_AUTH.current_user(active=True, superuser=True)
+GET_USER_DB = users.get_user_db
 
 # Project-based app token auth
 # FIXME: the "auth/app-tokens/generate" does not matter

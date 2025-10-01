@@ -19,7 +19,12 @@ from typing import List
 import httpx
 
 from services.external.bcc.dtos import BCCUserProfile, CancellationDetails
-from tests._utils.auth import TEST_SUPERUSER_DICT, TEST_SYSTEM_USER_DICT, TEST_USER_DICT
+from tests._utils.auth import (
+    TEST_SUPERUSER_DICT,
+    TEST_SYSTEM_USER_DICT,
+    TEST_USER_DICT,
+    TEST_USER_ID,
+)
 from tests._utils.bcc import (
     BasicBookingInfo,
     BookingPayload,
@@ -49,8 +54,11 @@ INVALID_BOOKINGS: List[BasicBookingInfo] = load_json_fixture("invalid_bookings.j
 VALID_BOOKING_PAYLOADS: List[BookingPayload] = [
     to_booking_payload(v) for v in VALID_BOOKINGS
 ]
+_FIRST_USER_ID = _USERS[0]["_id"]
 CREATED_BOOKINGS: List[dict] = [
-    CreatedBooking.model_validate(v).model_dump(mode="json")
+    CreatedBooking.model_validate({**v, "user_id": TEST_USER_ID}).model_dump(
+        mode="json"
+    )
     for v in VALID_BOOKING_PAYLOADS
 ]
 

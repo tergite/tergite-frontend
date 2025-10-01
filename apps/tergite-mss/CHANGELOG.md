@@ -15,7 +15,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
-- Add filtering bookings by minimum/maximum start timestamps
+- Added filtering bookings by minimum/maximum start timestamps
+- Added username property to the Booking data structure
 
 ## [2025.09.0] - 2025-09-30
 

@@ -15,7 +15,7 @@ from typing import List
 
 import pytest
 
-from tests._utils.auth import TEST_USER_ID
+from tests._utils.auth import TEST_USER_EMAIL, TEST_USER_ID
 from tests._utils.bcc import BookingPayload
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mock_backend import CREATED_BOOKINGS, VALID_BOOKING_PAYLOADS
@@ -23,18 +23,21 @@ from tests._utils.records import PaginationInfo, paginate
 from tests.conftest import BACKEND_SLUGS
 
 _PAGINATION: List[PaginationInfo] = load_json_fixture("pagination.json")
+BOOKINGS_IN_MSS = [
+    {**v, "username": TEST_USER_EMAIL.split("@")[0]} for v in CREATED_BOOKINGS
+]
 
 _FILTERS_AND_RESULTS = [
-    ({}, CREATED_BOOKINGS),
-    ({"min_start_utc": CREATED_BOOKINGS[1]["start_utc"]}, CREATED_BOOKINGS[1:]),
-    ({"min_start_utc": CREATED_BOOKINGS[2]["start_utc"]}, CREATED_BOOKINGS[2:]),
-    ({"max_start_utc": CREATED_BOOKINGS[1]["start_utc"]}, CREATED_BOOKINGS[:2]),
+    ({}, BOOKINGS_IN_MSS),
+    ({"min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, BOOKINGS_IN_MSS[1:]),
+    ({"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"]}, BOOKINGS_IN_MSS[2:]),
+    ({"max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, BOOKINGS_IN_MSS[:2]),
     (
         {
-            "min_start_utc": CREATED_BOOKINGS[1]["start_utc"],
-            "max_start_utc": CREATED_BOOKINGS[1]["start_utc"],
+            "min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
+            "max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
         },
-        CREATED_BOOKINGS[1:2],
+        BOOKINGS_IN_MSS[1:2],
     ),
 ]
 _BOOKINGS_CREATE_PARAMS = [
