@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import {
   bookingsOfBackendQuery,
+  currentUserQuery,
   singleDeviceCalibrationQuery,
   singleDeviceQuery,
 } from "@/lib/api-client";
@@ -10,6 +11,8 @@ import {
   Device,
   DeviceCalibration,
   QubitProp,
+  User,
+  UserRole,
 } from "../../../types";
 import { LoaderFunctionArgs, useLoaderData } from "react-router-dom";
 
@@ -19,10 +22,10 @@ import { CalibrationDataTable } from "./components/calibration-data-table";
 import { CalibrationBarChart } from "./components/calibration-bar-chart";
 import { CalibrationHeader } from "./components/calibration-header";
 import { CalibrationMapChart } from "./components/calibration-map-chart";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
-import EventCalendar from "@/components/ui/event-calendar";
+import { BookingsCalendar } from "./components/bookings-calendar";
 
 const fieldLabels: { [k: string]: string } = {
   t1_decoherence: "T1 decoherence",
@@ -33,19 +36,10 @@ const fieldLabels: { [k: string]: string } = {
 };
 
 export function DeviceDetail() {
-  const { device, calibrationData, bookings } =
+  const { device, calibrationData, bookings, currentUser, isAdmin } =
     useLoaderData() as DeviceDetailData;
   const [currentData, setCurrentData] = useState<QubitProp>(
     QubitProp.T1_DECOHERENCE
-  );
-  const calendarEvents = useMemo(
-    () =>
-      bookings.map((v) => ({
-        title: v.username,
-        start: v.start_utc,
-        end: v.end_utc,
-      })),
-    [bookings]
   );
 
   return (
@@ -107,7 +101,12 @@ export function DeviceDetail() {
           <Card>
             <CalibrationHeader device={device} currentData="Bookings" />
             <CardContent>
-              <EventCalendar events={calendarEvents} />
+              <BookingsCalendar
+                bookings={bookings}
+                isAdmin={isAdmin}
+                currentUser={currentUser}
+                backend={device.name}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -119,12 +118,6 @@ export function DeviceDetail() {
       />
     </main>
   );
-}
-
-interface DeviceDetailData {
-  device: Device;
-  calibrationData: DeviceCalibration;
-  bookings: Booking[];
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -170,9 +163,26 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
       const bookings =
         cachedBookings ?? (await queryClient.fetchQuery(bookingsQuery));
 
-      return { device, calibrationData, bookings };
+      // current user
+      const cachedCurrentUser = queryClient.getQueryData(
+        currentUserQuery.queryKey
+      );
+      const currentUser =
+        cachedCurrentUser ?? (await queryClient.fetchQuery(currentUserQuery));
+
+      const isAdmin = currentUser.roles.includes(UserRole.ADMIN);
+
+      return { device, calibrationData, bookings, currentUser, isAdmin };
     }
   );
+}
+
+interface DeviceDetailData {
+  device: Device;
+  calibrationData: DeviceCalibration;
+  bookings: Booking[];
+  currentUser: User;
+  isAdmin: boolean;
 }
 
 interface BookingsMetadata {

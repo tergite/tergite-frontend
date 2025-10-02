@@ -19,7 +19,6 @@ import {
   DeviceDetail,
   loader as deviceDetailLoader,
 } from "./pages/device-detail";
-import { Bookings, loader as bookingsLoader } from "./pages/bookings";
 import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import { Tokens, loader as tokensLoader } from "./pages/tokens";
 import { Projects, loader as projectsLoader } from "./pages/projects";
@@ -90,15 +89,6 @@ function getRoutes(appState: AppState, queryClient: QueryClient) {
               </ErrorBound>
             }
             loader={deviceDetailLoader(appState, queryClient)}
-          />
-          <Route
-            path="bookings/:backend"
-            element={
-              <ErrorBound>
-                <Bookings />
-              </ErrorBound>
-            }
-            loader={bookingsLoader(appState, queryClient)}
           />
           <Route
             path="tokens"
