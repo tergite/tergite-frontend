@@ -7,6 +7,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+## [2025.09.0] - 2025-10-02
+
 ### Added
 
 - Added `access_token` field to the job schema. 

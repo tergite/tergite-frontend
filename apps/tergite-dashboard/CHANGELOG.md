@@ -7,6 +7,10 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+## [2025.09.0] - 2025-10-02
+
+- No change
+
 ## [2025.06.2] - 2025-06-17
 
 - No change

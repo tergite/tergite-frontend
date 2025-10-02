@@ -14,7 +14,13 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+## [2025.09.0] - 2025-10-02
+
+### Changed
+
 - Add external loki logger support for promtail for linux
+
+More changes in [apss/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md#2025060---2025-06-16)
 
 ## [2025.06.2] - 2025-06-17
 
