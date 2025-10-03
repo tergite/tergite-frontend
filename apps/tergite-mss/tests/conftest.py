@@ -425,6 +425,10 @@ def mock_bcc(respx_mock):
             side_effect=mock_backend.view_bookings
         )
 
+        respx_mock.get(f"{backend['url']}/bookings/config").mock(
+            side_effect=mock_backend.view_bookings_config
+        )
+
         for booking in CREATED_BOOKINGS:
             respx_mock.post(f"{backend['url']}/bookings/{booking['id']}/cancel").mock(
                 side_effect=mock_backend.cancel_booking

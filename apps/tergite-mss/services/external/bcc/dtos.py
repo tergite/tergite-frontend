@@ -87,3 +87,12 @@ class CancellationDetails(BaseModel):
     """Details to do with a given cancellation request"""
 
     reason: Optional[str] = None
+
+
+class BookingsConfig(BaseModel):
+    """Configurations for the booking service"""
+
+    max_time_slot_length: float
+    min_time_slot_length: float
+    max_slots_per_day: int
+    max_idle_time: int

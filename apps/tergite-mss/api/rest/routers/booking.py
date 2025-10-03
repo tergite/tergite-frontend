@@ -27,7 +27,12 @@ from api.rest.dependencies import (
     UserDbDep,
 )
 from services.auth import User
-from services.external.bcc.dtos import Booking, GeneralMessage, NewBookingInfo
+from services.external.bcc.dtos import (
+    Booking,
+    BookingsConfig,
+    GeneralMessage,
+    NewBookingInfo,
+)
 from utils.api import PaginatedListResponse
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -128,4 +133,33 @@ async def view_bookings(
         is_admin=requester.is_superuser,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
+    )
+
+
+@router.get(
+    "/{backend}/config",
+    response_model=BookingsConfig,
+)
+async def view_bookings_configs(
+    bcc_client: BccClientDep,
+    request_id: RequestIdDep,
+    requester: User = CurrentUserDep,
+):
+    """Views bookings configuration for the given backend
+
+    Args:
+        bcc_client: BccClient for the given backend
+        request_id: the unique identifier of the request
+        requester: the current signed-in user
+
+    Returns:
+        the dict of configuration values for the booking service of the given backend
+
+    Raises:
+        UnknownBccError: Unknown backend '{backend}'
+    """
+    return await bcc_client.view_bookings_configs(
+        user_id=requester.id,
+        request_id=request_id,
+        is_admin=requester.is_superuser,
     )

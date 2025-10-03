@@ -18,7 +18,11 @@ from typing import List
 
 import httpx
 
-from services.external.bcc.dtos import BCCUserProfile, CancellationDetails
+from services.external.bcc.dtos import (
+    BCCUserProfile,
+    BookingsConfig,
+    CancellationDetails,
+)
 from tests._utils.auth import (
     TEST_SUPERUSER_DICT,
     TEST_SYSTEM_USER_DICT,
@@ -61,6 +65,12 @@ CREATED_BOOKINGS: List[dict] = [
     )
     for v in VALID_BOOKING_PAYLOADS
 ]
+BOOKINGS_CONFIG: BookingsConfig = BookingsConfig(
+    max_time_slot_length=1200,
+    min_time_slot_length=100,
+    max_slots_per_day=80,
+    max_idle_time=100,
+)
 
 
 def get_token(request: httpx.Request):
@@ -352,6 +362,29 @@ def cancel_booking(request: httpx.Request):
     except (KeyError, TypeError) as exp:
         return httpx.Response(
             status_code=400, json={"detail": f"malformed request {exp}"}
+        )
+    except Exception as exp:
+        raise exp
+
+
+def view_bookings_config(request: httpx.Request):
+    """Mock BCC bookings config view endpoint
+
+    Args:
+        request: the httpx request
+
+    Returns:
+        the response with the bookings config
+    """
+    try:
+        get_bcc_client_verified_headers(request)
+        return httpx.Response(
+            status_code=200,
+            json=BOOKINGS_CONFIG.model_dump(mode="json"),
+        )
+    except ValueError as exp:
+        return httpx.Response(
+            status_code=401, json={"detail": f"user not authenticated {exp}"}
         )
     except Exception as exp:
         raise exp

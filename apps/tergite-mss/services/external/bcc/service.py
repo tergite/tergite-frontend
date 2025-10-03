@@ -442,6 +442,37 @@ class BccClient:
             booking["username"] = user_id_username_map.get(booking["user_id"])
         return response
 
+    async def view_bookings_configs(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
+    ) -> dict:
+        """Views the configuration for the booking service in the backend
+
+        Args:
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+            is_admin: whether the current user is an admin
+
+        Returns:
+            the dict of configuration for the bookings service in this backend
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            HTTPException: unauthenticated user
+        """
+        return await self._request(
+            "GET",
+            "/bookings/config",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            is_admin=is_admin,
+        )
+
     async def _request(
         self,
         method: Literal["POST", "GET", "PUT", "DELETE", "PATCH"],

@@ -7,9 +7,13 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
-### Fixed 
+### Fixed
 
 - Fixed module 'fastapi_users.schemas' has no attribute 'model_validate'
+
+### Added
+
+- Added the `/bookings/{backend}/config` endpoint to return the configuration for the booking service for given backend
 
 ## [2025.09.0] - 2025-10-02
 
@@ -22,16 +26,16 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
-- Added `access_token` field to the job schema. 
+- Added `access_token` field to the job schema.
   It is encrypted when in database but plain when requested for by anyone who has access to the job
   (including other members of the project).
 - Added the following endpoints for use in booking time slots
-    - POST `/admin/bcc-users/{backend}` - for admins to create users in backends
-    - GET `/admin/bcc-users/{backend}` - for admins to view users in backends
-    - DELETE `/admin/bcc-users/{backend}/{user_id}` - for admins to remove users in backends
-    - POST `/bookings/{backend}` - for users to create bookings in backends
-    - POST `/bookings/{backend}/{booking_id}/cancel` - for users to cancel bookings in backends
-    - GET `/bookings/{backend}` - for users to view bookings in backends
+  - POST `/admin/bcc-users/{backend}` - for admins to create users in backends
+  - GET `/admin/bcc-users/{backend}` - for admins to view users in backends
+  - DELETE `/admin/bcc-users/{backend}/{user_id}` - for admins to remove users in backends
+  - POST `/bookings/{backend}` - for users to create bookings in backends
+  - POST `/bookings/{backend}/{booking_id}/cancel` - for users to cancel bookings in backends
+  - GET `/bookings/{backend}` - for users to view bookings in backends
 
 ### Changed
 

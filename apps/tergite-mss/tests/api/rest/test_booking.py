@@ -18,7 +18,11 @@ import pytest
 from tests._utils.auth import TEST_USER_EMAIL, TEST_USER_ID
 from tests._utils.bcc import BookingPayload
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mock_backend import CREATED_BOOKINGS, VALID_BOOKING_PAYLOADS
+from tests._utils.mock_backend import (
+    BOOKINGS_CONFIG,
+    CREATED_BOOKINGS,
+    VALID_BOOKING_PAYLOADS,
+)
 from tests._utils.records import PaginationInfo, paginate
 from tests.conftest import BACKEND_SLUGS
 
@@ -177,6 +181,32 @@ def test_unauthenticated_cancel_booking(client, backend, booking, mock_bcc):
         assert response.json() == {"detail": "Unauthorized"}
 
         response = client.post(url)
+
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
+
+
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_view_bookings_config(client, backend, user_jwt_cookie, mock_bcc):
+    """GET "/bookings/config" shows paginated list of all available bookings"""
+    with client as client:
+        response = client.get(f"/bookings/{backend}/config", cookies=user_jwt_cookie)
+        got = response.json()
+        assert got == BOOKINGS_CONFIG.model_dump(mode="json")
+
+
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_unauthenticated_view_bookings_configs(client, backend, mock_bcc):
+    """Viewing bookings configs with non-existing user or outside MSS errors out"""
+    with client as client:
+        headers = {"Authorization": f"Bearer {TEST_USER_ID}"}
+        url = f"/bookings/{backend}/config"
+        response = client.get(url, headers=headers)
+
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
+
+        response = client.get(url)
 
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
