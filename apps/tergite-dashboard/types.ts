@@ -141,6 +141,11 @@ export interface NewBCCUserInfo extends BccUserProfile {
   password: string;
 }
 
+export interface GeneralMessage {
+  status: "success" | "error" | "cancelled" | "failed";
+  detail?: string;
+}
+
 export enum UserRequestStatus {
   APPROVED = "approved",
   REJECTED = "rejected",

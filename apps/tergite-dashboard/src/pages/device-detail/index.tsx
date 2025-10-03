@@ -1,13 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  bookingsOfBackendQuery,
   currentUserQuery,
   singleDeviceCalibrationQuery,
   singleDeviceQuery,
 } from "@/lib/api-client";
 import {
   AppState,
-  Booking,
   Device,
   DeviceCalibration,
   QubitProp,
@@ -25,7 +23,10 @@ import { CalibrationMapChart } from "./components/calibration-map-chart";
 import { useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
-import { BookingsCalendar } from "./components/bookings-calendar";
+import {
+  BookingsCalendar,
+  BookingsMetadata,
+} from "./components/bookings-calendar";
 
 const fieldLabels: { [k: string]: string } = {
   t1_decoherence: "T1 decoherence",
@@ -36,7 +37,7 @@ const fieldLabels: { [k: string]: string } = {
 };
 
 export function DeviceDetail() {
-  const { device, calibrationData, bookings, currentUser, isAdmin } =
+  const { device, calibrationData, bookingsMetadata, currentUser, isAdmin } =
     useLoaderData() as DeviceDetailData;
   const [currentData, setCurrentData] = useState<QubitProp>(
     QubitProp.T1_DECOHERENCE
@@ -102,7 +103,7 @@ export function DeviceDetail() {
             <CalibrationHeader device={device} currentData="Bookings" />
             <CardContent>
               <BookingsCalendar
-                bookings={bookings}
+                bookingsMetadata={bookingsMetadata}
                 isAdmin={isAdmin}
                 currentUser={currentUser}
                 backend={device.name}
@@ -158,11 +159,6 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
         max_start_utc,
       } as BookingsMetadata;
 
-      const bookingsQuery = bookingsOfBackendQuery(bookingsMetadata);
-      const cachedBookings = queryClient.getQueryData(bookingsQuery.queryKey);
-      const bookings =
-        cachedBookings ?? (await queryClient.fetchQuery(bookingsQuery));
-
       // current user
       const cachedCurrentUser = queryClient.getQueryData(
         currentUserQuery.queryKey
@@ -172,7 +168,13 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
 
       const isAdmin = currentUser.roles.includes(UserRole.ADMIN);
 
-      return { device, calibrationData, bookings, currentUser, isAdmin };
+      return {
+        device,
+        calibrationData,
+        bookingsMetadata,
+        currentUser,
+        isAdmin,
+      };
     }
   );
 }
@@ -180,16 +182,7 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
 interface DeviceDetailData {
   device: Device;
   calibrationData: DeviceCalibration;
-  bookings: Booking[];
+  bookingsMetadata: BookingsMetadata;
   currentUser: User;
   isAdmin: boolean;
-}
-
-interface BookingsMetadata {
-  backend: string;
-  user_id?: string;
-  min_start_utc?: string;
-  max_start_utc?: string;
-  skip?: string;
-  limit?: string;
 }

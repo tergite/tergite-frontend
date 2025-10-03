@@ -22,6 +22,8 @@ import {
   UpdateProjectPutBody,
   AdminCreateProjectBody,
   Booking,
+  NewBookingInfo,
+  GeneralMessage,
 } from "../../types";
 import { normalizeCalibrationData, extendAppToken } from "./utils";
 
@@ -412,6 +414,28 @@ export async function refreshAllAdminQueries(
 }
 
 /**
+ * Refreshes the queries for the bookings of a given backend from the API
+ *
+ * @param queryClient - the query client for making queries
+ * @param  backend - the name of the device
+ * @param options - the options including:
+ *          - baseUrl - the base URL of the API
+ *          - backend - the name of the device
+ */
+export async function refreshBookingsQueries(
+  queryClient: QueryClient,
+  backend: string,
+  options: {
+    baseUrl?: string;
+  } = {}
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  await queryClient.invalidateQueries({
+    queryKey: [baseUrl, "bookings", backend],
+  });
+}
+
+/**
  * Generates a new app token
  * @param payload - the payload for a new app token
  * @param options - the options for loging in including:
@@ -425,6 +449,81 @@ export async function createAppToken(
 ): Promise<AppTokenCreationResponse> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/me/tokens/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Cancels the booking of the given id for the given backend
+ *
+ * @param backend - the name of the device
+ * @param id of the booking
+ * @param options - extra options:
+ *           - baseUrl - the API base URL; default apiBaseUrl
+ */
+export async function cancelBooking(
+  backend: string,
+  id: string,
+  options: { baseUrl?: string } = {}
+): Promise<GeneralMessage> {
+  const { baseUrl = apiBaseUrl } = options;
+  const resp: GeneralMessage = await authenticatedFetch(
+    `${baseUrl}/bookings/${backend}/${id}/cancel`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+  if (resp.status !== "success") {
+    const errMsg = `${resp.status}: ${resp.detail}`;
+    const err = new Error(errMsg) as ErrorInfo;
+    err.statusText = resp.status;
+    throw err;
+  }
+
+  return resp;
+}
+
+/**
+ * Updates the booking in the given backend
+ * @param backend - the name of the device
+ * @param id - the id for the booking
+ * @param payload - the payload for the update
+ * @param options - the options including:
+ *          - baseUrl - the base URL of the API
+ */
+export async function updateBooking(
+  backend: string,
+  id: string,
+  payload: NewBookingInfo,
+  options: {
+    baseUrl?: string;
+  } = {}
+): Promise<Booking> {
+  const { baseUrl = apiBaseUrl } = options;
+  await cancelBackendBooking(backend, id, { baseUrl });
+  return await createNewBooking(backend, payload, { baseUrl });
+}
+
+/**
+ * Generates a new booking
+ * @param backend - the name of the device
+ * @param payload - the payload for a new booking
+ * @param options - the options:
+ *          - baseUrl - the base URL of the API
+ *          - backend - the name of the backend
+ */
+export async function createNewBooking(
+  backend: string,
+  payload: NewBookingInfo,
+  options: {
+    baseUrl?: string;
+  } = {}
+): Promise<Booking> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/bookings/${backend}`, {
     method: "POST",
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json" },

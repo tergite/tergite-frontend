@@ -13,12 +13,19 @@ import {
   PopoverArrow,
 } from "@/components/ui/popover";
 import { DateTime, Duration } from "luxon";
-import { useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Booking, User } from "types";
+import { Booking, NewBookingInfo, User } from "types";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin from "@fullcalendar/interaction";
+import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  bookingsOfBackendQuery,
+  createNewBooking,
+  refreshBookingsQueries,
+} from "@/lib/api-client";
+import { toast } from "@/hooks/use-toast";
 
 /**
  * The calendar for viewing and making bookings
@@ -27,12 +34,16 @@ import interactionPlugin from "@fullcalendar/interaction";
  * @returns - a react node representing the bookings calendar
  */
 export function BookingsCalendar({
-  bookings,
+  bookingsMetadata,
   backend,
   currentUser,
   isAdmin,
 }: Props) {
+  const queryClient = useQueryClient();
   const { isDark } = useContext(AppStateContext);
+  const { data: bookings = [] } = useQuery(
+    bookingsOfBackendQuery(bookingsMetadata)
+  );
   const calendarEvents = useMemo(
     (): EventSourceInput =>
       bookings.map((v) => ({
@@ -65,6 +76,42 @@ export function BookingsCalendar({
         currentUserId,
       }),
     [isAdmin, isDark, currentUserId]
+  );
+
+  const bookingCreation = useMutation({
+    mutationFn: useCallback(
+      async (values: NewBookingInfo) => {
+        return await createNewBooking(backend, values);
+      },
+      [backend]
+    ),
+    onSuccess: useCallback(
+      async (booking: Booking) => {
+        await refreshBookingsQueries(queryClient, backend);
+        const startTime = DateTime.fromISO(booking.start_utc).toLocaleString(
+          DateTime.DATETIME_SHORT
+        );
+        toast({ description: `Booking at ${startTime} created` });
+      },
+      [backend, queryClient]
+    ),
+    throwOnError: true,
+  });
+
+  const handleDateClick = useCallback(
+    (info: DateClickArg) => {
+      const title = prompt(`Enter event title:${info.dateStr}`);
+      if (title) {
+        const start_utc = info.dateStr;
+        const end_utc = DateTime.fromISO(start_utc)
+          .plus(Duration.fromObject({ seconds: 3600 }))
+          .toISO();
+        if (end_utc) {
+          bookingCreation.mutate({ start_utc, end_utc });
+        }
+      }
+    },
+    [bookingCreation]
   );
 
   return (
@@ -106,15 +153,9 @@ export function BookingsCalendar({
       slotMaxTime="24:00:00"
       scrollTime="09:00:00"
       contentHeight={"60vh"}
+      dateClick={handleDateClick}
     />
   );
-}
-
-interface Props {
-  bookings: Booking[];
-  backend: string;
-  currentUser: User;
-  isAdmin: boolean;
 }
 
 /**
@@ -232,8 +273,24 @@ function getEventContentGenerator({ isAdmin, currentUserId }: EventState) {
   };
 }
 
+interface Props {
+  bookingsMetadata: BookingsMetadata;
+  backend: string;
+  currentUser: User;
+  isAdmin: boolean;
+}
+
 interface EventState {
   isDark?: boolean;
   currentUserId?: string;
   isAdmin: boolean;
+}
+
+export interface BookingsMetadata {
+  backend: string;
+  user_id?: string;
+  min_start_utc?: string;
+  max_start_utc?: string;
+  skip?: string;
+  limit?: string;
 }
