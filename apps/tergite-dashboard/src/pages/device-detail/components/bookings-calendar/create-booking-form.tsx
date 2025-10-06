@@ -1,305 +1,309 @@
-// import {
-//   Card,
-//   CardHeader,
-//   CardTitle,
-//   CardContent,
-//   CardFooter,
-// } from "@/components/ui/card";
-// import { cn } from "@/lib/utils";
-// import { useMutation } from "@tanstack/react-query";
-// import { AdminProject } from "types";
-// import { useCallback } from "react";
-// import { Button, IconButton } from "@/components/ui/button";
-// import { z } from "zod";
-// import { useForm } from "react-hook-form";
-// import { zodResolver } from "@hookform/resolvers/zod";
-// import {
-//   Form,
-//   FormControl,
-//   FormField,
-//   FormItem,
-//   FormMessage,
-// } from "@/components/ui/form";
-// import { Label } from "@/components/ui/label";
-// import { Input } from "@/components/ui/input";
-// import { Switch } from "@/components/ui/switch";
-// import { Textarea } from "@/components/ui/textarea";
-// import { MultiInput } from "@/components/ui/multi-input";
-// import { useToast } from "@/hooks/use-toast";
-// import { createAdminProject } from "@/lib/api-client";
-// import { DateTime } from "luxon";
-// import { X } from "lucide-react";
+import { cn, mergeDatetime } from "@/lib/utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { BookingsConfig } from "types";
+import { useCallback, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { createNewBooking, refreshBookingsQueries } from "@/lib/api-client";
+import { DateTime, Duration } from "luxon";
+import { CalendarIcon } from "lucide-react";
 
-// const formSchema = z.object({
-//   startDate: z.date(),
-//   time: z.object({
-//     hour: z.number().int(),
-//     minute: z.number().int(),
-//     second: z.number().int(),
-//     millisecond: z.number().int().optional(),
-//   }),
-// });
+import { Booking } from "types";
+import {
+  Popover,
+  PopoverContentNoPortal,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { TimeInput } from "@/components/ui/time-input";
+import { DurationInput } from "@/components/ui/duration-input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-// export function CreateProjectForm({
-//   className = "",
-//   onCreate,
-//   onCancel = () => {},
-//   onClose,
-// }: Props) {
-//   const { toast } = useToast();
-//   const now = DateTime.now();
+export function CreateBookingForm({
+  className = "",
+  backend,
+  onCreate = async () => {},
+  onCancel = () => {},
+  defaultStartTimestamp,
+  bookingsConfig,
+  open,
+  onOpenChange,
+}: Props) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const now = DateTime.now();
+  const yesterday = now.minus({ day: 1 }).toJSDate();
+  const startTimestampStr = defaultStartTimestamp ?? now.toISO();
+  const startTimestamp = DateTime.fromISO(startTimestampStr);
+  const minDuration = Duration.fromObject({
+    seconds: bookingsConfig.min_time_slot_length,
+  });
+  const maxDuration = Duration.fromObject({
+    seconds: bookingsConfig.max_time_slot_length,
+  });
+  // TODO: Limit the possibility of creating a new slot for a given day
+  //    if slots for that day are maxed out
+  // const maxSlotsPerDay = bookingsConfig.max_slots_per_day;
 
-//   const createForm = useForm<z.infer<typeof formSchema>>({
-//     resolver: zodResolver(formSchema),
-//     defaultValues: {
-//       name: `${now.toLocaleString()} project`,
-//       description: `Project created on ${now.toLocaleString()}`,
-//       is_active: true,
-//       qpu_seconds: 0,
-//       admin_email: "",
-//       user_emails: [],
-//       ext_id: `project-${now.toMillis()}`,
-//     },
-//   });
+  const formSchema = useMemo(
+    () =>
+      z.object({
+        startDate: z
+          .object({
+            date: z.date(),
+            time: z.object({
+              hour: z.number().int(),
+              minute: z.number().int(),
+              second: z.number().int(),
+              millisecond: z.number().int().optional().default(0),
+            }),
+          })
+          .transform(mergeDatetime)
+          .refine((dt) => dt.isValid, { message: "invalid date" })
+          .refine((dt) => dt >= now, {
+            message: "date must be in future",
+          }),
+        duration: z
+          .object({
+            hours: z.number().int(),
+            minutes: z.number().int(),
+            seconds: z.number().int(),
+          })
+          .transform(Duration.fromDurationLike)
+          .refine((dt) => dt.isValid, { message: "invalid duration" })
+          .refine((dt) => dt >= minDuration && dt <= maxDuration, {
+            message: `duration must be between ${minDuration.toISOTime()} and ${maxDuration.toISOTime()}`,
+          }),
+      }),
+    [maxDuration, minDuration, now]
+  );
+  type FormInput = z.input<typeof formSchema>;
+  type FormOutput = z.output<typeof formSchema>;
 
-//   const projectCreation = useMutation({
-//     mutationFn: async (values: z.infer<typeof formSchema>) => {
-//       return await createAdminProject(values);
-//     },
-//     onSuccess: useCallback(
-//       async (project: AdminProject) => {
-//         await onCreate(project);
-//         toast({ description: `Project ${project.name} created` });
-//       },
-//       [onCreate, toast]
-//     ),
-//     throwOnError: true,
-//   });
+  const createForm = useForm<FormInput, unknown, FormOutput>({
+    resolver: zodResolver(formSchema),
+    values: {
+      startDate: {
+        date: startTimestamp.toJSDate(),
+        time: startTimestamp,
+      },
+      duration: {
+        hours: minDuration.hours,
+        minutes: minDuration.minutes,
+        seconds: minDuration.seconds,
+      },
+    },
+  });
 
-//   const handleCancel = useCallback(async () => {
-//     createForm.reset();
-//     onCancel();
-//   }, [createForm, onCancel]);
+  const handleCancel = useCallback(async () => {
+    createForm.reset();
+    onCancel();
+  }, [createForm, onCancel]);
 
-//   // A hack: for some reason editForm.formState.isDirty was not always right especially
-//   //   when one clicked on another project when they had just editted only the user_emails field but not submitted
-//   //   if the new project had everything in common with the project, except say the user_emails, editForm.formState.isDirty
-//   //   would still show that it is dirty yet it should reset whenever new values are passed to it during initialization
-//   const isFormDirty = Object.keys(createForm.formState.dirtyFields).length;
+  const handleOpenChange = useCallback(
+    async (value: boolean) => {
+      if (!value) {
+        createForm.reset();
+      }
+      onOpenChange(value);
+    },
+    [createForm, onOpenChange]
+  );
 
-//   return (
-//     <Form {...createForm}>
-//       <form
-//         onSubmit={createForm.handleSubmit((values) => {
-//           return projectCreation.mutate(values);
-//         })}
-//         onReset={handleCancel}
-//         className={cn("overflow-hidden", className)}
-//       >
-//         <Card id="create-project">
-//           <CardHeader className="flex flex-row items-center bg-muted/50 justify-between space-y-0">
-//             <div className="grid gap-0.5">
-//               <CardTitle className="group flex items-center gap-2 text-lg">
-//                 New project
-//               </CardTitle>
-//             </div>
-//             <IconButton Icon={X} variant="ghost" onClick={onClose} />
-//           </CardHeader>
-//           <CardContent className="p-6 text-sm xl:max-h-[60vh] overflow-y-auto">
-//             <div className="grid gap-3">
-//               <ul className="grid gap-4">
-//                 <FormField
-//                   control={createForm.control}
-//                   name="name"
-//                   render={({ field }) => (
-//                     <FormItem className="">
-//                       <FormControl>
-//                         <div className="">
-//                           <Label
-//                             className="text-muted-foreground"
-//                             htmlFor="name"
-//                           >
-//                             Name
-//                           </Label>
-//                           <Input id="name" type="string" {...field} />
-//                         </div>
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
+  const bookingCreation = useMutation({
+    mutationFn: useCallback(
+      async ({ startDate, duration }: FormOutput) => {
+        const start_utc = startDate.toISO();
+        if (start_utc == null) {
+          throw new Error("invalid start date");
+        }
 
-//                 <FormField
-//                   control={createForm.control}
-//                   name="ext_id"
-//                   render={({ field }) => (
-//                     <FormItem className="">
-//                       <FormControl>
-//                         <div className="">
-//                           <Label
-//                             className="text-muted-foreground"
-//                             htmlFor="ext_id"
-//                           >
-//                             External ID
-//                           </Label>
-//                           <Input id="ext_id" type="string" {...field} />
-//                         </div>
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
+        const durationObj = Duration.fromDurationLike(duration);
+        if (durationObj < minDuration) {
+          throw new Error(
+            `duration is less than minimum ${minDuration.toHuman()}`
+          );
+        } else if (durationObj > maxDuration) {
+          throw new Error(
+            `duration is more than maximum ${maxDuration.toHuman()}`
+          );
+        }
 
-//                 <FormField
-//                   control={createForm.control}
-//                   name="description"
-//                   render={({ field }) => (
-//                     <FormItem className="">
-//                       <FormControl>
-//                         <div className="">
-//                           <Label
-//                             className="mr-2 text-muted-foreground"
-//                             htmlFor="description"
-//                           >
-//                             Description
-//                           </Label>
-//                           <Textarea id="description" {...field} rows={4} />
-//                         </div>
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
+        const end_utc = startDate.plus(duration).toISO();
+        if (end_utc == null) {
+          throw new Error("invalid duration");
+        }
 
-//                 <FormField
-//                   control={createForm.control}
-//                   name="is_active"
-//                   render={({ field }) => (
-//                     <FormItem className="">
-//                       <FormControl>
-//                         <div className="flex justify-between">
-//                           <Label
-//                             className="mr-2 text-muted-foreground"
-//                             htmlFor="is_active"
-//                           >
-//                             Live
-//                           </Label>
-//                           <Switch
-//                             id="is_active"
-//                             onCheckedChange={field.onChange}
-//                             checked={field.value}
-//                             disabled
-//                             aria-disabled
-//                           />
-//                         </div>
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
+        return await createNewBooking(backend, { start_utc, end_utc });
+      },
+      [backend, minDuration, maxDuration]
+    ),
+    onSuccess: useCallback(
+      async (booking: Booking) => {
+        await refreshBookingsQueries(queryClient, backend);
+        const startTime = DateTime.fromISO(booking.start_utc).toLocaleString(
+          DateTime.DATETIME_SHORT
+        );
+        toast({ description: `Booking at ${startTime} created` });
+        await onCreate(booking);
+        handleOpenChange(false);
+      },
+      [backend, queryClient, handleOpenChange, onCreate, toast]
+    ),
+    throwOnError: true,
+  });
 
-//                 <FormField
-//                   control={createForm.control}
-//                   name="qpu_seconds"
-//                   render={() => (
-//                     <FormItem className="">
-//                       <FormControl>
-//                         <div className="">
-//                           <Label
-//                             className="text-muted-foreground"
-//                             htmlFor="qpu_seconds"
-//                           >
-//                             QPU seconds
-//                           </Label>
-//                           <Input
-//                             id="qpu_seconds"
-//                             type="number"
-//                             {...createForm.register("qpu_seconds", {
-//                               valueAsNumber: true,
-//                             })}
-//                           />
-//                         </div>
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
+  // // A hack: for some reason createForm.formState.isDirty was not always right especially
+  // const isFormDirty = Object.keys(createForm.formState.dirtyFields).length;
 
-//                 <FormField
-//                   control={createForm.control}
-//                   name="admin_email"
-//                   render={({ field }) => (
-//                     <FormItem className="">
-//                       <FormControl>
-//                         <div className="">
-//                           <Label
-//                             className="text-muted-foreground"
-//                             htmlFor="admin_email"
-//                           >
-//                             Admin email
-//                           </Label>
-//                           <Input id="admin_email" type="email" {...field} />
-//                         </div>
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent id="create-booking-dialog">
+        <DialogHeader>
+          <DialogTitle>Create new booking</DialogTitle>
+          <DialogDescription className="py-5">
+            Book a time slot on {backend} to avoid being interrupted by other
+            users.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...createForm}>
+          <form
+            onSubmit={createForm.handleSubmit((values) =>
+              bookingCreation.mutate(values)
+            )}
+            onReset={handleCancel}
+            className={cn("grid gap-4 w-full", className)}
+          >
+            <FormField
+              control={createForm.control}
+              name="startDate"
+              render={({ field }) => (
+                <FormItem className="grid gap-2">
+                  <FormLabel>Starts</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          id="datetime-input"
+                          variant={"outline"}
+                          disabled={bookingCreation.isPending}
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value?.date ? (
+                            mergeDatetime(field.value)
+                              .setLocale("en-gb")
+                              .toLocaleString(
+                                DateTime.DATETIME_MED_WITH_SECONDS
+                              )
+                          ) : (
+                            <span>Pick a date and time</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContentNoPortal
+                      className="w-auto p-0"
+                      align="start"
+                    >
+                      <Calendar
+                        mode="single"
+                        selected={field.value?.date as Date}
+                        onSelect={(date) =>
+                          field.onChange({ date, time: field.value?.time })
+                        }
+                        disabled={(date) => date < yesterday}
+                        initialFocus
+                      />
+                      <TimeInput
+                        className="w-max py-6 mx-auto my-3"
+                        value={field.value?.time}
+                        onChange={(time) =>
+                          field.onChange({ time, date: field.value?.date })
+                        }
+                      />
+                    </PopoverContentNoPortal>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={createForm.control}
+              name="duration"
+              render={({ field }) => (
+                <FormItem className="">
+                  <FormControl>
+                    <div className="">
+                      <Label className="text-muted-foreground" htmlFor="name">
+                        Duration
+                      </Label>
+                      <DurationInput id="duration" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button
+                disabled={
+                  bookingCreation.isPending // || !isFormDirty
+                }
+                type="submit"
+                variant="default"
+              >
+                Create
+              </Button>
 
-//                 <FormField
-//                   control={createForm.control}
-//                   name="user_emails"
-//                   render={({ field }) => (
-//                     <FormItem className="">
-//                       <FormControl>
-//                         <div className="flex flex-col">
-//                           <Label
-//                             className="text-muted-foreground mb-1"
-//                             htmlFor="user_emails"
-//                           >
-//                             Member emails
-//                           </Label>
-//                           <MultiInput
-//                             id="user_emails"
-//                             type="email"
-//                             {...field}
-//                           />
-//                         </div>
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//               </ul>
-//             </div>
-//           </CardContent>
-//           <CardFooter className="grid grid-cols-2 gap-2 border-t bg-muted/50 px-6 py-3">
-//             <Button
-//               disabled={projectCreation.isPending || !isFormDirty}
-//               type="submit"
-//               variant="default"
-//             >
-//               Submit
-//             </Button>
+              <DialogClose asChild>
+                <Button
+                  type="reset"
+                  disabled={bookingCreation.isPending}
+                  variant="secondary"
+                  className="border"
+                >
+                  Cancel
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-//             <Button
-//               type="reset"
-//               disabled={projectCreation.isPending}
-//               variant="secondary"
-//               className="border"
-//             >
-//               Cancel
-//             </Button>
-//           </CardFooter>
-//         </Card>
-//       </form>
-//     </Form>
-//   );
-// }
-
-// interface Props {
-// className?: string;
-// onCreate: (project: AdminProject) => Promise<void>;
-// onCancel?: () => void;
-// onClose: () => void;
-// }
+interface Props {
+  className?: string;
+  backend: string;
+  onCreate?: (booking: Booking) => Promise<void>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  defaultStartTimestamp?: string;
+  bookingsConfig: BookingsConfig;
+  onCancel?: () => void;
+}

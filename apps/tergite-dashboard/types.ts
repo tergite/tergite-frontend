@@ -146,6 +146,16 @@ export interface GeneralMessage {
   detail?: string;
 }
 
+/**
+ * Configurations for the booking service for a given backend
+ */
+export interface BookingsConfig {
+  max_time_slot_length: number;
+  min_time_slot_length: number;
+  max_slots_per_day: number;
+  max_idle_time: number;
+}
+
 export enum UserRequestStatus {
   APPROVED = "approved",
   REJECTED = "rejected",

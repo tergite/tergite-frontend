@@ -8,6 +8,7 @@ import tokenList from "../cypress/fixtures/tokens.json";
 import userList from "../cypress/fixtures/users.json";
 import bccUsersFixture from "../cypress/fixtures/bcc-users.json";
 import bookingsFixture from "../cypress/fixtures/bookings.json";
+import bookingsConfigList from "../cypress/fixtures/bookings-configs.json";
 import userRequestList from "../cypress/fixtures/user-requests.json";
 import { type ParsedQs } from "qs";
 import {
@@ -19,6 +20,7 @@ import {
   AppToken,
   AuthProvider,
   Booking,
+  BookingsConfig,
   DbRecord,
   Device,
   DeviceCalibration,
@@ -125,6 +127,7 @@ class MockDb {
     calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
     jobs: [...(jobList as Job[])],
     bookings: [...(bookingList as BookingInDb[])],
+    bookings_configs: [...(bookingsConfigList as BookingsConfigInDb[])],
     user_requests: [...(userRequestList as UserRequest[])],
     auth_providers: [...(authProviderList as AuthProvider[])],
     bcc_users: [...(bccUserList as BccUserInDb[])],
@@ -137,6 +140,7 @@ class MockDb {
     calibrations: {},
     jobs: {},
     bookings: {},
+    bookings_configs: {},
     user_requests: {},
     auth_providers: {},
     bcc_users: {},
@@ -168,6 +172,7 @@ class MockDb {
       calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
       jobs: [...(jobList as Job[])],
       bookings: [...(bookingList as BookingInDb[])],
+      bookings_configs: [...(bookingsConfigList as BookingsConfigInDb[])],
       user_requests: [...(userRequestList as UserRequest[])],
       auth_providers: [...(authProviderList as AuthProvider[])],
       bcc_users: [...(bccUserList as BccUserInDb[])],
@@ -180,6 +185,7 @@ class MockDb {
       calibrations: {},
       jobs: {},
       bookings: {},
+      bookings_configs: {},
       user_requests: {},
       auth_providers: {},
       bcc_users: {},
@@ -510,6 +516,7 @@ type ItemType =
   | "calibrations"
   | "jobs"
   | "bookings"
+  | "bookings_configs"
   | "user_requests"
   | "auth_providers";
 
@@ -620,4 +627,11 @@ export interface BccUserInDb extends NewBCCUserInfo {
  */
 export interface BookingInDb extends Booking {
   backend: string;
+}
+
+/**
+ * Schema for Bookings
+ */
+export interface BookingsConfigInDb extends BookingsConfig {
+  id: string;
 }

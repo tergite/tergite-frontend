@@ -24,6 +24,7 @@ import {
   Booking,
   NewBookingInfo,
   GeneralMessage,
+  BookingsConfig,
 } from "../../types";
 import { normalizeCalibrationData, extendAppToken } from "./utils";
 
@@ -37,7 +38,7 @@ export const refetchInterval = parseFloat(
  */
 export const devicesQuery = queryOptions({
   queryKey: [apiBaseUrl, "devices"],
-  queryFn: async () => await getDevices(),
+  queryFn: async () => await getDevices(apiBaseUrl),
   refetchInterval,
   throwOnError: true,
 });
@@ -54,7 +55,7 @@ export function singleDeviceQuery(
   const { baseUrl = apiBaseUrl } = options;
   return queryOptions({
     queryKey: [baseUrl, "devices", name],
-    queryFn: async () => await getDeviceDetail(name),
+    queryFn: async () => await getDeviceDetail(name, baseUrl),
     refetchInterval,
     throwOnError: true,
   });
@@ -65,7 +66,7 @@ export function singleDeviceQuery(
  */
 export const calibrationsQuery = queryOptions({
   queryKey: [apiBaseUrl, "calibrations"],
-  queryFn: async () => await getCalibrations(),
+  queryFn: async () => await getCalibrations(apiBaseUrl),
   refetchInterval,
   throwOnError: true,
 });
@@ -75,7 +76,7 @@ export const calibrationsQuery = queryOptions({
  */
 export const currentUserQuery = queryOptions({
   queryKey: [apiBaseUrl, "me"],
-  queryFn: async () => await getCurrentUser(),
+  queryFn: async () => await getCurrentUser(apiBaseUrl),
   throwOnError: true,
 });
 
@@ -91,7 +92,7 @@ export function singleDeviceCalibrationQuery(
   const { baseUrl = apiBaseUrl } = options;
   return queryOptions({
     queryKey: [baseUrl, "calibrations", name],
-    queryFn: async () => await getCalibrationsForDevice(name),
+    queryFn: async () => await getCalibrationsForDevice(name, baseUrl),
     refetchInterval,
     throwOnError: true,
   });
@@ -323,6 +324,25 @@ export function bookingsOfBackendQuery(options: {
 }
 
 /**
+ * the single device query for using with react query
+ * @param backend - the name of the device to consider
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ */
+export function bookingsConfigQuery(
+  backend: string,
+  options: { baseUrl?: string } = {}
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  return queryOptions({
+    queryKey: [baseUrl, "bookings", backend, "config"],
+    queryFn: async () => await getBookingsConfig(backend, baseUrl),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
  * Refreshes the queries for the tokens from the API
  *
  * @param queryClient - the query client for making queries
@@ -503,7 +523,7 @@ export async function updateBooking(
   } = {}
 ): Promise<Booking> {
   const { baseUrl = apiBaseUrl } = options;
-  await cancelBackendBooking(backend, id, { baseUrl });
+  await cancelBooking(backend, id, { baseUrl });
   return await createNewBooking(backend, payload, { baseUrl });
 }
 
@@ -782,6 +802,18 @@ async function getDeviceDetail(
   baseUrl: string = apiBaseUrl
 ): Promise<Device> {
   return await authenticatedFetch(`${baseUrl}/devices/${name}`);
+}
+
+/**
+ * Retrieve the bookings config for the given backend
+ * @param backend - the name of the device
+ * @param baseUrl - the API base URL
+ */
+async function getBookingsConfig(
+  backend: string,
+  baseUrl: string = apiBaseUrl
+): Promise<BookingsConfig> {
+  return await authenticatedFetch(`${baseUrl}/bookings/${backend}/config`);
 }
 
 /**

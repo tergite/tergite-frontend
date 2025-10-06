@@ -13,19 +13,15 @@ import {
   PopoverArrow,
 } from "@/components/ui/popover";
 import { DateTime, Duration } from "luxon";
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Booking, NewBookingInfo, User } from "types";
+import { BookingsConfig, User } from "types";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  bookingsOfBackendQuery,
-  createNewBooking,
-  refreshBookingsQueries,
-} from "@/lib/api-client";
-import { toast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { bookingsOfBackendQuery } from "@/lib/api-client";
+import { CreateBookingForm } from "./create-booking-form";
 
 /**
  * The calendar for viewing and making bookings
@@ -35,12 +31,14 @@ import { toast } from "@/hooks/use-toast";
  */
 export function BookingsCalendar({
   bookingsMetadata,
+  bookingsConfig,
   backend,
   currentUser,
   isAdmin,
 }: Props) {
-  const queryClient = useQueryClient();
   const { isDark } = useContext(AppStateContext);
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [defaultStartTimestamp, setDefaultStartTimestamp] = useState<string>();
   const { data: bookings = [] } = useQuery(
     bookingsOfBackendQuery(bookingsMetadata)
   );
@@ -78,83 +76,64 @@ export function BookingsCalendar({
     [isAdmin, isDark, currentUserId]
   );
 
-  const bookingCreation = useMutation({
-    mutationFn: useCallback(
-      async (values: NewBookingInfo) => {
-        return await createNewBooking(backend, values);
-      },
-      [backend]
-    ),
-    onSuccess: useCallback(
-      async (booking: Booking) => {
-        await refreshBookingsQueries(queryClient, backend);
-        const startTime = DateTime.fromISO(booking.start_utc).toLocaleString(
-          DateTime.DATETIME_SHORT
-        );
-        toast({ description: `Booking at ${startTime} created` });
-      },
-      [backend, queryClient]
-    ),
-    throwOnError: true,
-  });
-
   const handleDateClick = useCallback(
     (info: DateClickArg) => {
-      const title = prompt(`Enter event title:${info.dateStr}`);
-      if (title) {
-        const start_utc = info.dateStr;
-        const end_utc = DateTime.fromISO(start_utc)
-          .plus(Duration.fromObject({ seconds: 3600 }))
-          .toISO();
-        if (end_utc) {
-          bookingCreation.mutate({ start_utc, end_utc });
-        }
-      }
+      setDefaultStartTimestamp(info.dateStr);
+      setIsCreateFormOpen(true);
     },
-    [bookingCreation]
+    [setDefaultStartTimestamp, setIsCreateFormOpen]
   );
 
   return (
-    <EventCalendar
-      plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-      initialView="timeGridWeek"
-      events={calendarEvents}
-      views={{
-        timeGridPlugin: {},
-      }}
-      eventContent={renderEventContent}
-      eventClassNames={getEventClassNames}
-      dayCellClassNames={getDayCellClassNames}
-      slotLabelFormat={{
-        hour12: false,
-        hour: "2-digit",
-      }}
-      slotLabelClassNames="text-xs text-muted-foreground"
-      dayHeaderFormat={{
-        weekday: "short",
-        day: "numeric",
-      }}
-      dayHeaderContent={getDayHeaderContent}
-      nowIndicator={true}
-      allDaySlot={false}
-      businessHours={{
-        start: "09:00",
-        end: "17:00",
-        daysOfWeek: [1, 2, 3, 4, 5],
-      }}
-      slotLaneClassNames="!h-10"
-      firstDay={1}
-      headerToolbar={{
-        start: "title",
-        center: "",
-        end: "today,timeGridWeek,dayGridMonth prev,next",
-      }}
-      slotMinTime="00:00:00"
-      slotMaxTime="24:00:00"
-      scrollTime="09:00:00"
-      contentHeight={"60vh"}
-      dateClick={handleDateClick}
-    />
+    <>
+      <EventCalendar
+        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+        initialView="timeGridWeek"
+        events={calendarEvents}
+        views={{
+          timeGridPlugin: {},
+        }}
+        eventContent={renderEventContent}
+        eventClassNames={getEventClassNames}
+        dayCellClassNames={getDayCellClassNames}
+        slotLabelFormat={{
+          hour12: false,
+          hour: "2-digit",
+        }}
+        slotLabelClassNames="text-xs text-muted-foreground"
+        dayHeaderFormat={{
+          weekday: "short",
+          day: "numeric",
+        }}
+        dayHeaderContent={getDayHeaderContent}
+        nowIndicator={true}
+        allDaySlot={false}
+        businessHours={{
+          start: "09:00",
+          end: "17:00",
+          daysOfWeek: [1, 2, 3, 4, 5],
+        }}
+        slotLaneClassNames="!h-10"
+        firstDay={1}
+        headerToolbar={{
+          start: "title",
+          center: "",
+          end: "today,timeGridWeek,dayGridMonth prev,next",
+        }}
+        slotMinTime="00:00:00"
+        slotMaxTime="24:00:00"
+        scrollTime="09:00:00"
+        contentHeight={"60vh"}
+        dateClick={handleDateClick}
+      />
+      <CreateBookingForm
+        open={isCreateFormOpen}
+        onOpenChange={setIsCreateFormOpen}
+        backend={backend}
+        bookingsConfig={bookingsConfig}
+        defaultStartTimestamp={defaultStartTimestamp}
+      />
+    </>
   );
 }
 
@@ -275,6 +254,7 @@ function getEventContentGenerator({ isAdmin, currentUserId }: EventState) {
 
 interface Props {
   bookingsMetadata: BookingsMetadata;
+  bookingsConfig: BookingsConfig;
   backend: string;
   currentUser: User;
   isAdmin: boolean;

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "Loke",
+    "max_time_slot_length": 7200,
+    "min_time_slot_length": 1800,
+    "max_slots_per_day": 2,
+    "max_idle_time": 1000
+  },
+  {
+    "id": "Thor",
+    "max_time_slot_length": 7200,
+    "min_time_slot_length": 3600,
+    "max_slots_per_day": 1,
+    "max_idle_time": 100
+  },
+  {
+    "id": "Pingu",
+    "max_time_slot_length": 9600,
+    "min_time_slot_length": 1800,
+    "max_slots_per_day": 5,
+    "max_idle_time": 100
+  },
+  {
+    "id": "Pegu",
+    "max_time_slot_length": 7200,
+    "min_time_slot_length": 1800,
+    "max_slots_per_day": 3,
+    "max_idle_time": 100
+  },
+  {
+    "id": "Likee",
+    "max_time_slot_length": 10800,
+    "min_time_slot_length": 1800,
+    "max_slots_per_day": 2,
+    "max_idle_time": 100
+  },
+  {
+    "id": "Thea",
+    "max_time_slot_length": 24000,
+    "min_time_slot_length": 900,
+    "max_slots_per_day": 1,
+    "max_idle_time": 100
+  }
+]

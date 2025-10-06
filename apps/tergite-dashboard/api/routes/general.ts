@@ -4,6 +4,7 @@ import {
   archiveDb,
   BccUserInDb,
   BookingInDb,
+  BookingsConfigInDb,
   conformsToFilter,
   createCookieHeader,
   getAuthenticatedUserId,
@@ -898,6 +899,31 @@ router.post(
       status: "success",
       detail: `Booking of id ${bookingId} cancelled`,
     });
+  })
+);
+
+router.get(
+  "/bookings/:backend/config",
+  use(async (req, res) => {
+    // TODO: Add filtering by date or something, also in backend and MSS
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const { backend } = req.params;
+
+    const bookingsConfigsInDb = mockDb.getOne<BookingsConfigInDb>(
+      "bookings_configs",
+      (v) => v.id === backend
+    );
+    if (!bookingsConfigsInDb) {
+      res.status(404).json({ detail: `NotFound` });
+      return;
+    }
+
+    const { id: _, ...data } = bookingsConfigsInDb;
+    res.json(data);
   })
 );
 

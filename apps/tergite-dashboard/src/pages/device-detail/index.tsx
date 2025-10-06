@@ -1,11 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  bookingsConfigQuery,
   currentUserQuery,
   singleDeviceCalibrationQuery,
   singleDeviceQuery,
 } from "@/lib/api-client";
 import {
   AppState,
+  BookingsConfig,
   Device,
   DeviceCalibration,
   QubitProp,
@@ -37,8 +39,14 @@ const fieldLabels: { [k: string]: string } = {
 };
 
 export function DeviceDetail() {
-  const { device, calibrationData, bookingsMetadata, currentUser, isAdmin } =
-    useLoaderData() as DeviceDetailData;
+  const {
+    device,
+    calibrationData,
+    bookingsMetadata,
+    bookingsConfig,
+    currentUser,
+    isAdmin,
+  } = useLoaderData() as DeviceDetailData;
   const [currentData, setCurrentData] = useState<QubitProp>(
     QubitProp.T1_DECOHERENCE
   );
@@ -107,6 +115,7 @@ export function DeviceDetail() {
                 isAdmin={isAdmin}
                 currentUser={currentUser}
                 backend={device.name}
+                bookingsConfig={bookingsConfig}
               />
             </CardContent>
           </Card>
@@ -159,6 +168,15 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
         max_start_utc,
       } as BookingsMetadata;
 
+      // bookings config
+      const currentBookingsConfigQuery = bookingsConfigQuery(deviceName);
+      const cachedBookingsConfig = queryClient.getQueryData(
+        currentBookingsConfigQuery.queryKey
+      );
+      const bookingsConfig =
+        cachedBookingsConfig ??
+        (await queryClient.fetchQuery(currentBookingsConfigQuery));
+
       // current user
       const cachedCurrentUser = queryClient.getQueryData(
         currentUserQuery.queryKey
@@ -171,6 +189,7 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
       return {
         device,
         calibrationData,
+        bookingsConfig,
         bookingsMetadata,
         currentUser,
         isAdmin,
@@ -183,6 +202,7 @@ interface DeviceDetailData {
   device: Device;
   calibrationData: DeviceCalibration;
   bookingsMetadata: BookingsMetadata;
+  bookingsConfig: BookingsConfig;
   currentUser: User;
   isAdmin: boolean;
 }
