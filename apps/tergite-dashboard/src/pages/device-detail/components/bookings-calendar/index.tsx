@@ -4,6 +4,7 @@ import type {
   DayCellContentArg,
   DayHeaderContentArg,
   EventContentArg,
+  EventDropArg,
   EventSourceInput,
 } from "@fullcalendar/core";
 import {
@@ -19,10 +20,11 @@ import { Booking, BookingsConfig, User } from "types";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   bookingsOfBackendQuery,
   createNewBooking,
+  refreshBookingsQueries,
   updateBooking,
 } from "@/lib/api-client";
 import { BookingForm } from "./booking-form";
@@ -40,6 +42,7 @@ export function BookingsCalendar({
   currentUser,
   isAdmin,
 }: Props) {
+  const queryClient = useQueryClient();
   const { isDark } = useContext(AppStateContext);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
@@ -100,6 +103,20 @@ export function BookingsCalendar({
     [setDefaultStartTimestamp, setIsCreateFormOpen]
   );
 
+  const handleEventDrop = useCallback(
+    (arg: EventDropArg) => {
+      const bookingId = arg.event.extendedProps.id;
+      const newInfo = {
+        start_utc: arg.event.start?.toISOString() as string,
+        end_utc: arg.event.end?.toISOString() as string,
+      };
+      updateBooking(backend, bookingId, newInfo).then(() =>
+        refreshBookingsQueries(queryClient, backend)
+      );
+    },
+    [backend, queryClient]
+  );
+
   return (
     <>
       <EventCalendar
@@ -141,6 +158,8 @@ export function BookingsCalendar({
         scrollTime="09:00:00"
         contentHeight={"60vh"}
         dateClick={handleDateClick}
+        editable={true}
+        eventDrop={handleEventDrop}
       />
       <BookingForm
         dialogTitle="Create new booking"
