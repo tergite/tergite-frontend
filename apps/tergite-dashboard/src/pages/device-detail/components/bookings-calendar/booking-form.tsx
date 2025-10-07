@@ -1,6 +1,6 @@
 import { cn, mergeDatetime } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BookingsConfig } from "types";
+import { BookingsConfig, NewBookingInfo } from "types";
 import { useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { createNewBooking, refreshBookingsQueries } from "@/lib/api-client";
+import { refreshBookingsQueries } from "@/lib/api-client";
 import { DateTime, Duration } from "luxon";
 import { CalendarIcon } from "lucide-react";
 
@@ -39,28 +39,38 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-export function CreateBookingForm({
+export function BookingForm({
   className = "",
+  dialogTitle,
   backend,
-  onCreate = async () => {},
+  initialBooking,
+  onSuccess = () => {},
   onCancel = () => {},
-  defaultStartTimestamp,
   bookingsConfig,
+  defaultStartTimestamp,
   open,
   onOpenChange,
+  mutate,
 }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const now = DateTime.now();
   const yesterday = now.minus({ day: 1 }).toJSDate();
-  const startTimestampStr = defaultStartTimestamp ?? now.toISO();
-  const startTimestamp = DateTime.fromISO(startTimestampStr);
+  const startUtc =
+    initialBooking?.start_utc ?? defaultStartTimestamp ?? now.toISO();
+  const initialStartTimestamp = DateTime.fromISO(startUtc);
+  const initialEndTimestamp =
+    initialBooking?.end_utc && DateTime.fromISO(initialBooking.end_utc);
+
   const minDuration = Duration.fromObject({
     seconds: bookingsConfig.min_time_slot_length,
   });
   const maxDuration = Duration.fromObject({
     seconds: bookingsConfig.max_time_slot_length,
   });
+  const initialDuration = initialEndTimestamp
+    ? initialEndTimestamp.diff(initialStartTimestamp)
+    : minDuration;
   // TODO: Limit the possibility of creating a new slot for a given day
   //    if slots for that day are maxed out
   // const maxSlotsPerDay = bookingsConfig.max_slots_per_day;
@@ -100,37 +110,33 @@ export function CreateBookingForm({
   type FormInput = z.input<typeof formSchema>;
   type FormOutput = z.output<typeof formSchema>;
 
-  const createForm = useForm<FormInput, unknown, FormOutput>({
+  const formObj = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(formSchema),
     values: {
       startDate: {
-        date: startTimestamp.toJSDate(),
-        time: startTimestamp,
+        date: initialStartTimestamp.toJSDate(),
+        time: initialStartTimestamp,
       },
-      duration: {
-        hours: minDuration.hours,
-        minutes: minDuration.minutes,
-        seconds: minDuration.seconds,
-      },
+      duration: initialDuration,
     },
   });
 
   const handleCancel = useCallback(async () => {
-    createForm.reset();
+    formObj.reset();
     onCancel();
-  }, [createForm, onCancel]);
+  }, [formObj, onCancel]);
 
   const handleOpenChange = useCallback(
     async (value: boolean) => {
       if (!value) {
-        createForm.reset();
+        formObj.reset();
       }
       onOpenChange(value);
     },
-    [createForm, onOpenChange]
+    [formObj, onOpenChange]
   );
 
-  const bookingCreation = useMutation({
+  const bookingUpdate = useMutation({
     mutationFn: useCallback(
       async ({ startDate, duration }: FormOutput) => {
         const start_utc = startDate.toISO();
@@ -154,9 +160,9 @@ export function CreateBookingForm({
           throw new Error("invalid duration");
         }
 
-        return await createNewBooking(backend, { start_utc, end_utc });
+        return await mutate(backend, { start_utc, end_utc }, initialBooking);
       },
-      [backend, minDuration, maxDuration]
+      [backend, minDuration, maxDuration, initialBooking, mutate]
     ),
     onSuccess: useCallback(
       async (booking: Booking) => {
@@ -164,11 +170,11 @@ export function CreateBookingForm({
         const startTime = DateTime.fromISO(booking.start_utc).toLocaleString(
           DateTime.DATETIME_SHORT
         );
-        toast({ description: `Booking at ${startTime} created` });
-        await onCreate(booking);
+        toast({ description: `Booking at ${startTime} saved` });
+        onSuccess(booking);
         handleOpenChange(false);
       },
-      [backend, queryClient, handleOpenChange, onCreate, toast]
+      [backend, queryClient, handleOpenChange, onSuccess, toast]
     ),
     throwOnError: true,
   });
@@ -178,24 +184,24 @@ export function CreateBookingForm({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent id="create-booking-dialog">
+      <DialogContent id="booking-form-dialog">
         <DialogHeader>
-          <DialogTitle>Create new booking</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription className="py-5">
             Book a time slot on {backend} to avoid being interrupted by other
             users.
           </DialogDescription>
         </DialogHeader>
-        <Form {...createForm}>
+        <Form {...formObj}>
           <form
-            onSubmit={createForm.handleSubmit((values) =>
-              bookingCreation.mutate(values)
+            onSubmit={formObj.handleSubmit((values) =>
+              bookingUpdate.mutate(values)
             )}
             onReset={handleCancel}
             className={cn("grid gap-4 w-full", className)}
           >
             <FormField
-              control={createForm.control}
+              control={formObj.control}
               name="startDate"
               render={({ field }) => (
                 <FormItem className="grid gap-2">
@@ -206,7 +212,7 @@ export function CreateBookingForm({
                         <Button
                           id="datetime-input"
                           variant={"outline"}
-                          disabled={bookingCreation.isPending}
+                          disabled={bookingUpdate.isPending}
                           className={cn(
                             "w-full pl-3 text-left font-normal",
                             !field.value && "text-muted-foreground"
@@ -252,7 +258,7 @@ export function CreateBookingForm({
               )}
             />
             <FormField
-              control={createForm.control}
+              control={formObj.control}
               name="duration"
               render={({ field }) => (
                 <FormItem className="">
@@ -271,18 +277,18 @@ export function CreateBookingForm({
             <DialogFooter>
               <Button
                 disabled={
-                  bookingCreation.isPending // || !isFormDirty
+                  bookingUpdate.isPending // || !isFormDirty
                 }
                 type="submit"
                 variant="default"
               >
-                Create
+                Save
               </Button>
 
               <DialogClose asChild>
                 <Button
                   type="reset"
-                  disabled={bookingCreation.isPending}
+                  disabled={bookingUpdate.isPending}
                   variant="secondary"
                   className="border"
                 >
@@ -299,11 +305,18 @@ export function CreateBookingForm({
 
 interface Props {
   className?: string;
+  dialogTitle: string;
   backend: string;
-  onCreate?: (booking: Booking) => Promise<void>;
+  initialBooking?: Booking;
+  defaultStartTimestamp?: string;
+  onSuccess?: (booking: Booking) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultStartTimestamp?: string;
   bookingsConfig: BookingsConfig;
   onCancel?: () => void;
+  mutate: (
+    backend: string,
+    newInfo: NewBookingInfo,
+    original?: Booking
+  ) => Promise<Booking>;
 }

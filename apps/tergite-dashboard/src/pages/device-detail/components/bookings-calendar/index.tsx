@@ -1,6 +1,6 @@
 import { EventCalendar } from "@/components/ui/event-calendar";
 import { AppStateContext } from "@/lib/app-state";
-import {
+import type {
   DayCellContentArg,
   DayHeaderContentArg,
   EventContentArg,
@@ -15,13 +15,17 @@ import {
 import { DateTime, Duration } from "luxon";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { BookingsConfig, User } from "types";
+import { Booking, BookingsConfig, User } from "types";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { useQuery } from "@tanstack/react-query";
-import { bookingsOfBackendQuery } from "@/lib/api-client";
-import { CreateBookingForm } from "./create-booking-form";
+import {
+  bookingsOfBackendQuery,
+  createNewBooking,
+  updateBooking,
+} from "@/lib/api-client";
+import { BookingForm } from "./booking-form";
 
 /**
  * The calendar for viewing and making bookings
@@ -38,6 +42,8 @@ export function BookingsCalendar({
 }: Props) {
   const { isDark } = useContext(AppStateContext);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false);
+  const [currentBooking, setCurrentBooking] = useState<Booking>();
   const [defaultStartTimestamp, setDefaultStartTimestamp] = useState<string>();
   const { data: bookings = [] } = useQuery(
     bookingsOfBackendQuery(bookingsMetadata)
@@ -56,6 +62,14 @@ export function BookingsCalendar({
     [bookings, backend]
   );
 
+  const handleBookingEditClick = useCallback(
+    (booking: Booking) => {
+      setCurrentBooking(booking);
+      setIsEditFormOpen(true);
+    },
+    [setCurrentBooking, setIsEditFormOpen]
+  );
+
   const currentUserId = currentUser.id;
   const getEventClassNames = useMemo(
     () =>
@@ -66,14 +80,16 @@ export function BookingsCalendar({
       }),
     [isAdmin, isDark, currentUserId]
   );
+
   const renderEventContent = useMemo(
     () =>
       getEventContentGenerator({
         isAdmin,
         isDark,
         currentUserId,
+        handleBookingEdit: handleBookingEditClick,
       }),
-    [isAdmin, isDark, currentUserId]
+    [isAdmin, isDark, currentUserId, handleBookingEditClick]
   );
 
   const handleDateClick = useCallback(
@@ -126,13 +142,29 @@ export function BookingsCalendar({
         contentHeight={"60vh"}
         dateClick={handleDateClick}
       />
-      <CreateBookingForm
+      <BookingForm
+        dialogTitle="Create new booking"
         open={isCreateFormOpen}
         onOpenChange={setIsCreateFormOpen}
         backend={backend}
         bookingsConfig={bookingsConfig}
         defaultStartTimestamp={defaultStartTimestamp}
+        mutate={(backend, newInfo) => createNewBooking(backend, newInfo)}
       />
+      {currentBooking && (
+        <BookingForm
+          dialogTitle="Edit booking"
+          open={isEditFormOpen}
+          onOpenChange={setIsEditFormOpen}
+          backend={backend}
+          bookingsConfig={bookingsConfig}
+          initialBooking={currentBooking}
+          mutate={(backend, newInfo, original) =>
+            updateBooking(backend, original?.id as string, newInfo)
+          }
+          onSuccess={setCurrentBooking}
+        />
+      )}
     </>
   );
 }
@@ -185,11 +217,16 @@ function getEventClassNamesGenerator(_props: EventState) {
  *
  * @param state - the external state this event class generator depends on
  */
-function getEventContentGenerator({ isAdmin, currentUserId }: EventState) {
+function getEventContentGenerator({
+  isAdmin,
+  currentUserId,
+  handleBookingEdit = () => {},
+}: EventState) {
   return (eventInfo: EventContentArg) => {
     const isPast = DateTime.fromISO(eventInfo.event.startStr) < DateTime.now();
     const isOwnedByUser =
       currentUserId === eventInfo.event.extendedProps.user_id;
+    const booking = eventInfo.event.extendedProps as Booking;
 
     const canEdit = !isPast && (isOwnedByUser || isAdmin);
     return (
@@ -238,6 +275,7 @@ function getEventContentGenerator({ isAdmin, currentUserId }: EventState) {
                     variant="outline"
                     className="w-full"
                     disabled={isPast}
+                    onClick={() => handleBookingEdit(booking)}
                   >
                     Edit
                   </Button>
@@ -264,6 +302,7 @@ interface EventState {
   isDark?: boolean;
   currentUserId?: string;
   isAdmin: boolean;
+  handleBookingEdit?: (booking: Booking) => void;
 }
 
 export interface BookingsMetadata {
