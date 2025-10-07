@@ -139,7 +139,7 @@ export function BookingForm({
   const bookingUpdate = useMutation({
     mutationFn: useCallback(
       async ({ startDate, duration }: FormOutput) => {
-        const start_utc = startDate.toISO();
+        const start_utc = startDate.toUTC().toISO();
         if (start_utc == null) {
           throw new Error("invalid start date");
         }
@@ -155,7 +155,7 @@ export function BookingForm({
           );
         }
 
-        const end_utc = startDate.plus(duration).toISO();
+        const end_utc = startDate.plus(duration).toUTC().toISO();
         if (end_utc == null) {
           throw new Error("invalid duration");
         }
