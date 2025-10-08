@@ -14,6 +14,7 @@ import {
   mockDb,
   respond401,
   use,
+  randomUUID,
 } from "../utils";
 import {
   AuthProvider,
@@ -39,7 +40,6 @@ import {
   NewBookingInfo,
   Booking,
 } from "../../types";
-import { randomUUID } from "crypto";
 import { DateTime } from "luxon";
 
 const apiBaseUrl = process.env.VITE_API_BASE_URL;

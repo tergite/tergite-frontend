@@ -33,7 +33,7 @@ import {
   UserRequest,
   UserRole,
 } from "../types";
-import { randomUUID } from "crypto";
+import { v4 as uuidv4 } from "uuid";
 
 const jwtSecret = process.env.JWT_SECRET ?? "no-token-really-noooo";
 const authAudience = process.env.AUTH_AUDIENCE ?? "no-auth-audience-noooo";
@@ -549,6 +549,13 @@ export function toBookingPayload({
     start_utc: startTimestamp.toISOString(),
     end_utc: endTimestamp.toISOString(),
   };
+}
+
+/**
+ * Creates a randmon UUID and returns it
+ */
+export function randomUUID(): string {
+  return uuidv4();
 }
 
 /**
