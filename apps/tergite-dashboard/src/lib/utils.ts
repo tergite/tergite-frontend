@@ -273,13 +273,13 @@ export function saveIsDarkMode(isDarkMode: boolean) {
     document.documentElement.classList.remove("dark");
   }
 }
+
 /**
  * Combines the date and the time into one DateTime instance
  *
  * @param value - the date and the time
  * @returns - the combined DateTime instance
  */
-
 export function mergeDatetime(value: {
   date?: Date;
   time?: Time | DateTime;
@@ -287,13 +287,13 @@ export function mergeDatetime(value: {
   const { date = new Date(), time = {} } = value;
   return DateTime.fromJSDate(date).set(toTime(time));
 }
+
 /**
  * Converts a Datetime instance to a Time instance
  *
  * @param value - the DateTime/Time instance
  * @returns - the Time equivalent of the given DateTime instance
  */
-
 export function toTime({
   hour,
   minute,

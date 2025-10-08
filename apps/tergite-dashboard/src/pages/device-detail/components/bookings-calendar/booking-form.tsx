@@ -56,6 +56,7 @@ export function BookingForm({
   const { toast } = useToast();
   const now = DateTime.now();
   const yesterday = now.minus({ day: 1 }).toJSDate();
+  const isEdit = !!initialBooking;
   const startUtc =
     initialBooking?.start_utc ?? defaultStartTimestamp ?? now.toISO();
   const initialStartTimestamp = DateTime.fromISO(startUtc);
@@ -117,7 +118,11 @@ export function BookingForm({
         date: initialStartTimestamp.toJSDate(),
         time: initialStartTimestamp,
       },
-      duration: initialDuration,
+      duration: {
+        hours: 0,
+        minutes: 0,
+        seconds: initialDuration.as("seconds"),
+      },
     },
   });
 
@@ -179,8 +184,8 @@ export function BookingForm({
     throwOnError: true,
   });
 
-  // // A hack: for some reason createForm.formState.isDirty was not always right especially
-  // const isFormDirty = Object.keys(createForm.formState.dirtyFields).length;
+  // // A hack: for some reason formObj.formState.isDirty was not always right especially
+  const isFormDirty = Object.keys(formObj.formState.dirtyFields).length;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -276,9 +281,7 @@ export function BookingForm({
             />
             <DialogFooter>
               <Button
-                disabled={
-                  bookingUpdate.isPending // || !isFormDirty
-                }
+                disabled={bookingUpdate.isPending || (isEdit && !isFormDirty)}
                 type="submit"
                 variant="default"
               >
