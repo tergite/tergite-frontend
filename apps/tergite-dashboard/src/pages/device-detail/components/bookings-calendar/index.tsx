@@ -251,7 +251,10 @@ function getEventContentGenerator({
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <div className="fc-event-main border-1 px-2 w-full">
+          <div
+            data-cy-calendar-event
+            className="fc-event-main border-1 px-2 w-full"
+          >
             <div className="fc-event-main-frame text-secondary hover:text-secondary-foreground">
               <div className="fc-event-time">{eventInfo.timeText}</div>
               <div className="fc-event-title-container">
@@ -263,7 +266,7 @@ function getEventContentGenerator({
           </div>
         </PopoverTrigger>
         <PopoverContent>
-          <div>
+          <div data-cy-event-details>
             <div className="grid gap-4">
               <div className="space-y-2">
                 <h4 className="leading-none font-medium">

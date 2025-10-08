@@ -199,6 +199,7 @@ export function BookingForm({
         </DialogHeader>
         <Form {...formObj}>
           <form
+            data-cy-booking-form
             onSubmit={formObj.handleSubmit((values) =>
               bookingUpdate.mutate(values)
             )}

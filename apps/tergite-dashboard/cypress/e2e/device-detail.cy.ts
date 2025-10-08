@@ -4,6 +4,7 @@
 import userList from "../fixtures/users.json";
 import deviceList from "../fixtures/device-list.json";
 import medianCalibrations from "../fixtures/median-calibrations.json";
+// import bookingsFixture from "../fixtures/bookings.json";
 import { generateJwt, getUsername } from "../../api/utils";
 import { type Device, type User } from "../../types";
 
@@ -193,6 +194,102 @@ users.forEach((user) => {
           },
         });
       });
+
+      describe(`bookings for the ${device.name}`, () => {
+        // let expectedBookings: Booking[] = [];
+        // const user_id = users[0].id;
+        const username = users[0].email.split("@")[0];
+        const currentUsername = user.email.split("@")[0];
+
+        beforeEach(() => {
+          const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
+          const currentDateStr = Cypress.env("CURRENT_DATE");
+          const currentDate = new Date(currentDateStr);
+
+          // expectedBookings = bookingsFixture.map((v) => ({
+          //   ...toBookingPayload(v, currentDate),
+          //   user_id,
+          //   username,
+          //   total_duration: v.duration,
+          //   id: "RANDOM_UUID",
+          // }));
+
+          cy.clock(currentDate, ["Date"]);
+          cy.intercept(
+            "GET",
+            `${apiBaseUrl}/bookings/${device.name}/config`
+          ).as("bookings-config");
+          cy.intercept("GET", `${apiBaseUrl}/bookings/${device.name}?`).as(
+            "bookings-list"
+          );
+
+          cy.viewport(1280, 750);
+          cy.contains("button", /bookings/i).realClick();
+          cy.wait("@bookings-list");
+        });
+
+        it("renders the calendar view", () => {
+          cy.get("[data-cy-calendar-event]").first().scrollIntoView();
+          cy.get("#calendar-view").compareSnapshot({
+            name: `calendar-view-${platform}-of-${device.id}`,
+            testThreshold: Math.max(testThreshold, 0.35),
+            retryOptions: {
+              limit: 2,
+              delay: 500,
+            },
+          });
+        });
+
+        it("renders the basic details of a booking", () => {
+          cy.get("[data-cy-calendar-event]").each((el) => {
+            cy.wrap(el)
+              .scrollIntoView()
+              .within(() => {
+                cy.contains(username).should("exist");
+                // for short bookings, the text gets cut off
+                cy.contains(".fc-event-time", /\d\d?:\d\d - \d\d?:\d\d/).should(
+                  "be.visible"
+                );
+              });
+          });
+        });
+
+        it("renders the details of a booking on tapping the booking in the calendar", () => {
+          cy.get("[data-cy-calendar-event]").each((el, idx) => {
+            cy.contains("#calendar-view .flex", "Bookings data").realClick();
+            cy.get("[data-cy-event-details]").should("not.exist");
+
+            cy.wrap(el)
+              .scrollIntoView()
+              .contains(".fc-event-main-frame", username)
+              .realClick();
+            cy.get("[data-cy-event-details]").within(() => {
+              cy.contains(username).should("be.visible");
+              cy.contains(/\d?\d:\d\d - \d?\d:\d\d/).should("be.visible");
+              cy.contains("div", /device/i).within(() => {
+                cy.contains(device.name).should("be.visible");
+              });
+              cy.contains("div", /duration/i).within(() => {
+                cy.contains(
+                  /(\+?\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?),?)+/i
+                ).should("be.visible");
+              });
+              // The first two events are in the past.
+              if (idx > 1 && username === currentUsername) {
+                cy.contains("button", /edit/i).should("be.visible");
+              } else {
+                cy.contains("button", /edit/i).should("not.exist");
+              }
+            });
+          });
+        });
+      });
+
+      // creating new booking by tapping any empty cell in the calendar
+      // cancelling creating new booking by tapping any empty cell in the calendar
+      // editing by tapping edit button of the booking popup
+      // cancelling editing by tapping edit button of the booking popup
+      // editing a booking by drag and drop
     });
   });
 });

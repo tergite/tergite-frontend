@@ -35,6 +35,7 @@ import {
 } from "../types";
 import { v4 as uuidv4 } from "uuid";
 
+const currentDateString = process.env.CURRENT_DATE;
 const jwtSecret = process.env.JWT_SECRET ?? "no-token-really-noooo";
 const authAudience = process.env.AUTH_AUDIENCE ?? "no-auth-audience-noooo";
 const cookieName: string = process.env.VITE_COOKIE_NAME ?? "tergiteauth";
@@ -44,6 +45,9 @@ const firstUser = userList[0];
 const firstUserId = firstUser["id"];
 const firstUsername = firstUser["email"].split("@")[0];
 const firstUserIsAdmin = firstUser["roles"].includes("admin");
+const currentDateFromEnv = currentDateString
+  ? new Date(currentDateString)
+  : new Date();
 
 const bccUserList = deviceList
   .map(({ name: backend }) =>
@@ -55,7 +59,7 @@ const bccUserList = deviceList
 const bookingList = deviceList
   .map(({ name: backend }) =>
     bookingsFixture.map((v) =>
-      toBookingInDb(v, backend, firstUserId, firstUsername)
+      toBookingInDb(v, backend, firstUserId, firstUsername, currentDateFromEnv)
     )
   )
   .flat(1);
@@ -536,12 +540,13 @@ interface HttpError extends ErrorInfo {
  * Converts basic booking data into payload sent when creating a booking
  *
  * @param data - the basic booking info using relative time
+ * @param currentDate - the current date to start from
  */
-export function toBookingPayload({
-  starts_in,
-  duration,
-}: BookingInfo): NewBookingInfo {
-  const now = new Date().getTime();
+export function toBookingPayload(
+  { starts_in, duration }: BookingInfo,
+  currentDate: Date
+): NewBookingInfo {
+  const now = currentDate.getTime();
   const startTimestamp = new Date(now + starts_in * 1000);
   const endTimestamp = new Date(startTimestamp.getTime() + duration * 1000);
 
@@ -562,16 +567,20 @@ export function randomUUID(): string {
  * Converts basic booking info containing duration and start, to booking as saved in database
  *
  * @param record - the basic booking info
+ * @param backend - the name of the device
  * @param user_id - the identifier of the user who booked
  * @param username - the username of the user who booked
+ * @param currentDate - the current date
+ *
  */
 function toBookingInDb(
   record: BookingInfo,
   backend: string,
   user_id: string,
-  username: string
+  username: string,
+  currentDate: Date
 ): BookingInDb {
-  const bookingPayload = toBookingPayload(record);
+  const bookingPayload = toBookingPayload(record, currentDate);
   return {
     ...bookingPayload,
     backend,

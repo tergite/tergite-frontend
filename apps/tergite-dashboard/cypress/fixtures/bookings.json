@@ -1,18 +1,18 @@
 [
   {
-    "starts_in": 0,
-    "duration": 3
-  },
-  {
-    "starts_in": 3,
-    "duration": 5
-  },
-  {
-    "starts_in": 8,
-    "duration": 120
-  },
-  {
     "starts_in": 600,
+    "duration": 3000
+  },
+  {
+    "starts_in": 3600,
+    "duration": 1800
+  },
+  {
+    "starts_in": 5400,
+    "duration": 1200
+  },
+  {
+    "starts_in": 6600,
     "duration": 3600
   },
   {
