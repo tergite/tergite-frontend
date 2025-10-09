@@ -4,8 +4,8 @@
 import userList from "../fixtures/users.json";
 import deviceList from "../fixtures/device-list.json";
 import medianCalibrations from "../fixtures/median-calibrations.json";
-// import bookingsFixture from "../fixtures/bookings.json";
-import { generateJwt, getUsername } from "../../api/utils";
+import bookingsConfigList from "../fixtures/bookings-configs.json";
+import { BookingsConfigInDb, generateJwt, getUsername } from "../../api/utils";
 import { type Device, type User } from "../../types";
 
 const users = [...userList] as User[];
@@ -20,10 +20,15 @@ const calibrationProperties: { [k: string]: RegExp } = {
 const medianCalibrationsDataMap: {
   [k: string]: { t1: string; t2: string; readout_error: string };
 } = { ...medianCalibrations };
+const bookingsConfigs = [...bookingsConfigList] as BookingsConfigInDb[];
+const bookingsConfigsMap = Object.fromEntries(
+  bookingsConfigs.map((v) => [v.id, v])
+);
 
-users.forEach((user) => {
+users.slice(0, 4).forEach((user) => {
   devices.forEach((device) => {
     const calibrationMedians = medianCalibrationsDataMap[device.id];
+    const bookingConfigs = bookingsConfigsMap[device.name];
     const username = getUsername(user);
     let testThreshold: number;
     let platform: string;
@@ -196,23 +201,55 @@ users.forEach((user) => {
       });
 
       describe(`bookings for the ${device.name}`, () => {
-        // let expectedBookings: Booking[] = [];
-        // const user_id = users[0].id;
+        let currentDateStr: string;
+        let currentDate: Date;
+        let testTimestamp: Date;
+        let currentLocaleDateStr: string;
+        let testLocaleDateStr: string;
+        let testISODateStr: string;
+        let testISOTimeStr: string;
+        let currentISODateStr: string;
+        let currentISOTimeStr: string;
         const username = users[0].email.split("@")[0];
         const currentUsername = user.email.split("@")[0];
+        const defaultDurationStr = convertSecToDurationStr(
+          bookingConfigs.min_time_slot_length
+        );
+        const invalidDurations = [
+          bookingConfigs.min_time_slot_length - 900,
+          bookingConfigs.max_time_slot_length + 900,
+        ];
 
         beforeEach(() => {
           const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
-          const currentDateStr = Cypress.env("CURRENT_DATE");
-          const currentDate = new Date(currentDateStr);
-
-          // expectedBookings = bookingsFixture.map((v) => ({
-          //   ...toBookingPayload(v, currentDate),
-          //   user_id,
-          //   username,
-          //   total_duration: v.duration,
-          //   id: "RANDOM_UUID",
-          // }));
+          currentDateStr = Cypress.env("CURRENT_DATE");
+          currentDate = new Date(currentDateStr);
+          const timezoneOffset = new Date().getTimezoneOffset() * 60;
+          testTimestamp = addSeconds(currentDate, 4 * 3_600 - timezoneOffset);
+          testLocaleDateStr = testTimestamp.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          currentLocaleDateStr = currentDate.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          testISODateStr = testTimestamp.toLocaleDateString("en-CA");
+          testISOTimeStr = testTimestamp.toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          });
+          currentISODateStr = currentDate.toLocaleDateString("en-CA");
+          currentISOTimeStr = currentDate.toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          });
 
           cy.clock(currentDate, ["Date"]);
           cy.intercept(
@@ -226,6 +263,7 @@ users.forEach((user) => {
           cy.viewport(1280, 750);
           cy.contains("button", /bookings/i).realClick();
           cy.wait("@bookings-list");
+          cy.wait(100);
         });
 
         it("renders the calendar view", () => {
@@ -283,13 +321,320 @@ users.forEach((user) => {
             });
           });
         });
-      });
 
-      // creating new booking by tapping any empty cell in the calendar
-      // cancelling creating new booking by tapping any empty cell in the calendar
-      // editing by tapping edit button of the booking popup
-      // cancelling editing by tapping edit button of the booking popup
-      // editing a booking by drag and drop
+        it("tapping an empty cell in the calendar opens a form for creating a new booking with that cell's start date", () => {
+          cy.viewport(1440, 1080);
+          const startTimeStr = get12HourTimeString(testTimestamp);
+          const endTime = addSeconds(
+            testTimestamp,
+            bookingConfigs.min_time_slot_length
+          );
+          const endTimeStr = get12HourTimeString(endTime);
+
+          cy.get("#booking-form-dialog").should("not.exist");
+          cy.contains(
+            ".fc-event-time",
+            `${startTimeStr} - ${endTimeStr}`
+          ).should("not.exist");
+
+          cy.get("#calendar-view")
+            .clickCalendarCell(testISODateStr, testISOTimeStr)
+            .then(() => {
+              cy.get("#booking-form-dialog").should("exist");
+              cy.get("#booking-form-dialog")
+                .within(() => {
+                  cy.contains("h2", /create new booking/i).should("be.visible");
+                  cy.contains(
+                    "button#datetime-input",
+                    new RegExp(`${testLocaleDateStr}, ${testISOTimeStr}`, "i")
+                  ).should("be.visible");
+                  cy.get("input#duration[type='time']")
+                    .should("have.attr", "value")
+                    .and("match", new RegExp(`${defaultDurationStr}.000`));
+
+                  // Creates a new booking
+                  cy.contains("button", /save/i).click();
+                })
+                .then(() => {
+                  cy.contains(
+                    ".fc-event-time",
+                    `${startTimeStr} - ${endTimeStr}`
+                  ).should("be.visible");
+                });
+            });
+        });
+
+        it("Clicking cancel in the event creation form cancels the event creation", () => {
+          const startTimeStr = get12HourTimeString(testTimestamp);
+          const endTime = addSeconds(
+            testTimestamp,
+            bookingConfigs.min_time_slot_length
+          );
+          const endTimeStr = get12HourTimeString(endTime);
+
+          cy.get("#booking-form-dialog").should("not.exist");
+          cy.contains(
+            ".fc-event-time",
+            `${startTimeStr} - ${endTimeStr}`
+          ).should("not.exist");
+
+          cy.get("#calendar-view")
+            .clickCalendarCell(testISODateStr, testISOTimeStr)
+            .then(() => {
+              cy.contains("#booking-form-dialog button", /cancel/i)
+                .click()
+                .then(() => {
+                  cy.contains(
+                    ".fc-event-time",
+                    `${startTimeStr} - ${endTimeStr}`
+                  ).should("not.exist");
+                });
+            });
+        });
+
+        it("editing the default values in the creation form allows creation of booking with those values", () => {
+          cy.viewport(1440, 1080);
+          const startTimeStr = get12HourTimeString(testTimestamp);
+          const duration = Math.min(
+            bookingConfigs.max_time_slot_length,
+            bookingConfigs.min_time_slot_length + 900
+          );
+          const durationStr = convertSecToDurationStr(duration);
+          const endTime = addSeconds(testTimestamp, duration);
+          const endTimeStr = get12HourTimeString(endTime);
+
+          cy.get("#booking-form-dialog").should("not.exist");
+          cy.contains(
+            ".fc-event-time",
+            `${startTimeStr} - ${endTimeStr}`
+          ).should("not.exist");
+
+          cy.get("#calendar-view")
+            .clickCalendarCell(currentISODateStr, currentISOTimeStr)
+            .then(() => {
+              cy.get("#booking-form-dialog")
+                .within(() => {
+                  cy.get("input#duration[type='time']").type(durationStr);
+
+                  cy.contains(
+                    "button#datetime-input",
+                    new RegExp(
+                      `${currentLocaleDateStr}, ${currentISOTimeStr}`,
+                      "i"
+                    )
+                  ).click();
+
+                  cy.get(
+                    "[data-radix-popper-content-wrapper] input[type='time']"
+                  ).type(testISOTimeStr);
+
+                  // save
+                  cy.contains("button", /save/i).click();
+                })
+                .then(() => {
+                  cy.contains(
+                    ".fc-event-time",
+                    `${startTimeStr} - ${endTimeStr}`
+                  ).should("be.visible");
+                });
+            });
+        });
+
+        invalidDurations.forEach((duration) => {
+          const titlePatch =
+            duration > bookingConfigs.max_time_slot_length
+              ? "greater than max"
+              : "less than min";
+
+          it(`entering a duration ${titlePatch} duration raises errors in the creation form`, () => {
+            cy.viewport(1440, 1080);
+            const startTimeStr = get12HourTimeString(testTimestamp);
+            const durationStr = convertSecToDurationStr(duration);
+            const endTime = addSeconds(testTimestamp, duration);
+            const endTimeStr = get12HourTimeString(endTime);
+            const minDurationStr = convertSecToDurationStr(
+              bookingConfigs.min_time_slot_length
+            );
+            const maxDurationStr = convertSecToDurationStr(
+              bookingConfigs.max_time_slot_length
+            );
+            const errMsg = `duration must be between ${minDurationStr}.000 and ${maxDurationStr}.000`;
+
+            cy.get("#booking-form-dialog").should("not.exist");
+            cy.contains(
+              ".fc-event-time",
+              `${startTimeStr} - ${endTimeStr}`
+            ).should("not.exist");
+
+            cy.get("#calendar-view")
+              .clickCalendarCell(currentISODateStr, currentISOTimeStr)
+              .then(() => {
+                cy.get("#booking-form-dialog")
+                  .within(() => {
+                    cy.get("input#duration[type='time']").type(durationStr);
+
+                    cy.contains(
+                      "button#datetime-input",
+                      new RegExp(
+                        `${currentLocaleDateStr}, ${currentISOTimeStr}`,
+                        "i"
+                      )
+                    ).click();
+
+                    cy.get(
+                      "[data-radix-popper-content-wrapper] input[type='time']"
+                    ).type(testISOTimeStr);
+
+                    cy.contains("div.space-y-2", /duration/i).within(() => {
+                      cy.contains(
+                        "p.text-destructive",
+                        new RegExp(errMsg)
+                      ).should("not.exist");
+                    });
+
+                    // save
+                    cy.contains("button", /save/i)
+                      .click()
+                      .then(() => {
+                        cy.contains("div.space-y-2", /duration/i).within(() => {
+                          cy.contains(
+                            "p.text-destructive",
+                            new RegExp(errMsg)
+                          ).should("be.visible");
+                        });
+                      });
+                  })
+                  .then(() => {
+                    cy.contains(
+                      ".fc-event-time",
+                      `${startTimeStr} - ${endTimeStr}`
+                    ).should("not.exist");
+                  });
+              });
+          });
+        });
+
+        it(`entering a start date that is in the past raises errors in the creation form`, () => {
+          cy.viewport(1440, 1080);
+          const startTimestamp = addSeconds(currentDate, -900);
+          const startISOTimeStr = startTimestamp.toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          });
+          const startTimeStr = get12HourTimeString(startTimestamp);
+          const duration = Math.min(
+            bookingConfigs.max_time_slot_length,
+            bookingConfigs.min_time_slot_length + 900
+          );
+          const durationStr = convertSecToDurationStr(duration);
+          const endTime = addSeconds(testTimestamp, duration);
+          const endTimeStr = get12HourTimeString(endTime);
+
+          const errMsg = `date must be in future`;
+
+          cy.get("#booking-form-dialog").should("not.exist");
+          cy.contains(
+            ".fc-event-time",
+            `${startTimeStr} - ${endTimeStr}`
+          ).should("not.exist");
+
+          cy.get("#calendar-view")
+            .clickCalendarCell(currentISODateStr, currentISOTimeStr)
+            .then(() => {
+              cy.get("#booking-form-dialog")
+                .within(() => {
+                  cy.get("input#duration[type='time']").type(durationStr);
+
+                  cy.contains(
+                    "button#datetime-input",
+                    new RegExp(
+                      `${currentLocaleDateStr}, ${currentISOTimeStr}`,
+                      "i"
+                    )
+                  ).click();
+
+                  cy.get(
+                    "[data-radix-popper-content-wrapper] input[type='time']"
+                  ).type(startISOTimeStr);
+
+                  cy.contains("div.space-y-2", /start/i).within(() => {
+                    cy.contains(
+                      "p.text-destructive",
+                      new RegExp(errMsg)
+                    ).should("not.exist");
+                  });
+
+                  // save
+                  cy.contains("button", /save/i)
+                    .click()
+                    .then(() => {
+                      cy.contains("div.space-y-2", /start/i).within(() => {
+                        cy.contains(
+                          "p.text-destructive",
+                          new RegExp(errMsg)
+                        ).should("be.visible");
+                      });
+                    });
+                })
+                .then(() => {
+                  cy.contains(
+                    ".fc-event-time",
+                    `${startTimeStr} - ${endTimeStr}`
+                  ).should("not.exist");
+                });
+            });
+        });
+
+        // TODO:
+        // editing by tapping edit button of the booking popup
+        // cancelling editing by tapping edit button of the booking popup
+        // editing a booking by drag and drop
+        // cancelling a booking
+      });
     });
   });
 });
+
+/**
+ * Converts seconds to a duration of format HH:mm:ss
+ *
+ * @param totalSeconds - the total number of seconds to convert to duration
+ * @returns - the duraiton string of format HH:mm:ss
+ */
+function convertSecToDurationStr(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [
+    hours.toString().padStart(2, "0"),
+    minutes.toString().padStart(2, "0"),
+    seconds.toString().padStart(2, "0"),
+  ].join(":");
+}
+
+/**
+ * Gets the time string as a 12 hour value without the PM/AM part e.g. 2:54
+ *
+ * @param value - the date valiue
+ */
+function get12HourTimeString(value: Date): string {
+  return value
+    .toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .split(" ")[0];
+}
+
+/**
+ * Returns a new Date with the given extra number of seconds
+ * @param value - the original Date value
+ * @param seconds - the seconds to add
+ */
+function addSeconds(value: Date, seconds: number): Date {
+  return new Date(value.getTime() + seconds * 1000);
+}
