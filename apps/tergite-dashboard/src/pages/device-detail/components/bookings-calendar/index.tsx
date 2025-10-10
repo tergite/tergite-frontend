@@ -16,18 +16,20 @@ import {
 import { DateTime, Duration } from "luxon";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Booking, BookingsConfig, User } from "types";
+import { Booking, BookingsConfig, GeneralMessage, User } from "types";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   bookingsOfBackendQuery,
+  cancelBooking,
   createNewBooking,
   refreshBookingsQueries,
   updateBooking,
 } from "@/lib/api-client";
 import { BookingForm } from "./booking-form";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * The calendar for viewing and making bookings
@@ -43,6 +45,7 @@ export function BookingsCalendar({
   isAdmin,
 }: Props) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { isDark } = useContext(AppStateContext);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
@@ -65,12 +68,34 @@ export function BookingsCalendar({
     [bookings, backend]
   );
 
-  const handleBookingEditClick = useCallback(
+  const bookingCancellation = useMutation({
+    mutationFn: useCallback(
+      async ({ id }: Booking) => {
+        return await cancelBooking(backend, id);
+      },
+      [backend]
+    ),
+    onSuccess: useCallback(
+      async (response: GeneralMessage) => {
+        await refreshBookingsQueries(queryClient, backend);
+        toast({ description: response.detail });
+      },
+      [backend, queryClient, toast]
+    ),
+    throwOnError: true,
+  });
+
+  const handleBookingEdit = useCallback(
     (booking: Booking) => {
       setCurrentBooking(booking);
       setIsEditFormOpen(true);
     },
     [setCurrentBooking, setIsEditFormOpen]
+  );
+
+  const handleBookingCancel = useCallback(
+    (booking: Booking) => bookingCancellation.mutate(booking),
+    [bookingCancellation]
   );
 
   const currentUserId = currentUser.id;
@@ -90,9 +115,10 @@ export function BookingsCalendar({
         isAdmin,
         isDark,
         currentUserId,
-        handleBookingEdit: handleBookingEditClick,
+        handleBookingEdit,
+        handleBookingCancel,
       }),
-    [isAdmin, isDark, currentUserId, handleBookingEditClick]
+    [isAdmin, isDark, currentUserId, handleBookingEdit, handleBookingCancel]
   );
 
   const handleDateClick = useCallback(
@@ -240,6 +266,7 @@ function getEventContentGenerator({
   isAdmin,
   currentUserId,
   handleBookingEdit = () => {},
+  handleBookingCancel = () => {},
 }: EventState) {
   return (eventInfo: EventContentArg) => {
     const isPast = DateTime.fromISO(eventInfo.event.startStr) < DateTime.now();
@@ -254,6 +281,7 @@ function getEventContentGenerator({
           <div
             data-cy-calendar-event
             className="fc-event-main border-1 px-2 w-full"
+            data-booking-id={booking.id}
           >
             <div className="fc-event-main-frame text-secondary hover:text-secondary-foreground">
               <div className="fc-event-time">{eventInfo.timeText}</div>
@@ -290,17 +318,27 @@ function getEventContentGenerator({
                   </span>
                 </div>
               </div>
-              <div className="justify-end">
+              <div className="justify-between">
                 {/* FIXME: Add onClick to allow to change the time if this event belongs to the user*/}
                 {canEdit && (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={isPast}
-                    onClick={() => handleBookingEdit(booking)}
-                  >
-                    Edit
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-1/2"
+                      disabled={isPast}
+                      onClick={() => handleBookingEdit(booking)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="w-1/2"
+                      disabled={isPast}
+                      onClick={() => handleBookingCancel(booking)}
+                    >
+                      Discard
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -325,6 +363,7 @@ interface EventState {
   currentUserId?: string;
   isAdmin: boolean;
   handleBookingEdit?: (booking: Booking) => void;
+  handleBookingCancel?: (booking: Booking) => void;
 }
 
 export interface BookingsMetadata {

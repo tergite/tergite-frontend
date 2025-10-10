@@ -42,6 +42,7 @@ import {
 } from "../../types";
 import { DateTime } from "luxon";
 
+const currentDateString = process.env.CURRENT_DATE;
 const apiBaseUrl = process.env.VITE_API_BASE_URL;
 const router = Router();
 
@@ -880,7 +881,11 @@ router.post(
 
     const startTimestamp = DateTime.fromISO(booking.start_utc);
     const endTimestamp = DateTime.fromISO(booking.end_utc);
-    const now = DateTime.now();
+    // we sometimes mock now especially during tests so we need
+    // to ensure this does not fail at such times.
+    const now = currentDateString
+      ? DateTime.fromISO(currentDateString)
+      : DateTime.now();
 
     if (startTimestamp <= now && endTimestamp >= now) {
       res

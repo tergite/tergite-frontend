@@ -5,8 +5,9 @@ import userList from "../fixtures/users.json";
 import deviceList from "../fixtures/device-list.json";
 import medianCalibrations from "../fixtures/median-calibrations.json";
 import bookingsConfigList from "../fixtures/bookings-configs.json";
+import bookingsFixture from "../fixtures/bookings.json";
 import { BookingsConfigInDb, generateJwt, getUsername } from "../../api/utils";
-import { type Device, type User } from "../../types";
+import { Booking, type Device, type User } from "../../types";
 
 const users = [...userList] as User[];
 const devices = deviceList.slice(0, 3) as Device[];
@@ -32,15 +33,20 @@ users.slice(0, 4).forEach((user) => {
     const username = getUsername(user);
     let testThreshold: number;
     let platform: string;
+    let apiBaseUrl: string;
+    let currentDateStr: string;
+    let currentDate: Date;
 
     describe(`${device.name} device detail  for ${username}`, () => {
       beforeEach(() => {
-        const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
+        apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
         const dbResetUrl = Cypress.env("DB_RESET_URL");
         const domain = Cypress.env("VITE_COOKIE_DOMAIN");
         const cookieName = Cypress.env("VITE_COOKIE_NAME");
         const secret = Cypress.env("JWT_SECRET");
         const audience = Cypress.env("AUTH_AUDIENCE");
+        currentDateStr = Cypress.env("CURRENT_DATE");
+        currentDate = new Date(currentDateStr);
         platform = Cypress.env("PLATFORM");
         testThreshold = parseFloat(Cypress.env("TEST_THRESHOLD") || "0.3");
         cy.log(`test threshold: ${testThreshold}`);
@@ -201,8 +207,6 @@ users.slice(0, 4).forEach((user) => {
       });
 
       describe(`bookings for the ${device.name}`, () => {
-        let currentDateStr: string;
-        let currentDate: Date;
         let testTimestamp: Date;
         let currentLocaleDateStr: string;
         let testLocaleDateStr: string;
@@ -219,11 +223,9 @@ users.slice(0, 4).forEach((user) => {
           bookingConfigs.min_time_slot_length - 900,
           bookingConfigs.max_time_slot_length + 900,
         ];
+        let expectedBookings: Booking[] = [];
 
         beforeEach(() => {
-          const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
-          currentDateStr = Cypress.env("CURRENT_DATE");
-          currentDate = new Date(currentDateStr);
           const timezoneOffset = new Date().getTimezoneOffset() * 60;
           testTimestamp = addSeconds(currentDate, 4 * 3_600 - timezoneOffset);
           testLocaleDateStr = testTimestamp.toLocaleDateString("en-GB", {
@@ -252,6 +254,9 @@ users.slice(0, 4).forEach((user) => {
           });
 
           cy.clock(currentDate, ["Date"]);
+          cy.request(`${apiBaseUrl}/bookings/${device.name}`).then((resp) => {
+            expectedBookings = resp.body.data;
+          });
           cy.intercept(
             "GET",
             `${apiBaseUrl}/bookings/${device.name}/config`
@@ -314,9 +319,15 @@ users.slice(0, 4).forEach((user) => {
               });
               // The first two events are in the past.
               if (idx > 1 && username === currentUsername) {
-                cy.contains("button", /edit/i).should("be.visible");
+                cy.contains("button.border.border-input", /edit/i).should(
+                  "be.visible"
+                );
+                cy.contains("button.bg-destructive", /discard/i).should(
+                  "be.visible"
+                );
               } else {
                 cy.contains("button", /edit/i).should("not.exist");
+                cy.contains("button", /discard/i).should("not.exist");
               }
             });
           });
@@ -587,9 +598,135 @@ users.slice(0, 4).forEach((user) => {
             });
         });
 
+        // The last two events are in the past.
+        bookingsFixture.slice(0, -2).forEach((bookingInfo, idx) => {
+          if (username === currentUsername) {
+            it(`tapping the edit button on the event starting in ${bookingInfo.starts_in} seconds, opens edit form`, () => {
+              cy.viewport(1440, 1080);
+              const startTimeStr = get12HourTimeString(testTimestamp);
+              const duration = Math.min(
+                bookingConfigs.max_time_slot_length,
+                bookingConfigs.min_time_slot_length + 900
+              );
+              const durationStr = convertSecToDurationStr(duration);
+              const endTime = addSeconds(testTimestamp, duration);
+              const endTimeStr = get12HourTimeString(endTime);
+              const booking = expectedBookings[idx];
+
+              const oldStartTimeStr = get12HourTimeString(
+                new Date(booking.start_utc)
+              );
+              const oldEndTimeStr = get12HourTimeString(
+                new Date(booking.end_utc)
+              );
+
+              const newTimeRangeStr = `${startTimeStr} - ${endTimeStr}`;
+              const oldTimeRangeStr = `${oldStartTimeStr} - ${oldEndTimeStr}`;
+
+              const eventElemSelector = `[data-cy-calendar-event][data-booking-id="${booking.id}"]`;
+
+              cy.get(eventElemSelector).as("eventElem");
+              cy.contains("#calendar-view .flex", "Bookings data").realClick();
+              cy.get("[data-cy-event-details]").should("not.exist");
+
+              cy.get("@eventElem").scrollIntoView();
+              cy.contains(eventElemSelector, oldTimeRangeStr).should(
+                "be.visible"
+              );
+              cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
+                "not.exist"
+              );
+              cy.get("@eventElem")
+                .contains(".fc-event-main-frame", username)
+                .click();
+
+              cy.get("#booking-form-dialog").should("not.exist");
+
+              cy.contains("[data-cy-event-details] button", /edit/i)
+                .click()
+                .then(() => {
+                  cy.get("#booking-form-dialog").should("be.visible");
+                  cy.get("[data-cy-event-details]").should("not.exist");
+
+                  cy.get("#booking-form-dialog")
+                    .within(() => {
+                      cy.get("input#duration[type='time']").type(durationStr);
+                      cy.get("button#datetime-input").click();
+                      cy.get(
+                        "[data-radix-popper-content-wrapper] input[type='time']"
+                      ).type(testISOTimeStr);
+
+                      // save
+                      cy.contains("button", /save/i).click();
+                    })
+                    .then(() => {
+                      cy.wait("@bookings-list");
+                      cy.contains(eventElemSelector, oldTimeRangeStr).should(
+                        "not.exist"
+                      );
+                      cy.contains(".fc-event-main-frame", newTimeRangeStr)
+                        .scrollIntoView()
+                        .should("be.visible");
+                    });
+                });
+            });
+
+            it(`tapping the cancel button when editing the event starting in ${bookingInfo.starts_in} seconds, cancels everything`, () => {
+              cy.viewport(1440, 1080);
+              const startTimeStr = get12HourTimeString(testTimestamp);
+              const duration = Math.min(
+                bookingConfigs.max_time_slot_length,
+                bookingConfigs.min_time_slot_length + 900
+              );
+              const endTime = addSeconds(testTimestamp, duration);
+              const endTimeStr = get12HourTimeString(endTime);
+              const booking = expectedBookings[idx];
+
+              const oldStartTimeStr = get12HourTimeString(
+                new Date(booking.start_utc)
+              );
+              const oldEndTimeStr = get12HourTimeString(
+                new Date(booking.end_utc)
+              );
+
+              const newTimeRangeStr = `${startTimeStr} - ${endTimeStr}`;
+              const oldTimeRangeStr = `${oldStartTimeStr} - ${oldEndTimeStr}`;
+
+              const eventElemSelector = `[data-cy-calendar-event][data-booking-id="${booking.id}"]`;
+
+              cy.get(eventElemSelector).as("eventElem");
+              cy.contains("#calendar-view .flex", "Bookings data").realClick();
+
+              cy.get("@eventElem").scrollIntoView();
+              cy.get("@eventElem")
+                .contains(".fc-event-main-frame", username)
+                .click();
+
+              cy.contains("[data-cy-event-details] button", /edit/i)
+                .click()
+                .then(() => {
+                  cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
+                    "not.exist"
+                  );
+
+                  cy.contains("#booking-form-dialog button", /cancel/i)
+                    .click()
+                    .then(() => {
+                      cy.contains(
+                        ".fc-event-main-frame",
+                        newTimeRangeStr
+                      ).should("not.exist");
+
+                      cy.contains(eventElemSelector, oldTimeRangeStr).should(
+                        "be.visible"
+                      );
+                    });
+                });
+            });
+          }
+        });
+
         // TODO:
-        // editing by tapping edit button of the booking popup
-        // cancelling editing by tapping edit button of the booking popup
         // editing a booking by drag and drop
         // cancelling a booking
       });
