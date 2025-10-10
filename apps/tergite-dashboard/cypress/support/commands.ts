@@ -35,7 +35,7 @@ Cypress.Commands.add("clipboard", () => {
 Cypress.Commands.add(
   "clickCalendarCell",
   { prevSubject: "element" },
-  (subject, dateStr, timeStr) => {
+  (subject: JQuery<HTMLElement>, dateStr: string, timeStr: string) => {
     const calendarEl = subject[0];
 
     const col = calendarEl.querySelector(
@@ -65,6 +65,41 @@ Cypress.Commands.add(
   }
 );
 
+Cypress.Commands.add(
+  "dragToGridCell",
+  { prevSubject: "element" },
+  (subject: JQuery<HTMLElement>, rowSelector: string, colSelector: string) => {
+    cy.wrap(subject)
+      .scrollIntoView()
+      .then(($source) => {
+        cy.get(rowSelector).then(($row) => {
+          cy.get(colSelector).then(($col) => {
+            const rowRect = $row[0].getBoundingClientRect();
+            const colRect = $col[0].getBoundingClientRect();
+            const sourceRect = $source[0].getBoundingClientRect();
+
+            return cy
+              .wrap($source)
+              .trigger("mousedown", {
+                which: 1,
+                button: 0,
+                pageX: sourceRect.x,
+                pageY: sourceRect.y,
+              })
+              .trigger("mousemove", {
+                which: 1,
+                pageX: colRect.x,
+                pageY: rowRect.y,
+              })
+              .trigger("mouseup", { force: true });
+          });
+        });
+      });
+
+    return cy.wrap(subject);
+  }
+);
+
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
@@ -83,6 +118,19 @@ declare global {
       clickCalendarCell(
         dateStr: string,
         timeStr: string
+      ): Chainable<Element | null>;
+
+      /**
+       * Drags the previous element to the position of intersection between the elements identified by the two CSS selectors
+       *
+       * It yields the element that has been dragged
+       *
+       * @param rowSelector - the CSS selector for the element that is expected to be the row
+       * @param colSelector - the CSS selector for the element that is expected to be the column
+       */
+      dragToGridCell(
+        rowSelector: string,
+        colSelector: string
       ): Chainable<Element | null>;
     }
   }

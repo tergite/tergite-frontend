@@ -131,16 +131,23 @@ export function BookingsCalendar({
 
   const handleEventDrop = useCallback(
     (arg: EventDropArg) => {
+      const isPast = DateTime.fromISO(arg.event.startStr) < DateTime.now();
+      const isOwnedByUser = currentUserId === arg.event.extendedProps.user_id;
+      const canEdit = !isPast && (isOwnedByUser || isAdmin);
+      if (!canEdit) {
+        return arg.revert();
+      }
       const bookingId = arg.event.extendedProps.id;
       const newInfo = {
         start_utc: arg.event.start?.toISOString() as string,
         end_utc: arg.event.end?.toISOString() as string,
       };
+
       updateBooking(backend, bookingId, newInfo).then(() =>
         refreshBookingsQueries(queryClient, backend)
       );
     },
-    [backend, queryClient]
+    [backend, queryClient, isAdmin, currentUserId]
   );
 
   return (

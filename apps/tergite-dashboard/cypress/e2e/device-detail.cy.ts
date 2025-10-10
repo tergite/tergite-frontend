@@ -375,7 +375,7 @@ users.slice(0, 4).forEach((user) => {
             });
         });
 
-        it("Clicking cancel in the event creation form cancels the event creation", () => {
+        it("Clicking cancel in the booking creation form cancels the event creation", () => {
           const startTimeStr = get12HourTimeString(testTimestamp);
           const endTime = addSeconds(
             testTimestamp,
@@ -599,9 +599,9 @@ users.slice(0, 4).forEach((user) => {
         });
 
         // The last two events are in the past.
-        bookingsFixture.slice(0, -2).forEach((bookingInfo, idx) => {
+        bookingsFixture.slice(0, 3).forEach((bookingInfo, idx) => {
           if (username === currentUsername) {
-            it(`tapping the edit button on the event starting in ${bookingInfo.starts_in} seconds, opens edit form`, () => {
+            it(`tapping the edit button on the booking starting in ${bookingInfo.starts_in} seconds, opens edit form`, () => {
               cy.viewport(1440, 1080);
               const startTimeStr = get12HourTimeString(testTimestamp);
               const duration = Math.min(
@@ -671,7 +671,7 @@ users.slice(0, 4).forEach((user) => {
                 });
             });
 
-            it(`tapping the cancel button when editing the event starting in ${bookingInfo.starts_in} seconds, cancels everything`, () => {
+            it(`tapping the cancel button when editing the booking starting in ${bookingInfo.starts_in} seconds, cancels everything`, () => {
               cy.viewport(1440, 1080);
               const startTimeStr = get12HourTimeString(testTimestamp);
               const duration = Math.min(
@@ -723,12 +723,146 @@ users.slice(0, 4).forEach((user) => {
                     });
                 });
             });
+
+            it(`dragging and dropping the booking that starts in ${bookingInfo.starts_in} seconds, edits it`, () => {
+              // Note: The length is very long so that the drop zone is visible on the view port
+              cy.viewport(1440, 2080);
+              const booking = expectedBookings[idx];
+
+              const oldStartTimestamp = new Date(booking.start_utc);
+              const oldStartTimeStr = get12HourTimeString(oldStartTimestamp);
+              const oldEndTimeStr = get12HourTimeString(
+                new Date(booking.end_utc)
+              );
+
+              // when we drag to the testTimeout band, any extra minutes less than 30 appear
+              // since the slot lanes are of length 30 minutes
+              const extraMinutes = oldStartTimestamp.getMinutes() % 30;
+              const newTimestamp = new Date(
+                testTimestamp.getTime() + extraMinutes * 60_000
+              );
+              const newStartTimeStr = get12HourTimeString(newTimestamp);
+              const newEndTime = addSeconds(
+                newTimestamp,
+                booking.total_duration
+              );
+              const newEndTimeStr = get12HourTimeString(newEndTime);
+
+              const newTimeRangeStr = `${newStartTimeStr} - ${newEndTimeStr}`;
+              const oldTimeRangeStr = `${oldStartTimeStr} - ${oldEndTimeStr}`;
+              const newRowSelector = `.fc-timegrid-slot-lane[data-time="${testISOTimeStr}"]`;
+              const newColSelector = `.fc-timegrid-col[data-date="${testISODateStr}"]`;
+
+              const eventElemSelector = `[data-cy-calendar-event][data-booking-id="${booking.id}"]`;
+
+              cy.get(eventElemSelector).as("eventElem");
+
+              cy.get("@eventElem").scrollIntoView();
+              cy.contains(eventElemSelector, oldTimeRangeStr).should(
+                "be.visible"
+              );
+              cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
+                "not.exist"
+              );
+
+              cy.get("@eventElem")
+                .dragToGridCell(newRowSelector, newColSelector)
+                .then(() => {
+                  cy.wait("@bookings-list");
+                  cy.contains(eventElemSelector, oldTimeRangeStr).should(
+                    "not.exist"
+                  );
+                  cy.contains(".fc-event-main-frame", newTimeRangeStr)
+                    .scrollIntoView()
+                    .should("be.visible");
+                });
+            });
+
+            it(`tapping the discard button on the booking starting in ${bookingInfo.starts_in} seconds, cancels it`, () => {
+              cy.viewport(1440, 1080);
+              const booking = expectedBookings[idx];
+
+              const oldStartTimeStr = get12HourTimeString(
+                new Date(booking.start_utc)
+              );
+              const oldEndTimeStr = get12HourTimeString(
+                new Date(booking.end_utc)
+              );
+
+              const oldTimeRangeStr = `${oldStartTimeStr} - ${oldEndTimeStr}`;
+              const eventElemSelector = `[data-cy-calendar-event][data-booking-id="${booking.id}"]`;
+
+              cy.get(eventElemSelector).as("eventElem");
+              cy.contains("#calendar-view .flex", "Bookings data").realClick();
+              cy.get("[data-cy-event-details]").should("not.exist");
+
+              cy.get("@eventElem").scrollIntoView();
+              cy.contains(eventElemSelector, oldTimeRangeStr).should(
+                "be.visible"
+              );
+              cy.get("@eventElem")
+                .contains(".fc-event-main-frame", username)
+                .click();
+
+              cy.contains("[data-cy-event-details] button", /discard/i)
+                .click()
+                .then(() => {
+                  cy.get("[data-cy-event-details]").should("not.exist");
+                  cy.wait("@bookings-list");
+                  cy.contains(eventElemSelector, oldTimeRangeStr).should(
+                    "not.exist"
+                  );
+                });
+            });
+          } else {
+            // when the booking does not belong to current user
+            it(`dragging and dropping the another person's booking that starts in ${bookingInfo.starts_in} seconds, does nothing`, () => {
+              cy.viewport(1440, 2080);
+              const booking = expectedBookings[idx];
+              const oldStartTimestamp = new Date(booking.start_utc);
+              const oldStartTimeStr = get12HourTimeString(oldStartTimestamp);
+              const oldEndTimeStr = get12HourTimeString(
+                new Date(booking.end_utc)
+              );
+              // when we drag to the testTimeout band, any extra minutes less than 30 appear
+              // since the slot lanes are of length 30 minutes
+              const extraMinutes = oldStartTimestamp.getMinutes() % 30;
+              const newTimestamp = new Date(
+                testTimestamp.getTime() + extraMinutes * 60_000
+              );
+              const newStartTimeStr = get12HourTimeString(newTimestamp);
+              const newEndTime = addSeconds(
+                newTimestamp,
+                booking.total_duration
+              );
+              const newEndTimeStr = get12HourTimeString(newEndTime);
+              const newTimeRangeStr = `${newStartTimeStr} - ${newEndTimeStr}`;
+              const oldTimeRangeStr = `${oldStartTimeStr} - ${oldEndTimeStr}`;
+              const newRowSelector = `.fc-timegrid-slot-lane[data-time="${testISOTimeStr}"]`;
+              const newColSelector = `.fc-timegrid-col[data-date="${testISODateStr}"]`;
+              const eventElemSelector = `[data-cy-calendar-event][data-booking-id="${booking.id}"]`;
+              cy.get(eventElemSelector).as("eventElem");
+              cy.get("@eventElem").scrollIntoView();
+              cy.contains(eventElemSelector, oldTimeRangeStr).should(
+                "be.visible"
+              );
+              cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
+                "not.exist"
+              );
+              cy.get("@eventElem")
+                .dragToGridCell(newRowSelector, newColSelector)
+                .then(() => {
+                  cy.wait(100);
+                  cy.contains(eventElemSelector, oldTimeRangeStr)
+                    .scrollIntoView()
+                    .should("be.visible");
+                  cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
+                    "not.exist"
+                  );
+                });
+            });
           }
         });
-
-        // TODO:
-        // editing a booking by drag and drop
-        // cancelling a booking
       });
     });
   });
