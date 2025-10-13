@@ -28,6 +28,26 @@ name = "qiskit_pulse_1q"
 # the URL where this backend is running
 url = "http://qiskit_pulse_1q:8000"
 
+[[backends]]
+name = "loke"
+# the URL where this backend is running
+url = "http://loke:8000"
+
+[[backends]]
+name = "thor"
+# the URL where this backend is running
+url = "http://thor:8000"
+
+[[backends]]
+name = "pingu"
+# the URL where this backend is running
+url = "http://pingu:8000"
+
+[[backends]]
+name = "pegu"
+# the URL where this backend is running
+url = "http://pegu:8000"
+
 [auth]
 cookie_domain = "127.0.0.1"
 cookie_name = "tergiteauth"

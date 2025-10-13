@@ -104,6 +104,11 @@ rm -rf tergite-backend
 git clone "$ROOT_PATH" tergite-frontend
 git clone --single-branch --branch "$BACKEND_BRANCH" "$BACKEND_REPO"
 
+# FIXME:
+# - Create dummy backends for all backends represented in  the devices page (first three or four)
+# - Add dummy sqlite dbs in each of those backends' containers, containing the right tables and records
+# - Run the end to end
+
 # Adding configuration files to tergite-frontend folder
 echo "Adding configuration files"
 cd tergite-frontend
@@ -114,6 +119,12 @@ cp "$FIXTURES_PATH/e2e-docker-compose.yml" .
 cp "$FIXTURES_PATH/qiskit_pulse_1q.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_1q.seed.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.toml" .
+cp "$FIXTURES_PATH/generic.seed.toml" .
+cp "$FIXTURES_PATH/loke.toml" .
+cp "$FIXTURES_PATH/thor.toml" .
+cp "$FIXTURES_PATH/pingu.toml" .
+cp "$FIXTURES_PATH/pegu.toml" .
+cp "$FIXTURES_PATH/booking_db.db" .
 cp "$FIXTURES_PATH/private-mss-key.pem" .
 cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.seed.toml" .
