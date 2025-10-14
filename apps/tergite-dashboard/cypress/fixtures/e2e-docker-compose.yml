@@ -74,6 +74,7 @@ services:
       - ./qiskit_pulse_1q.toml/:/code/backend_config.toml:ro
       - ./qiskit_pulse_1q.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
+      - ./qiskit_pulse_1q_booking_db.db/:/code/booking_db.db:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -111,6 +112,7 @@ services:
       - ./qiskit_pulse_2q.toml/:/code/backend_config.toml:ro
       - ./qiskit_pulse_2q.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
+      - ./qiskit_pulse_2q_booking_db.db/:/code/booking_db.db:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -147,6 +149,7 @@ services:
       - ./loke.toml/:/code/backend_config.toml:ro
       - ./generic.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
+      - ./loke_booking_db.db/:/code/booking_db.db:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -183,6 +186,7 @@ services:
       - ./thor.toml/:/code/backend_config.toml:ro
       - ./generic.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
+      - ./thor_booking_db.db/:/code/booking_db.db:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -219,6 +223,7 @@ services:
       - ./pingu.toml/:/code/backend_config.toml:ro
       - ./generic.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
+      - ./pingu_booking_db.db/:/code/booking_db.db:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -255,6 +260,7 @@ services:
       - ./pegu.toml/:/code/backend_config.toml:ro
       - ./generic.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
+      - ./pegu_booking_db.db/:/code/booking_db.db:ro
     networks:
       - tergite-frontend-e2e
     env_file:

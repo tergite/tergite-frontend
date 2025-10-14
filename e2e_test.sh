@@ -124,7 +124,12 @@ cp "$FIXTURES_PATH/loke.toml" .
 cp "$FIXTURES_PATH/thor.toml" .
 cp "$FIXTURES_PATH/pingu.toml" .
 cp "$FIXTURES_PATH/pegu.toml" .
-cp "$FIXTURES_PATH/booking_db.db" .
+cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_1q_booking_db.db
+cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_2q_booking_db.db
+cp "$FIXTURES_PATH/booking_db.db" loke_booking_db.db
+cp "$FIXTURES_PATH/booking_db.db" thor_booking_db.db
+cp "$FIXTURES_PATH/booking_db.db" pingu_booking_db.db
+cp "$FIXTURES_PATH/booking_db.db" pegu_booking_db.db
 cp "$FIXTURES_PATH/private-mss-key.pem" .
 cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.seed.toml" .
