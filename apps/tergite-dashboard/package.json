@@ -14,10 +14,10 @@
     "preview": "vite preview",
     "test-api-and-app": "start-server-and-test test-api http://0.0.0.0:8002 \"npm run preview -- --host 0.0.0.0 --port 5173\"",
     "start-e2e-server": "npm run build -- --mode test && start-server-and-test test-api-and-app http://127.0.0.1:5173",
-    "e2e": "npm run start-e2e-server -- \"cypress run\"",
-    "visual-e2e": "npm run start-e2e-server -- \"cypress open\"",
-    "cypress-only": "cypress run",
-    "visual-cypress-only": "cypress open"
+    "e2e": "npm run start-e2e-server -- \"TZ=Europe/Stockholm cypress run\"",
+    "visual-e2e": "npm run start-e2e-server -- \"TZ=Europe/Stockholm cypress open\"",
+    "cypress-only": "TZ=Europe/Stockholm cypress run",
+    "visual-cypress-only": "TZ=Europe/Stockholm cypress open"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",
