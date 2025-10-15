@@ -22,6 +22,7 @@ from typing import (
     Literal,
     Mapping,
     Optional,
+    AbstractSet,
     Tuple,
     Union,
 )
