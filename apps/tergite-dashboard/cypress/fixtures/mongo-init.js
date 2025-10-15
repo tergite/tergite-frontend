@@ -110,7 +110,7 @@ const botToken = {
   title: "some-token-test",
   project_ext_id: botProject["ext_id"],
   lifespan_seconds: 7200000,
-  token: "pZTccp8F-8RLFvQie1AMM0ptfdkGNnH1wDEB4INUFqw",
+  token: "W0imS_n_J5ZwP8wFYvbBCiDkJVhQcEROEfyTPvFko1E",
   user_id: botUser["_id"],
   created_at: ISODate(),
 };
