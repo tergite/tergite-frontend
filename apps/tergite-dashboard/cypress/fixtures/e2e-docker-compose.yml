@@ -150,6 +150,8 @@ services:
       - ./generic.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
       - ./loke_booking_db.db/:/code/booking_db.db:ro
+      - ./quantify-config.json/:/code/quantify-config.json:ro
+      - ./quantify-metadata.yml/:/code/quantify-metadata.yml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -187,6 +189,8 @@ services:
       - ./generic.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
       - ./thor_booking_db.db/:/code/booking_db.db:ro
+      - ./quantify-config.json/:/code/quantify-config.json:ro
+      - ./quantify-metadata.yml/:/code/quantify-metadata.yml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -224,6 +228,8 @@ services:
       - ./generic.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
       - ./pingu_booking_db.db/:/code/booking_db.db:ro
+      - ./quantify-config.json/:/code/quantify-config.json:ro
+      - ./quantify-metadata.yml/:/code/quantify-metadata.yml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -261,6 +267,8 @@ services:
       - ./generic.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
       - ./pegu_booking_db.db/:/code/booking_db.db:ro
+      - ./quantify-config.json/:/code/quantify-config.json:ro
+      - ./quantify-metadata.yml/:/code/quantify-metadata.yml:ro
     networks:
       - tergite-frontend-e2e
     env_file:

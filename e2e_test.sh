@@ -119,6 +119,7 @@ cp "$FIXTURES_PATH/e2e-docker-compose.yml" .
 cp "$FIXTURES_PATH/qiskit_pulse_1q.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_1q.seed.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.toml" .
+cp "$FIXTURES_PATH/qiskit_pulse_2q.seed.toml" .
 cp "$FIXTURES_PATH/generic.seed.toml" .
 cp "$FIXTURES_PATH/loke.toml" .
 cp "$FIXTURES_PATH/thor.toml" .
@@ -132,7 +133,8 @@ cp "$FIXTURES_PATH/booking_db.db" pingu_booking_db.db
 cp "$FIXTURES_PATH/booking_db.db" pegu_booking_db.db
 cp "$FIXTURES_PATH/private-mss-key.pem" .
 cp "$FIXTURES_PATH/public-mss-key.pem" .
-cp "$FIXTURES_PATH/qiskit_pulse_2q.seed.toml" .
+cp "$FIXTURES_PATH/quantify-config.json" .
+cp "$FIXTURES_PATH/quantify-metadata.yml" .
 cp "$FIXTURES_PATH/e2e.env" .env
 printf "\nMSS_APP_TOKEN=\"$APP_TOKEN\"" >> .env
 cp "$FIXTURES_PATH/mss-config.toml" .
