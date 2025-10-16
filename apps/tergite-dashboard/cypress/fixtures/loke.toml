@@ -1,7 +1,7 @@
 [general_config]
 # general static configuration for the backend
 name = "Loke"
-is_active = true
+is_active = false
 characterized = true
 open_pulse = true
 simulator = false

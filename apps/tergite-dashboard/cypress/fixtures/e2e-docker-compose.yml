@@ -207,7 +207,7 @@ services:
     volumes:
       - ./.env/:/code/.env:ro
       - ./loke.toml/:/code/backend_config.toml:ro
-      - ./generic.seed.toml/:/code/calibration.seed.toml:ro
+      - ./loke.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
       - ./loke_booking_db.db/:/code/booking_db.db:ro
       - ./quantify-config.json/:/code/quantify-config.json:ro
@@ -254,7 +254,7 @@ services:
     volumes:
       - ./.env/:/code/.env:ro
       - ./thor.toml/:/code/backend_config.toml:ro
-      - ./generic.seed.toml/:/code/calibration.seed.toml:ro
+      - ./thor.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
       - ./thor_booking_db.db/:/code/booking_db.db:ro
       - ./quantify-config.json/:/code/quantify-config.json:ro
@@ -301,7 +301,7 @@ services:
     volumes:
       - ./.env/:/code/.env:ro
       - ./pingu.toml/:/code/backend_config.toml:ro
-      - ./generic.seed.toml/:/code/calibration.seed.toml:ro
+      - ./pingu.seed.toml/:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem/:/code/public-mss-key.pem:ro
       - ./pingu_booking_db.db/:/code/booking_db.db:ro
       - ./quantify-config.json/:/code/quantify-config.json:ro

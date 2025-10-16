@@ -122,8 +122,11 @@ cp "$FIXTURES_PATH/qiskit_pulse_2q.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.seed.toml" .
 cp "$FIXTURES_PATH/generic.seed.toml" .
 cp "$FIXTURES_PATH/loke.toml" .
+cp "$FIXTURES_PATH/loke.seed.toml" .
 cp "$FIXTURES_PATH/thor.toml" .
+cp "$FIXTURES_PATH/thor.seed.toml" .
 cp "$FIXTURES_PATH/pingu.toml" .
+cp "$FIXTURES_PATH/pingu.seed.toml" .
 cp "$FIXTURES_PATH/pegu.toml" .
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_1q_booking_db.db
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_2q_booking_db.db
