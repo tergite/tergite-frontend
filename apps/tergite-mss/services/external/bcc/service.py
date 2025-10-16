@@ -233,13 +233,16 @@ class BccClient:
             ServiceUnavailableError: device is currently unavailable
             HTTPException: unauthenticated user
         """
+        params: Dict[str, Any] = {"skip": skip}
+        if limit is not None:
+            params["limit"] = limit
         return await self._request(
             "GET",
             "/users",
             user_id=user_id,
             request_id=request_id,
             private_key_file=private_key_file,
-            params={"skip": skip, "limit": limit},
+            params=params,
             is_admin=is_admin,
         )
 
@@ -415,7 +418,9 @@ class BccClient:
             ServiceUnavailableError: device is currently unavailable
             HTTPException: unauthenticated user
         """
-        params: Dict[str, Any] = {"skip": skip, "limit": limit}
+        params: Dict[str, Any] = {"skip": skip}
+        if limit is not None:
+            params["limit"] = limit
         if min_start_utc is not None:
             params["min_start_utc"] = min_start_utc.isoformat()
         if max_start_utc is not None:
