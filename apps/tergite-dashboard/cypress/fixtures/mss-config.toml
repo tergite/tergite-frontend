@@ -29,22 +29,22 @@ name = "qiskit_pulse_1q"
 url = "http://qiskit_pulse_1q:8000"
 
 [[backends]]
-name = "loke"
+name = "Loke"
 # the URL where this backend is running
 url = "http://loke:8000"
 
 [[backends]]
-name = "thor"
+name = "Thor"
 # the URL where this backend is running
 url = "http://thor:8000"
 
 [[backends]]
-name = "pingu"
+name = "Pingu"
 # the URL where this backend is running
 url = "http://pingu:8000"
 
 [[backends]]
-name = "pegu"
+name = "Pegu"
 # the URL where this backend is running
 url = "http://pegu:8000"
 
