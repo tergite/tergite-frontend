@@ -3,8 +3,8 @@ FROM mongo:latest
 # Set up working directory
 WORKDIR /docker-entrypoint-initdb.d/
 
-# Copy the initialization script
-COPY mongo-init.js /docker-entrypoint-initdb.d/init.js
+# # Copy the initialization script
+# COPY mongo-init.js /docker-entrypoint-initdb.d/init.js
 
 # Copy the HTTP server script
 COPY mongo-router.sh /usr/local/bin/router.sh

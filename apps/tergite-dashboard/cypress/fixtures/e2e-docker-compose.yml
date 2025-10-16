@@ -2,31 +2,36 @@
 services:
   mss:
     depends_on:
-      - tergite-mongo
+      tergite-mongo:
+        condition: service_healthy
     networks:
       - tergite-frontend-e2e
     healthcheck:
       test:
         [
-          "CMD",
-          "curl",
-          "-L",
-          "-H",
-          "Authorization: Bearer ${MSS_APP_TOKEN}",
-          "-f",
-          "-X",
-          "PUT",
-          "http://localhost:8002/devices/dummy",
-          "-d",
-          '{"name": "dummy"}',
+          "CMD-SHELL",
+          'wget --header="Authorization: Bearer $MSS_APP_TOKEN" --quiet --tries=1 --spider http://mss:8002/jobs || exit 1',
         ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   dashboard:
+    depends_on:
+      mss:
+        condition: service_healthy
     networks:
       - tergite-frontend-e2e
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/login"]
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:3000/login"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
+  # FIXME: the init script for mongo fails when condition: service_healthy is ised
+  #  for dependencies of mongodb or mss
   tergite-mongo:
     restart: always
     image: "tergite/tergite-mongo-e2e:latest"
@@ -43,10 +48,25 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://localhost:27018/ --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  mongo-init:
+    # throw-away service to initialize tergite-mongo since having health check
+    # and initialization scripts for mongo causes unexpected errors
+    image: mongo:latest
+    depends_on:
+      tergite-mongo:
+        condition: service_healthy
+    command: >
+      bash -c 'mongosh --host tergite-mongo /scripts/init.js'
+    volumes:
+      - ./mongo-init.js:/scripts/init.js:ro
+    networks:
+      - tergite-frontend-e2e
 
   tergite-redis:
     restart: always
@@ -68,8 +88,10 @@ services:
   qiskit_pulse_1q:
     restart: always
     depends_on:
-      - mss
-      - tergite-redis
+      mss:
+        condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
     image: "tergite/tergite-backend-e2e:latest"
     build:
       context: ../tergite-backend
@@ -103,14 +125,21 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/docs"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   qiskit_pulse_2q:
     restart: always
     depends_on:
-      - qiskit_pulse_1q
-      - mss
-      - tergite-redis
+      qiskit_pulse_1q:
+        condition: service_healthy
+      mss:
+        condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
     image: "tergite/tergite-backend-e2e:latest"
     logging:
       driver: ${LOGGING_DRIVER}
@@ -141,13 +170,21 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   loke:
     restart: always
     depends_on:
-      - mss
-      - tergite-redis
+      qiskit_pulse_1q:
+        condition: service_healthy
+      mss:
+        condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
     image: "tergite/tergite-backend-e2e:latest"
     logging:
       driver: ${LOGGING_DRIVER}
@@ -180,13 +217,21 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/docs"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   thor:
     restart: always
     depends_on:
-      - mss
-      - tergite-redis
+      qiskit_pulse_1q:
+        condition: service_healthy
+      mss:
+        condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
     image: "tergite/tergite-backend-e2e:latest"
     logging:
       driver: ${LOGGING_DRIVER}
@@ -219,13 +264,21 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/docs"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   pingu:
     restart: always
     depends_on:
-      - mss
-      - tergite-redis
+      qiskit_pulse_1q:
+        condition: service_healthy
+      mss:
+        condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
     image: "tergite/tergite-backend-e2e:latest"
     logging:
       driver: ${LOGGING_DRIVER}
@@ -258,13 +311,21 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/docs"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   pegu:
     restart: always
     depends_on:
-      - mss
-      - tergite-redis
+      qiskit_pulse_1q:
+        condition: service_healthy
+      mss:
+        condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
     image: "tergite/tergite-backend-e2e:latest"
     logging:
       driver: ${LOGGING_DRIVER}
@@ -297,7 +358,11 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8006/docs"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
 networks:
   tergite-frontend-e2e:
