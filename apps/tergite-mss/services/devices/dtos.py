@@ -15,6 +15,7 @@
 # Refactored by Martin Ahindura 2023-11-08
 from typing import (
     TYPE_CHECKING,
+    AbstractSet,
     Any,
     Callable,
     Dict,
@@ -22,7 +23,6 @@ from typing import (
     Literal,
     Mapping,
     Optional,
-    AbstractSet,
     Tuple,
     Union,
 )
