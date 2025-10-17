@@ -1,6 +1,6 @@
 """Module to wrap uvicorn in frozen time"""
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from freezegun import freeze_time
 from uvicorn.main import main as uvicorn_main
 
@@ -12,6 +12,8 @@ def main():
     current_date = os.getenv("CURRENT_DATE", "2025-10-01T00:00:00.000Z")
 
     with freeze_time(datetime.fromisoformat(current_date)):
+        now = datetime.now(timezone.utc)
+        print(f"starting app at {now.isoformat()}")
         uvicorn_main()
 
 if __name__ == "__main__":
