@@ -138,6 +138,7 @@ cp "$FIXTURES_PATH/private-mss-key.pem" .
 cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/quantify-config.json" .
 cp "$FIXTURES_PATH/quantify-metadata.yml" .
+cp -r "$FIXTURES_PATH/backend_start" .
 cp "$FIXTURES_PATH/e2e.env" .env
 printf "\nMSS_APP_TOKEN=\"$APP_TOKEN\"" >> .env
 cp "$FIXTURES_PATH/mss-config.toml" .
