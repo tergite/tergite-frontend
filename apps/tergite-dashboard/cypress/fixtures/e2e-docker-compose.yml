@@ -213,7 +213,7 @@ services:
       - ./loke.toml:/code/backend_config.toml:ro
       - ./loke.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
-      - ./loke_booking_db.db:/code/booking_db.db:ro
+      - ./loke_booking_db.db:/code/booking_db.db
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
     networks:
@@ -264,7 +264,7 @@ services:
       - ./thor.toml:/code/backend_config.toml:ro
       - ./thor.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
-      - ./thor_booking_db.db:/code/booking_db.db:ro
+      - ./thor_booking_db.db:/code/booking_db.db
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
     networks:
@@ -315,7 +315,7 @@ services:
       - ./pingu.toml:/code/backend_config.toml:ro
       - ./pingu.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
-      - ./pingu_booking_db.db:/code/booking_db.db:ro
+      - ./pingu_booking_db.db:/code/booking_db.db
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
     networks:
@@ -366,7 +366,7 @@ services:
       - ./pegu.toml:/code/backend_config.toml:ro
       - ./generic.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
-      - ./pegu_booking_db.db:/code/booking_db.db:ro
+      - ./pegu_booking_db.db:/code/booking_db.db
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
     networks:

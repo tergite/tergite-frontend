@@ -371,6 +371,9 @@ users.slice(0, 4).forEach((user) => {
                     ".fc-event-time",
                     `${startTimeStr} - ${endTimeStr}`
                   ).should("be.visible");
+
+                  // FIXME: Add a cy.request or something to delete the created booking for
+                  //  the other tests
                 });
             });
         });
@@ -447,6 +450,9 @@ users.slice(0, 4).forEach((user) => {
                     ".fc-event-time",
                     `${startTimeStr} - ${endTimeStr}`
                   ).should("be.visible");
+
+                  // FIXME: Add a cy.request or something to delete the created booking for
+                  //  the other tests
                 });
             });
         });
