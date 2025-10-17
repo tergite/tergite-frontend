@@ -198,6 +198,10 @@ services:
       EXECUTOR_TYPE: "quantify"
       DEFAULT_PREFIX: "loke"
       MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      MAX_TIME_SLOT_LENGTH: 7200
+      MIN_TIME_SLOT_LENGTH: 1800
+      MAX_SLOTS_PER_DAY: 2
+      MAX_IDLE_TIME: 100
       APP_SETTINGS: "production"
       IS_AUTH_ENABLED: "True"
       START_SCRIPT: "backend_start"
@@ -250,6 +254,10 @@ services:
       MSS_APP_TOKEN: ${MSS_APP_TOKEN}
       APP_SETTINGS: "production"
       IS_AUTH_ENABLED: "True"
+      MAX_TIME_SLOT_LENGTH: 7200
+      MIN_TIME_SLOT_LENGTH: 3600
+      MAX_SLOTS_PER_DAY: 1
+      MAX_IDLE_TIME: 100
       START_SCRIPT: "backend_start"
       EXTRA_PY_LIBS: "freezegun~=1.5.1"
       REDIS_PORT: 6379
@@ -302,6 +310,10 @@ services:
       EXTRA_PY_LIBS: "freezegun~=1.5.1"
       APP_SETTINGS: "production"
       IS_AUTH_ENABLED: "True"
+      MAX_TIME_SLOT_LENGTH: 9600
+      MIN_TIME_SLOT_LENGTH: 1800
+      MAX_SLOTS_PER_DAY: 5
+      MAX_IDLE_TIME: 100
       REDIS_PORT: 6379
       REDIS_HOST: "tergite-redis"
       JWT_SECRET: "e9fae9efa7c3ff10348acde323baa5273db8021712ecb1f59fdf0e8336240fb7d70c6d8d"
@@ -350,6 +362,10 @@ services:
       MSS_APP_TOKEN: ${MSS_APP_TOKEN}
       APP_SETTINGS: "production"
       IS_AUTH_ENABLED: "True"
+      MAX_TIME_SLOT_LENGTH: 7200
+      MIN_TIME_SLOT_LENGTH: 1800
+      MAX_SLOTS_PER_DAY: 3
+      MAX_IDLE_TIME: 100
       START_SCRIPT: "backend_start"
       EXTRA_PY_LIBS: "freezegun~=1.5.1"
       REDIS_PORT: 6379
