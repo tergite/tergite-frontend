@@ -138,7 +138,6 @@ cp "$FIXTURES_PATH/private-mss-key.pem" .
 cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/quantify-config.json" .
 cp "$FIXTURES_PATH/quantify-metadata.yml" .
-cp -r "$FIXTURES_PATH/backend_start" .
 cp "$FIXTURES_PATH/e2e.env" .env
 printf "\nMSS_APP_TOKEN=\"$APP_TOKEN\"" >> .env
 cp "$FIXTURES_PATH/mss-config.toml" .
@@ -170,6 +169,13 @@ replace_str apps/tergite-dashboard/cypress.config.ts "http://127.0.0.1:5173" "ht
 replace_str mss-config.toml "OPENID_CLIENT_ID" "$OPENID_CLIENT_ID";
 replace_str mss-config.toml "OPENID_CLIENT_SECRET" "$OPENID_CLIENT_SECRET";
 replace_str mss-config.toml "OPENID_CONFIG_URL" "$OPENID_CONFIG_URL";
+
+# Update the get_relative_time() function in the $TEMP_DIR_PATH/tergite-backend/app/utils/datetime.py path. 
+# Ofcourse moving this file around will cause the e2e to fail
+# replace normal return value with dummy one
+replace_str "$TEMP_DIR_PATH/tergite-backend/app/utils/datetime.py" \
+  "return \{1,\}get_utc_now() \{1,\}+ \{1,\}timedelta( \{1,\}# \{1,\}@e2e-replace" \
+  "return datetime.fromisoformat('2025-10-01T00:00:00.000Z') + timedelta(";
 
 # Starting services in the tergite-frontend folder
 echo "Starting all e2e services"
