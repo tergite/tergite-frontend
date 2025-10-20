@@ -170,13 +170,6 @@ replace_str mss-config.toml "OPENID_CLIENT_ID" "$OPENID_CLIENT_ID";
 replace_str mss-config.toml "OPENID_CLIENT_SECRET" "$OPENID_CLIENT_SECRET";
 replace_str mss-config.toml "OPENID_CONFIG_URL" "$OPENID_CONFIG_URL";
 
-# Update the get_relative_time() function in the $TEMP_DIR_PATH/tergite-backend/app/utils/datetime.py path. 
-# Ofcourse moving this file around will cause the e2e to fail
-# replace normal return value with dummy one
-replace_str "$TEMP_DIR_PATH/tergite-backend/app/utils/datetime.py" \
-  "return \{1,\}get_utc_now() \{1,\}+ \{1,\}timedelta( \{1,\}# \{1,\}@e2e-replace" \
-  "return datetime.fromisoformat('2025-10-01T00:00:00.000Z') + timedelta(";
-
 # Starting services in the tergite-frontend folder
 echo "Starting all e2e services"
 docker compose \
