@@ -228,30 +228,12 @@ users.slice(0, 4).forEach((user) => {
         beforeEach(() => {
           const timezoneOffset = new Date().getTimezoneOffset() * 60;
           testTimestamp = addSeconds(currentDate, 4 * 3_600 - timezoneOffset);
-          testLocaleDateStr = testTimestamp.toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-          currentLocaleDateStr = currentDate.toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-          testISODateStr = testTimestamp.toLocaleDateString("en-CA");
-          testISOTimeStr = testTimestamp.toLocaleTimeString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          });
-          currentISODateStr = currentDate.toLocaleDateString("en-CA");
-          currentISOTimeStr = currentDate.toLocaleTimeString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          });
+          testLocaleDateStr = toLocaleDateStr(testTimestamp);
+          currentLocaleDateStr = toLocaleDateStr(currentDate);
+          testISODateStr = toISODateStr(testTimestamp);
+          testISOTimeStr = toISOTimeStr(testTimestamp);
+          currentISODateStr = toISODateStr(currentDate);
+          currentISOTimeStr = toISOTimeStr(currentDate);
 
           cy.clock(currentDate, ["Date"]);
           cy.request(`${apiBaseUrl}/bookings/${device.name}`).then((resp) => {
@@ -372,7 +354,6 @@ users.slice(0, 4).forEach((user) => {
                     `${startTimeStr} - ${endTimeStr}`
                   ).should("be.visible");
 
-                  // FIXME: Delete the newly created booking to start afresh
                   cy.contains(
                     ".fc-event-main-frame",
                     `${startTimeStr} - ${endTimeStr}`
@@ -459,7 +440,6 @@ users.slice(0, 4).forEach((user) => {
                     `${startTimeStr} - ${endTimeStr}`
                   ).should("be.visible");
 
-                  // FIXME: Delete the newly created booking to start afresh
                   cy.contains(
                     ".fc-event-main-frame",
                     `${startTimeStr} - ${endTimeStr}`
@@ -635,15 +615,18 @@ users.slice(0, 4).forEach((user) => {
               const endTimeStr = get12HourTimeString(endTime);
               const booking = expectedBookings[idx];
 
-              const oldStartTimeStr = get12HourTimeString(
-                new Date(booking.start_utc)
-              );
+              const originalStartUtc = new Date(booking.start_utc);
+              const oldStartTimeStr = get12HourTimeString(originalStartUtc);
               const oldEndTimeStr = get12HourTimeString(
                 new Date(booking.end_utc)
               );
 
               const newTimeRangeStr = `${startTimeStr} - ${endTimeStr}`;
               const oldTimeRangeStr = `${oldStartTimeStr} - ${oldEndTimeStr}`;
+              const originalDurationStr = convertSecToDurationStr(
+                booking.total_duration
+              );
+              const originalTimeStr = toISOTimeStr(originalStartUtc);
 
               const eventElemSelector = `[data-cy-calendar-event][data-booking-id="${booking.id}"]`;
 
@@ -689,6 +672,28 @@ users.slice(0, 4).forEach((user) => {
                       cy.contains(".fc-event-main-frame", newTimeRangeStr)
                         .scrollIntoView()
                         .should("be.visible");
+
+                      // undo the edits, change back to original value
+                      cy.contains(
+                        ".fc-event-main-frame",
+                        newTimeRangeStr
+                      ).click();
+
+                      cy.contains("[data-cy-event-details] button", /edit/i)
+                        .click()
+                        .then(() => {
+                          cy.get("#booking-form-dialog").within(() => {
+                            cy.get("input#duration[type='time']").type(
+                              originalDurationStr
+                            );
+                            cy.get("button#datetime-input").click();
+                            cy.get(
+                              "[data-radix-popper-content-wrapper] input[type='time']"
+                            ).type(originalTimeStr);
+                            // save
+                            cy.contains("button", /save/i).click();
+                          });
+                        });
                     });
                 });
             });
@@ -756,6 +761,10 @@ users.slice(0, 4).forEach((user) => {
               const oldEndTimeStr = get12HourTimeString(
                 new Date(booking.end_utc)
               );
+              const originalDurationStr = convertSecToDurationStr(
+                booking.total_duration
+              );
+              const originalTimeStr = toISOTimeStr(oldStartTimestamp);
 
               // when we drag to the testTimeout band, any extra minutes less than 30 appear
               // since the slot lanes are of length 30 minutes
@@ -797,6 +806,24 @@ users.slice(0, 4).forEach((user) => {
                   cy.contains(".fc-event-main-frame", newTimeRangeStr)
                     .scrollIntoView()
                     .should("be.visible");
+
+                  // undo the edits, change back to original value
+                  cy.contains(".fc-event-main-frame", newTimeRangeStr).click();
+                  cy.contains("[data-cy-event-details] button", /edit/i)
+                    .click()
+                    .then(() => {
+                      cy.get("#booking-form-dialog").within(() => {
+                        cy.get("input#duration[type='time']").type(
+                          originalDurationStr
+                        );
+                        cy.get("button#datetime-input").click();
+                        cy.get(
+                          "[data-radix-popper-content-wrapper] input[type='time']"
+                        ).type(originalTimeStr);
+                        // save
+                        cy.contains("button", /save/i).click();
+                      });
+                    });
                 });
             });
 
@@ -833,6 +860,13 @@ users.slice(0, 4).forEach((user) => {
                   cy.wait("@bookings-list");
                   cy.contains(eventElemSelector, oldTimeRangeStr).should(
                     "not.exist"
+                  );
+
+                  // add back the deleted booking for other tests to not be affected
+                  cy.request(
+                    "POST",
+                    `${apiBaseUrl}/bookings/${device.name}`,
+                    booking
                   );
                 });
             });
@@ -930,4 +964,40 @@ function get12HourTimeString(value: Date): string {
  */
 function addSeconds(value: Date, seconds: number): Date {
   return new Date(value.getTime() + seconds * 1000);
+}
+
+/**
+ * Extracts the locale date format of the date
+ *
+ * @param value - the date value
+ */
+function toLocaleDateStr(value: Date): string {
+  return value.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/**
+ * Extracts the ISO time format of the date
+ *
+ * @param value - the date value
+ */
+function toISOTimeStr(value: Date): string {
+  return value.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+/**
+ * Extracts the ISO date of the date
+ *
+ * @param value - the date value
+ */
+function toISODateStr(value: Date): string {
+  return value.toLocaleDateString("en-CA");
 }
