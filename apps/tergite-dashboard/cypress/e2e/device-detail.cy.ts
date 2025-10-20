@@ -372,8 +372,16 @@ users.slice(0, 4).forEach((user) => {
                     `${startTimeStr} - ${endTimeStr}`
                   ).should("be.visible");
 
-                  // FIXME: Add a cy.request or something to delete the created booking for
-                  //  the other tests
+                  // FIXME: Delete the newly created booking to start afresh
+                  cy.contains(
+                    ".fc-event-main-frame",
+                    `${startTimeStr} - ${endTimeStr}`
+                  ).click();
+
+                  cy.contains(
+                    "[data-cy-event-details] button",
+                    /discard/i
+                  ).click();
                 });
             });
         });
@@ -451,8 +459,16 @@ users.slice(0, 4).forEach((user) => {
                     `${startTimeStr} - ${endTimeStr}`
                   ).should("be.visible");
 
-                  // FIXME: Add a cy.request or something to delete the created booking for
-                  //  the other tests
+                  // FIXME: Delete the newly created booking to start afresh
+                  cy.contains(
+                    ".fc-event-main-frame",
+                    `${startTimeStr} - ${endTimeStr}`
+                  ).click();
+
+                  cy.contains(
+                    "[data-cy-event-details] button",
+                    /discard/i
+                  ).click();
                 });
             });
         });
