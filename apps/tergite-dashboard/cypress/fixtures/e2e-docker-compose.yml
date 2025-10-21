@@ -43,6 +43,8 @@ services:
     ports:
       - "27018:27017"
       - "3001:3001"
+    volumes:
+      - ./mongo-init.js:/scripts/init.js:ro
     networks:
       - tergite-frontend-e2e
     env_file:

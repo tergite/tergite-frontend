@@ -13,7 +13,7 @@ if [[ "$path" == "/refreshed-db" ]]; then
     echo "Running refresh-db.sh..."
     
     # Refresh the database
-    mongosh /docker-entrypoint-initdb.d/init.js 2>&1;
+    mongosh /scripts/init.js 2>&1;
 
     # Send success response
     echo "success"
