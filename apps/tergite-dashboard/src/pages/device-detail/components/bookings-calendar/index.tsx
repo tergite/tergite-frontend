@@ -289,6 +289,8 @@ function getEventContentGenerator({
             data-cy-calendar-event
             className="fc-event-main border-1 px-2 w-full"
             data-booking-id={booking.id}
+            data-booking-start={booking.start_utc}
+            data-booking-end={booking.end_utc}
           >
             <div className="fc-event-main-frame text-secondary hover:text-secondary-foreground">
               <div className="fc-event-time">{eventInfo.timeText}</div>
