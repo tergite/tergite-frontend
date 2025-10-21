@@ -25,6 +25,7 @@ const bookingsConfigs = [...bookingsConfigList] as BookingsConfigInDb[];
 const bookingsConfigsMap = Object.fromEntries(
   bookingsConfigs.map((v) => [v.id, v])
 );
+const futureBookingsFixture = bookingsFixture.filter((v) => v.starts_in > 1500);
 
 users.slice(0, 4).forEach((user) => {
   devices.forEach((device) => {
@@ -600,10 +601,9 @@ users.slice(0, 4).forEach((user) => {
             });
         });
 
-        // The last two events are in the past.
-        bookingsFixture.slice(0, 3).forEach((bookingInfo, idx) => {
+        futureBookingsFixture.slice(0, 3).forEach((bookingInfo) => {
           if (username === currentUsername) {
-            it(`tapping the edit button on the booking starting in ${bookingInfo.starts_in} seconds, opens edit form`, () => {
+            it(`tapping the edit button on the booking that starts in ${bookingInfo.starts_in} seconds, opens edit form`, () => {
               cy.viewport(1440, 1080);
               const startTimeStr = get12HourTimeString(testTimestamp);
               const duration = Math.min(
@@ -613,7 +613,11 @@ users.slice(0, 4).forEach((user) => {
               const durationStr = convertSecToDurationStr(duration);
               const endTime = addSeconds(testTimestamp, duration);
               const endTimeStr = get12HourTimeString(endTime);
-              const booking = expectedBookings[idx];
+              const booking = findBooking(
+                expectedBookings,
+                bookingInfo,
+                currentDate
+              );
 
               const originalStartUtc = new Date(booking.start_utc);
               const oldStartTimeStr = get12HourTimeString(originalStartUtc);
@@ -707,7 +711,11 @@ users.slice(0, 4).forEach((user) => {
               );
               const endTime = addSeconds(testTimestamp, duration);
               const endTimeStr = get12HourTimeString(endTime);
-              const booking = expectedBookings[idx];
+              const booking = findBooking(
+                expectedBookings,
+                bookingInfo,
+                currentDate
+              );
 
               const oldStartTimeStr = get12HourTimeString(
                 new Date(booking.start_utc)
@@ -754,7 +762,11 @@ users.slice(0, 4).forEach((user) => {
             it(`dragging and dropping the booking that starts in ${bookingInfo.starts_in} seconds, edits it`, () => {
               // Note: The length is very long so that the drop zone is visible on the view port
               cy.viewport(1440, 2080);
-              const booking = expectedBookings[idx];
+              const booking = findBooking(
+                expectedBookings,
+                bookingInfo,
+                currentDate
+              );
 
               const oldStartTimestamp = new Date(booking.start_utc);
               const oldStartTimeStr = get12HourTimeString(oldStartTimestamp);
@@ -829,7 +841,11 @@ users.slice(0, 4).forEach((user) => {
 
             it(`tapping the discard button on the booking starting in ${bookingInfo.starts_in} seconds, cancels it`, () => {
               cy.viewport(1440, 1080);
-              const booking = expectedBookings[idx];
+              const booking = findBooking(
+                expectedBookings,
+                bookingInfo,
+                currentDate
+              );
 
               const oldStartTimeStr = get12HourTimeString(
                 new Date(booking.start_utc)
@@ -874,7 +890,11 @@ users.slice(0, 4).forEach((user) => {
             // when the booking does not belong to current user
             it(`dragging and dropping the another person's booking that starts in ${bookingInfo.starts_in} seconds, does nothing`, () => {
               cy.viewport(1440, 2080);
-              const booking = expectedBookings[idx];
+              const booking = findBooking(
+                expectedBookings,
+                bookingInfo,
+                currentDate
+              );
               const oldStartTimestamp = new Date(booking.start_utc);
               const oldStartTimeStr = get12HourTimeString(oldStartTimestamp);
               const oldEndTimeStr = get12HourTimeString(
@@ -1000,4 +1020,35 @@ function toISOTimeStr(value: Date): string {
  */
 function toISODateStr(value: Date): string {
   return value.toLocaleDateString("en-CA");
+}
+
+/**
+ * Retrieves the booking that corresponds to the given booking info
+ *
+ * @param bookings - the list of available bookings
+ * @param basicBookingInfo - the basic info of the booking to get
+ * @param currentTimestamp - the timestamp now
+ */
+function findBooking(
+  bookings: Booking[],
+  { starts_in, duration }: { starts_in: number; duration: number },
+  currentTimestamp: Date
+): Booking {
+  const now = currentTimestamp.getTime();
+  const startTimestamp = new Date(now + starts_in * 1000);
+  const endTimestamp = new Date(startTimestamp.getTime() + duration * 1000);
+  const startTimestampStr = startTimestamp.toISOString();
+  const endTimestampStr = endTimestamp.toISOString();
+
+  const booking = bookings.find(
+    (v) =>
+      new Date(v.start_utc).toISOString() === startTimestampStr &&
+      new Date(v.end_utc).toISOString() == endTimestampStr
+  );
+  if (!booking) {
+    throw new Error(
+      `booking starting in ${starts_in}s and of duration ${duration} not found`
+    );
+  }
+  return booking;
 }
