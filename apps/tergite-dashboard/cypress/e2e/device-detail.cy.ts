@@ -35,13 +35,14 @@ users.slice(0, 4).forEach((user) => {
     let testThreshold: number;
     let platform: string;
     let apiBaseUrl: string;
+    let dbResetUrl: string;
     let currentDateStr: string;
     let currentDate: Date;
 
     describe(`${device.name} device detail  for ${username}`, () => {
       beforeEach(() => {
         apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
-        const dbResetUrl = Cypress.env("DB_RESET_URL");
+        dbResetUrl = Cypress.env("DB_RESET_URL");
         const domain = Cypress.env("VITE_COOKIE_DOMAIN");
         const cookieName = Cypress.env("VITE_COOKIE_NAME");
         const secret = Cypress.env("JWT_SECRET");
@@ -247,6 +248,10 @@ users.slice(0, 4).forEach((user) => {
           cy.intercept("GET", `${apiBaseUrl}/bookings/${device.name}?`).as(
             "bookings-list"
           );
+
+          // We need to reset the mongo database before each test
+          cy.request(`${dbResetUrl}`);
+          cy.wait(500);
 
           cy.viewport(1280, 750);
           cy.contains("button", /bookings/i).realClick();

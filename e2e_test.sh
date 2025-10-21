@@ -89,6 +89,7 @@ docker compose -p tergite-frontend-e2e  down --rmi all --volumes 2>/dev/null
 docker rmi -f tergite/tergite-mss 2>/dev/null
 docker rmi -f tergite/tergite-dashboard 2>/dev/null
 docker rmi -f tergite/tergite-backend-e2e:latest 2>/dev/null
+docker rmi -f tergite/tergite-backend-with-db-e2e:latest 2>/dev/null
 docker system prune -f
 
 # Create and navigating to temporary directory
@@ -104,13 +105,15 @@ rm -rf tergite-backend
 git clone "$ROOT_PATH" tergite-frontend
 git clone --single-branch --branch "$BACKEND_BRANCH" "$BACKEND_REPO"
 
-# FIXME:
-# - Create dummy backends for all backends represented in  the devices page (first three or four)
-# - Add dummy sqlite dbs in each of those backends' containers, containing the right tables and records
-# - Run the end to end
+# Adding special docker file to tergite-backend folder
+echo "Adding configuraiton files to tergite-backend"
+cd tergite-backend
+cat "Dockerfile" "$FIXTURES_PATH/backend-with-db.Dockerfile" > "Dockerfile.with-db"
+cp "$FIXTURES_PATH/sqlite-router.sh" .
+cd ..
 
 # Adding configuration files to tergite-frontend folder
-echo "Adding configuration files"
+echo "Adding configuration files to tergite-frontend"
 cd tergite-frontend
 cp "$FIXTURES_PATH/mongo-init.js" .
 cp "$FIXTURES_PATH/mongo-router.sh" .
@@ -130,10 +133,7 @@ cp "$FIXTURES_PATH/pingu.seed.toml" .
 cp "$FIXTURES_PATH/pegu.toml" .
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_1q_booking_db.db
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_2q_booking_db.db
-cp "$FIXTURES_PATH/booking_db.db" loke_booking_db.db
-cp "$FIXTURES_PATH/booking_db.db" thor_booking_db.db
-cp "$FIXTURES_PATH/booking_db.db" pingu_booking_db.db
-cp "$FIXTURES_PATH/booking_db.db" pegu_booking_db.db
+cp "$FIXTURES_PATH/backend_db.sql" .
 cp "$FIXTURES_PATH/private-mss-key.pem" .
 cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/quantify-config.json" .

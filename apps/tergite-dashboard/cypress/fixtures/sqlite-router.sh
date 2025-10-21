@@ -12,14 +12,8 @@ if [[ "$path" == "/refreshed-db" ]]; then
     echo
     echo "Running refresh-db.sh..."
     
-    # Refresh the mongo database
-    mongosh /scripts/init.js 2>&1;
-
-    # refresh all backend's databases
-    curl http://loke:3001/refreshed-db
-    curl http://pingu:3001/refreshed-db
-    curl http://pegu:3001/refreshed-db
-    curl http://thor:3001/refreshed-db
+    # Refresh the database
+    sqlite3 /code/booking_db.db < /code/backend_db.sql;
 
     # Send success response
     echo "success"

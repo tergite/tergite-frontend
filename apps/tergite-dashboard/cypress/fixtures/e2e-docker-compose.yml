@@ -187,11 +187,15 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-e2e:latest"
+    image: "tergite/tergite-backend-with-db-e2e:latest"
+    build:
+      context: ../tergite-backend
+      dockerfile: Dockerfile.with-db
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
       - "8003:8000"
+      - "3003:3001"
     environment:
       MSS_MACHINE_ROOT_URL: "http://mss:8002"
       MSS_PORT: 8002
@@ -216,7 +220,7 @@ services:
       - ./loke.toml:/code/backend_config.toml:ro
       - ./loke.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
-      - ./loke_booking_db.db:/code/booking_db.db
+      - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
     networks:
@@ -233,17 +237,18 @@ services:
   thor:
     restart: always
     depends_on:
-      qiskit_pulse_1q:
+      loke:
         condition: service_healthy
       mss:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-e2e:latest"
+    image: "tergite/tergite-backend-with-db-e2e:latest"
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
       - "8004:8000"
+      - "3004:3001"
     environment:
       MSS_MACHINE_ROOT_URL: "http://mss:8002"
       MSS_PORT: 8002
@@ -268,7 +273,7 @@ services:
       - ./thor.toml:/code/backend_config.toml:ro
       - ./thor.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
-      - ./thor_booking_db.db:/code/booking_db.db
+      - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
     networks:
@@ -285,17 +290,18 @@ services:
   pingu:
     restart: always
     depends_on:
-      qiskit_pulse_1q:
+      loke:
         condition: service_healthy
       mss:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-e2e:latest"
+    image: "tergite/tergite-backend-with-db-e2e:latest"
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
       - "8005:8000"
+      - "3005:3001"
     environment:
       MSS_MACHINE_ROOT_URL: "http://mss:8002"
       MSS_PORT: 8002
@@ -320,7 +326,7 @@ services:
       - ./pingu.toml:/code/backend_config.toml:ro
       - ./pingu.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
-      - ./pingu_booking_db.db:/code/booking_db.db
+      - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
     networks:
@@ -337,17 +343,18 @@ services:
   pegu:
     restart: always
     depends_on:
-      qiskit_pulse_1q:
+      loke:
         condition: service_healthy
       mss:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-e2e:latest"
+    image: "tergite/tergite-backend-with-db-e2e:latest"
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
       - "8006:8000"
+      - "3006:3001"
     environment:
       MSS_MACHINE_ROOT_URL: "http://mss:8002"
       MSS_PORT: 8002
@@ -372,7 +379,7 @@ services:
       - ./pegu.toml:/code/backend_config.toml:ro
       - ./generic.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
-      - ./pegu_booking_db.db:/code/booking_db.db
+      - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
     networks:

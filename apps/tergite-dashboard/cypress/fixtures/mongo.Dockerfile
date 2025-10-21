@@ -10,8 +10,8 @@ WORKDIR /docker-entrypoint-initdb.d/
 COPY mongo-router.sh /usr/local/bin/router.sh
 RUN chmod +x /usr/local/bin/router.sh
 
-# Install BusyBox for HTTP server
-RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
+# Install BusyBox for HTTP server and curl
+RUN apt-get update && apt-get install -y socat curl && rm -rf /var/lib/apt/lists/*
 
 # Expose MongoDB and HTTP server ports
 EXPOSE 27017 3001
