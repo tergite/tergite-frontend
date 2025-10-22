@@ -205,7 +205,7 @@ services:
       DEFAULT_PREFIX: "loke"
       MSS_APP_TOKEN: ${MSS_APP_TOKEN}
       MAX_TIME_SLOT_LENGTH: 7200
-      MIN_TIME_SLOT_LENGTH: 1800
+      MIN_TIME_SLOT_LENGTH: 1200
       MAX_SLOTS_PER_DAY: 20
       MAX_IDLE_TIME: 100
       APP_SETTINGS: "staging"
@@ -255,13 +255,13 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "loke"
+      DEFAULT_PREFIX: "thor"
       MSS_APP_TOKEN: ${MSS_APP_TOKEN}
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
       MAX_TIME_SLOT_LENGTH: 7200
-      MIN_TIME_SLOT_LENGTH: 3600
+      MIN_TIME_SLOT_LENGTH: 600
       MAX_SLOTS_PER_DAY: 20
       MAX_IDLE_TIME: 100
       REDIS_PORT: 6379
@@ -308,13 +308,13 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "loke"
+      DEFAULT_PREFIX: "pingu"
       MSS_APP_TOKEN: ${MSS_APP_TOKEN}
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
       MAX_TIME_SLOT_LENGTH: 9600
-      MIN_TIME_SLOT_LENGTH: 1800
+      MIN_TIME_SLOT_LENGTH: 300
       MAX_SLOTS_PER_DAY: 25
       MAX_IDLE_TIME: 100
       REDIS_PORT: 6379
@@ -361,13 +361,13 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "loke"
+      DEFAULT_PREFIX: "pegu"
       MSS_APP_TOKEN: ${MSS_APP_TOKEN}
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
       MAX_TIME_SLOT_LENGTH: 7200
-      MIN_TIME_SLOT_LENGTH: 1800
+      MIN_TIME_SLOT_LENGTH: 1200
       MAX_SLOTS_PER_DAY: 24
       MAX_IDLE_TIME: 100
       REDIS_PORT: 6379
