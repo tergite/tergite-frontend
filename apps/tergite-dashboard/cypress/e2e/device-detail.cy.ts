@@ -359,16 +359,6 @@ users.slice(0, 4).forEach((user) => {
                     ".fc-event-time",
                     `${startTimeStr} - ${endTimeStr}`
                   ).should("be.visible");
-
-                  cy.contains(
-                    ".fc-event-main-frame",
-                    `${startTimeStr} - ${endTimeStr}`
-                  ).click();
-
-                  cy.contains(
-                    "[data-cy-event-details] button",
-                    /discard/i
-                  ).click();
                 });
             });
         });
@@ -445,16 +435,6 @@ users.slice(0, 4).forEach((user) => {
                     ".fc-event-time",
                     `${startTimeStr} - ${endTimeStr}`
                   ).should("be.visible");
-
-                  cy.contains(
-                    ".fc-event-main-frame",
-                    `${startTimeStr} - ${endTimeStr}`
-                  ).click();
-
-                  cy.contains(
-                    "[data-cy-event-details] button",
-                    /discard/i
-                  ).click();
                 });
             });
         });
@@ -632,10 +612,6 @@ users.slice(0, 4).forEach((user) => {
 
               const newTimeRangeStr = `${startTimeStr} - ${endTimeStr}`;
               const oldTimeRangeStr = `${oldStartTimeStr} - ${oldEndTimeStr}`;
-              const originalDurationStr = convertSecToDurationStr(
-                booking.total_duration
-              );
-              const originalTimeStr = toISOTimeStr(originalStartUtc);
 
               const eventElemSelector = `[data-cy-calendar-event][data-booking-id="${booking.id}"]`;
 
@@ -681,28 +657,6 @@ users.slice(0, 4).forEach((user) => {
                       cy.contains(".fc-event-main-frame", newTimeRangeStr)
                         .scrollIntoView()
                         .should("be.visible");
-
-                      // undo the edits, change back to original value
-                      cy.contains(
-                        ".fc-event-main-frame",
-                        newTimeRangeStr
-                      ).click();
-
-                      cy.contains("[data-cy-event-details] button", /edit/i)
-                        .click()
-                        .then(() => {
-                          cy.get("#booking-form-dialog").within(() => {
-                            cy.get("input#duration[type='time']").type(
-                              originalDurationStr
-                            );
-                            cy.get("button#datetime-input").click();
-                            cy.get(
-                              "[data-radix-popper-content-wrapper] input[type='time']"
-                            ).type(originalTimeStr);
-                            // save
-                            cy.contains("button", /save/i).click();
-                          });
-                        });
                     });
                 });
             });
@@ -778,10 +732,6 @@ users.slice(0, 4).forEach((user) => {
               const oldEndTimeStr = get12HourTimeString(
                 new Date(booking.end_utc)
               );
-              const originalDurationStr = convertSecToDurationStr(
-                booking.total_duration
-              );
-              const originalTimeStr = toISOTimeStr(oldStartTimestamp);
 
               // when we drag to the testTimeout band, any extra minutes less than 30 appear
               // since the slot lanes are of length 30 minutes
@@ -823,24 +773,6 @@ users.slice(0, 4).forEach((user) => {
                   cy.contains(".fc-event-main-frame", newTimeRangeStr)
                     .scrollIntoView()
                     .should("be.visible");
-
-                  // undo the edits, change back to original value
-                  cy.contains(".fc-event-main-frame", newTimeRangeStr).click();
-                  cy.contains("[data-cy-event-details] button", /edit/i)
-                    .click()
-                    .then(() => {
-                      cy.get("#booking-form-dialog").within(() => {
-                        cy.get("input#duration[type='time']").type(
-                          originalDurationStr
-                        );
-                        cy.get("button#datetime-input").click();
-                        cy.get(
-                          "[data-radix-popper-content-wrapper] input[type='time']"
-                        ).type(originalTimeStr);
-                        // save
-                        cy.contains("button", /save/i).click();
-                      });
-                    });
                 });
             });
 
@@ -881,13 +813,6 @@ users.slice(0, 4).forEach((user) => {
                   cy.wait("@bookings-list");
                   cy.contains(eventElemSelector, oldTimeRangeStr).should(
                     "not.exist"
-                  );
-
-                  // add back the deleted booking for other tests to not be affected
-                  cy.request(
-                    "POST",
-                    `${apiBaseUrl}/bookings/${device.name}`,
-                    booking
                   );
                 });
             });
