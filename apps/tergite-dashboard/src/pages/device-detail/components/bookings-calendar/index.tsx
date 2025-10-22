@@ -146,7 +146,7 @@ export function BookingsCalendar({
 
         await updateBooking(backend, bookingId, newInfo);
       },
-      [backend, queryClient, isAdmin, currentUserId]
+      [backend, isAdmin, currentUserId]
     ),
     onSuccess: useCallback(async () => {
       await refreshBookingsQueries(queryClient, backend);
