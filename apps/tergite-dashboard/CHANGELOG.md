@@ -7,6 +7,10 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+### Added
+
+- Added the booking calendar to the device details screen
+
 ## [2025.09.0] - 2025-10-02
 
 - No change

@@ -14,6 +14,21 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+### Added
+
+- Added healthchecks for all services in e2e docker compose
+- Added cleanup backend databases via the `/refreshed-db` endpoint in e2e.
+
+### Changed
+
+- Updated e2e tests to include backends that are expected in the dashboard
+- Enforced timezone in cypress tests to Europe/Stockholm
+- Move initialization of e2e's tergite-mongo docker compose service to use a temporary service
+
+### Fixed
+
+- Fixed e2e error '(0 , crypto**WEBPACK_IMPORTED_MODULE_11**.randomUUID) is not a function'
+
 ## [2025.09.0] - 2025-10-02
 
 ### Changed
