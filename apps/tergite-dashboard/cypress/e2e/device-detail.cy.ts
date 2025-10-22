@@ -222,8 +222,8 @@ users.slice(0, 4).forEach((user) => {
           bookingConfigs.min_time_slot_length
         );
         const invalidDurations = [
-          bookingConfigs.min_time_slot_length - 900,
-          bookingConfigs.max_time_slot_length + 900,
+          bookingConfigs.min_time_slot_length - 60,
+          bookingConfigs.max_time_slot_length + 60,
         ];
         let expectedBookings: Booking[] = [];
 
