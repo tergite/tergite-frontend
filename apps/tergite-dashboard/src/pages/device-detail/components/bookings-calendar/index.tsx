@@ -129,26 +129,30 @@ export function BookingsCalendar({
     [setDefaultStartTimestamp, setIsCreateFormOpen]
   );
 
-  const handleEventDrop = useCallback(
-    (arg: EventDropArg) => {
-      const isPast = DateTime.fromISO(arg.event.startStr) < DateTime.now();
-      const isOwnedByUser = currentUserId === arg.event.extendedProps.user_id;
-      const canEdit = !isPast && (isOwnedByUser || isAdmin);
-      if (!canEdit) {
-        return arg.revert();
-      }
-      const bookingId = arg.event.extendedProps.id;
-      const newInfo = {
-        start_utc: arg.event.start?.toISOString() as string,
-        end_utc: arg.event.end?.toISOString() as string,
-      };
+  const handleEventDrop = useMutation({
+    mutationFn: useCallback(
+      async (arg: EventDropArg) => {
+        const isPast = DateTime.fromISO(arg.event.startStr) < DateTime.now();
+        const isOwnedByUser = currentUserId === arg.event.extendedProps.user_id;
+        const canEdit = !isPast && (isOwnedByUser || isAdmin);
+        if (!canEdit) {
+          return arg.revert();
+        }
+        const bookingId = arg.event.extendedProps.id;
+        const newInfo = {
+          start_utc: arg.event.start?.toISOString() as string,
+          end_utc: arg.event.end?.toISOString() as string,
+        };
 
-      updateBooking(backend, bookingId, newInfo).then(() =>
-        refreshBookingsQueries(queryClient, backend)
-      );
-    },
-    [backend, queryClient, isAdmin, currentUserId]
-  );
+        await updateBooking(backend, bookingId, newInfo);
+      },
+      [backend, queryClient, isAdmin, currentUserId]
+    ),
+    onSuccess: useCallback(async () => {
+      await refreshBookingsQueries(queryClient, backend);
+    }, [backend, queryClient]),
+    throwOnError: true,
+  });
 
   return (
     <>
@@ -192,7 +196,7 @@ export function BookingsCalendar({
         contentHeight={"60vh"}
         dateClick={handleDateClick}
         editable={true}
-        eventDrop={handleEventDrop}
+        eventDrop={handleEventDrop.mutate}
       />
       <BookingForm
         dialogTitle="Create new booking"
