@@ -197,6 +197,20 @@ async def update_qpu_usage(
     return project
 
 
+async def remove_job(db: AsyncIOMotorDatabase, job_id: UUID):
+    """Remove the job of the given job_id
+
+    Args:
+        db: the database where the jobs are stored
+        job_id: the unique identifier of the job
+
+    Raises:
+        ValueError: server failed deleting documents
+        NotFoundError: no matches for {filter}
+    """
+    return await mongodb_utils.delete_many(db.jobs, _filter={"job_id": str(job_id)})
+
+
 def _without_special_docker_host_domain(url: str) -> str:
     """Removes the docker host's URL special domain 'host.docker.internal'
 

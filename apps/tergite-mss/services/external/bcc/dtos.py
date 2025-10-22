@@ -1,0 +1,75 @@
+# This code is part of Tergite
+#
+# (C) Copyright Chalmers Next Labs 2025
+#
+# This code is licensed under the Apache License, Version 2.0. You may
+# obtain a copy of this license in the LICENSE.txt file in the root directory
+# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
+
+"""Data Transfer Objects for the BCC service"""
+from datetime import datetime
+from typing import Literal, NotRequired, Optional, TypedDict
+
+from pydantic import BaseModel, ConfigDict
+
+
+class NewBCCUserInfo(BaseModel):
+    """Schema for creating new users"""
+
+    id: str
+    name: str
+    email: str
+    password: str
+    is_admin: bool = False
+
+
+class BCCUserProfile(BaseModel):
+    """Schema for a user's profile"""
+
+    id: str
+    name: str
+    email: str
+    is_admin: bool = False
+
+
+class GeneralMessage(TypedDict):
+    """A general message object sent on the API"""
+
+    status: Literal["success", "error", "cancelled", "failed"]
+    detail: NotRequired[str]
+
+
+class NewBookingInfo(BaseModel):
+    """Schema for creating new bookings"""
+
+    start_utc: datetime
+    end_utc: datetime
+
+
+class Booking(BaseModel):
+    """Schema for booking
+
+    Attributes:
+        id: the unique identifier of the booking
+        user_id: the unique identifier of the user associated with this booking
+        start_utc: the timestamp when the booking starts
+        end_utc: the timestamp when the booking ends
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    user_id: Optional[str] = None
+    start_utc: datetime
+    end_utc: datetime
+    total_duration: float
+
+
+class CancellationDetails(BaseModel):
+    """Details to do with a given cancellation request"""
+
+    reason: Optional[str] = None

@@ -59,39 +59,6 @@ _AUTH_PROVIDERS = [
     ),
 ]
 
-# _AUTH_PROVIDER_DOMAIN_PAIRS = [
-#     (
-#         "example.com",
-#         [
-#             dict(
-#                 name="github",
-#                 url="http://testserver/auth/github/auto-authorize",
-#             ),
-#             dict(
-#                 name="gitlab",
-#                 url="http://testserver/auth/gitlab/auto-authorize",
-#             ),
-#         ],
-#     ),
-#     (
-#         "example.se",
-#         [
-#             dict(
-#                 name="puhuri",
-#                 url="http://testserver/auth/puhuri/auto-authorize",
-#             )
-#         ],
-#     ),
-#     (
-#         "chalmers.com",
-#         [
-#             dict(
-#                 name="chalmers",
-#                 url="http://testserver/auth/chalmers/auto-authorize",
-#             )
-#         ],
-#     ),
-# ]
 _SKIP_LIMIT_SORT_PARAMS = [
     (0, 1, ["-name", "email_domain"]),
     (1, 4, None),

@@ -27,16 +27,20 @@ from api.rest.dependencies import (
     CurrentLaxProjectDep,
     CurrentStrictProjectDep,
     CurrentStrictProjectUserIds,
+    CurrentUserDep,
     MongoDbDep,
     ProjectDbDep,
-    ReqeustIdDep,
+    RequestIdDep,
 )
 from services import jobs as jobs_service
+from services.auth import User
 from services.external import puhuri as puhuri_service
+from services.external.bcc.dtos import CancellationDetails, GeneralMessage
 from services.jobs.dtos import (
     Job,
     JobCreate,
     JobQuery,
+    JobStatus,
     JobStatusResponse,
     JobUpdate,
 )
@@ -118,7 +122,7 @@ async def create_one(
     bcc_clients_map: BccClientsMapDep,
     project_user_id_pair: CurrentStrictProjectUserIds,
     payload: JobCreate,
-    request_id: ReqeustIdDep,
+    request_id: RequestIdDep,
 ):
     """Creates a job in the given backend and given calibration_date in the body"""
     try:
@@ -166,3 +170,92 @@ async def update_one(
                 db, job_id=job_id, project=project, qpu_usage=qpu_usage
             )
     return await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)
+
+
+@router.post("/{job_id}/cancel")
+async def cancel_job(
+    db: MongoDbDep,
+    job_id: UUID,
+    details: CancellationDetails,
+    bcc_clients_map: BccClientsMapDep,
+    request_id: RequestIdDep,
+    user: User = CurrentUserDep,
+) -> GeneralMessage:
+    """Cancels the job of given job_id if job belongs to current user or if user is admin
+
+    Args:
+        db: the database in which records are stored
+        job_id: the unique identifier of the job
+        details: the extra information passed when canceling the job
+        request_id: the request id associated with this request
+        bcc_clients_map: the mapping containing clients that access backends on behalf of this application
+        user: the current logged-in user
+
+    Returns:
+        a general message showing status
+    Raises:
+        401: user not found
+        404: Job {job_id} not found
+        404: no matches for {job_id: job_id}
+        406: if the job has already been cancelled
+    """
+    job = await jobs_service.get_one(db, job_id=job_id)
+
+    try:
+        bcc_client = bcc_clients_map[job.device]
+    except KeyError:
+        raise UnknownBccError(f"Unknown backend '{job.device}'")
+
+    response = await bcc_client.cancel_job(
+        job_id, user_id=user.id, request_id=request_id, body=details
+    )
+    if response["status"] == "success":
+        await jobs_service.update_job(
+            db,
+            job_id=job_id,
+            payload=JobUpdate(
+                cancellation_reason=details.reason,
+                status=JobStatus.CANCELLED,
+            ),
+        )
+
+    return response
+
+
+@router.delete("/{job_id}")
+async def remove_job(
+    db: MongoDbDep,
+    job_id: UUID,
+    bcc_clients_map: BccClientsMapDep,
+    request_id: RequestIdDep,
+    user: User = CurrentUserDep,
+) -> GeneralMessage:
+    """Deletes the job of given job_id if job belongs to current user or if user is admin
+
+    Args:
+        db: the database in which records are stored
+        job_id: the unique identifier of the job
+        request_id: the request id associated with this request
+        bcc_clients_map: the mapping containing clients that access backends on behalf of this application
+        user: the logged-in user
+
+    Returns:
+        a general message showing status
+    Raises:
+        401: user not found
+        404: Job {job_id} not found
+        404: no matches for {job_id: job_id}
+    """
+    job = await jobs_service.get_one(db, job_id=job_id)
+    try:
+        bcc_client = bcc_clients_map[job.device]
+    except KeyError:
+        raise UnknownBccError(f"Unknown backend '{job.device}'")
+
+    response = await bcc_client.delete_job(
+        job_id, user_id=user.id, request_id=request_id
+    )
+    if response["status"] == "success":
+        await jobs_service.remove_job(db, job_id=job_id)
+
+    return response

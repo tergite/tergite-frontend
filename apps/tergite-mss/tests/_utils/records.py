@@ -13,9 +13,21 @@
 """Test utilities for handling records"""
 import copy
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypedDict,
+    TypeVar,
+)
 
 from tests._utils.date_time import get_timestamp_str
+
+T = TypeVar("T")
 
 
 def pop_field(records: List[Dict[str, Any]], field: str) -> List[Any]:
@@ -328,3 +340,37 @@ def _to_hash(value: Any, negated: bool = False) -> tuple[int, ...] | int | float
     if value is None:
         return None
     raise TypeError(f"type {type(value)} cannot be hashed for ordering")
+
+
+def paginate(
+    data: List[T], skip: int = 0, limit: Optional[int] = None
+) -> "PaginatedList[T]":
+    """Paginates the data basing on the skip and the limit params
+
+    Args:
+        data: the data to paginate
+        skip: the number of records to skip
+        limit: the maximum number of records to return
+
+    Returns:
+        list of the data sliced according to the pagination info
+    """
+    slice_limit = limit
+    if isinstance(slice_limit, int):
+        slice_limit += skip
+    return {"skip": skip, "limit": limit, "data": data[skip:slice_limit]}
+
+
+class PaginatedList(TypedDict, Generic[T]):
+    """The type for paginated responses"""
+
+    skip: int
+    limit: Optional[int]
+    data: List[T]
+
+
+class PaginationInfo(TypedDict):
+    """The pagination info"""
+
+    skip: int
+    limit: Optional[float]

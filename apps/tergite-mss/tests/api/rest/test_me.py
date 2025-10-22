@@ -701,3 +701,57 @@ def test_view_my_user_info(user, cookies, client):
 
         assert response.status_code == 200
         assert got == expected
+
+
+# @pytest.mark.parametrize("client, redis_conn, worker, job", _SIMPLE_UPLOAD_JOB_PARAMS)
+# def test_delete_profile(
+#     client, worker, redis_conn, job, jobs_folder, mocker: MockerFixture
+# ):
+#     """DELETE '/me' should delete their own user profile"""
+#     with client as client:
+#         users = _create_many_users(client, USERS[:2])
+#         curr_user = users[0]
+#         other_user = users[1]
+#
+#         curr_user_id = curr_user["id"]
+#         other_user_id = other_user["id"]
+#
+#         # create many bookings for this user
+#         for booking in VALID_BOOKINGS[:TEST_MAX_SLOTS_PER_DAY]:
+#             _create_booking(client, user_id=curr_user_id, booking=booking)
+#
+#         # create a booking for other user
+#         _create_booking(
+#             client, user_id=other_user_id, booking={"starts_in": 8, "duration": 2}
+#         )
+#
+#         # wait for the first booking to start
+#         raw_jobs = _get_raw_jobs(job, durations=[0.23, 0.1, 0.23])
+#         job_metadata_list = _get_job_submission_metadata(
+#             client, jobs=raw_jobs, users=users, mocker=mocker, jobs_folder=jobs_folder
+#         )
+#         _submit_multiple_jobs_v2(client, data=job_metadata_list)
+#
+#         # This should also cancel any bookings and any jobs belonging to user
+#         response = _delete_own_profile(client, user_id=curr_user_id)
+#         assert response.status_code == 200
+#         assert response.json() == {"status": "success", "detail": "Profile deleted"}
+#
+#         response = _view_own_profile(client, user_id=curr_user_id)
+#         assert response.status_code == 404
+#         assert response.json() == {"detail": "user not found"}
+#
+#         # Run the queue; try to wait for waitlist to transfer things to execution queue
+#         _wait_on_rq_worker(worker, with_scheduler=True)
+#
+#         jobs_in_redis = _get_jobs_in_redis(redis_conn)
+#
+#         deleted_user_jobs = [
+#             job for job in jobs_in_redis if job.user_id == curr_user_id
+#         ]
+#         other_user_jobs = [job for job in jobs_in_redis if job.user_id != curr_user_id]
+#         failure_reason = "Cancelled on user deletion"
+#
+#         assert all([v.status == JobStatus.CANCELLED for v in deleted_user_jobs])
+#         assert all([v.failure_reason == failure_reason for v in deleted_user_jobs])
+#         assert all([v.status == JobStatus.SUCCESSFUL for v in other_user_jobs])

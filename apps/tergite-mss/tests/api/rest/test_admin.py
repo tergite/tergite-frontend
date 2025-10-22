@@ -12,10 +12,11 @@
 """Integration tests for the routes for the admin"""
 import copy
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pytest
 from pytest_lazyfixture import lazy_fixture
+from typing_extensions import TypeVar
 
 from services.auth import Project
 from services.auth.projects.dtos import DeletedProject
@@ -36,15 +37,18 @@ from ..._utils.auth import (
 )
 from ..._utils.date_time import get_timestamp_str
 from ..._utils.fixtures import load_json_fixture
+from ..._utils.mock_backend import BCC_USERS
 from ..._utils.mongodb import find_in_collection, insert_in_collection
-from ..._utils.records import prune
-from ...conftest import PROJECT_LIST, get_auth_cookie
+from ..._utils.records import paginate, prune
+from ...conftest import BACKEND_SLUGS, PROJECT_LIST, get_auth_cookie
 
 _REQ_STATUSES = ["pending", "rejected", "approved"]
 _USER_REQUEST_COLLECTION = "auth_user_requests"
 _USER_REQUESTS_IN_DB = load_json_fixture("user_requests.json")
 _PROJECT_CREATE_LIST = load_json_fixture("project_create_list.json")
 _PROJECT_UPDATE_LIST = load_json_fixture("project_update_list.json")
+_BCC_USERS = load_json_fixture("bcc_users.json")
+
 _QPU_TIME_USER_REQUESTS_IN_DB = [
     item for item in _USER_REQUESTS_IN_DB if item["type"] == "project-qpu-seconds"
 ]
@@ -111,6 +115,15 @@ _EXTRA_PROJECT_DEFAULTS = {
     "user_emails": None,
     "admin_email": None,
 }
+_PAGINATION: List["PaginationInfo"] = load_json_fixture("pagination.json")
+
+_BCC_USERS_VIEW_PARAMS = [
+    (backend, pagination) for backend in BACKEND_SLUGS for pagination in _PAGINATION
+]
+_BCC_USERS_CREATE_PARAMS = [
+    (backend, payload) for backend in BACKEND_SLUGS for payload in _BCC_USERS
+]
+T = TypeVar("T")
 
 
 @pytest.mark.parametrize("user_id, cookies", _USER_ID_COOKIES_FIXTURE)
@@ -821,6 +834,84 @@ def test_non_admin_cannot_delete_project(
         assert response.status_code == 403
         assert got == expected
         assert get_db_record(db, Project, _id) is not None
+
+
+@pytest.mark.parametrize("backend, user_payload", _BCC_USERS_CREATE_PARAMS)
+def test_admin_create_bcc_user(
+    client, backend, user_payload, user_jwt_cookie, admin_jwt_cookie, mock_bcc
+):
+    """POST to '/admin/bcc-users' by admins should create the user via MSS"""
+    with client as client:
+        payload = {**user_payload, "id": TEST_USER_ID}
+        # non admins are not allowed
+        response = client.post(
+            f"/admin/bcc-users/{backend}", cookies=user_jwt_cookie, json=payload
+        )
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.post(
+            f"/admin/bcc-users/{backend}", cookies=admin_jwt_cookie, json=payload
+        )
+        expected = {
+            "id": TEST_USER_ID,
+            "name": user_payload["name"],
+            "email": user_payload["email"],
+            "is_admin": False,
+        }
+
+        assert response.status_code == 200
+        assert response.json() == expected
+
+
+@pytest.mark.parametrize("backend, pagination", _BCC_USERS_VIEW_PARAMS)
+def test_admin_view_bcc_users(
+    client, admin_jwt_cookie, user_jwt_cookie, backend, pagination, mock_bcc
+):
+    """GET '/admin/bcc-users/{backend}' should show to an admin the paginated list of user profiles via MSS"""
+    with client as client:
+        params = {k: v for k, v in pagination.items() if v is not None}
+        # non admins are not allowed
+        response = client.get(
+            f"/admin/bcc-users/{backend}/", cookies=user_jwt_cookie, params=params
+        )
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.get(
+            f"/admin/bcc-users/{backend}/", cookies=admin_jwt_cookie, params=params
+        )
+        actual_output = response.json()
+
+        skip = pagination["skip"]
+        limit = pagination["limit"]
+
+        expected = paginate(BCC_USERS, skip=skip, limit=limit)
+
+        assert response.status_code == 200
+        assert actual_output == expected
+
+
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_admin_remove_bcc_user(client, backend, admin_jwt_cookie, mock_bcc):
+    """DELETE '/admin/bcc-users/{backend}/{user_id}' by admin removes the user via MSS"""
+    with client as client:
+        url = f"/admin/bcc-users/{backend}/USER_ID_PLACEHOLDER"
+        response = client.delete(url, cookies=admin_jwt_cookie)
+        assert response.status_code == 200
+        assert response.json() == {"status": "success", "detail": f"User deleted"}
+
+
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_non_admin_remove_user(client, backend, user_jwt_cookie, mock_bcc):
+    """Non admin cannot remove the profile of any user"""
+    with client as client:
+        url = f"/admin/bcc-users/{backend}/USER_ID_PLACEHOLDER"
+        response = client.delete(url, cookies=user_jwt_cookie)
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
 
 
 def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
