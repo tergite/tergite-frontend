@@ -118,3 +118,16 @@ def register_oauth2_client(
         prefix=f"/{client.name}",
         tags=tags,
     )
+
+    # For backward compatibility for now, we will also support the format of urls /auth/app/{client}/...
+    router.include_router(
+        controller.get_oauth_router(
+            oauth_client=client,
+            backend=auth_cookie_backend,
+            state_secret=jwt_secret,
+            is_verified_by_default=True,
+            redirect_url=conf.redirect_url,
+        ),
+        prefix=f"/app/{client.name}",
+        tags=tags,
+    )

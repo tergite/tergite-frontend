@@ -14,6 +14,11 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 ### Added
 
 - Added the `/bookings/{backend}/config` endpoint to return the configuration for the booking service for given backend
+- Added back the `/auth/app/{OATH_CLIENT}` URLs for backward compatibility
+
+### Fixed
+
+- Fix error 'redirect URI '.../auth/{client}/callback' specified in the request does not match the redirect URIs'
 
 ## [2025.09.0] - 2025-10-02
 
