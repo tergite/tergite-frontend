@@ -211,7 +211,7 @@ def test_github_cookie_callback_disallowed_email(
 
 
 def test_chalmers_cookie_callback(client, chalmers_user, cookie_oauth_state):
-    """Chalmers' users can be redirected to /auth/app/chalmers/callback to get their cookies"""
+    """Chalmers' users can be redirected to /auth/chalmers/callback to get their cookies"""
     # using context manager to ensure on_startup runs
     with client as client:
         response = client.get(
