@@ -843,6 +843,28 @@ router.post(
       return;
     }
 
+    const bookingStartUtc = DateTime.fromISO(body.start_utc);
+    const bookingConfig = mockDb.getOne<BookingsConfigInDb>(
+      "bookings_configs",
+      ({ id }) => id === backend
+    );
+    const bookingsThatDay = mockDb.getMany<BookingInDb>(
+      "bookings",
+      (v) =>
+        v.user_id === user_id &&
+        DateTime.fromISO(v.start_utc).hasSame(bookingStartUtc, "day")
+    );
+
+    if (
+      bookingConfig?.max_slots_per_day != undefined &&
+      bookingsThatDay.length >= bookingConfig.max_slots_per_day
+    ) {
+      res.status(400).json({
+        detail: `you have exceeded the maximum ${bookingConfig?.max_slots_per_day} bookings per day`,
+      });
+      return;
+    }
+
     const result = mockDb.create<BookingInDb>("bookings", {
       ...body,
       username: user.email.split("@")[0],

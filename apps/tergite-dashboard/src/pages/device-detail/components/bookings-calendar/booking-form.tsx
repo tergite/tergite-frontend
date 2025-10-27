@@ -1,6 +1,6 @@
 import { cn, mergeDatetime } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BookingsConfig, NewBookingInfo } from "types";
+import { BookingsConfig, ErrorInfo, NewBookingInfo } from "types";
 import { useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
@@ -46,6 +46,7 @@ export function BookingForm({
   initialBooking,
   onSuccess = () => {},
   onCancel = () => {},
+  onError = () => {},
   bookingsConfig,
   defaultStartTimestamp,
   open,
@@ -181,7 +182,7 @@ export function BookingForm({
       },
       [backend, queryClient, handleOpenChange, onSuccess, toast]
     ),
-    throwOnError: true,
+    onError,
   });
 
   // // A hack: for some reason formObj.formState.isDirty was not always right especially
@@ -318,6 +319,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   bookingsConfig: BookingsConfig;
   onCancel?: () => void;
+  onError?: (err: ErrorInfo | Error) => void;
   mutate: (
     backend: string,
     newInfo: NewBookingInfo,

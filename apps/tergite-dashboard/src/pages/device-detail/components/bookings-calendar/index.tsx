@@ -15,8 +15,14 @@ import {
 } from "@/components/ui/popover";
 import { DateTime, Duration } from "luxon";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Booking, BookingsConfig, GeneralMessage, User } from "types";
+import { Button, IconButton } from "@/components/ui/button";
+import {
+  Booking,
+  BookingsConfig,
+  ErrorInfo,
+  GeneralMessage,
+  User,
+} from "types";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
@@ -30,6 +36,8 @@ import {
 } from "@/lib/api-client";
 import { BookingForm } from "./booking-form";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { AlertCircleIcon, XIcon } from "lucide-react";
 
 /**
  * The calendar for viewing and making bookings
@@ -48,9 +56,11 @@ export function BookingsCalendar({
   const { toast } = useToast();
   const { isDark } = useContext(AppStateContext);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [errMessage, setErrMessage] = useState<string>();
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [currentBooking, setCurrentBooking] = useState<Booking>();
   const [defaultStartTimestamp, setDefaultStartTimestamp] = useState<string>();
+  const currentUserId = currentUser.id;
   const { data: bookings = [] } = useQuery(
     bookingsOfBackendQuery(bookingsMetadata)
   );
@@ -68,6 +78,20 @@ export function BookingsCalendar({
     [bookings, backend]
   );
 
+  /**
+   * Shows the error message to the user
+   */
+  const showErrorMsg = useCallback(
+    (err: ErrorInfo | Error) => {
+      setErrMessage(err.message);
+      console.error(err);
+    },
+    [setErrMessage]
+  );
+
+  /**
+   * Mutation hook for handling booking cancellation
+   */
   const bookingCancellation = useMutation({
     mutationFn: useCallback(
       async ({ id }: Booking) => {
@@ -82,23 +106,40 @@ export function BookingsCalendar({
       },
       [backend, queryClient, toast]
     ),
-    throwOnError: true,
+    onError: showErrorMsg,
   });
 
+  /**
+   * Handler for when editing a booking is initiated
+   */
   const handleBookingEdit = useCallback(
     (booking: Booking) => {
+      // clear error message
+      setErrMessage(undefined);
       setCurrentBooking(booking);
       setIsEditFormOpen(true);
     },
-    [setCurrentBooking, setIsEditFormOpen]
+    [setCurrentBooking, setIsEditFormOpen, setErrMessage]
   );
 
+  /**
+   * Handler for when canceling a booking is initiated
+   */
   const handleBookingCancel = useCallback(
-    (booking: Booking) => bookingCancellation.mutate(booking),
-    [bookingCancellation]
+    (booking: Booking) => {
+      // clear error message
+      setErrMessage(undefined);
+      return bookingCancellation.mutate(booking);
+    },
+    [bookingCancellation, setErrMessage]
   );
 
-  const currentUserId = currentUser.id;
+  /**
+   * Handler to ger the classnames for the event
+   *
+   * This is useful for example in helping the events be responsive
+   * to dark mode changes etc.
+   */
   const getEventClassNames = useMemo(
     () =>
       getEventClassNamesGenerator({
@@ -109,6 +150,10 @@ export function BookingsCalendar({
     [isAdmin, isDark, currentUserId]
   );
 
+  /**
+   * Handler for generating custom components to
+   * display the events on the calendar
+   */
   const renderEventContent = useMemo(
     () =>
       getEventContentGenerator({
@@ -121,17 +166,28 @@ export function BookingsCalendar({
     [isAdmin, isDark, currentUserId, handleBookingEdit, handleBookingCancel]
   );
 
+  /**
+   * Handler to handle clicking empty slots in the calendar
+   */
   const handleDateClick = useCallback(
     (info: DateClickArg) => {
+      // clear error message
+      setErrMessage(undefined);
       setDefaultStartTimestamp(info.dateStr);
       setIsCreateFormOpen(true);
     },
-    [setDefaultStartTimestamp, setIsCreateFormOpen]
+    [setDefaultStartTimestamp, setIsCreateFormOpen, setErrMessage]
   );
 
+  /**
+   * Handler to handle drag and drop of events
+   */
   const handleEventDrop = useMutation({
     mutationFn: useCallback(
       async (arg: EventDropArg) => {
+        // clear error message
+        setErrMessage(undefined);
+
         const isPast = DateTime.fromISO(arg.event.startStr) < DateTime.now();
         const isOwnedByUser = currentUserId === arg.event.extendedProps.user_id;
         const canEdit = !isPast && (isOwnedByUser || isAdmin);
@@ -146,16 +202,60 @@ export function BookingsCalendar({
 
         await updateBooking(backend, bookingId, newInfo);
       },
-      [backend, isAdmin, currentUserId]
+      [backend, isAdmin, currentUserId, setErrMessage]
     ),
     onSuccess: useCallback(async () => {
       await refreshBookingsQueries(queryClient, backend);
     }, [backend, queryClient]),
-    throwOnError: true,
+    onError: showErrorMsg,
   });
+
+  /**
+   * Handles the click on the alert close button
+   */
+  const handleAlertClose = useCallback(() => {
+    setErrMessage(undefined);
+  }, [setErrMessage]);
+
+  /**
+   * Handles errors when they occur while creating boking
+   */
+  const handleBookingCreateError = useCallback(
+    (err: ErrorInfo | Error) => {
+      showErrorMsg(err);
+      setIsCreateFormOpen(false);
+    },
+    [showErrorMsg, setIsCreateFormOpen]
+  );
+
+  /**
+   * Handles errors when they occur while editing boking
+   */
+  const handleBookingEditError = useCallback(
+    (err: ErrorInfo | Error) => {
+      showErrorMsg(err);
+      setIsEditFormOpen(false);
+    },
+    [showErrorMsg, setIsEditFormOpen]
+  );
 
   return (
     <>
+      {errMessage && (
+        <Alert variant="destructive" className="mb-2">
+          <div className="flex gap-2 items-start">
+            <AlertCircleIcon />
+            <AlertTitle className="mt-1">{errMessage}</AlertTitle>
+            <IconButton
+              variant="outline"
+              Icon={XIcon}
+              className="ml-auto h-5 w-5"
+              iconClassName="h-3 w-3"
+              onClick={handleAlertClose}
+            />
+          </div>
+        </Alert>
+      )}
       <EventCalendar
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
@@ -206,6 +306,7 @@ export function BookingsCalendar({
         bookingsConfig={bookingsConfig}
         defaultStartTimestamp={defaultStartTimestamp}
         mutate={(backend, newInfo) => createNewBooking(backend, newInfo)}
+        onError={handleBookingCreateError}
       />
       {currentBooking && (
         <BookingForm
@@ -219,6 +320,7 @@ export function BookingsCalendar({
             updateBooking(backend, original?.id as string, newInfo)
           }
           onSuccess={setCurrentBooking}
+          onError={handleBookingEditError}
         />
       )}
     </>
