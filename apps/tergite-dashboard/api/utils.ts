@@ -641,9 +641,7 @@ export interface BccUserInDb extends NewBCCUserInfo {
 /**
  * The schema for the Booking as saved in the database
  */
-export interface BookingInDb extends Booking {
-  backend: string;
-}
+export interface BookingInDb extends Booking {}
 
 /**
  * Schema for Bookings

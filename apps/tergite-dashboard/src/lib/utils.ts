@@ -3,6 +3,8 @@ import { twMerge } from "tailwind-merge";
 import {
   AnyFlatRecord,
   InputDuration,
+  Booking,
+  RawBooking,
   Time,
   type AggregateValue,
   type AppToken,
@@ -349,4 +351,18 @@ export function toInputDuration(
   }
 
   return Duration.fromObject(durationLikeObj);
+}
+
+/**
+ * Converts the raw booking as received from the backend into a Booking object
+ * to be used the client side
+ *
+ * @param data - the data to convert
+ * @param metadata - the metadata to add to the booking
+ */
+export function toClientSideBooking(
+  data: RawBooking,
+  metadata: { backend: string; [k: string]: unknown }
+): Booking {
+  return { ...data, ...metadata };
 }

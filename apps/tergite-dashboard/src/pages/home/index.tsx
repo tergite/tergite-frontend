@@ -11,19 +11,46 @@ import {
 import { Link, useLoaderData } from "react-router-dom";
 import DonutChart from "@/components/ui/donut-chart";
 
-import { devicesQuery, myJobsQuery, myProjectsQuery } from "@/lib/api-client";
-import { Job, Device, AppState, Project } from "types";
+import {
+  currentUserQuery,
+  devicesQuery,
+  myJobsQuery,
+  myProjectsQuery,
+  upcomingBookingsQuery,
+} from "@/lib/api-client";
+import { Job, Device, AppState, Project, Booking } from "types";
 import { JobsTable } from "./components/jobs-table";
 import { DevicesTable } from "./components/devices-table";
-import { QueryClient, useQuery } from "@tanstack/react-query";
+import {
+  DataTag,
+  InitialDataFunction,
+  QueryClient,
+  useQueries,
+  useQuery,
+  UseQueryOptions,
+  UseQueryResult,
+} from "@tanstack/react-query";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { DateTime } from "luxon";
+import { BookingsTable } from "./components/bookings-table";
 
 export function Home() {
-  const { currentProject } = useLoaderData() as HomeData;
-  const { data: devices = [] } = useQuery(devicesQuery);
-  const { data: jobs = [] } = useQuery(
+  const {
+    currentProject,
+    devices: defaultDevices,
+    jobs: defaultJobs,
+    bookings: defaultBookings,
+    bookingsQueries,
+  } = useLoaderData() as HomeData;
+  const { data: devices = defaultDevices } = useQuery(devicesQuery);
+  const { data: jobs = defaultJobs } = useQuery(
     myJobsQuery({ project_id: currentProject?.id })
   );
+
+  const { data: bookings = defaultBookings } = useQueries({
+    queries: bookingsQueries,
+    combine: combineMyBookingsQueries,
+  });
   const devicesOnlineRatio = React.useMemo(
     () =>
       Math.round(
@@ -64,18 +91,30 @@ export function Home() {
             </CardContent>
           </Card>
         </div>
-        <Card>
-          <CardHeader className="px-7">
-            <CardTitle>Jobs</CardTitle>
-            <CardDescription>
-              The status of your jobs in{" "}
-              {currentProject?.name || "all projects"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <JobsTable data={jobs} />
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 sm:grid-cols-6">
+          <Card className="sm:col-span-4">
+            <CardHeader className="px-7">
+              <CardTitle>Jobs</CardTitle>
+              <CardDescription>
+                The status of your jobs in{" "}
+                {currentProject?.name || "all projects"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <JobsTable data={jobs} />
+            </CardContent>
+          </Card>
+
+          <Card className="sm:col-span-2">
+            <CardHeader className="px-7">
+              <CardTitle>Upcoming Bookings</CardTitle>
+              <CardDescription>My upcoming bookings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BookingsTable data={bookings} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </main>
   );
@@ -84,33 +123,91 @@ export function Home() {
 interface HomeData {
   devices: Device[];
   jobs: Job[];
+  bookings: Booking[];
   currentProject?: Project;
+  bookingsQueries: (UseQueryOptions<
+    Booking[],
+    Error,
+    Booking[],
+    (string | undefined)[]
+  > & {
+    initialData?: InitialDataFunction<Booking[]> | undefined;
+  } & {
+    queryKey: DataTag<(string | undefined)[], Booking[]>;
+  })[];
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(appState: AppState, queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async () => {
     // devices
-    const cachedDevices = queryClient.getQueryData(devicesQuery.queryKey);
-    const devices =
-      cachedDevices ?? (await queryClient.fetchQuery(devicesQuery));
+    const devices = await queryClient.ensureQueryData(devicesQuery);
 
     // project object
-    const cachedProjects: Project[] | undefined = queryClient.getQueryData(
-      myProjectsQuery.queryKey
-    );
-    const projects =
-      cachedProjects ?? (await queryClient.fetchQuery(myProjectsQuery));
+    const projects = await queryClient.ensureQueryData(myProjectsQuery);
 
     const currentProject = projects.filter(
       (v) => v.ext_id === appState.currentProjectExtId
     )[0];
 
     // jobs
-    const jobsQuery = myJobsQuery({ project_id: currentProject?.id });
-    const cachedJobs = queryClient.getQueryData(jobsQuery.queryKey);
-    const jobs = cachedJobs ?? (await queryClient.fetchQuery(jobsQuery));
+    const jobs = await queryClient.ensureQueryData(
+      myJobsQuery({ project_id: currentProject?.id })
+    );
 
-    return { devices, jobs, currentProject } as HomeData;
+    // current user
+    const currentUser = await queryClient.ensureQueryData(currentUserQuery);
+
+    // Bookings
+    const bookingsQueries = devices.map(({ name: backend }) =>
+      upcomingBookingsQuery({
+        backend,
+        user_id: currentUser.id,
+      })
+    );
+    const bookingsPerBackend = await Promise.all(
+      bookingsQueries.map((v) => queryClient.ensureQueryData(v))
+    );
+
+    const bookings = sortBookings(bookingsPerBackend);
+
+    return {
+      devices,
+      jobs,
+      currentProject,
+      bookings,
+      bookingsQueries,
+    } as HomeData;
   });
+}
+
+/**
+ * Combines the results got from for current user's bookings in multiple devices
+ * into a single list
+ *
+ * @param results - the results from the useQueries call
+ */
+function combineMyBookingsQueries(results: UseQueryResult<Booking[], Error>[]) {
+  const bookingLists = results.map((result) => result.data).filter((v) => !!v);
+  return {
+    data: sortBookings(bookingLists),
+    pending: results.some((result) => result.isPending),
+    error: results.some((result) => result.error),
+  };
+}
+
+/**
+ * Sorts all bookings in the list of lists of bookings
+ * @param bookingLists - the list of bookings lists
+ * @param limit - the maximum number of records to return
+ */
+function sortBookings(bookingLists: Booking[][], limit: number = 5): Booking[] {
+  return bookingLists
+    .flat(1)
+    .sort((a, b) =>
+      DateTime.fromISO(a.start_utc)
+        .diff(DateTime.fromISO(b.start_utc))
+        .as("seconds")
+    )
+    .slice(0, limit);
 }

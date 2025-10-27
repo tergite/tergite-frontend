@@ -123,11 +123,21 @@ export interface NewBookingInfo {
   end_utc: string;
 }
 
-export interface Booking extends NewBookingInfo {
+/**
+ * the booking object as received from the RESTful API
+ */
+export interface RawBooking extends NewBookingInfo {
   id: string;
   total_duration: number;
   user_id?: string;
   username?: string;
+}
+
+/**
+ * the booking with extra metadata useful for the frontend
+ */
+export interface Booking extends RawBooking {
+  backend: string;
 }
 
 export interface BccUserProfile {
