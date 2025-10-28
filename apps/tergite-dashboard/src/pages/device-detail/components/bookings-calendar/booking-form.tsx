@@ -1,4 +1,4 @@
-import { cn, mergeDatetime } from "@/lib/utils";
+import { cn, mergeDatetime, toInputDuration } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookingsConfig, ErrorInfo, NewBookingInfo } from "types";
 import { useCallback, useMemo } from "react";
@@ -64,14 +64,23 @@ export function BookingForm({
   const initialEndTimestamp =
     initialBooking?.end_utc && DateTime.fromISO(initialBooking.end_utc);
 
-  const minDuration = Duration.fromObject({
-    seconds: bookingsConfig.min_time_slot_length,
-  });
-  const maxDuration = Duration.fromObject({
-    seconds: bookingsConfig.max_time_slot_length,
-  });
+  const minDuration = toInputDuration(
+    {
+      seconds: bookingsConfig.min_time_slot_length,
+    },
+    { maxUnit: "hours", minUnit: "seconds" }
+  );
+  const maxDuration = toInputDuration(
+    {
+      seconds: bookingsConfig.max_time_slot_length,
+    },
+    { maxUnit: "hours", minUnit: "seconds" }
+  );
   const initialDuration = initialEndTimestamp
-    ? initialEndTimestamp.diff(initialStartTimestamp)
+    ? toInputDuration(initialEndTimestamp.diff(initialStartTimestamp), {
+        maxUnit: "hours",
+        minUnit: "seconds",
+      })
     : minDuration;
   // TODO: Limit the possibility of creating a new slot for a given day
   //    if slots for that day are maxed out
@@ -120,9 +129,9 @@ export function BookingForm({
         time: initialStartTimestamp,
       },
       duration: {
-        hours: 0,
-        minutes: 0,
-        seconds: initialDuration.as("seconds"),
+        hours: initialDuration.hours,
+        minutes: initialDuration.minutes,
+        seconds: initialDuration.seconds,
       },
     },
   });
@@ -272,7 +281,7 @@ export function BookingForm({
                   <FormControl>
                     <div className="">
                       <Label className="text-muted-foreground" htmlFor="name">
-                        Duration
+                        Duration (HH:mm:ss)
                       </Label>
                       <DurationInput id="duration" {...field} />
                     </div>

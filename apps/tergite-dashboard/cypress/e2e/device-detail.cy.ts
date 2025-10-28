@@ -218,6 +218,9 @@ users.slice(0, 4).forEach((user) => {
         let currentISOTimeStr: string;
         const username = users[0].email.split("@")[0];
         const currentUsername = user.email.split("@")[0];
+        const defaultDuration = convertSecToDuration(
+          bookingConfigs.min_time_slot_length
+        );
         const defaultDurationStr = convertSecToDurationStr(
           bookingConfigs.min_time_slot_length
         );
@@ -347,9 +350,22 @@ users.slice(0, 4).forEach((user) => {
                     "button#datetime-input",
                     new RegExp(`${testLocaleDateStr}, ${testISOTimeStr}`, "i")
                   ).should("be.visible");
-                  cy.get("input#duration[type='time']")
-                    .should("have.attr", "value")
-                    .and("match", new RegExp(`${defaultDurationStr}.000`));
+                  cy.get("input#duration[type='hidden']").should(
+                    "have.value",
+                    defaultDurationStr
+                  );
+                  cy.get("input#duration-hours[type='number']").should(
+                    "have.value",
+                    `${defaultDuration.hours}`
+                  );
+                  cy.get("input#duration-minutes[type='number']").should(
+                    "have.value",
+                    `${defaultDuration.minutes}`
+                  );
+                  cy.get("input#duration-seconds[type='number']").should(
+                    "have.value",
+                    `${defaultDuration.seconds}`
+                  );
 
                   // Creates a new booking
                   cy.contains("button", /save/i).click();
@@ -398,7 +414,7 @@ users.slice(0, 4).forEach((user) => {
             bookingConfigs.max_time_slot_length,
             bookingConfigs.min_time_slot_length + 900
           );
-          const durationStr = convertSecToDurationStr(duration);
+          const durationObj = convertSecToDuration(duration);
           const endTime = addSeconds(testTimestamp, duration);
           const endTimeStr = get12HourTimeString(endTime);
 
@@ -413,7 +429,16 @@ users.slice(0, 4).forEach((user) => {
             .then(() => {
               cy.get("#booking-form-dialog")
                 .within(() => {
-                  cy.get("input#duration[type='time']").type(durationStr);
+                  // {selectall} ensures the existing text is replaced by the new value
+                  cy.get("input#duration-hours[type='number']").type(
+                    `{selectall}${durationObj.hours}`
+                  );
+                  cy.get("input#duration-minutes[type='number']").type(
+                    `{selectall}${durationObj.minutes}`
+                  );
+                  cy.get("input#duration-seconds[type='number']").type(
+                    `{selectall}${durationObj.seconds}`
+                  );
 
                   cy.contains(
                     "button#datetime-input",
@@ -448,7 +473,7 @@ users.slice(0, 4).forEach((user) => {
           it(`entering a duration ${titlePatch} duration raises errors in the creation form`, () => {
             cy.viewport(1440, 1080);
             const startTimeStr = get12HourTimeString(testTimestamp);
-            const durationStr = convertSecToDurationStr(duration);
+            const durationObj = convertSecToDuration(duration);
             const endTime = addSeconds(testTimestamp, duration);
             const endTimeStr = get12HourTimeString(endTime);
             const minDurationStr = convertSecToDurationStr(
@@ -457,7 +482,7 @@ users.slice(0, 4).forEach((user) => {
             const maxDurationStr = convertSecToDurationStr(
               bookingConfigs.max_time_slot_length
             );
-            const errMsg = `duration must be between ${minDurationStr}.000 and ${maxDurationStr}.000`;
+            const errMsg = `duration must be between ${minDurationStr} and ${maxDurationStr}`;
 
             cy.get("#booking-form-dialog").should("not.exist");
             cy.contains(
@@ -470,7 +495,18 @@ users.slice(0, 4).forEach((user) => {
               .then(() => {
                 cy.get("#booking-form-dialog")
                   .within(() => {
-                    cy.get("input#duration[type='time']").type(durationStr);
+                    // {selectall} ensures that the existing value is replaced by the new value
+                    //  otherwise clearing it would make the browser automatically add a '0'
+                    // which would be appended to the new value that is typed in
+                    cy.get("input#duration-hours[type='number']").type(
+                      `{selectall}${durationObj.hours}`
+                    );
+                    cy.get("input#duration-minutes[type='number']").type(
+                      `{selectall}${durationObj.minutes}`
+                    );
+                    cy.get("input#duration-seconds[type='number']").type(
+                      `{selectall}${durationObj.seconds}`
+                    );
 
                     cy.contains(
                       "button#datetime-input",
@@ -527,7 +563,7 @@ users.slice(0, 4).forEach((user) => {
             bookingConfigs.max_time_slot_length,
             bookingConfigs.min_time_slot_length + 900
           );
-          const durationStr = convertSecToDurationStr(duration);
+          const durationObj = convertSecToDuration(duration);
           const endTime = addSeconds(testTimestamp, duration);
           const endTimeStr = get12HourTimeString(endTime);
 
@@ -544,7 +580,15 @@ users.slice(0, 4).forEach((user) => {
             .then(() => {
               cy.get("#booking-form-dialog")
                 .within(() => {
-                  cy.get("input#duration[type='time']").type(durationStr);
+                  cy.get("input#duration-hours[type='number']").type(
+                    `{selectall}${durationObj.hours}`
+                  );
+                  cy.get("input#duration-minutes[type='number']").type(
+                    `{selectall}${durationObj.minutes}`
+                  );
+                  cy.get("input#duration-seconds[type='number']").type(
+                    `{selectall}${durationObj.seconds}`
+                  );
 
                   cy.contains(
                     "button#datetime-input",
@@ -595,7 +639,7 @@ users.slice(0, 4).forEach((user) => {
                 bookingConfigs.max_time_slot_length,
                 bookingConfigs.min_time_slot_length + 900
               );
-              const durationStr = convertSecToDurationStr(duration);
+              const durationObj = convertSecToDuration(duration);
               const endTime = addSeconds(testTimestamp, duration);
               const endTimeStr = get12HourTimeString(endTime);
               const booking = findBooking(
@@ -640,7 +684,16 @@ users.slice(0, 4).forEach((user) => {
 
                   cy.get("#booking-form-dialog")
                     .within(() => {
-                      cy.get("input#duration[type='time']").type(durationStr);
+                      cy.get("input#duration-hours[type='number']").type(
+                        `{selectall}${durationObj.hours}`
+                      );
+                      cy.get("input#duration-minutes[type='number']").type(
+                        `{selectall}${durationObj.minutes}`
+                      );
+                      cy.get("input#duration-seconds[type='number']").type(
+                        `{selectall}${durationObj.seconds}`
+                      );
+
                       cy.get("button#datetime-input").click();
                       cy.get(
                         "[data-radix-popper-content-wrapper] input[type='time']"
@@ -875,21 +928,36 @@ users.slice(0, 4).forEach((user) => {
 });
 
 /**
+ * Converts seconds to a duration object
+ *
+ * @param totalSeconds - the total number of seconds to convert to duration
+ * @returns - the duraiton string of format HH:mm:ss
+ */
+function convertSecToDuration(totalSeconds: number): {
+  hours: number;
+  minutes: number;
+  seconds: number;
+} {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return { hours, minutes, seconds };
+}
+
+/**
  * Converts seconds to a duration of format HH:mm:ss
  *
  * @param totalSeconds - the total number of seconds to convert to duration
  * @returns - the duraiton string of format HH:mm:ss
  */
 function convertSecToDurationStr(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const { hours, minutes, seconds } = convertSecToDuration(totalSeconds);
+  const hoursStr = hours.toString().padStart(2, "0");
+  const minutesStr = minutes.toString().padStart(2, "0");
+  const secondsStr = seconds.toString().padStart(2, "0");
 
-  return [
-    hours.toString().padStart(2, "0"),
-    minutes.toString().padStart(2, "0"),
-    seconds.toString().padStart(2, "0"),
-  ].join(":");
+  return `${hoursStr}:${minutesStr}:${secondsStr}.000`;
 }
 
 /**

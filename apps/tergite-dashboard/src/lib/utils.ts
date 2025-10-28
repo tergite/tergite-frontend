@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
   AnyFlatRecord,
+  InputDuration,
   Time,
   type AggregateValue,
   type AppToken,
@@ -12,7 +13,13 @@ import {
   type UserRequest,
 } from "../../types";
 import { LoaderFunction, LoaderFunctionArgs, redirect } from "react-router-dom";
-import { DateTime } from "luxon";
+import {
+  DateTime,
+  Duration,
+  DurationLike,
+  DurationLikeObject,
+  DurationUnit,
+} from "luxon";
 
 const MAX_YEARS = 273_000;
 
@@ -306,4 +313,40 @@ export function toTime({
     second,
     millisecond,
   };
+}
+
+/**
+ * Converts a duration like argument into a InputDuration object where hours,
+ * minutes, seconds, milliseconds are appropriately placed unlike luxon Duration objects
+ *
+ * @param value - the duration like argument to convert to Duration
+ * @param options - extra options to control the conversion
+ *         - maxUnit - the maximum unit of duration; default is "days"
+ *         - minUnit - the minimum unit of duration; default is "milliseconds"
+ */
+export function toInputDuration(
+  value: DurationLike,
+  options: { maxUnit?: keyof InputDuration; minUnit?: keyof InputDuration } = {}
+): InputDuration & Duration {
+  const durationValue = Duration.fromDurationLike(value);
+  const { maxUnit = "days", minUnit = "milliseconds" } = options;
+
+  const units: DurationUnit[] = [
+    "days",
+    "hours",
+    "minutes",
+    "seconds",
+    "milliseconds",
+  ];
+  const startIndex = units.indexOf(maxUnit);
+  const endIndex = units.indexOf(minUnit) + 1;
+
+  const durationLikeObj: DurationLikeObject = {};
+  for (const unit of units.slice(startIndex, endIndex)) {
+    durationLikeObj[unit] = Math.trunc(
+      durationValue.minus(durationLikeObj).as(unit)
+    );
+  }
+
+  return Duration.fromObject(durationLikeObj);
 }

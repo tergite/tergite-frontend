@@ -349,7 +349,7 @@ export interface Time {
   millisecond?: number;
 }
 
-export interface Duration {
+export interface InputDuration {
   days?: number;
   hours?: number;
   minutes?: number;

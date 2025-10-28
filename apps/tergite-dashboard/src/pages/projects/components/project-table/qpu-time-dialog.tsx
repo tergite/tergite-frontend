@@ -28,7 +28,7 @@ import {
   Project,
   QpuTimeExtensionPostBody,
   QpuTimeExtensionUserRequest,
-  Duration,
+  InputDuration,
   User,
 } from "types";
 import { z } from "zod";
@@ -280,7 +280,7 @@ function toSeconds({
   milliseconds = 0,
   minutes = 0,
   seconds = 0,
-}: Duration): number {
+}: InputDuration): number {
   return (
     seconds + minutes * 60 + milliseconds / 1000 + hours * 3_600 + days * 24
   );
