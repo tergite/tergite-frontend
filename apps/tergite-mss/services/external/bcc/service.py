@@ -398,6 +398,7 @@ class BccClient:
         min_start_utc: Optional[datetime] = None,
         max_start_utc: Optional[datetime] = None,
         user_id: Optional[str] = None,
+        sort: Tuple[str, ...] = (),
     ) -> dict:
         """Views all available bookings
 
@@ -412,6 +413,7 @@ class BccClient:
             min_start_utc: the minimum start time in UTC
             max_start_utc: the maximum start time in UTC
             user_id: the unique identifier of the owner of the given bookings
+            sort: the fields to order by; prepending "-" returns the items in descending order of that field
 
         Returns:
             the paginated list of the available bookings filtered accordingly
@@ -420,7 +422,7 @@ class BccClient:
             ServiceUnavailableError: device is currently unavailable
             HTTPException: unauthenticated user
         """
-        params: Dict[str, Any] = {"skip": skip}
+        params: Dict[str, Any] = {"skip": skip, "sort": sort}
         if limit is not None:
             params["limit"] = limit
         if min_start_utc is not None:

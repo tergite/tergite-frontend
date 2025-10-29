@@ -20,6 +20,7 @@ import httpx
 
 from services.external.bcc.dtos import (
     BCCUserProfile,
+    Booking,
     BookingsConfig,
     CancellationDetails,
 )
@@ -40,7 +41,7 @@ from tests._utils.bcc import (
     to_booking_payload,
 )
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.records import paginate
+from tests._utils.records import order_by_many, paginate
 from utils.config import UserRole
 
 _USERS = [TEST_USER_DICT, TEST_SYSTEM_USER_DICT, TEST_SUPERUSER_DICT]
@@ -305,6 +306,10 @@ def view_bookings(request: httpx.Request):
         min_start_utc = request.url.params.get("min_start_utc") or None
         max_start_utc = request.url.params.get("max_start_utc") or None
         user_id = request.url.params.get("user_id") or None
+        sort = request.url.params.get("sort") or ()
+        if isinstance(sort, str):
+            sort = (sort,)
+
         filtered_results = CREATED_BOOKINGS
 
         if min_start_utc is not None:
@@ -326,6 +331,7 @@ def view_bookings(request: httpx.Request):
         if user_id is not None:
             filtered_results = [v for v in filtered_results if v["user_id"] == user_id]
 
+        filtered_results = order_by_many(filtered_results, sort)
         result = paginate(filtered_results, skip=skip, limit=limit)
         return httpx.Response(
             status_code=200,

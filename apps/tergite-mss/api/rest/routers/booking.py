@@ -15,7 +15,7 @@
 These query the BCC on behalf of the user, thus they use the BCC client.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 
 from fastapi import APIRouter, Query
 
@@ -103,6 +103,7 @@ async def view_bookings(
     requester: User = CurrentUserDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
+    sort: Tuple[str, ...] = Query(default=()),
     user_id: str = Query(default=None),
     min_start_utc: Optional[datetime] = Query(default=None),
     max_start_utc: Optional[datetime] = Query(default=None),
@@ -116,6 +117,7 @@ async def view_bookings(
         requester: the current signed-in user
         skip: number of records to ignore at the top of the returned results; default is 0
         limit: maximum number of records to return; default is None.
+        sort: fields to sort by; prepending a "-" returns the items in descending order of that field
         user_id: the id of the owner of the bookings
         min_start_utc: the earliest start timestamp to include in the returned results; default is None
         max_start_utc: the latest end timestamp to include in the returned results; default is None
@@ -136,6 +138,7 @@ async def view_bookings(
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
         user_id=user_id,
+        sort=sort,
     )
 
 

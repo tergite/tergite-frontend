@@ -30,7 +30,7 @@ from tests._utils.mock_backend import (
     CREATED_BOOKINGS,
     VALID_BOOKING_PAYLOADS,
 )
-from tests._utils.records import PaginationInfo, paginate
+from tests._utils.records import PaginationInfo, order_by, paginate
 from tests.conftest import BACKEND_SLUGS
 
 _PAGINATION: List[PaginationInfo] = load_json_fixture("pagination.json")
@@ -42,25 +42,37 @@ _USERNAMES_MAP: Dict[str, str] = {
 BOOKINGS_IN_MSS = [
     {**v, "username": _USERNAMES_MAP[v["user_id"]]} for v in CREATED_BOOKINGS
 ]
+_sort_by_start = lambda data, desc: order_by(data, "start_utc", desc)
+_sort_by_usr = lambda data: order_by(data, "user_id")
+# get_test_usr_bookings = lambda data: [v for v in data if v["user_id"] == TEST_USER_ID]
 
-_FILTERS_AND_RESULTS = [
-    ({}, BOOKINGS_IN_MSS),
-    ({"min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, BOOKINGS_IN_MSS[1:]),
-    ({"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"]}, BOOKINGS_IN_MSS[2:]),
+_FILTERS_SORT_AND_RESULTS = [
+    ({}, (), BOOKINGS_IN_MSS),
+    ({}, ("-start_utc",), _sort_by_start(BOOKINGS_IN_MSS, desc=True)),
+    ({"min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, (), BOOKINGS_IN_MSS[1:]),
+    ({"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"]}, (), BOOKINGS_IN_MSS[2:]),
     (
         {"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"], "user_id": TEST_USER_ID},
+        (),
         [v for v in BOOKINGS_IN_MSS[2:] if v["user_id"] == TEST_USER_ID],
     ),
-    ({"max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, BOOKINGS_IN_MSS[:2]),
+    ({"max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, (), BOOKINGS_IN_MSS[:2]),
+    (
+        {"max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]},
+        ("user_id",),
+        _sort_by_usr(BOOKINGS_IN_MSS[:2]),
+    ),
     (
         {
             "max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
             "user_id": TEST_SYSTEM_USER_ID,
         },
+        (),
         [v for v in BOOKINGS_IN_MSS[:2] if v["user_id"] == TEST_SYSTEM_USER_ID],
     ),
     (
         {"user_id": TEST_SYSTEM_USER_ID},
+        (),
         [v for v in BOOKINGS_IN_MSS if v["user_id"] == TEST_SYSTEM_USER_ID],
     ),
     (
@@ -68,6 +80,7 @@ _FILTERS_AND_RESULTS = [
             "min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
             "max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
         },
+        (),
         BOOKINGS_IN_MSS[1:2],
     ),
 ]
@@ -77,10 +90,10 @@ _BOOKINGS_CREATE_PARAMS = [
     for payload in VALID_BOOKING_PAYLOADS
 ]
 _BOOKINGS_VIEW_PARAMS = [
-    (backend, pagination, filters, expected_records)
+    (backend, pagination, filters, sort, expected_records)
     for backend in BACKEND_SLUGS
     for pagination in _PAGINATION
-    for filters, expected_records in _FILTERS_AND_RESULTS
+    for filters, sort, expected_records in _FILTERS_SORT_AND_RESULTS
 ]
 _BOOKINGS_CANCEL_PARAMS = [
     (backend, booking) for backend in BACKEND_SLUGS for booking in CREATED_BOOKINGS
@@ -125,7 +138,7 @@ def test_unauthenticated_create_booking(
 
 
 @pytest.mark.parametrize(
-    "backend, pagination, filters, expected_records", _BOOKINGS_VIEW_PARAMS
+    "backend, pagination, filters, sort, expected_records", _BOOKINGS_VIEW_PARAMS
 )
 def test_view_bookings(
     client,
@@ -133,6 +146,7 @@ def test_view_bookings(
     user_jwt_cookie,
     pagination: PaginationInfo,
     filters,
+    sort,
     expected_records,
     mock_bcc,
 ):
@@ -142,6 +156,7 @@ def test_view_bookings(
         skip = pagination["skip"]
         params = {k: v for k, v in pagination.items() if v is not None}
         params.update(filters)
+        params.update({"sort": sort})
 
         # view bookings
         response = client.get(
@@ -155,10 +170,16 @@ def test_view_bookings(
 
 
 @pytest.mark.parametrize(
-    "backend, pagination, filters, expected_records", _BOOKINGS_VIEW_PARAMS
+    "backend, pagination, filters, sort, expected_records", _BOOKINGS_VIEW_PARAMS
 )
 def test_unauthenticated_view_bookings(
-    client, backend, pagination: PaginationInfo, filters, expected_records, mock_bcc
+    client,
+    backend,
+    pagination: PaginationInfo,
+    filters,
+    sort,
+    expected_records,
+    mock_bcc,
 ):
     """Viewing bookings without authenticated user errors out"""
     with client as client:
@@ -166,6 +187,7 @@ def test_unauthenticated_view_bookings(
         url = f"/bookings/{backend}"
         params = {k: v for k, v in pagination.items() if v is not None}
         params.update(filters)
+        params.update({"sort": sort})
         response = client.get(url, headers=headers, params=params)
 
         assert response.status_code == 401
