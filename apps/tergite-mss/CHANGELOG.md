@@ -7,6 +7,10 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+### Fixed 
+
+- Fixed module 'fastapi_users.schemas' has no attribute 'model_validate'
+
 ## [2025.09.0] - 2025-10-02
 
 ### Added
