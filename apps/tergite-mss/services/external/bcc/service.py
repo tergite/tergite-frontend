@@ -389,7 +389,7 @@ class BccClient:
     async def view_bookings(
         self,
         user_db: UserDatabase,
-        user_id: str | PydanticObjectId,
+        requester_id: str | PydanticObjectId,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
@@ -397,12 +397,13 @@ class BccClient:
         limit: Optional[int] = None,
         min_start_utc: Optional[datetime] = None,
         max_start_utc: Optional[datetime] = None,
+        user_id: Optional[str] = None,
     ) -> dict:
         """Views all available bookings
 
         Args:
             user_db: the user database from which to get user full names
-            user_id: the app token associated with the job id
+            requester_id: the unique identifier of the user making this request
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
             is_admin: whether the current user is an admin
@@ -410,9 +411,10 @@ class BccClient:
             limit: the maximum number of records to return
             min_start_utc: the minimum start time in UTC
             max_start_utc: the maximum start time in UTC
+            user_id: the unique identifier of the owner of the given bookings
 
         Returns:
-            the paginated list of the available bookings
+            the paginated list of the available bookings filtered accordingly
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
@@ -425,17 +427,20 @@ class BccClient:
             params["min_start_utc"] = min_start_utc.isoformat()
         if max_start_utc is not None:
             params["max_start_utc"] = max_start_utc.isoformat()
+        if user_id is not None:
+            params["user_id"] = user_id
 
         response = await self._request(
             "GET",
             "/bookings",
-            user_id=user_id,
+            user_id=requester_id,
             request_id=request_id,
             private_key_file=private_key_file,
             params=params,
             is_admin=is_admin,
         )
 
+        # add usernames
         user_ids = [
             PydanticObjectId(v["user_id"])
             for v in response["data"]

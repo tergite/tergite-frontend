@@ -16,6 +16,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 - Added the `/bookings/{backend}/config` endpoint to return the configuration for the booking service for given backend
 - Added back the `/auth/app/{OATH_CLIENT}` URLs for backward compatibility
+- Added filtering bookings at `/bookings/{backend}` endpoint by `user_id`
 
 ## [2025.09.0] - 2025-10-02
 

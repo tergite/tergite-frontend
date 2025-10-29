@@ -26,6 +26,7 @@ from services.external.bcc.dtos import (
 from tests._utils.auth import (
     TEST_SUPERUSER_DICT,
     TEST_SYSTEM_USER_DICT,
+    TEST_SYSTEM_USER_ID,
     TEST_USER_DICT,
     TEST_USER_ID,
 )
@@ -60,10 +61,10 @@ VALID_BOOKING_PAYLOADS: List[BookingPayload] = [
 ]
 _FIRST_USER_ID = _USERS[0]["_id"]
 CREATED_BOOKINGS: List[dict] = [
-    CreatedBooking.model_validate({**v, "user_id": TEST_USER_ID}).model_dump(
-        mode="json"
-    )
-    for v in VALID_BOOKING_PAYLOADS
+    CreatedBooking(**v, user_id=TEST_USER_ID).model_dump(mode="json")
+    if idx % 2 == 0
+    else CreatedBooking(**v, user_id=TEST_SYSTEM_USER_ID).model_dump(mode="json")
+    for idx, v in enumerate(VALID_BOOKING_PAYLOADS)
 ]
 BOOKINGS_CONFIG: BookingsConfig = BookingsConfig(
     max_time_slot_length=1200,
@@ -303,6 +304,7 @@ def view_bookings(request: httpx.Request):
 
         min_start_utc = request.url.params.get("min_start_utc") or None
         max_start_utc = request.url.params.get("max_start_utc") or None
+        user_id = request.url.params.get("user_id") or None
         filtered_results = CREATED_BOOKINGS
 
         if min_start_utc is not None:
@@ -320,6 +322,9 @@ def view_bookings(request: httpx.Request):
                 if datetime.fromisoformat(v["start_utc"])
                 <= datetime.fromisoformat(max_start_utc)
             ]
+
+        if user_id is not None:
+            filtered_results = [v for v in filtered_results if v["user_id"] == user_id]
 
         result = paginate(filtered_results, skip=skip, limit=limit)
         return httpx.Response(

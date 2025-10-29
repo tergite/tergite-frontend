@@ -11,11 +11,18 @@
 # that they have been altered from the originals.
 
 """Tests for the booking endpoints"""
-from typing import List
+from typing import Dict, List
 
 import pytest
 
-from tests._utils.auth import TEST_USER_EMAIL, TEST_USER_ID
+from tests._utils.auth import (
+    TEST_SUPERUSER_EMAIL,
+    TEST_SUPERUSER_ID,
+    TEST_SYSTEM_USER_EMAIL,
+    TEST_SYSTEM_USER_ID,
+    TEST_USER_EMAIL,
+    TEST_USER_ID,
+)
 from tests._utils.bcc import BookingPayload
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mock_backend import (
@@ -27,15 +34,35 @@ from tests._utils.records import PaginationInfo, paginate
 from tests.conftest import BACKEND_SLUGS
 
 _PAGINATION: List[PaginationInfo] = load_json_fixture("pagination.json")
+_USERNAMES_MAP: Dict[str, str] = {
+    TEST_USER_ID: TEST_USER_EMAIL.split("@")[0],
+    TEST_SYSTEM_USER_ID: TEST_SYSTEM_USER_EMAIL.split("@")[0],
+    TEST_SUPERUSER_ID: TEST_SUPERUSER_EMAIL.split("@")[0],
+}
 BOOKINGS_IN_MSS = [
-    {**v, "username": TEST_USER_EMAIL.split("@")[0]} for v in CREATED_BOOKINGS
+    {**v, "username": _USERNAMES_MAP[v["user_id"]]} for v in CREATED_BOOKINGS
 ]
 
 _FILTERS_AND_RESULTS = [
     ({}, BOOKINGS_IN_MSS),
     ({"min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, BOOKINGS_IN_MSS[1:]),
     ({"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"]}, BOOKINGS_IN_MSS[2:]),
+    (
+        {"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"], "user_id": TEST_USER_ID},
+        [v for v in BOOKINGS_IN_MSS[2:] if v["user_id"] == TEST_USER_ID],
+    ),
     ({"max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, BOOKINGS_IN_MSS[:2]),
+    (
+        {
+            "max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
+            "user_id": TEST_SYSTEM_USER_ID,
+        },
+        [v for v in BOOKINGS_IN_MSS[:2] if v["user_id"] == TEST_SYSTEM_USER_ID],
+    ),
+    (
+        {"user_id": TEST_SYSTEM_USER_ID},
+        [v for v in BOOKINGS_IN_MSS if v["user_id"] == TEST_SYSTEM_USER_ID],
+    ),
     (
         {
             "min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
