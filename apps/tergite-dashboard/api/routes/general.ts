@@ -852,6 +852,7 @@ router.post(
       "bookings",
       (v) =>
         v.user_id === user_id &&
+        v.backend === backend &&
         DateTime.fromISO(v.start_utc).hasSame(bookingStartUtc, "day")
     );
 

@@ -648,6 +648,4 @@ export interface BookingInDb extends Booking {
 /**
  * Schema for Bookings
  */
-export interface BookingsConfigInDb extends BookingsConfig {
-  id: string;
-}
+export interface BookingsConfigInDb extends BookingsConfig, DbRecord {}
