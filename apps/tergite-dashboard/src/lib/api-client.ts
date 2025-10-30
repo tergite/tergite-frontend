@@ -348,6 +348,7 @@ export function bookingsOfBackendQuery(options: {
   max_start_utc?: string;
   skip?: string;
   limit?: string;
+  sort?: string[];
 }) {
   const {
     baseUrl = apiBaseUrl,
@@ -357,6 +358,7 @@ export function bookingsOfBackendQuery(options: {
     user_id,
     min_start_utc,
     max_start_utc,
+    sort,
   } = options;
   const queryKey = [
     baseUrl,
@@ -367,6 +369,7 @@ export function bookingsOfBackendQuery(options: {
     max_start_utc,
     limit,
     skip,
+    sort,
   ];
 
   return queryOptions({
@@ -378,6 +381,7 @@ export function bookingsOfBackendQuery(options: {
         max_start_utc,
         limit,
         skip,
+        sort,
       }),
     refetchInterval,
     throwOnError: true,
@@ -1080,6 +1084,7 @@ async function getFutureBookings(
  *            - user_id - the id of the user who owns the booking
  *            - skip - the number of records to skip
  *            - limit - the maximum number of records to return
+ *            - sort - the list of fields to sort by; prepending "-" means return records in descending values of field
  */
 async function getBookingsOfBackend(
   baseUrl: string = apiBaseUrl,
@@ -1090,6 +1095,7 @@ async function getBookingsOfBackend(
     max_start_utc?: string;
     skip?: string;
     limit?: string;
+    sort?: string[];
   }
 ): Promise<Booking[]> {
   const queryString = getQueryString(options);

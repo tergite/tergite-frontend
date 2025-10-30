@@ -11,7 +11,17 @@ export enum JobStatus {
   EXECUTING = "executing",
 }
 
-export interface DbRecord {
+export interface DbRecord
+  extends Record<
+    string,
+    | string
+    | number
+    | boolean
+    | undefined
+    | null
+    | { [k: string]: unknown }
+    | unknown
+  > {
   id: string;
   created_at?: string;
   updated_at?: string;
@@ -50,7 +60,7 @@ export interface Qubit {
  * This can allow us to debug jobs that used run through
  * the device a multiple calibrations in the past
  */
-export interface DeviceCalibration extends Omit<DbRecord, "created_at"> {
+export interface DeviceCalibration extends DbRecord {
   name: string;
   version: string;
   qubits: Qubit[];
@@ -126,8 +136,7 @@ export interface NewBookingInfo {
 /**
  * the booking object as received from the RESTful API
  */
-export interface RawBooking extends NewBookingInfo {
-  id: string;
+export interface RawBooking extends NewBookingInfo, DbRecord {
   total_duration: number;
   user_id?: string;
   username?: string;
@@ -140,8 +149,7 @@ export interface Booking extends RawBooking {
   backend: string;
 }
 
-export interface BccUserProfile {
-  id: string;
+export interface BccUserProfile extends DbRecord {
   name: string;
   email: string;
   is_admin: boolean;

@@ -38,7 +38,6 @@ import {
   BccUserProfile,
   NewBCCUserInfo,
   NewBookingInfo,
-  Booking,
 } from "../../types";
 import { DateTime } from "luxon";
 
@@ -958,9 +957,8 @@ router.get(
 router.get(
   "/bookings/:backend",
   use(async (req, res) => {
-    // TODO: Add filtering by date or something, also in backend and MSS
-    const userId = await getAuthenticatedUserId(req.cookies);
-    if (!userId) {
+    const requesterId = await getAuthenticatedUserId(req.cookies);
+    if (!requesterId) {
       return respond401(res);
     }
 
@@ -969,6 +967,8 @@ router.get(
       limit: limitAsString,
       min_start_utc: minStartUtcAsString,
       max_start_utc: maxStartUtcAsString,
+      user_id: userId,
+      sort: sortQueryParam,
     } = req.query;
     const { backend } = req.params;
     const skip = skipAsString ? parseInt(skipAsString as string) : undefined;
@@ -977,20 +977,23 @@ router.get(
       minStartUtcAsString && DateTime.fromISO(`${minStartUtcAsString}`);
     const maxStartUtc =
       maxStartUtcAsString && DateTime.fromISO(`${maxStartUtcAsString}`);
+    const sort =
+      typeof sortQueryParam === "string"
+        ? [sortQueryParam]
+        : (sortQueryParam as string[] | undefined);
 
-    const bookingsInDb = mockDb.getMany<BookingInDb>(
+    const data = mockDb.getMany<BookingInDb>(
       "bookings",
       (v) =>
         v.backend === backend &&
         (minStartUtc ? DateTime.fromISO(v.start_utc) >= minStartUtc : true) &&
-        (maxStartUtc ? DateTime.fromISO(v.start_utc) <= maxStartUtc : true),
+        (maxStartUtc ? DateTime.fromISO(v.start_utc) <= maxStartUtc : true) &&
+        (userId ? v.user_id == userId : true),
       skip,
-      limit
+      limit,
+      sort
     );
 
-    const data: Booking[] = bookingsInDb.map(({ backend: _, ...rest }) => ({
-      ...rest,
-    }));
     res.json({ skip, limit, data });
   })
 );

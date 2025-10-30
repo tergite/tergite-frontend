@@ -6,10 +6,17 @@ import deviceList from "../fixtures/device-list.json";
 import jobList from "../fixtures/jobs.json";
 import projectList from "../fixtures/projects.json";
 import { generateJwt, getUsername } from "../../api/utils";
-import { type Project, type Device, type Job, type User } from "../../types";
+import {
+  type Project,
+  type Device,
+  type Job,
+  type User,
+  Booking,
+} from "../../types";
+import { DateTime } from "luxon";
 
 const users = [...userList] as User[];
-const devices = [...deviceList] as Device[];
+const devices = [...deviceList] as unknown as Device[];
 const jobs = [...jobList] as Job[];
 const projects = [...projectList] as Project[];
 
@@ -31,6 +38,12 @@ users.forEach((user) => {
     "created_at",
     "status",
   ];
+  const bookingTableHeaders = ["Device", "Starts in", "Duration"];
+  const bookingTableDataProps: (keyof Booking)[] = [
+    "backend",
+    "start_utc",
+    "total_duration",
+  ];
 
   let refetchIntervalMs: number;
   const userProjects = projects.filter(
@@ -40,24 +53,25 @@ users.forEach((user) => {
   const allUserJobs = jobs
     .filter((v) => v.user_id === user.id)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const maxBookings = 5;
+  let currentDateStr: string;
+  let currentDateTime: DateTime;
+  let apiBaseUrl: string;
 
   describe(`home page for ${username}`, () => {
     beforeEach(() => {
-      const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
+      apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
       const dbResetUrl = Cypress.env("DB_RESET_URL");
       const domain = Cypress.env("VITE_COOKIE_DOMAIN");
       const cookieName = Cypress.env("VITE_COOKIE_NAME");
       const secret = Cypress.env("JWT_SECRET");
       const audience = Cypress.env("AUTH_AUDIENCE");
+      currentDateStr = Cypress.env("CURRENT_DATE");
+      currentDateTime = DateTime.fromISO(currentDateStr);
       refetchIntervalMs = parseFloat(Cypress.env("VITE_REFETCH_INTERVAL_MS"));
       const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
 
-      cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
-      cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`).as(
-        "my-project-list"
-      );
-      cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
-
+      cy.clock(currentDateTime.toJSDate(), ["Date"]);
       if (user.id) {
         cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
           (jwtToken) => {
@@ -71,6 +85,13 @@ users.forEach((user) => {
         );
       }
 
+      cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
+      cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`).as(
+        "my-project-list"
+      );
+      cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
+      cy.intercept("GET", `${apiBaseUrl}/bookings/*`).as("my-bookings-list");
+
       // We need to reset the mongo database before each test
       cy.request(`${dbResetUrl}`);
       cy.wait(500);
@@ -78,6 +99,11 @@ users.forEach((user) => {
       cy.visit("/");
       cy.wait("@my-project-list");
       cy.wait("@devices-list");
+
+      // wait for bookings requests
+      cy.wrap(devices).each(() => {
+        cy.wait(`@my-bookings-list`);
+      });
     });
 
     it("renders the device online status chart", () => {
@@ -274,6 +300,80 @@ users.forEach((user) => {
       }
     });
 
+    it("renders the list of all upcoming bookings", () => {
+      cy.viewport(1080, 750);
+      cy.contains(".bg-card", /my upcoming bookings/i).within(() => {
+        cy.get("table").as("bookings-table");
+
+        // header
+        cy.get("@bookings-table")
+          .get("thead th")
+          .each((el, idx) => {
+            expect(el.text()).to.eql(bookingTableHeaders[idx]);
+          });
+
+        const expectedBookings: { [k: string]: Booking[] } = {};
+        cy.wrap(devices)
+          .each((device: Device) => {
+            cy.request(
+              `${apiBaseUrl}/bookings/${device.name}?user_id=${user.id}&min_start_utc=${currentDateStr}&sort=start_utc`
+            ).then((resp) => {
+              expectedBookings[device.name] = resp.body.data;
+            });
+          })
+          .then(() => {
+            const bookings = sortBookings(expectedBookings).slice(
+              0,
+              maxBookings
+            );
+
+            // body
+            cy.get("@bookings-table")
+              .get("tbody")
+              .within(() => {
+                cy.get("tr").each((el, idx) => {
+                  cy.wrap({ el, idx }).then((obj) => {
+                    const booking = bookings[obj.idx];
+
+                    if (booking) {
+                      cy.wrap(obj.el).within(() => {
+                        cy.get("td").each((td, cellIdx) => {
+                          cy.wrap({ td, booking, idx: cellIdx }).then(
+                            (cell) => {
+                              const prop = bookingTableDataProps[cell.idx];
+                              if (prop === "start_utc") {
+                                expect(cell.td.text()).to.match(
+                                  // '1 day' or '2 days 2 hours'
+                                  /(\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?),?)+/i
+                                );
+                              } else if (prop === "total_duration") {
+                                expect(cell.td.text()).to.match(
+                                  cell.booking.total_duration
+                                    ? // FIXME: Not the right regx for ~ '1 days, 2 minutes, 30 seconds' but might work
+                                      /(\d+ (secs?)|(mins?)|(hrs?)|(days?)|(wks?)|(mths?)|(yrs?),?)+/i
+                                    : /N\/A/i
+                                );
+                              } else {
+                                expect(cell.td.text()).to.eql(
+                                  `${cell.booking[prop]}`
+                                );
+                              }
+                            }
+                          );
+                        });
+                      });
+                    } else {
+                      cy.wrap(obj.el).within(() => {
+                        cy.contains("td", /no results/i).should("be.visible");
+                      });
+                    }
+                  });
+                });
+              });
+          });
+      });
+    });
+
     it("refreshes device list every after the refresh interval", () => {
       for (let i = 0; i < 3; i++) {
         cy.wait("@devices-list", { timeout: 1.5 * refetchIntervalMs });
@@ -283,6 +383,14 @@ users.forEach((user) => {
     it("refreshes jobs list every after the refresh interval", () => {
       for (let i = 0; i < 3; i++) {
         cy.wait("@my-jobs-list", { timeout: 1.5 * refetchIntervalMs });
+      }
+    });
+
+    it("refreshes bookings list every after the refresh interval", () => {
+      for (let i = 0; i < 3; i++) {
+        cy.wrap(devices).each(() => {
+          cy.wait("@my-bookings-list", { timeout: 1.5 * refetchIntervalMs });
+        });
       }
     });
 
@@ -333,8 +441,8 @@ users.forEach((user) => {
       ];
 
       cy.viewport(1080, 750);
-      cy.contains("table", /Job ID/i).as("job-list-table");
-      cy.get("[aria-label='Filter']").as("filterBtn");
+      cy.get("#jobs-table table").as("job-list-table");
+      cy.get("#jobs-table [aria-label='Filter']").as("filterBtn");
 
       cy.get("@filterBtn")
         .click()
@@ -449,5 +557,127 @@ users.forEach((user) => {
         });
       }
     });
+
+    it("filters the list of upcoming bookings", () => {
+      const expectedBookings: { [k: string]: Booking[] } = {};
+      cy.wrap(devices)
+        .each((device: Device) => {
+          cy.request(
+            `${apiBaseUrl}/bookings/${device.name}?user_id=${user.id}&min_start_utc=${currentDateStr}&sort=start_utc`
+          ).then((resp) => {
+            expectedBookings[device.name] = resp.body.data;
+          });
+        })
+        .then(() => {
+          const bookings = sortBookings(expectedBookings).slice(0, maxBookings);
+          const filterMaps = [
+            {
+              input: { backend: "lo" },
+              result: bookings.filter((v) =>
+                v.backend.toLowerCase().startsWith("lo")
+              ),
+            },
+            {
+              input: { backend: "pin" },
+              result: bookings.filter((v) =>
+                v.backend.toLowerCase().startsWith("pin")
+              ),
+            },
+            {
+              input: { backend: "l" },
+              result: bookings.filter((v) =>
+                v.backend.toLowerCase().startsWith("l")
+              ),
+            },
+          ];
+
+          cy.viewport(1080, 750);
+          cy.get("#bookings-table table").as("booking-list-table");
+          cy.get("#bookings-table button[aria-label='Filter']").as("filterBtn");
+
+          cy.get("@filterBtn")
+            .click()
+            .then(() => {
+              cy.wait(100);
+              cy.get("[data-cy-filter-form] input[name='backend']").as(
+                "deviceInput"
+              );
+              cy.get("[data-cy-filter-form] button[type='submit']").as(
+                "submitBtn"
+              );
+              cy.get("[data-cy-filter-form] button[type='reset']").as(
+                "clearBtn"
+              );
+
+              for (const filterMap of filterMaps) {
+                cy.wrap(filterMap).then(({ input, result }) => {
+                  input.backend && cy.get("@deviceInput").type(input.backend);
+                  cy.get("@submitBtn")
+                    .click()
+                    .then(() => {
+                      cy.get("@booking-list-table")
+                        .find("tbody tr")
+                        .should("have.length", result.length || 1);
+
+                      for (let idx = 0; idx < result.length; idx++) {
+                        const booking = result[idx];
+
+                        cy.wrap({ booking, idx }).then(({ booking, idx }) => {
+                          cy.get("@booking-list-table").within(() => {
+                            const row = idx + 1;
+                            cy.get(
+                              `tr:nth-child(${row}) td:first-child div[data-booking-id="${booking.id}"]`
+                            )
+                              .contains(booking.backend)
+                              .should("be.visible");
+                          });
+                        });
+                      }
+
+                      cy.get("@clearBtn")
+                        .click()
+                        .then(() => {
+                          cy.log(JSON.stringify({ bookings }));
+                          cy.get("@booking-list-table")
+                            .find("tbody tr")
+                            .should("have.length", bookings.length || 1);
+
+                          for (let idx = 0; idx < bookings.length; idx++) {
+                            const booking = bookings[idx];
+                            cy.wrap({ booking, idx }).then(
+                              ({ booking, idx }) => {
+                                cy.get("@booking-list-table").within(() => {
+                                  const row = idx + 1;
+                                  cy.get(
+                                    `tr:nth-child(${row}) td:first-child div[data-booking-id="${booking.id}"]`
+                                  )
+                                    .contains(booking.backend)
+                                    .should("be.visible");
+                                });
+                              }
+                            );
+                          }
+                        });
+                    });
+                });
+              }
+            });
+        });
+    });
   });
 });
+
+/**
+ * Sorts the collection of upcoming bookings to return a single sorted array of bookings
+ *
+ * @param bookingsMap - the map of device name and upcoming bookings llist
+ */
+function sortBookings(bookingsMap: { [k: string]: Booking[] }): Booking[] {
+  return Object.values(bookingsMap)
+    .flat(1)
+    .sort((a, b) =>
+      DateTime.fromISO(a.start_utc)
+        .diff(DateTime.fromISO(b.start_utc))
+        .as("seconds")
+    );
+}

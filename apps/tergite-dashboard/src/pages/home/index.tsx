@@ -63,7 +63,7 @@ export function Home() {
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 lg:grid-cols-3 xl:grid-cols-3">
       <div className="grid auto-rows-max items-start gap-4 lg:col-span-3">
         <div className="grid gap-4 sm:grid-cols-[250px_auto_auto]">
-          <Card className="grid-fit-content">
+          <Card id="devices-online-piechart" className="grid-fit-content">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Devices Online</CardTitle>
             </CardHeader>
@@ -74,7 +74,11 @@ export function Home() {
               ></DonutChart>
             </CardContent>
           </Card>
-          <Card className="sm:col-span-2" x-chunk="dashboard-05-chunk-0">
+          <Card
+            id="devices-table"
+            className="sm:col-span-2"
+            x-chunk="dashboard-05-chunk-0"
+          >
             <CardHeader className="pb-3">
               <div className="flex justify-between">
                 <div className="space-y-1.5">
@@ -92,7 +96,7 @@ export function Home() {
           </Card>
         </div>
         <div className="grid gap-4 sm:grid-cols-6">
-          <Card className="sm:col-span-4">
+          <Card id="jobs-table" className="sm:col-span-4">
             <CardHeader className="px-7">
               <CardTitle>Jobs</CardTitle>
               <CardDescription>
@@ -105,7 +109,7 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <Card className="sm:col-span-2">
+          <Card id="bookings-table" className="sm:col-span-2">
             <CardHeader className="px-7">
               <CardTitle>Upcoming Bookings</CardTitle>
               <CardDescription>My upcoming bookings</CardDescription>
@@ -188,7 +192,9 @@ export function loader(appState: AppState, queryClient: QueryClient) {
  * @param results - the results from the useQueries call
  */
 function combineMyBookingsQueries(results: UseQueryResult<Booking[], Error>[]) {
-  const bookingLists = results.map((result) => result.data).filter((v) => !!v);
+  const bookingLists = results
+    .map((result) => result.data)
+    .filter((v) => !!v) as Booking[][];
   return {
     data: sortBookings(bookingLists),
     pending: results.some((result) => result.isPending),

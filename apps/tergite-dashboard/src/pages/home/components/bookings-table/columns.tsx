@@ -9,7 +9,9 @@ export const bookingsTableColumns: ColumnDef<Booking>[] = [
     accessorKey: "backend",
     header: () => <div className="hidden sm:table-cell">Device</div>,
     cell: ({ row }) => (
-      <div className="hidden sm:table-cell">{row.getValue("backend")}</div>
+      <div data-booking-id={row.original.id} className="hidden sm:table-cell">
+        {row.getValue("backend")}
+      </div>
     ),
   },
   {
@@ -24,7 +26,11 @@ export const bookingsTableColumns: ColumnDef<Booking>[] = [
     cell: ({ row }) => {
       const startUtcString: string = row.getValue("start_utc");
       const startUtc = DateTime.fromISO(startUtcString);
-      return <div className="hidden md:table-cell">{toRelative(startUtc)}</div>;
+      return (
+        <div data-booking-id={row.original.id} className="hidden md:table-cell">
+          {toRelative(startUtc)}
+        </div>
+      );
     },
   },
   {
@@ -37,7 +43,11 @@ export const bookingsTableColumns: ColumnDef<Booking>[] = [
             seconds: durationInSecs,
           }).toHuman({ unitDisplay: "short" })
         : "N/A";
-      return <div className="hidden sm:table-cell">{duration}</div>;
+      return (
+        <div data-booking-id={row.original.id} className="hidden sm:table-cell">
+          {duration}
+        </div>
+      );
     },
   },
 ];
