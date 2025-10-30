@@ -21,6 +21,10 @@ import {
   AdminProject,
   UpdateProjectPutBody,
   AdminCreateProjectBody,
+  Booking,
+  NewBookingInfo,
+  GeneralMessage,
+  BookingsConfig,
 } from "../../types";
 import { normalizeCalibrationData, extendAppToken } from "./utils";
 
@@ -34,7 +38,7 @@ export const refetchInterval = parseFloat(
  */
 export const devicesQuery = queryOptions({
   queryKey: [apiBaseUrl, "devices"],
-  queryFn: async () => await getDevices(),
+  queryFn: async () => await getDevices(apiBaseUrl),
   refetchInterval,
   throwOnError: true,
 });
@@ -51,7 +55,7 @@ export function singleDeviceQuery(
   const { baseUrl = apiBaseUrl } = options;
   return queryOptions({
     queryKey: [baseUrl, "devices", name],
-    queryFn: async () => await getDeviceDetail(name),
+    queryFn: async () => await getDeviceDetail(name, baseUrl),
     refetchInterval,
     throwOnError: true,
   });
@@ -62,7 +66,7 @@ export function singleDeviceQuery(
  */
 export const calibrationsQuery = queryOptions({
   queryKey: [apiBaseUrl, "calibrations"],
-  queryFn: async () => await getCalibrations(),
+  queryFn: async () => await getCalibrations(apiBaseUrl),
   refetchInterval,
   throwOnError: true,
 });
@@ -72,7 +76,7 @@ export const calibrationsQuery = queryOptions({
  */
 export const currentUserQuery = queryOptions({
   queryKey: [apiBaseUrl, "me"],
-  queryFn: async () => await getCurrentUser(),
+  queryFn: async () => await getCurrentUser(apiBaseUrl),
   throwOnError: true,
 });
 
@@ -88,7 +92,7 @@ export function singleDeviceCalibrationQuery(
   const { baseUrl = apiBaseUrl } = options;
   return queryOptions({
     queryKey: [baseUrl, "calibrations", name],
-    queryFn: async () => await getCalibrationsForDevice(name),
+    queryFn: async () => await getCalibrationsForDevice(name, baseUrl),
     refetchInterval,
     throwOnError: true,
   });
@@ -266,6 +270,79 @@ export function myProjectsQpuTimeRequestsQuery(options: {
 }
 
 /**
+ * the react query for getting bookings of given backend
+ * @param options - extra options for filtering the requests
+ *            - baseUrl - the base URL of the API
+ *            - user_id - the ID of the user whose bookings ar eto be got
+ *            - min_start_utc - the minimum start UTC datetime for getting a range of bookings
+ *            - max_start_utc - the maximum start UTC datetime for getting a range of bookings
+ *            - skip - the number of records to skip
+ *            - limit - the maximum number of records to return
+ */
+export function bookingsOfBackendQuery(options: {
+  backend: string;
+  baseUrl?: string;
+  user_id?: string;
+  min_start_utc?: string;
+  max_start_utc?: string;
+  skip?: string;
+  limit?: string;
+}) {
+  const {
+    baseUrl = apiBaseUrl,
+    skip = "0",
+    backend,
+    limit,
+    user_id,
+    min_start_utc,
+    max_start_utc,
+  } = options;
+  const queryKey = [
+    baseUrl,
+    "bookings",
+    backend,
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    limit,
+    skip,
+  ];
+
+  return queryOptions({
+    queryKey,
+    queryFn: async () =>
+      await getBookingsOfBackend(baseUrl, backend, {
+        user_id,
+        min_start_utc,
+        max_start_utc,
+        limit,
+        skip,
+      }),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
+ * the single device query for using with react query
+ * @param backend - the name of the device to consider
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ */
+export function bookingsConfigQuery(
+  backend: string,
+  options: { baseUrl?: string } = {}
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  return queryOptions({
+    queryKey: [baseUrl, "bookings", backend, "config"],
+    queryFn: async () => await getBookingsConfig(backend, baseUrl),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
  * Refreshes the queries for the tokens from the API
  *
  * @param queryClient - the query client for making queries
@@ -357,6 +434,28 @@ export async function refreshAllAdminQueries(
 }
 
 /**
+ * Refreshes the queries for the bookings of a given backend from the API
+ *
+ * @param queryClient - the query client for making queries
+ * @param  backend - the name of the device
+ * @param options - the options including:
+ *          - baseUrl - the base URL of the API
+ *          - backend - the name of the device
+ */
+export async function refreshBookingsQueries(
+  queryClient: QueryClient,
+  backend: string,
+  options: {
+    baseUrl?: string;
+  } = {}
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  await queryClient.invalidateQueries({
+    queryKey: [baseUrl, "bookings", backend],
+  });
+}
+
+/**
  * Generates a new app token
  * @param payload - the payload for a new app token
  * @param options - the options for loging in including:
@@ -370,6 +469,81 @@ export async function createAppToken(
 ): Promise<AppTokenCreationResponse> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/me/tokens/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Cancels the booking of the given id for the given backend
+ *
+ * @param backend - the name of the device
+ * @param id of the booking
+ * @param options - extra options:
+ *           - baseUrl - the API base URL; default apiBaseUrl
+ */
+export async function cancelBooking(
+  backend: string,
+  id: string,
+  options: { baseUrl?: string } = {}
+): Promise<GeneralMessage> {
+  const { baseUrl = apiBaseUrl } = options;
+  const resp: GeneralMessage = await authenticatedFetch(
+    `${baseUrl}/bookings/${backend}/${id}/cancel`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+  if (resp.status !== "success") {
+    const errMsg = `${resp.status}: ${resp.detail}`;
+    const err = new Error(errMsg) as ErrorInfo;
+    err.statusText = resp.status;
+    throw err;
+  }
+
+  return resp;
+}
+
+/**
+ * Updates the booking in the given backend
+ * @param backend - the name of the device
+ * @param id - the id for the booking
+ * @param payload - the payload for the update
+ * @param options - the options including:
+ *          - baseUrl - the base URL of the API
+ */
+export async function updateBooking(
+  backend: string,
+  id: string,
+  payload: NewBookingInfo,
+  options: {
+    baseUrl?: string;
+  } = {}
+): Promise<Booking> {
+  const { baseUrl = apiBaseUrl } = options;
+  await cancelBooking(backend, id, { baseUrl });
+  return await createNewBooking(backend, payload, { baseUrl });
+}
+
+/**
+ * Generates a new booking
+ * @param backend - the name of the device
+ * @param payload - the payload for a new booking
+ * @param options - the options:
+ *          - baseUrl - the base URL of the API
+ *          - backend - the name of the backend
+ */
+export async function createNewBooking(
+  backend: string,
+  payload: NewBookingInfo,
+  options: {
+    baseUrl?: string;
+  } = {}
+): Promise<Booking> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/bookings/${backend}`, {
     method: "POST",
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json" },
@@ -631,6 +805,18 @@ async function getDeviceDetail(
 }
 
 /**
+ * Retrieve the bookings config for the given backend
+ * @param backend - the name of the device
+ * @param baseUrl - the API base URL
+ */
+async function getBookingsConfig(
+  backend: string,
+  baseUrl: string = apiBaseUrl
+): Promise<BookingsConfig> {
+  return await authenticatedFetch(`${baseUrl}/bookings/${backend}/config`);
+}
+
+/**
  * Retrieve the user who is currently logged in on the system
  * @param baseUrl - the API base URL
  */
@@ -787,6 +973,36 @@ async function getAdminProjects(
   const queryString = getQueryString(options);
   const { data } = await authenticatedFetch<PaginatedData<AdminProject[]>>(
     `${baseUrl}/admin/projects/?${queryString}`
+  );
+
+  return data;
+}
+
+/**
+ * Retrieves the bookings
+ * @param baseUrl - the API base URL
+ * @param backend - the backend from which to get the bookings
+ * @param options - extra options for filtering the requests
+ *            - min_start_utc - the minimum start_utc timestamp
+ *            - max_start_utc - the maximum start_utc timestamp
+ *            - user_id - the id of the user who owns the booking
+ *            - skip - the number of records to skip
+ *            - limit - the maximum number of records to return
+ */
+async function getBookingsOfBackend(
+  baseUrl: string = apiBaseUrl,
+  backend: string,
+  options: {
+    user_id?: string;
+    min_start_utc?: string;
+    max_start_utc?: string;
+    skip?: string;
+    limit?: string;
+  }
+): Promise<Booking[]> {
+  const queryString = getQueryString(options);
+  const { data } = await authenticatedFetch<PaginatedData<Booking[]>>(
+    `${baseUrl}/bookings/${backend}?${queryString}`
   );
 
   return data;

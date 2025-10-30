@@ -40,7 +40,10 @@ class UserDatabase(BeanieUserDatabase):
 
     @staticmethod
     async def get_many(
-        filter_obj: Mapping[str, Any], skip: int = 0, limit: Optional[int] = None
+        filter_obj: Mapping[str, Any],
+        skip: int = 0,
+        limit: Optional[int] = None,
+        **kwargs,
     ) -> List[User]:
         """
         Get a list of users basing on filter.
@@ -50,6 +53,7 @@ class UserDatabase(BeanieUserDatabase):
             skip: the number of matched records to skip
             limit: the maximum number of records to return.
                 If None, all possible records are returned.
+            kwargs: Additional pymongo find() arguments.
 
         Returns:
             the list of matched users
@@ -58,4 +62,5 @@ class UserDatabase(BeanieUserDatabase):
             filter_obj,
             skip=skip,
             limit=limit,
+            **kwargs,
         ).to_list()

@@ -14,7 +14,13 @@
 from datetime import datetime
 from typing import Literal, NotRequired, Optional, TypedDict
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 
 class NewBCCUserInfo(BaseModel):
@@ -64,12 +70,29 @@ class Booking(BaseModel):
 
     id: str
     user_id: Optional[str] = None
+    username: Optional[str] = None
     start_utc: datetime
     end_utc: datetime
     total_duration: float
+
+    @model_validator(mode="after")
+    def validate_username(self):
+        """The full name of the user"""
+        if self.user_id and self.username is None:
+            raise ValueError("'username' is required when 'user_id' is set")
+        return self
 
 
 class CancellationDetails(BaseModel):
     """Details to do with a given cancellation request"""
 
     reason: Optional[str] = None
+
+
+class BookingsConfig(BaseModel):
+    """Configurations for the booking service"""
+
+    max_time_slot_length: float
+    min_time_slot_length: float
+    max_slots_per_day: int
+    max_idle_time: int

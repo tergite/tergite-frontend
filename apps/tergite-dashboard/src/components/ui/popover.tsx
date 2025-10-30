@@ -9,6 +9,8 @@ const PopoverTrigger = PopoverPrimitive.Trigger;
 
 const PopoverAnchor = PopoverPrimitive.Anchor;
 
+const PopoverArrow = PopoverPrimitive.Arrow;
+
 // this is useful for popovers appearing on dialogs
 const PopoverContentNoPortal = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
@@ -52,4 +54,5 @@ export {
   PopoverContent,
   PopoverAnchor,
   PopoverContentNoPortal,
+  PopoverArrow,
 };

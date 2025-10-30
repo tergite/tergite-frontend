@@ -97,10 +97,28 @@ const userRequests = JSON.parse(rawUserRequests).map(toDoc);
 console.log({ userRequests });
 const users = JSON.parse(rawUsers).map(toDoc);
 console.log({ users });
+// bot user for making authenticated requests from BCC to MSS
+const botUser = users.find((v) => v.roles.includes("system"));
+console.log({ botUser });
+const botProject = projects.find(
+  (v) =>
+    v.user_ids.includes(`${botUser["_id"]}`) && v.qpu_seconds > 1 && v.is_active
+);
+console.log({ botProject });
+const botToken = {
+  _id: ObjectId("67bdc2aacd991c8e1cf16ffc"),
+  title: "some-token-test",
+  project_ext_id: botProject["ext_id"],
+  lifespan_seconds: 7200000,
+  token: "W0imS_n_J5ZwP8wFYvbBCiDkJVhQcEROEfyTPvFko1E",
+  user_id: botUser["_id"],
+  created_at: ISODate(),
+};
+console.log({ systemToken: botToken });
 
 db.auth_projects.insertMany(projects);
 console.log("Inserted projects");
-db.auth_app_tokens.insertMany(tokens);
+db.auth_app_tokens.insertMany([...tokens, botToken]);
 console.log("Inserted tokens");
 db.auth_users.insertMany(users);
 console.log("Inserted users");

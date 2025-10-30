@@ -1,9 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  bookingsConfigQuery,
+  currentUserQuery,
   singleDeviceCalibrationQuery,
   singleDeviceQuery,
 } from "@/lib/api-client";
-import { AppState, Device, DeviceCalibration, QubitProp } from "../../../types";
+import {
+  AppState,
+  BookingsConfig,
+  Device,
+  DeviceCalibration,
+  QubitProp,
+  User,
+  UserRole,
+} from "../../../types";
 import { LoaderFunctionArgs, useLoaderData } from "react-router-dom";
 
 import { DeviceSummary } from "./components/device-summary";
@@ -15,6 +25,10 @@ import { CalibrationMapChart } from "./components/calibration-map-chart";
 import { useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import {
+  BookingsCalendar,
+  BookingsMetadata,
+} from "./components/bookings-calendar";
 
 const fieldLabels: { [k: string]: string } = {
   t1_decoherence: "T1 decoherence",
@@ -25,7 +39,14 @@ const fieldLabels: { [k: string]: string } = {
 };
 
 export function DeviceDetail() {
-  const { device, calibrationData } = useLoaderData() as DeviceDetailData;
+  const {
+    device,
+    calibrationData,
+    bookingsMetadata,
+    bookingsConfig,
+    currentUser,
+    isAdmin,
+  } = useLoaderData() as DeviceDetailData;
   const [currentData, setCurrentData] = useState<QubitProp>(
     QubitProp.T1_DECOHERENCE
   );
@@ -37,6 +58,7 @@ export function DeviceDetail() {
           <TabsTrigger value="map">Map view</TabsTrigger>
           <TabsTrigger value="graph">Graph view</TabsTrigger>
           <TabsTrigger value="table">Table view</TabsTrigger>
+          <TabsTrigger value="calendar">Bookings</TabsTrigger>
         </TabsList>
         <TabsContent id="map-view" value="map">
           <Card>
@@ -84,6 +106,20 @@ export function DeviceDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent id="calendar-view" value="calendar">
+          <Card>
+            <CalibrationHeader device={device} currentData="Bookings" />
+            <CardContent>
+              <BookingsCalendar
+                bookingsMetadata={bookingsMetadata}
+                isAdmin={isAdmin}
+                currentUser={currentUser}
+                backend={device.name}
+                bookingsConfig={bookingsConfig}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
       <DeviceSummary
         device={device}
@@ -94,29 +130,79 @@ export function DeviceDetail() {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
+export function loader(_appState: AppState, queryClient: QueryClient) {
+  return loadOrRedirectIfAuthErr(
+    async ({ params, request }: LoaderFunctionArgs) => {
+      const { deviceName = "" } = params;
+
+      // device
+      const deviceQuery = singleDeviceQuery(deviceName);
+      const cachedDevice = queryClient.getQueryData(deviceQuery.queryKey);
+      const device =
+        cachedDevice ?? (await queryClient.fetchQuery(deviceQuery));
+
+      // calibration
+      const calibrationQuery = singleDeviceCalibrationQuery(deviceName);
+      const cachedCalibrationData = queryClient.getQueryData(
+        calibrationQuery.queryKey
+      );
+      const calibrationData =
+        cachedCalibrationData ??
+        (await queryClient.fetchQuery(calibrationQuery));
+
+      // bookings
+      const searchParams = new URL(request.url).searchParams;
+      const skip = searchParams.get("skip");
+      const limit = searchParams.get("limit");
+      const user_id = searchParams.get("user_id");
+      const min_start_utc = searchParams.get("min_start_utc");
+      const max_start_utc = searchParams.get("max_start_utc");
+
+      const bookingsMetadata = {
+        backend: deviceName,
+        skip,
+        limit,
+        user_id,
+        min_start_utc,
+        max_start_utc,
+      } as BookingsMetadata;
+
+      // bookings config
+      const currentBookingsConfigQuery = bookingsConfigQuery(deviceName);
+      const cachedBookingsConfig = queryClient.getQueryData(
+        currentBookingsConfigQuery.queryKey
+      );
+      const bookingsConfig =
+        cachedBookingsConfig ??
+        (await queryClient.fetchQuery(currentBookingsConfigQuery));
+
+      // current user
+      const cachedCurrentUser = queryClient.getQueryData(
+        currentUserQuery.queryKey
+      );
+      const currentUser =
+        cachedCurrentUser ?? (await queryClient.fetchQuery(currentUserQuery));
+
+      const isAdmin = currentUser.roles.includes(UserRole.ADMIN);
+
+      return {
+        device,
+        calibrationData,
+        bookingsConfig,
+        bookingsMetadata,
+        currentUser,
+        isAdmin,
+      };
+    }
+  );
+}
+
 interface DeviceDetailData {
   device: Device;
   calibrationData: DeviceCalibration;
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
-  return loadOrRedirectIfAuthErr(async ({ params }: LoaderFunctionArgs) => {
-    const { deviceName = "" } = params;
-
-    // device
-    const deviceQuery = singleDeviceQuery(deviceName);
-    const cachedDevice = queryClient.getQueryData(deviceQuery.queryKey);
-    const device = cachedDevice ?? (await queryClient.fetchQuery(deviceQuery));
-
-    // calibration
-    const calibrationQuery = singleDeviceCalibrationQuery(deviceName);
-    const cachedCalibrationData = queryClient.getQueryData(
-      calibrationQuery.queryKey
-    );
-    const calibrationData =
-      cachedCalibrationData ?? (await queryClient.fetchQuery(calibrationQuery));
-
-    return { device, calibrationData };
-  });
+  bookingsMetadata: BookingsMetadata;
+  bookingsConfig: BookingsConfig;
+  currentUser: User;
+  isAdmin: boolean;
 }

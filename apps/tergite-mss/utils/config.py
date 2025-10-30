@@ -121,7 +121,7 @@ class Oauth2ClientConfig(BaseModel, extra="allow"):
 
     # The callback URL that the Oauth2 provider should redirect to after authentication.
     # THIS IS A URL ON THIS APPLICATION and it is usually of the form:
-    # https://example.com/auth/app/{name-of-client-e.g.-github}/callback
+    # https://example.com/auth/{name-of-client-e.g.-github}/callback
     redirect_url: str
 
     # the Regular expression for the emails that are allowed to sign into this application

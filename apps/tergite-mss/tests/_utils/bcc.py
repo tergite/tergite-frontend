@@ -22,7 +22,7 @@ from cryptography.hazmat.primitives import hashes, padding, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from jwt import InvalidTokenError
-from pydantic import model_validator
+from pydantic import BaseModel, model_validator
 
 from services.external.bcc import BccClientHeaders
 from services.external.bcc.dtos import Booking
@@ -187,11 +187,14 @@ def _get_mss_public_key():
     return _MSS_PUBLIC_KEY
 
 
-class CreatedBooking(Booking):
+class CreatedBooking(BaseModel):
     """Schema for the test created booking"""
 
     id: str = str(uuid.uuid4())
     total_duration: float = 0
+    user_id: Optional[str] = None
+    start_utc: datetime
+    end_utc: datetime
 
     @model_validator(mode="after")
     def compute_duration(self):

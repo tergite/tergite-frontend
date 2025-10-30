@@ -12,13 +12,23 @@
 """Utilities for mocking requests to BCC"""
 import json
 import re
+from datetime import datetime
 from json import JSONDecodeError
 from typing import List
 
 import httpx
 
-from services.external.bcc.dtos import BCCUserProfile, CancellationDetails
-from tests._utils.auth import TEST_SUPERUSER_DICT, TEST_SYSTEM_USER_DICT, TEST_USER_DICT
+from services.external.bcc.dtos import (
+    BCCUserProfile,
+    BookingsConfig,
+    CancellationDetails,
+)
+from tests._utils.auth import (
+    TEST_SUPERUSER_DICT,
+    TEST_SYSTEM_USER_DICT,
+    TEST_USER_DICT,
+    TEST_USER_ID,
+)
 from tests._utils.bcc import (
     BasicBookingInfo,
     BookingPayload,
@@ -48,10 +58,19 @@ INVALID_BOOKINGS: List[BasicBookingInfo] = load_json_fixture("invalid_bookings.j
 VALID_BOOKING_PAYLOADS: List[BookingPayload] = [
     to_booking_payload(v) for v in VALID_BOOKINGS
 ]
+_FIRST_USER_ID = _USERS[0]["_id"]
 CREATED_BOOKINGS: List[dict] = [
-    CreatedBooking.model_validate(v).model_dump(mode="json")
+    CreatedBooking.model_validate({**v, "user_id": TEST_USER_ID}).model_dump(
+        mode="json"
+    )
     for v in VALID_BOOKING_PAYLOADS
 ]
+BOOKINGS_CONFIG: BookingsConfig = BookingsConfig(
+    max_time_slot_length=1200,
+    min_time_slot_length=100,
+    max_slots_per_day=80,
+    max_idle_time=100,
+)
 
 
 def get_token(request: httpx.Request):
@@ -282,7 +301,27 @@ def view_bookings(request: httpx.Request):
         if limit is not None:
             limit = int(limit)
 
-        result = paginate(CREATED_BOOKINGS, skip=skip, limit=limit)
+        min_start_utc = request.url.params.get("min_start_utc") or None
+        max_start_utc = request.url.params.get("max_start_utc") or None
+        filtered_results = CREATED_BOOKINGS
+
+        if min_start_utc is not None:
+            filtered_results = [
+                v
+                for v in filtered_results
+                if datetime.fromisoformat(v["start_utc"])
+                >= datetime.fromisoformat(min_start_utc)
+            ]
+
+        if max_start_utc is not None:
+            filtered_results = [
+                v
+                for v in filtered_results
+                if datetime.fromisoformat(v["start_utc"])
+                <= datetime.fromisoformat(max_start_utc)
+            ]
+
+        result = paginate(filtered_results, skip=skip, limit=limit)
         return httpx.Response(
             status_code=200,
             json=result,
@@ -323,6 +362,29 @@ def cancel_booking(request: httpx.Request):
     except (KeyError, TypeError) as exp:
         return httpx.Response(
             status_code=400, json={"detail": f"malformed request {exp}"}
+        )
+    except Exception as exp:
+        raise exp
+
+
+def view_bookings_config(request: httpx.Request):
+    """Mock BCC bookings config view endpoint
+
+    Args:
+        request: the httpx request
+
+    Returns:
+        the response with the bookings config
+    """
+    try:
+        get_bcc_client_verified_headers(request)
+        return httpx.Response(
+            status_code=200,
+            json=BOOKINGS_CONFIG.model_dump(mode="json"),
+        )
+    except ValueError as exp:
+        return httpx.Response(
+            status_code=401, json={"detail": f"user not authenticated {exp}"}
         )
     except Exception as exp:
         raise exp

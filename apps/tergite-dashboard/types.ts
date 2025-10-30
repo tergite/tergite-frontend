@@ -115,6 +115,47 @@ export interface Device extends DbRecord {
   is_active?: boolean;
 }
 
+/**
+ * Properties of the bookings
+ */
+export interface NewBookingInfo {
+  start_utc: string;
+  end_utc: string;
+}
+
+export interface Booking extends NewBookingInfo {
+  id: string;
+  total_duration: number;
+  user_id?: string;
+  username?: string;
+}
+
+export interface BccUserProfile {
+  id: string;
+  name: string;
+  email: string;
+  is_admin: boolean;
+}
+
+export interface NewBCCUserInfo extends BccUserProfile {
+  password: string;
+}
+
+export interface GeneralMessage {
+  status: "success" | "error" | "cancelled" | "failed";
+  detail?: string;
+}
+
+/**
+ * Configurations for the booking service for a given backend
+ */
+export interface BookingsConfig {
+  max_time_slot_length: number;
+  min_time_slot_length: number;
+  max_slots_per_day: number;
+  max_idle_time: number;
+}
+
 export enum UserRequestStatus {
   APPROVED = "approved",
   REJECTED = "rejected",
@@ -308,7 +349,7 @@ export interface Time {
   millisecond?: number;
 }
 
-export interface Duration {
+export interface InputDuration {
   days?: number;
   hours?: number;
   minutes?: number;

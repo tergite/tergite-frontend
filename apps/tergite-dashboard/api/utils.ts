@@ -6,6 +6,9 @@ import jobList from "../cypress/fixtures/jobs.json";
 import projectList from "../cypress/fixtures/projects.json";
 import tokenList from "../cypress/fixtures/tokens.json";
 import userList from "../cypress/fixtures/users.json";
+import bccUsersFixture from "../cypress/fixtures/bcc-users.json";
+import bookingsFixture from "../cypress/fixtures/bookings.json";
+import bookingsConfigList from "../cypress/fixtures/bookings-configs.json";
 import userRequestList from "../cypress/fixtures/user-requests.json";
 import { type ParsedQs } from "qs";
 import {
@@ -16,22 +19,50 @@ import {
 import {
   AppToken,
   AuthProvider,
+  Booking,
+  BookingsConfig,
   DbRecord,
   Device,
   DeviceCalibration,
   ErrorInfo,
   Job,
+  NewBCCUserInfo,
+  NewBookingInfo,
   Project,
   User,
   UserRequest,
   UserRole,
 } from "../types";
+import { v4 as uuidv4 } from "uuid";
 
+const currentDateString = process.env.CURRENT_DATE;
 const jwtSecret = process.env.JWT_SECRET ?? "no-token-really-noooo";
 const authAudience = process.env.AUTH_AUDIENCE ?? "no-auth-audience-noooo";
 const cookieName: string = process.env.VITE_COOKIE_NAME ?? "tergiteauth";
 const cookieDomain = process.env.VITE_COOKIE_DOMAIN;
 const jwtAlgorithm = "HS256";
+const firstUser = userList[0];
+const firstUserId = firstUser["id"];
+const firstUsername = firstUser["email"].split("@")[0];
+const firstUserIsAdmin = firstUser["roles"].includes("admin");
+const currentDateFromEnv = currentDateString
+  ? new Date(currentDateString)
+  : new Date();
+
+const bccUserList = deviceList
+  .map(({ name: backend }) =>
+    bccUsersFixture.map((v) =>
+      toBccUserInDb(v, backend, firstUserId, firstUserIsAdmin)
+    )
+  )
+  .flat(1);
+const bookingList = deviceList
+  .map(({ name: backend }) =>
+    bookingsFixture.map((v) =>
+      toBookingInDb(v, backend, firstUserId, firstUsername, currentDateFromEnv)
+    )
+  )
+  .flat(1);
 
 /**
  * Generate a valid test JWT for the given user
@@ -99,8 +130,11 @@ class MockDb {
     devices: [...(deviceList as Device[])],
     calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
     jobs: [...(jobList as Job[])],
+    bookings: [...(bookingList as BookingInDb[])],
+    bookings_configs: [...(bookingsConfigList as BookingsConfigInDb[])],
     user_requests: [...(userRequestList as UserRequest[])],
     auth_providers: [...(authProviderList as AuthProvider[])],
+    bcc_users: [...(bccUserList as BccUserInDb[])],
   };
   deleted: { [k: string | ItemType]: DeletedIndex } = {
     projects: {},
@@ -109,8 +143,11 @@ class MockDb {
     devices: {},
     calibrations: {},
     jobs: {},
+    bookings: {},
+    bookings_configs: {},
     user_requests: {},
     auth_providers: {},
+    bcc_users: {},
   };
 
   constructor() {
@@ -138,8 +175,11 @@ class MockDb {
       devices: [...(deviceList as Device[])],
       calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
       jobs: [...(jobList as Job[])],
+      bookings: [...(bookingList as BookingInDb[])],
+      bookings_configs: [...(bookingsConfigList as BookingsConfigInDb[])],
       user_requests: [...(userRequestList as UserRequest[])],
       auth_providers: [...(authProviderList as AuthProvider[])],
+      bcc_users: [...(bccUserList as BccUserInDb[])],
     };
     this.deleted = {
       projects: {},
@@ -148,8 +188,11 @@ class MockDb {
       devices: {},
       calibrations: {},
       jobs: {},
+      bookings: {},
+      bookings_configs: {},
       user_requests: {},
       auth_providers: {},
+      bcc_users: {},
     };
   }
 
@@ -471,10 +514,13 @@ export function bulkUpdate<T extends Record<string, unknown>>(
 type ItemType =
   | "projects"
   | "users"
+  | "bcc_users"
   | "tokens"
   | "devices"
   | "calibrations"
   | "jobs"
+  | "bookings"
+  | "bookings_configs"
   | "user_requests"
   | "auth_providers";
 
@@ -488,4 +534,120 @@ type AsyncRequestHandler = (
 ) => Promise<void>;
 interface HttpError extends ErrorInfo {
   status: number;
+}
+
+/**
+ * Converts basic booking data into payload sent when creating a booking
+ *
+ * @param data - the basic booking info using relative time
+ * @param currentDate - the current date to start from
+ */
+export function toBookingPayload(
+  { starts_in, duration }: BookingInfo,
+  currentDate: Date
+): NewBookingInfo {
+  const now = currentDate.getTime();
+  const startTimestamp = new Date(now + starts_in * 1000);
+  const endTimestamp = new Date(startTimestamp.getTime() + duration * 1000);
+
+  return {
+    start_utc: startTimestamp.toISOString(),
+    end_utc: endTimestamp.toISOString(),
+  };
+}
+
+/**
+ * Creates a randmon UUID and returns it
+ */
+export function randomUUID(): string {
+  return uuidv4();
+}
+
+/**
+ * Converts basic booking info containing duration and start, to booking as saved in database
+ *
+ * @param record - the basic booking info
+ * @param backend - the name of the device
+ * @param user_id - the identifier of the user who booked
+ * @param username - the username of the user who booked
+ * @param currentDate - the current date
+ *
+ */
+function toBookingInDb(
+  record: BookingInfo,
+  backend: string,
+  user_id: string,
+  username: string,
+  currentDate: Date
+): BookingInDb {
+  const bookingPayload = toBookingPayload(record, currentDate);
+  return {
+    ...bookingPayload,
+    backend,
+    user_id,
+    username,
+    total_duration: record.duration,
+    id: randomUUID(),
+  };
+}
+
+/**
+ * Converts basic user info into the user record as saved in the database
+ *
+ * @param record - the basic user information
+ * @param backend - the backend name
+ * @param id - the identifier of the bcc user
+ * @param is_admin - whether the user is admin or not
+ * @returns - the user as saved in the database
+ */
+function toBccUserInDb(
+  record: BccUserInfo,
+  backend: string,
+  id: string,
+  is_admin: boolean = false
+): BccUserInDb {
+  return {
+    ...record,
+    is_admin,
+    backend,
+    id,
+  };
+}
+
+/**
+ * Basic relative info for the booking
+ */
+interface BookingInfo {
+  starts_in: number;
+  duration: number;
+}
+
+/**
+ * Basic relative info for the user
+ */
+interface BccUserInfo {
+  name: string;
+  email: string;
+  password: string;
+}
+
+/**
+ * The schema of the BCC user as stored in the database
+ */
+export interface BccUserInDb extends NewBCCUserInfo {
+  backend: string;
+}
+
+/**
+ * The schema for the Booking as saved in the database
+ */
+export interface BookingInDb extends Booking {
+  backend: string;
+}
+
+/**
+ * Schema for Bookings
+ */
+export interface BookingsConfigInDb extends BookingsConfig {
+  id: string;
 }

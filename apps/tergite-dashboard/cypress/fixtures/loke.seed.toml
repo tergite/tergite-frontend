@@ -1,0 +1,229 @@
+# New calibration section for the loke backend (values only)
+
+[calibration_config]
+
+# -- Units -- 
+
+[calibration_config.units.qubit]
+frequency = "Hz"
+t1_decoherence = "us"
+t2_decoherence = "us"
+anharmonicity = "Hz"
+readout_assignment_error = ""
+
+
+[calibration_config.units.readout_resonator]
+acq_delay = "s"
+acq_integration_time = "s"
+frequency = "Hz"
+pulse_delay = "s"
+pulse_duration = "s"
+pulse_amplitude = ""
+pulse_type = ""
+
+[calibration_config.units.coupler]
+frequency = "Hz"
+frequency_detuning = "Hz"
+anharmonicity = "Hz"
+coupling_strength_02 = "Hz"
+coupling_strength_12 = "Hz"
+cz_pulse_amplitude = ""
+cz_pulse_dc_bias = ""
+cz_pulse_phase_offset = "rad"
+cz_pulse_duration_before = "s"
+cz_pulse_duration_rise = "s"
+cz_pulse_duration_constant = "s"
+pulse_type = ""
+
+
+# -- Qubits --
+
+[[calibration_config.qubit]]
+id="q0"
+t1_decoherence      = 237.65862668313903
+t2_decoherence      = 271.0497818645289
+frequency           = 4635664671.787873
+anharmonicity       = -313276039.4092362
+pi_pulse_amplitude  = 0.17555712637424228
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.006299999999999972
+
+[[calibration_config.qubit]]
+id="q1"
+t1_decoherence      = 332.84203243889
+t2_decoherence      = 267.28258972102094049
+frequency           = 4736284620.626751
+pi_pulse_amplitude  = 0.17535338530538067
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.007099999999999995
+
+[[calibration_config.qubit]]
+id="q2"
+t1_decoherence      = 299.04980556264877
+# t2_decoherence      = 3.3e-5
+frequency           = 4819179392.3190097809
+anharmonicity       = -311295152.40932542086
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.022699999999999942
+
+[[calibration_config.qubit]]
+id="q3"
+t1_decoherence      = 335.61765966870536
+t2_decoherence      = 332.37022032523817
+frequency           = 4747177681.4072809219
+anharmonicity       = -311153469.96596360207
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.019299999999999984
+
+[[calibration_config.qubit]]
+id="q4"
+t1_decoherence      = 380.4658047488371
+t2_decoherence      = 317.2605442012689
+frequency           = 4787869421.5104722977
+anharmonicity       = -310945401.76555985212
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.013399999999999967
+
+[[calibration_config.qubit]]
+id="q5"
+t1_decoherence      = 188.825420616915
+t2_decoherence      = 252.4523534198216
+frequency           = 4850828407.5610370636
+anharmonicity       = -310566062.17183786631
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.04960000000000009
+
+[[calibration_config.qubit]]
+id="q6"
+t1_decoherence      = 316.15829966585943
+t2_decoherence      = 277.57899277728444
+frequency           = 4899553484.7853431702
+anharmonicity       = -309055783.52344334126
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.0373
+
+[[calibration_config.qubit]]
+id="q7"
+t1_decoherence      = 57.40764602515758
+t2_decoherence      = 76.1829800121589
+frequency           = 4755437174.3260011673
+anharmonicity       = -311003905.18358319998
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.016699999999999937
+
+[[calibration_config.qubit]]
+id="q8"
+t1_decoherence      = 307.1464369155579
+t2_decoherence      = 232.4592230445251
+frequency           = 4812594793.770259857
+anharmonicity       = -313345113.46081882715
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.03520000000000001
+
+# -- Resonators --
+
+[[calibration_config.readout_resonator]]
+id="q0"
+acq_delay            = 5e-8
+acq_integration_time = 1e-6
+frequency            = 7260080000.0
+pulse_amplitude      = 0.1266499392606423
+pulse_delay          = 0.0
+pulse_duration       = 9e-7
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q1"
+acq_delay            = 5e-8
+acq_integration_time = 1e-6
+frequency            = 7380000000.0
+pulse_amplitude      = 0.12660078572926436
+pulse_delay          = 0.0
+pulse_duration       = 9e-7
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q2"
+acq_delay            = 5e-8
+acq_integration_time = 1e-6
+frequency            = 7502000000.0
+pulse_amplitude      = 0.08245560237524203
+pulse_delay          = 0.0
+pulse_duration       = 9e-7
+pulse_type           = "Square"
+
+[[calibration_config.coupler]]
+id = "u0"
+frequency = 0
+frequency_detuning = 0
+anharmonicity = 0
+coupling_strength_02 = 0
+coupling_strength_12 = 0
+cz_pulse_amplitude = 0
+cz_pulse_dc_bias = 0
+cz_pulse_phase_offset = 0
+cz_pulse_duration_before = 0
+cz_pulse_duration_rise = 0
+cz_pulse_duration_constant = 0
+control_rz_lambda = 0.6
+target_rz_lambda = 0.3
+pulse_type = ""
+
+[[calibration_config.coupler]]
+id = "u1"
+frequency = 0
+frequency_detuning = 0
+anharmonicity = 0
+coupling_strength_02 = 0
+coupling_strength_12 = 0
+cz_pulse_amplitude = 0
+cz_pulse_dc_bias = 0
+cz_pulse_phase_offset = 0
+cz_pulse_duration_before = 0
+cz_pulse_duration_rise = 0
+cz_pulse_duration_constant = 0
+control_rz_lambda = 0.6
+target_rz_lambda = 0.3
+pulse_type = ""
+
+# -- Discriminators --
+
+[calibration_config.discriminators.lda.q12]
+intercept = -38.4344477840827
+coef_0    = -98953.87504155144
+coef_1    = -114154.48696231026
+
+[calibration_config.discriminators.lda.q13]
+intercept = -42.05181160328822
+coef_0    = -107941.00358803963
+coef_1    = -124239.32054386326
+
+[calibration_config.discriminators.lda.q14]
+intercept = -22.684588212281916
+coef_0    = -191087.42493249022
+coef_1    = -20803.06874845618

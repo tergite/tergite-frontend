@@ -12,10 +12,12 @@
 """Clients for accessing certain HTTP services"""
 import logging
 import time
+from datetime import datetime
 from json import JSONDecodeError
 from pathlib import Path
 from typing import (
     IO,
+    Any,
     Dict,
     List,
     Literal,
@@ -34,7 +36,10 @@ from fastapi.exceptions import HTTPException
 from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
 from httpx._client import UseClientDefault
 
+from services.auth import User
+from services.auth.users import UserDatabase
 from services.external.bcc.dtos import (
+    Booking,
     CancellationDetails,
     GeneralMessage,
     NewBCCUserInfo,
@@ -119,7 +124,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
         response = await self._request(
             "POST",
@@ -156,7 +161,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
         payload = body.model_dump(mode="json")
         return await self._request(
@@ -191,7 +196,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
         return await self._request(
             "DELETE",
@@ -226,15 +231,18 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
+        params: Dict[str, Any] = {"skip": skip}
+        if limit is not None:
+            params["limit"] = limit
         return await self._request(
             "GET",
             "/users",
             user_id=user_id,
             request_id=request_id,
             private_key_file=private_key_file,
-            params={"skip": skip, "limit": limit},
+            params=params,
             is_admin=is_admin,
         )
 
@@ -262,7 +270,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
         return await self._request(
             "POST",
@@ -296,7 +304,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
         return await self._request(
             "DELETE",
@@ -309,15 +317,17 @@ class BccClient:
 
     async def create_booking(
         self,
+        user_db: UserDatabase,
         user_id: str | PydanticObjectId,
         request_id: str,
         data: NewBookingInfo,
         private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
-    ) -> dict:
+    ) -> Booking:
         """Creates a booking for the user of the given token
 
         Args:
+            user_db: the user database from which to get user full names
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
@@ -329,9 +339,9 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
-        return await self._request(
+        booking = await self._request(
             "POST",
             "/bookings",
             user_id=user_id,
@@ -340,6 +350,8 @@ class BccClient:
             json=data.model_dump(mode="json"),
             is_admin=is_admin,
         )
+        user: User = await user_db.get(user_id)
+        return Booking.model_validate({**booking, "username": user.username})
 
     async def cancel_booking(
         self,
@@ -363,7 +375,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
         return await self._request(
             "POST",
@@ -376,37 +388,93 @@ class BccClient:
 
     async def view_bookings(
         self,
+        user_db: UserDatabase,
         user_id: str | PydanticObjectId,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
         skip: int = 0,
         limit: Optional[int] = None,
+        min_start_utc: Optional[datetime] = None,
+        max_start_utc: Optional[datetime] = None,
     ) -> dict:
         """Views all available bookings
 
         Args:
+            user_db: the user database from which to get user full names
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
             is_admin: whether the current user is an admin
             skip: the number of records to skip
             limit: the maximum number of records to return
+            min_start_utc: the minimum start time in UTC
+            max_start_utc: the maximum start time in UTC
 
         Returns:
             the paginated list of the available bookings
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: unauthenticated user
+            HTTPException: unauthenticated user
         """
-        return await self._request(
+        params: Dict[str, Any] = {"skip": skip}
+        if limit is not None:
+            params["limit"] = limit
+        if min_start_utc is not None:
+            params["min_start_utc"] = min_start_utc.isoformat()
+        if max_start_utc is not None:
+            params["max_start_utc"] = max_start_utc.isoformat()
+
+        response = await self._request(
             "GET",
             "/bookings",
             user_id=user_id,
             request_id=request_id,
             private_key_file=private_key_file,
-            params={"skip": skip, "limit": limit},
+            params=params,
+            is_admin=is_admin,
+        )
+
+        user_ids = [
+            PydanticObjectId(v["user_id"])
+            for v in response["data"]
+            if v["user_id"] is not None
+        ]
+        users = await user_db.get_many({"_id": {"$in": user_ids}})
+        user_id_username_map = {str(v.id): v.username for v in users}
+        for idx, booking in enumerate(response["data"]):
+            booking["username"] = user_id_username_map.get(booking["user_id"])
+        return response
+
+    async def view_bookings_configs(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        private_key_file=PRIVATE_KEY_FILE,
+        is_admin: Optional[bool] = None,
+    ) -> dict:
+        """Views the configuration for the booking service in the backend
+
+        Args:
+            user_id: the app token associated with the job id
+            request_id: the unique identifier of the current request
+            private_key_file: the path to the private key file
+            is_admin: whether the current user is an admin
+
+        Returns:
+            the dict of configuration for the bookings service in this backend
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            HTTPException: unauthenticated user
+        """
+        return await self._request(
+            "GET",
+            "/bookings/config",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
             is_admin=is_admin,
         )
 
@@ -479,7 +547,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            ValueError: some error when making query
+            HTTPException: an HTTP exception
         """
         try:
             headers = _create_headers(

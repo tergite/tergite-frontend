@@ -1,0 +1,38 @@
+[
+  {
+    "starts_in": 600,
+    "duration": 3000
+  },
+  {
+    "starts_in": 3600,
+    "duration": 1800
+  },
+  {
+    "starts_in": 5400,
+    "duration": 1200
+  },
+  {
+    "starts_in": 6600,
+    "duration": 3600
+  },
+  {
+    "starts_in": 79200,
+    "duration": 5400
+  },
+  {
+    "starts_in": 172800,
+    "duration": 7200
+  },
+  {
+    "starts_in": 100800,
+    "duration": 1800
+  },
+  {
+    "starts_in": -79200,
+    "duration": 5400
+  },
+  {
+    "starts_in": -172800,
+    "duration": 7200
+  }
+]

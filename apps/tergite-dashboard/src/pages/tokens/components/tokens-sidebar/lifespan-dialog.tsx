@@ -26,13 +26,12 @@ import {
   refreshMyTokensQueries,
   updateAppToken,
 } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
+import { cn, mergeDatetime } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
-  Time,
   type AppToken,
   type AppTokenUpdateRequest,
   type ExtendedAppToken,
@@ -201,33 +200,4 @@ interface Props {
   token: ExtendedAppToken;
   isDisabled: boolean;
   onEdit?: (data: AppToken) => Promise<void>;
-}
-
-/**
- * Combines the date and the time into one DateTime instance
- *
- * @param value - the date and the time
- * @returns - the combined DateTime instance
- */
-function mergeDatetime(value: {
-  date?: Date;
-  time?: Time | DateTime;
-}): DateTime {
-  const { date = new Date(), time = {} } = value;
-  return DateTime.fromJSDate(date).set(toTime(time));
-}
-
-/**
- * Converts a Datetime instance to a Time instance
- *
- * @param value - the DateTime/Time instance
- * @returns - the Time equivalent of the given DateTime instance
- */
-function toTime({ hour, minute, second, millisecond }: DateTime | Time): Time {
-  return {
-    hour,
-    minute,
-    second,
-    millisecond,
-  };
 }
