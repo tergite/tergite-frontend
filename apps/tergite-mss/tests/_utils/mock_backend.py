@@ -20,8 +20,6 @@ import httpx
 
 from services.external.bcc.dtos import (
     BCCUserProfile,
-    Booking,
-    BookingsConfig,
     CancellationDetails,
 )
 from tests._utils.auth import (
@@ -67,7 +65,7 @@ CREATED_BOOKINGS: List[dict] = [
     else CreatedBooking(**v, user_id=TEST_SYSTEM_USER_ID).model_dump(mode="json")
     for idx, v in enumerate(VALID_BOOKING_PAYLOADS)
 ]
-BOOKINGS_CONFIG: BookingsConfig = BookingsConfig(
+BOOKINGS_CONFIG = dict(
     max_time_slot_length=1200,
     min_time_slot_length=100,
     max_slots_per_day=80,
@@ -391,7 +389,7 @@ def view_bookings_config(request: httpx.Request):
         get_bcc_client_verified_headers(request)
         return httpx.Response(
             status_code=200,
-            json=BOOKINGS_CONFIG.model_dump(mode="json"),
+            json=BOOKINGS_CONFIG,
         )
     except ValueError as exp:
         return httpx.Response(

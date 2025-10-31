@@ -40,6 +40,7 @@ from services.auth import User
 from services.auth.users import UserDatabase
 from services.external.bcc.dtos import (
     Booking,
+    BookingsConfig,
     CancellationDetails,
     GeneralMessage,
     NewBCCUserInfo,
@@ -73,7 +74,9 @@ async def create_clients(configs: List[BccConfig]):
     """
     global _BCC_CLIENTS
     await close_clients()
-    _BCC_CLIENTS = {item.name: BccClient(base_url=f"{item.url}") for item in configs}
+    _BCC_CLIENTS = {
+        item.name: BccClient(base_url=f"{item.url}", name=item.name) for item in configs
+    }
 
 
 async def close_clients():
@@ -98,11 +101,13 @@ class BccClient:
 
     Attributes:
         base_url: the base URL for the given BCC instance
+        name: name of the backend
     """
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, name: str):
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
+        self.name = name
 
     async def get_token(
         self,
@@ -351,7 +356,9 @@ class BccClient:
             is_admin=is_admin,
         )
         user: User = await user_db.get(user_id)
-        return Booking.model_validate({**booking, "username": user.username})
+        return Booking.model_validate(
+            {**booking, "backend": self.name, "username": user.username}
+        )
 
     async def cancel_booking(
         self,
@@ -452,6 +459,7 @@ class BccClient:
         user_id_username_map = {str(v.id): v.username for v in users}
         for idx, booking in enumerate(response["data"]):
             booking["username"] = user_id_username_map.get(booking["user_id"])
+            booking["backend"] = self.name
         return response
 
     async def view_bookings_configs(
@@ -460,7 +468,7 @@ class BccClient:
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
-    ) -> dict:
+    ) -> BookingsConfig:
         """Views the configuration for the booking service in the backend
 
         Args:
@@ -476,7 +484,7 @@ class BccClient:
             ServiceUnavailableError: device is currently unavailable
             HTTPException: unauthenticated user
         """
-        return await self._request(
+        response = await self._request(
             "GET",
             "/bookings/config",
             user_id=user_id,
@@ -484,6 +492,7 @@ class BccClient:
             private_key_file=private_key_file,
             is_admin=is_admin,
         )
+        return BookingsConfig.model_validate({**response, "backend": self.name})
 
     async def _request(
         self,

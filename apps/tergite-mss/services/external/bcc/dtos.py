@@ -64,6 +64,7 @@ class Booking(BaseModel):
         user_id: the unique identifier of the user associated with this booking
         start_utc: the timestamp when the booking starts
         end_utc: the timestamp when the booking ends
+        backend: the backend/device this booking is for
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -74,6 +75,7 @@ class Booking(BaseModel):
     start_utc: datetime
     end_utc: datetime
     total_duration: float
+    backend: str
 
     @model_validator(mode="after")
     def validate_username(self):
@@ -96,3 +98,4 @@ class BookingsConfig(BaseModel):
     min_time_slot_length: float
     max_slots_per_day: int
     max_idle_time: int
+    backend: str

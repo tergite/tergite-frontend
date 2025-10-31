@@ -44,7 +44,6 @@ BOOKINGS_IN_MSS = [
 ]
 _sort_by_start = lambda data, desc: order_by(data, "start_utc", desc)
 _sort_by_usr = lambda data: order_by(data, "user_id")
-# get_test_usr_bookings = lambda data: [v for v in data if v["user_id"] == TEST_USER_ID]
 
 _FILTERS_SORT_AND_RESULTS = [
     ({}, (), BOOKINGS_IN_MSS),
@@ -117,6 +116,8 @@ def test_create_booking(
         assert actual_booking["start_utc"] == payload["start_utc"]
         assert actual_booking["end_utc"] == payload["end_utc"]
         assert actual_booking["user_id"] == TEST_USER_ID
+        assert actual_booking["username"] == _USERNAMES_MAP[TEST_USER_ID]
+        assert actual_booking["backend"] == backend
 
 
 @pytest.mark.parametrize("backend, payload", _BOOKINGS_CREATE_PARAMS)
@@ -163,6 +164,7 @@ def test_view_bookings(
             f"/bookings/{backend}", cookies=user_jwt_cookie, params=params
         )
         actual_output = response.json()
+        expected_records = [{**v, "backend": backend} for v in expected_records]
         expected = paginate(expected_records, skip=skip, limit=limit)
 
         assert response.status_code == 200
@@ -241,7 +243,8 @@ def test_view_bookings_config(client, backend, user_jwt_cookie, mock_bcc):
     with client as client:
         response = client.get(f"/bookings/{backend}/config", cookies=user_jwt_cookie)
         got = response.json()
-        assert got == BOOKINGS_CONFIG.model_dump(mode="json")
+        expected = {**BOOKINGS_CONFIG, "backend": backend}
+        assert got == expected
 
 
 @pytest.mark.parametrize("backend", BACKEND_SLUGS)
