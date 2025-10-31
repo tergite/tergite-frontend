@@ -131,6 +131,10 @@ cp "$FIXTURES_PATH/thor.seed.toml" .
 cp "$FIXTURES_PATH/pingu.toml" .
 cp "$FIXTURES_PATH/pingu.seed.toml" .
 cp "$FIXTURES_PATH/pegu.toml" .
+cp "$FIXTURES_PATH/likee.toml" .
+cp "$FIXTURES_PATH/likee.seed.toml" .
+cp "$FIXTURES_PATH/thea.toml" .
+cp "$FIXTURES_PATH/thea.seed.toml" .
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_1q_booking_db.db
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_2q_booking_db.db
 cp "$FIXTURES_PATH/backend_db.sql" .
