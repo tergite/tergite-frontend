@@ -48,6 +48,16 @@ name = "Pegu"
 # the URL where this backend is running
 url = "http://pegu:8000"
 
+[[backends]]
+name = "Likee"
+# the URL where this backend is running
+url = "http://likee:8000"
+
+[[backends]]
+name = "Thea"
+# the URL where this backend is running
+url = "http://thea:8000"
+
 [auth]
 cookie_domain = "127.0.0.1"
 cookie_name = "tergiteauth"

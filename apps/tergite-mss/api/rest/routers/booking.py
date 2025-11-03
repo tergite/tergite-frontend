@@ -15,7 +15,7 @@
 These query the BCC on behalf of the user, thus they use the BCC client.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 
 from fastapi import APIRouter, Query
 
@@ -103,6 +103,8 @@ async def view_bookings(
     requester: User = CurrentUserDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
+    sort: Tuple[str, ...] = Query(default=()),
+    user_id: str = Query(default=None),
     min_start_utc: Optional[datetime] = Query(default=None),
     max_start_utc: Optional[datetime] = Query(default=None),
 ):
@@ -115,24 +117,28 @@ async def view_bookings(
         requester: the current signed-in user
         skip: number of records to ignore at the top of the returned results; default is 0
         limit: maximum number of records to return; default is None.
+        sort: fields to sort by; prepending a "-" returns the items in descending order of that field
+        user_id: the id of the owner of the bookings
         min_start_utc: the earliest start timestamp to include in the returned results; default is None
         max_start_utc: the latest end timestamp to include in the returned results; default is None
 
     Returns:
-        the paginated list of the available bookings
+        the paginated list of the available bookings filtered accordingly
 
     Raises:
         UnknownBccError: Unknown backend '{backend}'
     """
     return await bcc_client.view_bookings(
         user_db=user_db,
-        user_id=requester.id,
+        requester_id=requester.id,
         request_id=request_id,
+        is_admin=requester.is_superuser,
         skip=skip,
         limit=limit,
-        is_admin=requester.is_superuser,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
+        user_id=user_id,
+        sort=sort,
     )
 
 

@@ -393,5 +393,111 @@ services:
       retries: 10
       start_period: 15s
 
+  likee:
+    restart: always
+    depends_on:
+      loke:
+        condition: service_healthy
+      mss:
+        condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
+    image: "tergite/tergite-backend-with-db-e2e:latest"
+    logging:
+      driver: ${LOGGING_DRIVER}
+    ports:
+      - "8007:8000"
+      - "3007:3001"
+    environment:
+      MSS_MACHINE_ROOT_URL: "http://mss:8002"
+      MSS_PORT: 8002
+      BCC_MACHINE_ROOT_URL: "http://localhost:8000"
+      BCC_PORT: 8000
+      EXECUTOR_TYPE: "quantify"
+      DEFAULT_PREFIX: "likee"
+      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      APP_SETTINGS: "staging"
+      CURRENT_DATE: "2025-10-01T00:00:00.000Z"
+      IS_AUTH_ENABLED: "True"
+      MAX_TIME_SLOT_LENGTH: 7200
+      MIN_TIME_SLOT_LENGTH: 1200
+      MAX_SLOTS_PER_DAY: 24
+      MAX_IDLE_TIME: 100
+      REDIS_PORT: 6379
+      REDIS_HOST: "tergite-redis"
+      JWT_SECRET: "e9fae9efa7c3ff10348acde323baa5273db8021712ecb1f59fdf0e8336240fb7d70c6d8d"
+      CORS_ORIGINS: "127.0.0.1,localhost"
+    volumes:
+      - ./.env:/code/.env:ro
+      - ./likee.toml:/code/backend_config.toml:ro
+      - ./likee.seed.toml:/code/calibration.seed.toml:ro
+      - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./backend_db.sql:/code/backend_db.sql:ro
+      - ./quantify-config.json:/code/quantify-config.json:ro
+      - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
+    networks:
+      - tergite-frontend-e2e
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  thea:
+    restart: always
+    depends_on:
+      loke:
+        condition: service_healthy
+      mss:
+        condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
+    image: "tergite/tergite-backend-with-db-e2e:latest"
+    logging:
+      driver: ${LOGGING_DRIVER}
+    ports:
+      - "8008:8000"
+      - "3008:3001"
+    environment:
+      MSS_MACHINE_ROOT_URL: "http://mss:8002"
+      MSS_PORT: 8002
+      BCC_MACHINE_ROOT_URL: "http://localhost:8000"
+      BCC_PORT: 8000
+      EXECUTOR_TYPE: "quantify"
+      DEFAULT_PREFIX: "thea"
+      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      APP_SETTINGS: "staging"
+      CURRENT_DATE: "2025-10-01T00:00:00.000Z"
+      IS_AUTH_ENABLED: "True"
+      MAX_TIME_SLOT_LENGTH: 7200
+      MIN_TIME_SLOT_LENGTH: 1200
+      MAX_SLOTS_PER_DAY: 24
+      MAX_IDLE_TIME: 100
+      REDIS_PORT: 6379
+      REDIS_HOST: "tergite-redis"
+      JWT_SECRET: "e9fae9efa7c3ff10348acde323baa5273db8021712ecb1f59fdf0e8336240fb7d70c6d8d"
+      CORS_ORIGINS: "127.0.0.1,localhost"
+    volumes:
+      - ./.env:/code/.env:ro
+      - ./thea.toml:/code/backend_config.toml:ro
+      - ./thea.seed.toml:/code/calibration.seed.toml:ro
+      - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./backend_db.sql:/code/backend_db.sql:ro
+      - ./quantify-config.json:/code/quantify-config.json:ro
+      - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
+    networks:
+      - tergite-frontend-e2e
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
 networks:
   tergite-frontend-e2e:

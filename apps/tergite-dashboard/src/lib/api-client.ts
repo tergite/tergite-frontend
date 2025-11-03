@@ -25,8 +25,14 @@ import {
   NewBookingInfo,
   GeneralMessage,
   BookingsConfig,
+  RawBooking,
 } from "../../types";
-import { normalizeCalibrationData, extendAppToken } from "./utils";
+import {
+  normalizeCalibrationData,
+  extendAppToken,
+  toClientSideBooking,
+} from "./utils";
+import { DateTime } from "luxon";
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 export const refetchInterval = parseFloat(
@@ -270,6 +276,61 @@ export function myProjectsQpuTimeRequestsQuery(options: {
 }
 
 /**
+ * the react query for getting upcoming bookings of given backend
+ *
+ * @param options - extra options for filtering the requests
+ *            - baseUrl - the base URL of the API
+ *            - backend - the name of the device where the bookings are
+ *            - user_id - the ID of the user whose bookings ar eto be got
+ *            - max_start_utc - the maximum start UTC datetime for getting a range of bookings
+ *            - skip - the number of records to skip; default = 0
+ *            - limit - the maximum number of records to return; default = '5'
+ */
+export function upcomingBookingsQuery(options: {
+  backend: string;
+  baseUrl?: string;
+  user_id?: string;
+  max_start_utc?: string;
+  skip?: string;
+  limit?: string;
+}) {
+  // by default, we get the upcoming 5 events tops per backend (i.e. limit = '5')
+  const {
+    baseUrl = apiBaseUrl,
+    skip = "0",
+    backend,
+    limit = "5",
+    user_id,
+    max_start_utc,
+  } = options;
+  // Ensure that the query key does not depend on the min_start_utc as
+  // that is always shifting on every refresh
+  const queryKey = [
+    baseUrl,
+    "bookings",
+    backend,
+    user_id,
+    "upcoming",
+    max_start_utc,
+    limit,
+    skip,
+  ];
+
+  return queryOptions({
+    queryKey,
+    queryFn: async () =>
+      await getFutureBookings(baseUrl, backend, {
+        user_id,
+        max_start_utc,
+        limit,
+        skip,
+      }),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
  * the react query for getting bookings of given backend
  * @param options - extra options for filtering the requests
  *            - baseUrl - the base URL of the API
@@ -287,6 +348,7 @@ export function bookingsOfBackendQuery(options: {
   max_start_utc?: string;
   skip?: string;
   limit?: string;
+  sort?: string[];
 }) {
   const {
     baseUrl = apiBaseUrl,
@@ -296,6 +358,7 @@ export function bookingsOfBackendQuery(options: {
     user_id,
     min_start_utc,
     max_start_utc,
+    sort,
   } = options;
   const queryKey = [
     baseUrl,
@@ -306,6 +369,7 @@ export function bookingsOfBackendQuery(options: {
     max_start_utc,
     limit,
     skip,
+    sort,
   ];
 
   return queryOptions({
@@ -317,6 +381,7 @@ export function bookingsOfBackendQuery(options: {
         max_start_utc,
         limit,
         skip,
+        sort,
       }),
     refetchInterval,
     throwOnError: true,
@@ -543,11 +608,15 @@ export async function createNewBooking(
   } = {}
 ): Promise<Booking> {
   const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/bookings/${backend}`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-    headers: { "Content-Type": "application/json" },
-  });
+  const record = await authenticatedFetch<RawBooking>(
+    `${baseUrl}/bookings/${backend}`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+  return toClientSideBooking(record, { backend });
 }
 
 /**
@@ -979,6 +1048,33 @@ async function getAdminProjects(
 }
 
 /**
+ * Retrieves the bookings that are always in the future
+ * @param baseUrl - the API base URL
+ * @param backend - the backend from which to get the bookings
+ * @param options - extra options for filtering the requests
+ *            - max_start_utc - the maximum start_utc timestamp
+ *            - user_id - the id of the user who owns the booking
+ *            - skip - the number of records to skip
+ *            - limit - the maximum number of records to return
+ */
+async function getFutureBookings(
+  baseUrl: string = apiBaseUrl,
+  backend: string,
+  options: {
+    user_id?: string;
+    max_start_utc?: string;
+    skip?: string;
+    limit?: string;
+  }
+): Promise<Booking[]> {
+  const min_start_utc = DateTime.utc().toISO();
+  return await getBookingsOfBackend(baseUrl, backend, {
+    ...options,
+    min_start_utc,
+  });
+}
+
+/**
  * Retrieves the bookings
  * @param baseUrl - the API base URL
  * @param backend - the backend from which to get the bookings
@@ -988,6 +1084,7 @@ async function getAdminProjects(
  *            - user_id - the id of the user who owns the booking
  *            - skip - the number of records to skip
  *            - limit - the maximum number of records to return
+ *            - sort - the list of fields to sort by; prepending "-" means return records in descending values of field
  */
 async function getBookingsOfBackend(
   baseUrl: string = apiBaseUrl,
@@ -998,14 +1095,15 @@ async function getBookingsOfBackend(
     max_start_utc?: string;
     skip?: string;
     limit?: string;
+    sort?: string[];
   }
 ): Promise<Booking[]> {
   const queryString = getQueryString(options);
-  const { data } = await authenticatedFetch<PaginatedData<Booking[]>>(
+  const { data } = await authenticatedFetch<PaginatedData<RawBooking[]>>(
     `${baseUrl}/bookings/${backend}?${queryString}`
   );
 
-  return data;
+  return data.map((v) => toClientSideBooking(v, { backend }));
 }
 
 /**

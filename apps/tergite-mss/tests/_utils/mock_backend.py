@@ -20,12 +20,12 @@ import httpx
 
 from services.external.bcc.dtos import (
     BCCUserProfile,
-    BookingsConfig,
     CancellationDetails,
 )
 from tests._utils.auth import (
     TEST_SUPERUSER_DICT,
     TEST_SYSTEM_USER_DICT,
+    TEST_SYSTEM_USER_ID,
     TEST_USER_DICT,
     TEST_USER_ID,
 )
@@ -39,7 +39,7 @@ from tests._utils.bcc import (
     to_booking_payload,
 )
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.records import paginate
+from tests._utils.records import order_by_many, paginate
 from utils.config import UserRole
 
 _USERS = [TEST_USER_DICT, TEST_SYSTEM_USER_DICT, TEST_SUPERUSER_DICT]
@@ -60,12 +60,12 @@ VALID_BOOKING_PAYLOADS: List[BookingPayload] = [
 ]
 _FIRST_USER_ID = _USERS[0]["_id"]
 CREATED_BOOKINGS: List[dict] = [
-    CreatedBooking.model_validate({**v, "user_id": TEST_USER_ID}).model_dump(
-        mode="json"
-    )
-    for v in VALID_BOOKING_PAYLOADS
+    CreatedBooking(**v, user_id=TEST_USER_ID).model_dump(mode="json")
+    if idx % 2 == 0
+    else CreatedBooking(**v, user_id=TEST_SYSTEM_USER_ID).model_dump(mode="json")
+    for idx, v in enumerate(VALID_BOOKING_PAYLOADS)
 ]
-BOOKINGS_CONFIG: BookingsConfig = BookingsConfig(
+BOOKINGS_CONFIG = dict(
     max_time_slot_length=1200,
     min_time_slot_length=100,
     max_slots_per_day=80,
@@ -303,6 +303,11 @@ def view_bookings(request: httpx.Request):
 
         min_start_utc = request.url.params.get("min_start_utc") or None
         max_start_utc = request.url.params.get("max_start_utc") or None
+        user_id = request.url.params.get("user_id") or None
+        sort = request.url.params.get("sort") or ()
+        if isinstance(sort, str):
+            sort = (sort,)
+
         filtered_results = CREATED_BOOKINGS
 
         if min_start_utc is not None:
@@ -321,6 +326,10 @@ def view_bookings(request: httpx.Request):
                 <= datetime.fromisoformat(max_start_utc)
             ]
 
+        if user_id is not None:
+            filtered_results = [v for v in filtered_results if v["user_id"] == user_id]
+
+        filtered_results = order_by_many(filtered_results, sort)
         result = paginate(filtered_results, skip=skip, limit=limit)
         return httpx.Response(
             status_code=200,
@@ -380,7 +389,7 @@ def view_bookings_config(request: httpx.Request):
         get_bcc_client_verified_headers(request)
         return httpx.Response(
             status_code=200,
-            json=BOOKINGS_CONFIG.model_dump(mode="json"),
+            json=BOOKINGS_CONFIG,
         )
     except ValueError as exp:
         return httpx.Response(

@@ -40,6 +40,7 @@ from services.auth import User
 from services.auth.users import UserDatabase
 from services.external.bcc.dtos import (
     Booking,
+    BookingsConfig,
     CancellationDetails,
     GeneralMessage,
     NewBCCUserInfo,
@@ -73,7 +74,9 @@ async def create_clients(configs: List[BccConfig]):
     """
     global _BCC_CLIENTS
     await close_clients()
-    _BCC_CLIENTS = {item.name: BccClient(base_url=f"{item.url}") for item in configs}
+    _BCC_CLIENTS = {
+        item.name: BccClient(base_url=f"{item.url}", name=item.name) for item in configs
+    }
 
 
 async def close_clients():
@@ -98,11 +101,13 @@ class BccClient:
 
     Attributes:
         base_url: the base URL for the given BCC instance
+        name: name of the backend
     """
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, name: str):
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
+        self.name = name
 
     async def get_token(
         self,
@@ -351,7 +356,9 @@ class BccClient:
             is_admin=is_admin,
         )
         user: User = await user_db.get(user_id)
-        return Booking.model_validate({**booking, "username": user.username})
+        return Booking.model_validate(
+            {**booking, "backend": self.name, "username": user.username}
+        )
 
     async def cancel_booking(
         self,
@@ -389,7 +396,7 @@ class BccClient:
     async def view_bookings(
         self,
         user_db: UserDatabase,
-        user_id: str | PydanticObjectId,
+        requester_id: str | PydanticObjectId,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
@@ -397,12 +404,14 @@ class BccClient:
         limit: Optional[int] = None,
         min_start_utc: Optional[datetime] = None,
         max_start_utc: Optional[datetime] = None,
+        user_id: Optional[str] = None,
+        sort: Tuple[str, ...] = (),
     ) -> dict:
         """Views all available bookings
 
         Args:
             user_db: the user database from which to get user full names
-            user_id: the app token associated with the job id
+            requester_id: the unique identifier of the user making this request
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
             is_admin: whether the current user is an admin
@@ -410,32 +419,37 @@ class BccClient:
             limit: the maximum number of records to return
             min_start_utc: the minimum start time in UTC
             max_start_utc: the maximum start time in UTC
+            user_id: the unique identifier of the owner of the given bookings
+            sort: the fields to order by; prepending "-" returns the items in descending order of that field
 
         Returns:
-            the paginated list of the available bookings
+            the paginated list of the available bookings filtered accordingly
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
             HTTPException: unauthenticated user
         """
-        params: Dict[str, Any] = {"skip": skip}
+        params: Dict[str, Any] = {"skip": skip, "sort": sort}
         if limit is not None:
             params["limit"] = limit
         if min_start_utc is not None:
             params["min_start_utc"] = min_start_utc.isoformat()
         if max_start_utc is not None:
             params["max_start_utc"] = max_start_utc.isoformat()
+        if user_id is not None:
+            params["user_id"] = user_id
 
         response = await self._request(
             "GET",
             "/bookings",
-            user_id=user_id,
+            user_id=requester_id,
             request_id=request_id,
             private_key_file=private_key_file,
             params=params,
             is_admin=is_admin,
         )
 
+        # add usernames
         user_ids = [
             PydanticObjectId(v["user_id"])
             for v in response["data"]
@@ -445,6 +459,7 @@ class BccClient:
         user_id_username_map = {str(v.id): v.username for v in users}
         for idx, booking in enumerate(response["data"]):
             booking["username"] = user_id_username_map.get(booking["user_id"])
+            booking["backend"] = self.name
         return response
 
     async def view_bookings_configs(
@@ -453,7 +468,7 @@ class BccClient:
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
-    ) -> dict:
+    ) -> BookingsConfig:
         """Views the configuration for the booking service in the backend
 
         Args:
@@ -469,7 +484,7 @@ class BccClient:
             ServiceUnavailableError: device is currently unavailable
             HTTPException: unauthenticated user
         """
-        return await self._request(
+        response = await self._request(
             "GET",
             "/bookings/config",
             user_id=user_id,
@@ -477,6 +492,7 @@ class BccClient:
             private_key_file=private_key_file,
             is_admin=is_admin,
         )
+        return BookingsConfig.model_validate({**response, "backend": self.name})
 
     async def _request(
         self,

@@ -11,11 +11,18 @@
 # that they have been altered from the originals.
 
 """Tests for the booking endpoints"""
-from typing import List
+from typing import Dict, List
 
 import pytest
 
-from tests._utils.auth import TEST_USER_EMAIL, TEST_USER_ID
+from tests._utils.auth import (
+    TEST_SUPERUSER_EMAIL,
+    TEST_SUPERUSER_ID,
+    TEST_SYSTEM_USER_EMAIL,
+    TEST_SYSTEM_USER_ID,
+    TEST_USER_EMAIL,
+    TEST_USER_ID,
+)
 from tests._utils.bcc import BookingPayload
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mock_backend import (
@@ -23,24 +30,56 @@ from tests._utils.mock_backend import (
     CREATED_BOOKINGS,
     VALID_BOOKING_PAYLOADS,
 )
-from tests._utils.records import PaginationInfo, paginate
+from tests._utils.records import PaginationInfo, order_by, paginate
 from tests.conftest import BACKEND_SLUGS
 
 _PAGINATION: List[PaginationInfo] = load_json_fixture("pagination.json")
+_USERNAMES_MAP: Dict[str, str] = {
+    TEST_USER_ID: TEST_USER_EMAIL.split("@")[0],
+    TEST_SYSTEM_USER_ID: TEST_SYSTEM_USER_EMAIL.split("@")[0],
+    TEST_SUPERUSER_ID: TEST_SUPERUSER_EMAIL.split("@")[0],
+}
 BOOKINGS_IN_MSS = [
-    {**v, "username": TEST_USER_EMAIL.split("@")[0]} for v in CREATED_BOOKINGS
+    {**v, "username": _USERNAMES_MAP[v["user_id"]]} for v in CREATED_BOOKINGS
 ]
+_sort_by_start = lambda data, desc: order_by(data, "start_utc", desc)
+_sort_by_usr = lambda data: order_by(data, "user_id")
 
-_FILTERS_AND_RESULTS = [
-    ({}, BOOKINGS_IN_MSS),
-    ({"min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, BOOKINGS_IN_MSS[1:]),
-    ({"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"]}, BOOKINGS_IN_MSS[2:]),
-    ({"max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, BOOKINGS_IN_MSS[:2]),
+_FILTERS_SORT_AND_RESULTS = [
+    ({}, (), BOOKINGS_IN_MSS),
+    ({}, ("-start_utc",), _sort_by_start(BOOKINGS_IN_MSS, desc=True)),
+    ({"min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, (), BOOKINGS_IN_MSS[1:]),
+    ({"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"]}, (), BOOKINGS_IN_MSS[2:]),
+    (
+        {"min_start_utc": BOOKINGS_IN_MSS[2]["start_utc"], "user_id": TEST_USER_ID},
+        (),
+        [v for v in BOOKINGS_IN_MSS[2:] if v["user_id"] == TEST_USER_ID],
+    ),
+    ({"max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]}, (), BOOKINGS_IN_MSS[:2]),
+    (
+        {"max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"]},
+        ("user_id",),
+        _sort_by_usr(BOOKINGS_IN_MSS[:2]),
+    ),
+    (
+        {
+            "max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
+            "user_id": TEST_SYSTEM_USER_ID,
+        },
+        (),
+        [v for v in BOOKINGS_IN_MSS[:2] if v["user_id"] == TEST_SYSTEM_USER_ID],
+    ),
+    (
+        {"user_id": TEST_SYSTEM_USER_ID},
+        (),
+        [v for v in BOOKINGS_IN_MSS if v["user_id"] == TEST_SYSTEM_USER_ID],
+    ),
     (
         {
             "min_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
             "max_start_utc": BOOKINGS_IN_MSS[1]["start_utc"],
         },
+        (),
         BOOKINGS_IN_MSS[1:2],
     ),
 ]
@@ -50,10 +89,10 @@ _BOOKINGS_CREATE_PARAMS = [
     for payload in VALID_BOOKING_PAYLOADS
 ]
 _BOOKINGS_VIEW_PARAMS = [
-    (backend, pagination, filters, expected_records)
+    (backend, pagination, filters, sort, expected_records)
     for backend in BACKEND_SLUGS
     for pagination in _PAGINATION
-    for filters, expected_records in _FILTERS_AND_RESULTS
+    for filters, sort, expected_records in _FILTERS_SORT_AND_RESULTS
 ]
 _BOOKINGS_CANCEL_PARAMS = [
     (backend, booking) for backend in BACKEND_SLUGS for booking in CREATED_BOOKINGS
@@ -77,6 +116,8 @@ def test_create_booking(
         assert actual_booking["start_utc"] == payload["start_utc"]
         assert actual_booking["end_utc"] == payload["end_utc"]
         assert actual_booking["user_id"] == TEST_USER_ID
+        assert actual_booking["username"] == _USERNAMES_MAP[TEST_USER_ID]
+        assert actual_booking["backend"] == backend
 
 
 @pytest.mark.parametrize("backend, payload", _BOOKINGS_CREATE_PARAMS)
@@ -98,7 +139,7 @@ def test_unauthenticated_create_booking(
 
 
 @pytest.mark.parametrize(
-    "backend, pagination, filters, expected_records", _BOOKINGS_VIEW_PARAMS
+    "backend, pagination, filters, sort, expected_records", _BOOKINGS_VIEW_PARAMS
 )
 def test_view_bookings(
     client,
@@ -106,6 +147,7 @@ def test_view_bookings(
     user_jwt_cookie,
     pagination: PaginationInfo,
     filters,
+    sort,
     expected_records,
     mock_bcc,
 ):
@@ -115,12 +157,14 @@ def test_view_bookings(
         skip = pagination["skip"]
         params = {k: v for k, v in pagination.items() if v is not None}
         params.update(filters)
+        params.update({"sort": sort})
 
         # view bookings
         response = client.get(
             f"/bookings/{backend}", cookies=user_jwt_cookie, params=params
         )
         actual_output = response.json()
+        expected_records = [{**v, "backend": backend} for v in expected_records]
         expected = paginate(expected_records, skip=skip, limit=limit)
 
         assert response.status_code == 200
@@ -128,10 +172,16 @@ def test_view_bookings(
 
 
 @pytest.mark.parametrize(
-    "backend, pagination, filters, expected_records", _BOOKINGS_VIEW_PARAMS
+    "backend, pagination, filters, sort, expected_records", _BOOKINGS_VIEW_PARAMS
 )
 def test_unauthenticated_view_bookings(
-    client, backend, pagination: PaginationInfo, filters, expected_records, mock_bcc
+    client,
+    backend,
+    pagination: PaginationInfo,
+    filters,
+    sort,
+    expected_records,
+    mock_bcc,
 ):
     """Viewing bookings without authenticated user errors out"""
     with client as client:
@@ -139,6 +189,7 @@ def test_unauthenticated_view_bookings(
         url = f"/bookings/{backend}"
         params = {k: v for k, v in pagination.items() if v is not None}
         params.update(filters)
+        params.update({"sort": sort})
         response = client.get(url, headers=headers, params=params)
 
         assert response.status_code == 401
@@ -192,7 +243,8 @@ def test_view_bookings_config(client, backend, user_jwt_cookie, mock_bcc):
     with client as client:
         response = client.get(f"/bookings/{backend}/config", cookies=user_jwt_cookie)
         got = response.json()
-        assert got == BOOKINGS_CONFIG.model_dump(mode="json")
+        expected = {**BOOKINGS_CONFIG, "backend": backend}
+        assert got == expected
 
 
 @pytest.mark.parametrize("backend", BACKEND_SLUGS)

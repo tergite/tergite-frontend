@@ -71,11 +71,10 @@ export function BookingsCalendar({
         start: v.start_utc,
         end: v.end_utc,
         extendedProps: {
-          backend,
           ...v,
         },
       })),
-    [bookings, backend]
+    [bookings]
   );
 
   /**

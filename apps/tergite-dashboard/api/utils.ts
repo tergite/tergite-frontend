@@ -127,7 +127,7 @@ class MockDb {
     projects: [...(projectList as Project[])],
     users: [...(userList as User[])],
     tokens: [...(tokenList as AppToken[])],
-    devices: [...(deviceList as Device[])],
+    devices: [...(deviceList as unknown as Device[])],
     calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
     jobs: [...(jobList as Job[])],
     bookings: [...(bookingList as BookingInDb[])],
@@ -172,7 +172,7 @@ class MockDb {
       projects: [...(projectList as Project[])],
       users: [...(userList as User[])],
       tokens: bulkUpdate(tokenList, { created_at: now }) as AppToken[],
-      devices: [...(deviceList as Device[])],
+      devices: [...(deviceList as unknown as Device[])],
       calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
       jobs: [...(jobList as Job[])],
       bookings: [...(bookingList as BookingInDb[])],
@@ -212,17 +212,24 @@ class MockDb {
    * @param filterFn - filter function to find given value
    * @param skip - the number of matched items to skip
    * @param limit - the maximum number of items to return
+   * @param sort - the list of fields to sort by; prepending "-" to a field means sort in descending order
    * @returns - the list of all undeleted projects
    */
   getMany<T extends DbRecord>(
     itemType: ItemType,
     filterFn: FilterFunc<T> = () => true,
     skip: number = 0,
-    limit: number | undefined = undefined
+    limit: number | undefined = undefined,
+    sort: string[] | undefined = undefined
   ): T[] {
-    return (this.cache[itemType] as T[])
-      .filter((item) => filterFn(item) && !this.deleted[itemType][item.id])
-      .slice(skip, limit);
+    let data = (this.cache[itemType] as T[]).filter(
+      (item) => filterFn(item) && !this.deleted[itemType][item.id]
+    );
+    if (sort) {
+      data = data.sort(createFieldsSorter(sort));
+    }
+
+    return data.slice(skip, limit);
   }
 
   /**
@@ -615,6 +622,43 @@ function toBccUserInDb(
 }
 
 /**
+ * Creates a comparison function to sort by multiple fields where sort direction is descending if field name starts with "-".
+ *
+ * @param sortFields - e.g., ['lastName', '-age']
+ * @returns - A comparator function for Array.prototype.sort()
+ */
+function createFieldsSorter(sortFields: string[]) {
+  function comparator(a: DbRecord, b: DbRecord) {
+    for (const field of sortFields) {
+      const isDescending = field.startsWith("-");
+      const actualProp = isDescending ? field.slice(1) : field;
+      const valA = a[actualProp] as string;
+      const valB = b[actualProp] as string;
+
+      // the idea is to progress to comparing the next field in the sequence
+      // if this field and those before are equal.
+      if (valA === valB) {
+        continue;
+      }
+
+      // Determine the standard comparison result (1 or -1)
+      let comparison = 0;
+      if (valA == undefined) comparison = valB == undefined ? 1 : -1;
+      else if (valB == undefined) comparison = 1;
+      else if (valA < valB) comparison = -1;
+      else if (valA > valB) comparison = 1;
+
+      // Apply the direction
+      return isDescending ? comparison * -1 : comparison;
+    }
+
+    return 0; // All fields checked and equal
+  }
+
+  return comparator;
+}
+
+/**
  * Basic relative info for the booking
  */
 interface BookingInfo {
@@ -641,9 +685,7 @@ export interface BccUserInDb extends NewBCCUserInfo {
 /**
  * The schema for the Booking as saved in the database
  */
-export interface BookingInDb extends Booking {
-  backend: string;
-}
+export interface BookingInDb extends Booking {}
 
 /**
  * Schema for Bookings

@@ -10,15 +10,15 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 ### Fixed
 
 - Fixed module 'fastapi_users.schemas' has no attribute 'model_validate'
+- Fixed error 'redirect URI '.../auth/{client}/callback' specified in the request does not match the redirect URIs'
 
 ### Added
 
 - Added the `/bookings/{backend}/config` endpoint to return the configuration for the booking service for given backend
 - Added back the `/auth/app/{OATH_CLIENT}` URLs for backward compatibility
-
-### Fixed
-
-- Fix error 'redirect URI '.../auth/{client}/callback' specified in the request does not match the redirect URIs'
+- Added filtering bookings at `/bookings/{backend}` endpoint by `user_id`
+- Added sorting bookings at `/bookings/{backend}` endpoint by any field
+- Added the "backend" property to the `BookingsConfig` and the `Booking` schemas returned to the client
 
 ## [2025.09.0] - 2025-10-02
 
