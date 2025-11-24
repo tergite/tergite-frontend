@@ -12,8 +12,9 @@
 """Utility for loading configurations for the app"""
 
 import enum
+import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 import tomli
 from pydantic import AnyHttpUrl, BaseModel, MongoDsn
@@ -214,6 +215,22 @@ class AppConfig(BaseModel, extra="allow"):
         with Path(file_path).open(mode="rb") as file:
             conf = tomli.load(file)
 
+        conf.update(
+            conf.pop("general", {}),
+        )
+        return cls.model_validate(conf)
+
+    @classmethod
+    def from_json_str(cls, data_str: str):
+        """Parses a JSON string into an AppConfig instance
+
+        Args:
+            data_str: The JSON string to parse
+
+        Returns:
+            the AppConfig instance equivalent to the given JSON string
+        """
+        conf = json.loads(data_str)
         conf.update(
             conf.pop("general", {}),
         )
