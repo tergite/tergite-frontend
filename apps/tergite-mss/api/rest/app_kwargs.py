@@ -23,7 +23,9 @@ from fastapi import FastAPI
 import settings
 from services import calibration as calib_service
 from services.auth import service as auth_service
+from services.devices import service as devices_service
 from services.external import bcc, puhuri
+from .routers.devices import ws_manager as devices_ws_manager
 
 from .dependencies import get_default_mongodb
 
@@ -58,3 +60,5 @@ async def lifespan(_app: FastAPI):
     yield
     # on shutdown
     await bcc.close_clients()
+    await devices_ws_manager.close_all(reason="server shutting down")
+    await devices_service.disconnect_all(db)

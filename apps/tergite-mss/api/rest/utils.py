@@ -17,8 +17,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.requests import Request
 from starlette.types import Message, Send
+from fastapi.websockets import WebSocket
 
+from utils.api import GeneralMessage
 from utils.exc import InvalidRequestIDError
+from utils.logging import access_logger
 
 
 class TergiteCORSMiddleware(CORSMiddleware):
@@ -70,6 +73,43 @@ async def get_request_id(request: Request) -> str:
         return request_id
     except AttributeError:
         raise InvalidRequestIDError(f"The request ID '' is not a valid UUID4")
+
+
+class WebsocketConnectionManager:
+    """Manages connections to a websockets endpoint"""
+
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        """Allows a connection to be established"""
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        access_logger.info(f"Connected: {websocket.client.host} at {websocket.url}")
+
+    def disconnect(self, websocket: WebSocket):
+        """Removes a given websocket connection"""
+        self.active_connections.remove(websocket)
+        access_logger.info(f"Disconnected: {websocket.client.host} at {websocket.url}")
+
+    async def reply(self, websocket: WebSocket, message: GeneralMessage):
+        """Sends a message to the given websocket"""
+        await websocket.send_json(message)
+
+    async def broadcast(self, message: str):
+        """Broadcasts a message to all connections on a websocket endpoint"""
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+    async def close_all(self, reason: str = "Server closing connection"):
+        """Closes all active connections
+
+        Args:
+            reason: Reason for closing the connection
+        """
+        for connection in list(self.active_connections):
+            access_logger.info(f"Closing: {connection.client.host} at {connection.url}")
+            await connection.close(code=1001, reason=reason)
 
 
 def _is_valid_uuid4(value):

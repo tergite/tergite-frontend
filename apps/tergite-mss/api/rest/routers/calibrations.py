@@ -65,11 +65,3 @@ async def get_many(
 async def read_one(db: MongoDbDep, name: str):
     record = await calibration_service.get_one(db, name)
     return record.model_dump(mode="json")
-
-
-@router.post("/")
-async def create(
-    db: MongoDbDep, user: CurrentSystemUserProjectDep, document: DeviceCalibrationCreate
-):
-    record = await calibration_service.insert_one(db, document)
-    return record.model_dump(mode="json")

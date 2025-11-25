@@ -21,6 +21,8 @@ from typing import (
     Optional,
     TypeVar,
     Union,
+    TypedDict,
+    NotRequired,
 )
 
 from fastapi import HTTPException, Response, status
@@ -126,3 +128,10 @@ def to_http_error(
         return await http_exception_handler(request, http_exp)
 
     return handler
+
+
+class GeneralMessage(TypedDict):
+    """A general message object sent on the API"""
+
+    status: Literal["success", "error", "cancelled", "failed"]
+    detail: NotRequired[str]

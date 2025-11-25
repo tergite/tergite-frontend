@@ -129,3 +129,57 @@ async def patch_device(
         raise NotFoundError(f"device '{name}' not found")
 
     return Device.model_validate(device)
+
+
+async def connect_device(db: AsyncIOMotorDatabase, name: str):
+    """Connects the given device to this API
+
+    Args:
+        db: the mongo database where the device data is stored
+        name: the name of the device
+
+    Returns:
+        the updated device
+    """
+    return await patch_device(
+        db, name=name, payload={"last_online": None, "is_online": True}
+    )
+
+
+async def disconnect_device(db: AsyncIOMotorDatabase, name: str):
+    """Disconnects the given device to this API
+
+    Args:
+        db: the mongo database where the device data is stored
+        name: the name of the device
+
+    Returns:
+        the updated device
+    """
+    return await patch_device(
+        db,
+        name=name,
+        payload={"last_online": get_current_timestamp(), "is_online": False},
+    )
+
+
+async def disconnect_all(db: AsyncIOMotorDatabase):
+    """Disconnects all connected devices
+
+    Args:
+        db: the mongo database where to register the device
+
+    Returns:
+        the number of updated records
+    """
+    result = await db.devices.update_many(
+        {},
+        {
+            "$set": {
+                "last_online": get_current_timestamp(),
+                "is_online": False,
+                "updated_at": get_current_timestamp(),
+            }
+        },
+    )
+    return result.modified_count

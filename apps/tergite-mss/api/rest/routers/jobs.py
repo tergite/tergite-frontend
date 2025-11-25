@@ -35,7 +35,7 @@ from api.rest.dependencies import (
 from services import jobs as jobs_service
 from services.auth import User
 from services.external import puhuri as puhuri_service
-from services.external.bcc.dtos import CancellationDetails, GeneralMessage
+from services.external.bcc.dtos import CancellationDetails
 from services.jobs.dtos import (
     Job,
     JobCreate,
@@ -44,7 +44,7 @@ from services.jobs.dtos import (
     JobStatusResponse,
     JobUpdate,
 )
-from utils.api import PaginatedListResponse
+from utils.api import PaginatedListResponse, GeneralMessage
 from utils.exc import UnknownBccError
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])

@@ -12,13 +12,11 @@
 
 """Data Transfer Objects for the BCC service"""
 from datetime import datetime
-from typing import Literal, NotRequired, Optional, TypedDict
+from typing import Optional
 
 from pydantic import (
     BaseModel,
     ConfigDict,
-    computed_field,
-    field_validator,
     model_validator,
 )
 
@@ -40,13 +38,6 @@ class BCCUserProfile(BaseModel):
     name: str
     email: str
     is_admin: bool = False
-
-
-class GeneralMessage(TypedDict):
-    """A general message object sent on the API"""
-
-    status: Literal["success", "error", "cancelled", "failed"]
-    detail: NotRequired[str]
 
 
 class NewBookingInfo(BaseModel):

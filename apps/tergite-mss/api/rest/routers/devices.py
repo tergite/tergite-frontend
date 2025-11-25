@@ -18,13 +18,21 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.websockets import WebSocket
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import ValidationError
+from starlette.websockets import WebSocketDisconnect
 
 from api.rest.dependencies import CurrentSystemUserProjectDep, MongoDbDep
-from services import devices
-from services.devices.dtos import DeviceQuery
+from api.rest.utils import WebsocketConnectionManager
+from services import devices, calibration as calibration_service
+from services.calibration import DeviceCalibrationCreate
+from services.devices import DeviceUpsert
+from services.devices.dtos import DeviceQuery, DeviceStatusMessage, DeviceStatus
 from utils.api import PaginatedListResponse
 
 router = APIRouter(prefix="/devices", tags=["devices"])
+ws_manager = WebsocketConnectionManager()
 
 
 @router.get("/")
@@ -65,24 +73,49 @@ async def read_one(db: MongoDbDep, name: str):
     return record.model_dump(mode="json")
 
 
-@router.put("/")
-async def upsert(
-    db: MongoDbDep,
-    user: CurrentSystemUserProjectDep,
-    payload: devices.DeviceUpsert,
-):
-    """Creates a new backend if it does not exist already or updates it.
+# TODO: Add certificate based security
+#   - should MSS send a token to the backends that it expects?
+#       - Say backend makes request to an unauthenticated endpoint requesting to be sent a very short-lived JWT token
+#           MSS makes a separate request to the backend it registered
+#           then backend creates a websocket connection to MSS using the token and keeps send it data
+#   - should MSS have the public certificates of all the backends it connects to and
+#       use those to verify that the connection is coming from right backend;
+#       - maybe have the initial data encrypted with MSS public key and MSS decrypts it first with its key
+#         then with the backend's public key
+@router.websocket("/ws/{name}")
+async def update_device_status(websocket: WebSocket, name: str, db: MongoDbDep):
+    """Receives updates about the given device
 
-    It also appends this resultant backend config into the backends log.
+    Args:
+        websocket: the websocket instance
+        name: the name of the device
+        db: the mongo db instance
     """
-    record = await devices.upsert_device(db, payload=payload)
-    return record.model_dump(mode="json")
+    await devices.connect_device(db, name=name)
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            try:
+                parsed_data = await DeviceStatusMessage.model_validate(data)
+                if parsed_data.status == DeviceStatus.INITIALIZED:
+                    await devices.upsert_device(db, payload=parsed_data.data)
 
+                elif parsed_data.status == DeviceStatus.RECALIBRATED:
+                    await calibration_service.insert_one(db, parsed_data.data)
 
-@router.put("/{name}")
-async def update(
-    db: MongoDbDep, user: CurrentSystemUserProjectDep, name: str, body: dict
-):
-    """Updates the given backend with the new body supplied."""
-    record = await devices.patch_device(db, name, payload=body)
-    return record.model_dump(mode="json")
+                await ws_manager.reply(
+                    websocket,
+                    {
+                        "status": "success",
+                        "detail": f"status '{parsed_data.status}' registered",
+                    },
+                )
+            except ValidationError:
+                await ws_manager.reply(
+                    websocket, {"status": "error", "detail": "invalid data"}
+                )
+
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+        await devices.disconnect_device(db, name=name)

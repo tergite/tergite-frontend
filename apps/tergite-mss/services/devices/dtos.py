@@ -13,6 +13,7 @@
 # that they have been altered from the originals.
 #
 # Refactored by Martin Ahindura 2023-11-08
+from enum import Enum
 from typing import (
     TYPE_CHECKING,
     AbstractSet,
@@ -29,9 +30,10 @@ from typing import (
 
 from beanie import PydanticObjectId
 from fastapi import Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, ValidationInfo
 from pydantic.main import IncEx
 
+from ..calibration.dtos import DeviceCalibrationCreate
 from utils.models import create_partial_model
 
 if TYPE_CHECKING:
@@ -39,6 +41,11 @@ if TYPE_CHECKING:
     IntStr = Union[int, str]
     AbstractSetIntStr = AbstractSet[IntStr]
     MappingIntStrAny = Mapping[IntStr, Any]
+
+
+class DeviceStatus(str, Enum):
+    INITIALIZED = "initialized"
+    RECALIBRATED = "recalibrated"
 
 
 class DeviceUpsert(BaseModel):
@@ -114,6 +121,33 @@ class Device(DeviceUpsert):
     id: PydanticObjectId = Field(alias="_id")
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+class DeviceStatusMessage(BaseModel):
+    """The schema for device status message"""
+
+    status: DeviceStatus
+    data: DeviceUpsert | DeviceCalibrationCreate
+
+    @field_validator("data", mode="after")
+    @classmethod
+    def validate_data(
+        cls, value: DeviceUpsert | DeviceCalibrationCreate, info: ValidationInfo
+    ) -> DeviceUpsert | DeviceCalibrationCreate:
+        """Validates the data depending on the status type"""
+        if info.data["status"] == DeviceStatus.INITIALIZED and not isinstance(
+            value, DeviceUpsert
+        ):
+            raise ValueError(
+                f"data must be of type {DeviceUpsert.__name__}, was {type(value)}"
+            )
+        elif info.data["status"] == DeviceStatus.RECALIBRATED and not isinstance(
+            value, DeviceCalibrationCreate
+        ):
+            raise ValueError(
+                f"data must be of type {DeviceCalibrationCreate.__name__}, was {type(value)}"
+            )
+        return value
 
 
 # derived models

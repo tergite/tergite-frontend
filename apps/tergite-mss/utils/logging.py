@@ -19,6 +19,7 @@ T = TypeVar("T")
 
 # error logger
 err_logger = logging.getLogger("uvicorn.error")
+access_logger = logging.getLogger("uvicorn.access")
 # work around for testing to allow errors to be seen in terminal
 if settings.CONFIG.environment == "test":
     err_logger.error = print
