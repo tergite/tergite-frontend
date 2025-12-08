@@ -18,16 +18,22 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 - Added healthchecks for all services in e2e docker compose
 - Added cleanup backend databases via the `/refreshed-db` endpoint in e2e.
+- Added `SERVICE_RESTART` env variable to determine whether the services should restart automatically or not
+- Added `DASHBOARD_EXT_PORT` and `MSS_EXT_PORT` to make the external ports of the mss and dashboard services more configurable
 
 ### Changed
 
 - Updated e2e tests to include backends that are expected in the dashboard
 - Enforced timezone in cypress tests to Europe/Stockholm
 - Move initialization of e2e's tergite-mongo docker compose service to use a temporary service
+- Removed the `network_mode = none` in the `prebuilt-docker-compose.yml` file
+- Removed the mss-config volume from the dashboard service as it will only be served by environment variables, not mss config file
+- Changed the default version of the images used for mss and the dashboard to `v2025.12.0`
 
 ### Fixed
 
 - Fixed e2e error '(0 , crypto**WEBPACK_IMPORTED_MODULE_11**.randomUUID) is not a function'
+- Fixed connection error in production compose settings when connecting to mongodb
 
 ## [2025.09.0] - 2025-10-02
 
