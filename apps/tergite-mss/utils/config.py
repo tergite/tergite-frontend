@@ -14,7 +14,7 @@
 import enum
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 import tomli
 from pydantic import AnyHttpUrl, BaseModel, MongoDsn
@@ -208,17 +208,6 @@ class AppConfig(BaseModel, extra="allow"):
         if self._backends_dict is None:
             self._backends_dict = {item.name: item for item in self.backends}
         return self._backends_dict
-
-    @classmethod
-    def from_toml(cls, file_path: str):
-        """Parse a mss-config.toml file into an AppConfig instance"""
-        with Path(file_path).open(mode="rb") as file:
-            conf = tomli.load(file)
-
-        conf.update(
-            conf.pop("general", {}),
-        )
-        return cls.model_validate(conf)
 
     @classmethod
     def from_json_str(cls, data_str: str):
