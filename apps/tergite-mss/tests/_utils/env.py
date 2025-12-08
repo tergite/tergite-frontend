@@ -28,6 +28,10 @@ with Path(TEST_MSS_CONFIG_FILE).open(mode="rb") as _oauth_conf_file:
     TEST_APP_CONFIG = tomli.load(_oauth_conf_file)
     TEST_MSS_CONFIG_JSON_STR = json.dumps(TEST_APP_CONFIG)
 
+with Path(TEST_DISABLED_PUHURI_MSS_CONFIG_FILE).open(mode="rb") as _oauth_conf_file:
+    TEST_DISABLED_PUHURI_MSS_CONFIG = tomli.load(_oauth_conf_file)
+    TEST_DISABLED_PUHURI_APP_CONFIG_JSON = json.dumps(TEST_DISABLED_PUHURI_MSS_CONFIG)
+
 TEST_MSS_PUBLIC_KEY_PATH = get_fixture_path("mss_public_key.pem")
 TEST_MSS_PRIVATE_KEY_PATH = get_fixture_path("mss_private_key.pem")
 
