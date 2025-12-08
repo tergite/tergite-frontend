@@ -48,6 +48,8 @@ class BccConfig(BaseModel):
     url: AnyHttpUrl = "http://127.0.0.1:8002"
     # request timeout in seconds beyond which a timeout error is raised; default = 10
     timeout: int = 10
+    # path to the public key of this backend
+    public_key_path: Optional[Path] = None
 
 
 class PuhuriConfig(BaseModel):
@@ -184,6 +186,9 @@ class AppConfig(BaseModel, extra="allow"):
     # See https://docs.python.org/3/library/datetime.html#datetime.datetime.isoformat
     # <any of 'milliseconds', 'auto', 'microseconds', 'seconds', 'minutes', 'hours'>; default = auto
     datetime_precision: DatetimePrecision = DatetimePrecision.AUTO
+
+    # time-to-live for the nonce; defaults to 5 minutes
+    bcc_nonce_ttl: float = 300
 
     # configuration for one database; it might become possible to add multiple databases
     database: DatabaseConfig

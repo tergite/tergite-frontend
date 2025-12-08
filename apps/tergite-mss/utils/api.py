@@ -10,7 +10,9 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Utility functions for API related code"""
+import base64
 import logging
+from pathlib import Path
 from typing import (
     Any,
     Awaitable,
@@ -22,17 +24,21 @@ from typing import (
     TypeVar,
     Union,
     TypedDict,
-    NotRequired,
+    NotRequired, Dict,
 )
 
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from fastapi import HTTPException, Response, status
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.requests import Request
 from pydantic import BaseModel
 from pydantic.main import IncEx
 
-ITEM = TypeVar("ITEM", bound=BaseModel)
 
+ITEM = TypeVar("ITEM", bound=BaseModel)
+_BCC_PUBLIC_KEYS: Dict[str, RSAPublicKey] = {}
 
 class PaginatedListResponse(BaseModel, Generic[ITEM]):
     """The response when sending paginated data"""
@@ -79,6 +85,13 @@ class PaginatedListResponse(BaseModel, Generic[ITEM]):
                 for item in self.data
             ],
         }
+
+
+class GeneralMessage(TypedDict):
+    """A general message object sent on the API"""
+
+    status: Literal["success", "error", "cancelled", "failed"]
+    detail: NotRequired[str]
 
 
 def get_bearer_token(request: Request, raise_if_error: bool = True) -> Optional[str]:
@@ -130,8 +143,45 @@ def to_http_error(
     return handler
 
 
-class GeneralMessage(TypedDict):
-    """A general message object sent on the API"""
+def verify_bcc_signature(
+    signature: str, message: str, key_path: Path
+) -> None:
+    """Verifies that the given message is from BCC, given the signature
 
-    status: Literal["success", "error", "cancelled", "failed"]
-    detail: NotRequired[str]
+    Args:
+        signature: the signature of the message signed by BCC
+        message: the message from MSS
+        key_path: the file path to the RSA public key PEM file
+
+    Raises:
+        InvalidSignature: if signature does not match with what would be expected from MSS
+    """
+    mss_pub_key = _get_bcc_public_key(key_path=key_path)
+    mss_pub_key.verify(
+        base64.b64decode(signature),
+        message.encode(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256(),
+    )
+
+
+def _get_bcc_public_key(key_path: Path):
+    """Loads the public key for BCC given the path to the key file
+
+    Args:
+        key_path: the file path to the RSA public key PEM file
+
+    Returns:
+        the public key of the MSS
+    """
+    global _BCC_PUBLIC_KEYS
+    key_path_str = str(key_path)
+
+    if key_path_str not in _BCC_PUBLIC_KEYS:
+        with open(key_path, "rb") as key_file:
+            data = key_file.read()
+            _BCC_PUBLIC_KEYS[key_path_str] = serialization.load_pem_public_key(data)
+
+    return _BCC_PUBLIC_KEYS[key_path_str]

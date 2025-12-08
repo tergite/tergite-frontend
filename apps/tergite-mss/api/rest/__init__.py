@@ -75,6 +75,30 @@ async def add_request_id_header(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Logs requests received
+
+    It will get it from `x-request-id` if that is present or generate a new one
+
+    Args:
+        request: the current FastAPI request object
+        call_next: the callback that calls the next middleware or route handler
+    """
+    request_id = request.headers.get("X-Request-ID")
+    if request_id is None:
+        request_id = get_uuid4_str()
+        request.state.request_id = request_id
+
+    response = await call_next(request)
+
+    requests_store = get_request_logs_store()
+    if not requests_store.exists(request_id):
+        requests_store.insert(RequestLog.from_request(request))
+
+    response.headers["X-Request-ID"] = request_id
+    return response
+
 # exception handlers
 app.add_exception_handler(NotFoundError, to_http_error(404))
 app.add_exception_handler(ValueError, to_http_error(500, "Unexpected server error"))
