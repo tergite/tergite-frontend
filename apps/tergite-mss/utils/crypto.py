@@ -12,7 +12,7 @@
 """Utilities for cryptography"""
 import base64
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -21,17 +21,18 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 _MSS_PRIVATE_KEYS: Dict[str, RSAPrivateKey] = {}
 
 
-def sign_message(key_file: Path, message: str) -> str:
+def sign_message(key_file: Path, message: str, password: Optional[bytes]) -> str:
     """Creates an MSS-signed signature given a message
 
     Args:
         key_file: the path to the private RSA key
         message: the message from MSS
+        password: the password used to encrypt the key PEM file
 
     Returns:
         the string form of the signature
     """
-    mss_private_key = _get_private_key(key_file)
+    mss_private_key = _get_private_key(key_file, password=password)
     signature = mss_private_key.sign(
         message.encode(),
         padding.PSS(
@@ -45,34 +46,41 @@ def sign_message(key_file: Path, message: str) -> str:
 def decrypt_message(
     private_key_file: Path,
     msg: str,
+    password: Optional[bytes],
 ) -> str:
     """Decrypts the given message that has been encrypted with the MSS public key
 
     Args:
         msg: the message to decrypt
         private_key_file: the file path to the RSA private key PEM file
+        password: the password used to encrypt the key PEM file
 
     Returns:
         the plain message
     """
-    key = _get_private_key(private_key_file)
+    key = _get_private_key(private_key_file, password=password)
     cipher_bytes = base64.b64decode(msg)
-    plain_msg = key.decrypt(
-        cipher_bytes,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None,
-        ),
-    )
+    try:
+        plain_msg = key.decrypt(
+            cipher_bytes,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None,
+            ),
+        )
+    except Exception as exp:
+        raise exp
+
     return plain_msg.decode()
 
 
-def _get_private_key(key_file: Path) -> RSAPrivateKey:
+def _get_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey:
     """Loads the private key for MSS
 
     Args:
         key_file: the path to the private key file
+        password: the password that the private key was ecrypted with
 
     Returns:
         the private key of the MSS
@@ -86,6 +94,6 @@ def _get_private_key(key_file: Path) -> RSAPrivateKey:
     except KeyError:
         with open(key_file, "rb") as file:
             key = _MSS_PRIVATE_KEYS[key_file_str] = serialization.load_pem_private_key(
-                file.read(), password=None
+                file.read(), password=password
             )
         return key

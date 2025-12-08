@@ -24,7 +24,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
 from services.external.bcc import BccClient
-from settings import PRIVATE_KEY_FILE
+from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils import mongodb as mongodb_utils
 from utils.crypto import decrypt_message
 from utils.exc import NotFoundError
@@ -41,6 +41,7 @@ async def get_one(
     job_id: UUID,
     is_token_decrypted: bool = False,
     private_key_file: Path = PRIVATE_KEY_FILE,
+    key_password: Optional[bytes] = PRIVATE_KEY_PASSWORD,
 ) -> Job:
     """Gets a job by job_id
 
@@ -49,6 +50,7 @@ async def get_one(
         job_id: the `job_id` of the job to be returned
         is_token_decrypted: whether the token returned is decrypted
         private_key_file: the path to the private key
+        key_password: the password to decrypt the private key PEM file
 
     Raises:
         utils.exc.NotFoundError: no matches for '{search_filter}'.
@@ -62,7 +64,9 @@ async def get_one(
     )
     if is_token_decrypted and result.access_token:
         result.access_token = decrypt_message(
-            private_key_file=private_key_file, msg=result.access_token
+            private_key_file=private_key_file,
+            msg=result.access_token,
+            password=key_password,
         )
 
     return result

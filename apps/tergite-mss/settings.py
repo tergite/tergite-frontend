@@ -19,6 +19,7 @@ from utils.config import AppConfig
 _ROOT = Path(__file__).parent
 
 _MSS_CONFIG_JSON_STR = os.environ.get("MSS_CONFIG_JSON_STR")
+# the private key for authentication between MSS and BCC
 PRIVATE_KEY_FILE = Path(
     os.getenv("PRIVATE_KEY_FILE", default=_ROOT / "private-mss-key.pem")
 ).resolve()
@@ -29,6 +30,7 @@ if not _MSS_CONFIG_JSON_STR:
     raise ValueError("MSS config is empty")
 
 CONFIG: AppConfig = AppConfig.from_json_str(_MSS_CONFIG_JSON_STR)
+PRIVATE_KEY_PASSWORD = CONFIG.private_key_password
 
 _is_production = CONFIG.environment == "production"
 _is_puhuri_enabled = CONFIG.puhuri.is_enabled

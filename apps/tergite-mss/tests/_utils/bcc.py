@@ -25,7 +25,6 @@ from jwt import InvalidTokenError
 from pydantic import BaseModel, model_validator
 
 from services.external.bcc import BccClientHeaders
-from services.external.bcc.dtos import Booking
 from tests._utils.env import TEST_JWT_SECRET, TEST_MSS_PUBLIC_KEY_PATH
 
 _MSS_PUBLIC_KEY: Optional[RSAPublicKey] = None

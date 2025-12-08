@@ -51,10 +51,16 @@ cp mss-config.example.toml mss-config.toml
 ```
 
 - If you don't have a key certificate pair for MSS, generate them
-  and copy the public key certificate to the backend machine in the tergite-backend folder.
+  and copy the public key certificate to the backend machine in the tergite-backend folder.  
+  Take note of the password `PRIVATE_KEY_PASSWORD` you provide.  
+  (You can also skip the `-pass` argument so that you can be prompted to enter one --more secure)
 
 ```shell
-openssl genpkey -algorithm RSA -out private-mss-key.pem -pkeyopt rsa_keygen_bits:4096
+openssl genpkey -algorithm RSA \
+  -out private-mss-key.pem \
+  -pkeyopt rsa_keygen_bits:4096 \
+  -aes-256-cbc
+# You will be prompted for a password. Assuming we save it in env var `PRIVATE_KEY_PASSWORD`
 openssl rsa -pubout -in private-mss-key.pem -out public-mss-key.pem
 # scp public-mss-key.pem backend-host:~/tergite-backend/
 ```

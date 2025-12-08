@@ -13,10 +13,8 @@
 
 import enum
 import json
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-import tomli
 from pydantic import AnyHttpUrl, BaseModel, MongoDsn
 
 
@@ -201,6 +199,9 @@ class AppConfig(BaseModel, extra="allow"):
 
     # cache for the backends dict
     _backends_dict: Dict[str, BccConfig] = None
+
+    # the password that was used to encrypt the private key
+    private_key_password: Optional[bytes] = None
 
     @property
     def backends_dict(self) -> Dict[str, BccConfig]:

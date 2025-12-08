@@ -14,6 +14,8 @@ environment = "production"
 # See https://docs.python.org/3/library/datetime.html#datetime.datetime.isoformat
 # <any of 'milliseconds', 'auto', 'microseconds', 'seconds', 'minutes', 'hours'>; default = auto
 datetime_precision = "auto"
+# defaults to None.
+# private_key_password
 
 [database]
 # configurations for the database

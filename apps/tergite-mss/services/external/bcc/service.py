@@ -46,7 +46,7 @@ from services.external.bcc.dtos import (
     NewBCCUserInfo,
     NewBookingInfo,
 )
-from settings import PRIVATE_KEY_FILE
+from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
 from utils.exc import ServiceUnavailableError
@@ -115,6 +115,7 @@ class BccClient:
         user_id: str,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
+        key_password: Optional[bytes] = PRIVATE_KEY_PASSWORD,
     ) -> Tuple[str, str]:
         """Retrieves the JWT for the given job_id and user_id from BCC
 
@@ -123,6 +124,7 @@ class BccClient:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             private_key_file: the path to the private key file
+            key_password: the password used to encrypt the private key PEM file
 
         Returns:
             the pair of the encrypted JWT and the plain JWT
@@ -139,7 +141,11 @@ class BccClient:
             json={"job_id": job_id, "user_id": user_id},
         )
         encrypted_token = response["access_token"]
-        token = decrypt_message(private_key_file=private_key_file, msg=encrypted_token)
+        token = decrypt_message(
+            private_key_file=private_key_file,
+            msg=encrypted_token,
+            password=key_password,
+        )
         return encrypted_token, token
 
     async def cancel_job(
@@ -541,6 +547,7 @@ class BccClient:
         | Timeout
         | UseClientDefault = USE_CLIENT_DEFAULT,
         is_admin: Optional[bool] = None,
+        key_password: Optional[bytes] = PRIVATE_KEY_PASSWORD,
         **kwargs,
     ) -> dict:
         """Attempts to cancel the job
@@ -556,6 +563,7 @@ class BccClient:
             params: the query params to add to the request
             timeout: the timeout for the request
             is_admin: whether the request is from an admin user
+            key_password: the password used to encrypt the PEM key file
             kwargs: the extra key-word arguments for sending the request
 
         Returns:
@@ -571,6 +579,7 @@ class BccClient:
                 request_id=request_id,
                 user_id=f"{user_id}",
                 is_admin=is_admin,
+                key_password=key_password,
             )
             response = await self._client.request(
                 method,
@@ -618,6 +627,7 @@ def _create_headers(
     request_id: str,
     user_id: str = "",
     is_admin: Optional[bool] = None,
+    key_password: Optional[bytes] = None,
 ) -> BccClientHeaders:
     """Creates headers to show that the request is a valid one from MSS
 
@@ -626,13 +636,14 @@ def _create_headers(
         request_id: the unique identifier of the current request
         user_id: the unique identifier of the user
         is_admin: whether the request should show that the user is an admin
+        key_password: the password used to encrypt the key PEM file
 
     Returns:
         The dictionary of headers that show a given request is from MSS
     """
     timestamp = time.time()
     message = f"{user_id}-{request_id}-{timestamp}"
-    signature = sign_message(private_key_file, message=message)
+    signature = sign_message(private_key_file, message=message, password=key_password)
     headers = {
         "x-mss-request-id": request_id,
         "x-mss-timestamp": f"{timestamp}",
