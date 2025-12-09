@@ -19,6 +19,12 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added filtering bookings at `/bookings/{backend}` endpoint by `user_id`
 - Added sorting bookings at `/bookings/{backend}` endpoint by any field
 - Added the "backend" property to the `BookingsConfig` and the `Booking` schemas returned to the client
+- Added a way to load AppConfig config from a JSON string passed in `MSS_CONFIG_JSON_STR` env var
+- Added decryption of mss config using sops
+
+### Changed
+
+- [BREAKING]: Removed the ability to load mss config toml file in python. One must use the `start_mss.sh` script.
 
 ## [2025.09.0] - 2025-10-02
 

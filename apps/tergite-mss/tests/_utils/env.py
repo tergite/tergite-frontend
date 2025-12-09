@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Test utilities for environment variables"""
+import json
 from os import environ
 from pathlib import Path
 from typing import Dict, List, TypedDict
@@ -25,6 +26,11 @@ TEST_DISABLED_PUHURI_MSS_CONFIG_FILE = get_fixture_path(
 )
 with Path(TEST_MSS_CONFIG_FILE).open(mode="rb") as _oauth_conf_file:
     TEST_APP_CONFIG = tomli.load(_oauth_conf_file)
+    TEST_MSS_CONFIG_JSON_STR = json.dumps(TEST_APP_CONFIG)
+
+with Path(TEST_DISABLED_PUHURI_MSS_CONFIG_FILE).open(mode="rb") as _oauth_conf_file:
+    TEST_DISABLED_PUHURI_MSS_CONFIG = tomli.load(_oauth_conf_file)
+    TEST_DISABLED_PUHURI_APP_CONFIG_JSON = json.dumps(TEST_DISABLED_PUHURI_MSS_CONFIG)
 
 TEST_MSS_PUBLIC_KEY_PATH = get_fixture_path("mss_public_key.pem")
 TEST_MSS_PRIVATE_KEY_PATH = get_fixture_path("mss_private_key.pem")
@@ -47,7 +53,7 @@ def setup_test_env():
 
     It should be run before any imports
     """
-    environ["MSS_CONFIG_FILE"] = TEST_MSS_CONFIG_FILE
+    environ["MSS_CONFIG_JSON_STR"] = TEST_MSS_CONFIG_JSON_STR
     environ["PRIVATE_KEY_FILE"] = TEST_MSS_PRIVATE_KEY_PATH
 
 

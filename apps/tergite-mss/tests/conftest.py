@@ -1,7 +1,7 @@
 from tests._utils.env import (
     TEST_BACKENDS,
     TEST_DB_NAME,
-    TEST_DISABLED_PUHURI_MSS_CONFIG_FILE,
+    TEST_DISABLED_PUHURI_APP_CONFIG_JSON,
     TEST_JWT_SECRET,
     TEST_MONGODB_URL,
     TEST_PUHURI_CONFIG_ENDPOINT,
@@ -81,15 +81,15 @@ def mock_puhuri_synchronize(mocker) -> Mock:
 def disabled_puhuri_sync():
     """Disables PUHURI synchronization"""
     original_env = {
-        "MSS_CONFIG_FILE": environ.get("MSS_CONFIG_FILE", "mss-config.toml"),
+        "MSS_CONFIG_JSON_STR": environ.get("MSS_CONFIG_JSON_STR", ""),
     }
 
-    environ["MSS_CONFIG_FILE"] = TEST_DISABLED_PUHURI_MSS_CONFIG_FILE
+    environ["MSS_CONFIG_JSON_STR"] = TEST_DISABLED_PUHURI_APP_CONFIG_JSON
     importlib.reload(settings)
     yield
 
     # reset
-    environ["MSS_CONFIG_FILE"] = original_env["MSS_CONFIG_FILE"]
+    environ["MSS_CONFIG_JSON_STR"] = original_env["MSS_CONFIG_JSON_STR"]
     importlib.reload(settings)
 
 
