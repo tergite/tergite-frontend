@@ -3,6 +3,7 @@ mss_port = 8002
 environment = "test"
 # mongodb saves datetimes to only the millisecond precision
 datetime_precision = "milliseconds"
+private_key_password = "Some-pass-phrase"
 
 [database]
 name = "testdb"

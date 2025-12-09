@@ -21,6 +21,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added the "backend" property to the `BookingsConfig` and the `Booking` schemas returned to the client
 - Added a way to load AppConfig config from a JSON string passed in `MSS_CONFIG_JSON_STR` env var
 - Added decryption of mss config using sops
+- Added the `private_key_password` in AppConfig containing the password used for encrypting private key PEM files
 
 ### Changed
 
