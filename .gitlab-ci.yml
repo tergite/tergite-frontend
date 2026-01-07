@@ -107,4 +107,4 @@ test mss:
   stage: tests
   <<: *setup_mss
   script:
-    - pytest
+    - pytest ${PYTEST_ARGS:-}
