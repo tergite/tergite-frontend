@@ -5,6 +5,7 @@ stages:
 
 services:
   - name: mongo
+    alias: mongo
     command: ["--wiredTigerCacheSizeGB", "0.25"]
 
 variables:
