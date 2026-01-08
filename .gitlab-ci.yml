@@ -3,11 +3,6 @@ stages:
   - tests
   - e2e
 
-services:
-  - name: mongo
-    alias: mongo
-    command: ["--wiredTigerCacheSizeGB", "0.25"]
-
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
@@ -25,6 +20,11 @@ variables:
 
 .setup_mss: &setup_mss
   image: python:$VERSION
+  services:
+    - name: mongo:8.2.3
+      alias: mongo
+  variables:
+    FF_NETWORK_PER_BUILD: 1
   cache:
     key:
       files:
