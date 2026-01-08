@@ -5,6 +5,7 @@ stages:
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  CI_DEBUG_SERVICES: "true"
 
 .setup_dashboard: &setup_dashboard
   image: cypress/base:20.17.0
