@@ -23,7 +23,6 @@ variables:
   services:
     - name: mongo:8.2.3
       alias: mongo
-      command: ["--ulimit", "nofile=64000:64000"]
   variables:
     FF_NETWORK_PER_BUILD: 1
   cache:
@@ -36,10 +35,8 @@ variables:
     - pip install --upgrade pip
     - cd apps/tergite-mss
     - pip install ."[dev]"
-    # Check DNS resolution for mongo
-    - python -c "import socket; print(socket.gethostbyname('mongo'))"
-    # Ensure mongodb is reachable
-    - python -c "from pymongo import MongoClient; client = MongoClient('mongodb://mongo:27017', serverSelectionTimeoutMS=2000); print(client.admin.command('ping'))"
+    # This checks the ulimit of the job container
+    - ulimit -n
     # Update test fixtures to point to the mongo service
     - sed -i 's/mongodb:\/\/localhost:27017/mongodb:\/\/mongo:27017/g' tests/fixtures/*
   parallel:
