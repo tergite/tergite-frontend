@@ -5,7 +5,6 @@ stages:
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-  CI_DEBUG_SERVICES: "true"
 
 .setup_dashboard: &setup_dashboard
   image: cypress/base:20.17.0
@@ -24,6 +23,7 @@ variables:
   services:
     - name: mongo:8.2.3
       alias: mongo
+      command: ["--ulimit", "nofile=64000:64000"]
   variables:
     FF_NETWORK_PER_BUILD: 1
   cache:

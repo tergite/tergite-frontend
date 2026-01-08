@@ -133,6 +133,7 @@ def db(mock_puhuri) -> pymongo.database.Database:
     yield database
     # clean up
     mongo_client.drop_database(TEST_DB_NAME)
+    mongo_client.close()
 
 
 @pytest.fixture
