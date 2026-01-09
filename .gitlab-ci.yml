@@ -3,10 +3,6 @@ stages:
   - tests
   - e2e
 
-services:
-  - name: mongo
-    alias: mongo
-
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
@@ -24,6 +20,11 @@ variables:
 
 .setup_mss: &setup_mss
   image: python:$VERSION
+  services:
+    - name: mongo:8.2.3
+      alias: mongo
+  variables:
+    FF_NETWORK_PER_BUILD: 1
   cache:
     key:
       files:
@@ -34,6 +35,9 @@ variables:
     - pip install --upgrade pip
     - cd apps/tergite-mss
     - pip install ."[dev]"
+    # This checks the ulimit of the job container
+    - ulimit -n
+    # Update test fixtures to point to the mongo service
     - sed -i 's/mongodb:\/\/localhost:27017/mongodb:\/\/mongo:27017/g' tests/fixtures/*
   parallel:
     matrix:
@@ -107,4 +111,5 @@ test mss:
   stage: tests
   <<: *setup_mss
   script:
-    - pytest
+    - echo "PYTEST_ARGS='${PYTEST_ARGS:-}'"
+    - pytest ${PYTEST_ARGS:-}
