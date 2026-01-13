@@ -22,10 +22,14 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added a way to load AppConfig config from a JSON string passed in `MSS_CONFIG_JSON_STR` env var
 - Added decryption of mss config using sops
 - Added the `private_key_password` in AppConfig containing the password used for encrypting private key PEM files
+- [BREAKING]: Added the `redis_url` property under the database configuration
+- [BREAKING]: Added the `public_key_path` property under the backend configuration
 
 ### Changed
 
 - [BREAKING]: Removed the ability to load mss config toml file in python. One must use the `start_mss.sh` script.
+- [BREAKING]: Changed backend connection to MSS to use RSA-secured websockets
+- [BREAKING]: Removed the `/devices` and `/calibrations` POST and PUT endpoints
 
 ## [2025.09.0] - 2025-10-02
 
