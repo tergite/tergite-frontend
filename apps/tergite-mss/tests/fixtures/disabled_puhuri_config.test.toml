@@ -8,18 +8,42 @@ private_key_password = "Some-pass-phrase"
 [database]
 name = "testdb"
 url = "mongodb://localhost:27017"
+redis_url = "redis://localhost:6379/3"
 
 [[backends]]
-name = "loke"
-url = "http://localhost:8000"
+name = "Loke"
+url = "http://testclient"
+public_key_path = "tests/fixtures/public-loke-key.pem"
 
 [[backends]]
-name = "loki"
-url = "http://localhost:8008"
+name = "Loki"
+url = "http://testclient"
+public_key_path = "tests/fixtures/public-loki-key.pem"
 
 [[backends]]
-name = "pingu"
-url = "http://localhost:8009"
+name = "Pingu"
+url = "http://testclient"
+public_key_path = "tests/fixtures/public-pingu-key.pem"
+
+[[backends]]
+name = "Pegu"
+url = "http://testclient"
+public_key_path = "tests/fixtures/public-pegu-key.pem"
+
+[[backends]]
+name = "Thor"
+url = "http://testclient"
+public_key_path = "tests/fixtures/public-thor-key.pem"
+
+[[backends]]
+name = "Likee"
+url = "http://testclient"
+public_key_path = "tests/fixtures/public-likee-key.pem"
+
+[[backends]]
+name = "Thea"
+url = "http://testclient"
+public_key_path = "tests/fixtures/public-thea-key.pem"
 
 [auth]
 jwt_secret = "e8141bffc71337276986a6f93e33df3d214632f71f700f35d38311ce99ce"

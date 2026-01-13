@@ -15,7 +15,9 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 from bson import ObjectId
+from fastapi.websockets import WebSocketDisconnect
 
+from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import get_current_timestamp_str, get_timestamp_str
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mongodb import find_in_collection, insert_in_collection
@@ -143,27 +145,35 @@ def test_read_calibration(name: str, db, client, freezer):
 
 
 @pytest.mark.parametrize("payload", _CALIBRATIONS_LIST)
-def test_create(db, client, system_app_token_header, payload, freezer):
-    """POST new calibration to `/calibrations` creates it in calibrations and returns it"""
+def test_create(db, client, payload, freezer):
+    """Push to /devices/ws/{name} event with status 'recalibrated' creates new calibration and returns it"""
+    name = payload["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers(name)
+
     # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.post(
-            "/calibrations/",
-            json=payload,
-            headers=system_app_token_header,
+    with client.websocket_connect(url, headers=headers) as client:
+        client.send_json(
+            {
+                "status": "recalibrated",
+                "data": payload,
+            }
         )
-        got = response.json()
-        assert response.status_code == 200
-        assert got == {
-            **payload,
-            "updated_at": get_current_timestamp_str(),
-            "id": got["id"],
+        json_response = client.receive_json()
+
+        assert json_response == {
+            "status": "success",
+            "data": {
+                **payload,
+                "updated_at": get_current_timestamp_str(),
+                "id": json_response["data"]["id"],
+            },
         }
 
 
 @pytest.mark.parametrize("raw_payload", _CALIBRATIONS_LIST)
-def test_upsert(db, client, system_app_token_header, raw_payload, freezer):
-    """POST an existing calibration to `/calibrations/` updates it in the calibrations collection"""
+def test_upsert(db, client, raw_payload, freezer):
+    """push 'recalibrated' event to /devices/ws/{name} for an existing calibration updates it"""
     raw_calibrations = with_current_timestamps(
         [raw_payload], fields=("updated_at", "last_calibrated")
     )
@@ -181,22 +191,30 @@ def test_upsert(db, client, system_app_token_header, raw_payload, freezer):
         "resonators": None,
         "discriminators": None,
     }
+    name = payload["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers(name)
 
     # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.post(
-            "/calibrations/",
-            json=payload,
-            headers=system_app_token_header,
+    with client.websocket_connect(url, headers=headers) as client:
+        client.send_json(
+            {
+                "status": "recalibrated",
+                "data": payload,
+            }
         )
-        got = response.json()
-        assert response.status_code == 200
-        assert got == {**payload, "updated_at": now, "id": got["id"]}
+        json_response = client.receive_json()
+        record_id = json_response["data"]["id"]
+
+        assert json_response == {
+            "status": "success",
+            "data": {**payload, "updated_at": now, "id": record_id},
+        }
 
         new_calibration_in_db = {
             **payload,
             "updated_at": now,
-            "_id": ObjectId(got["id"]),
+            "_id": ObjectId(record_id),
         }
         final_db_data = find_in_collection(db, collection_name=_COLLECTION)
         assert final_db_data == [new_calibration_in_db]
@@ -204,7 +222,7 @@ def test_upsert(db, client, system_app_token_header, raw_payload, freezer):
 
 @pytest.mark.parametrize("raw_payload", _CALIBRATIONS_LIST)
 def test_create_log(db, client, system_app_token_header, raw_payload, freezer):
-    """POST calibrations to `/calibrations/` adds the calibration to calibrations_logs if not exist"""
+    """Pushing 'recalibrated' event to /devices/ws/{name} adds the calibration to calibrations_logs if not exist"""
     raw_calibrations = with_current_timestamps(
         _LATEST_CALIBRATIONS, fields=("updated_at",)
     )
@@ -218,47 +236,110 @@ def test_create_log(db, client, system_app_token_header, raw_payload, freezer):
         datetime.now(timezone.utc) + timedelta(hours=2)
     )
     payload = {**raw_payload, "last_calibrated": future_timestamp}
+    name = payload["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers(name)
 
     # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.post(
-            "/calibrations/",
-            json=payload,
-            headers=system_app_token_header,
+    with client.websocket_connect(url, headers=headers) as client:
+        client.send_json(
+            {
+                "status": "recalibrated",
+                "data": payload,
+            }
         )
+        json_response = client.receive_json()
         got = find_in_collection(
             db, collection_name=_LOGS_COLLECTION, fields_to_exclude=("_id",)
         )
         expected = [*original_logs_in_db, payload]
 
-        assert response.status_code == 200
+        assert json_response["status"] == "success"
         assert order_by(got, "name") == order_by(expected, "name")
 
 
 @pytest.mark.parametrize("payload", _CALIBRATIONS_LIST)
-def test_create_calibrations_non_system_user(db, client, payload, user_jwt_cookie):
-    """Only system users can POST calibration-like dicts to `/calibrations`"""
+def test_create_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie):
+    """Only clients with the certificate known to MSS can push to /ws/devices/"""
     original_data_in_db = find_in_collection(
         db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
     )
 
+    name = payload["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers("WrongCert")
+
+    with pytest.raises(WebSocketDisconnect) as exp:
+        with client.websocket_connect(url, headers=headers):
+            pass
+
+    final_data_in_db = find_in_collection(
+        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
+    )
+
+    assert exp.value.code == 1008
+    assert exp.value.reason == "unauthorized"
+    assert original_data_in_db == []
+    assert final_data_in_db == []
+
+
+@pytest.mark.parametrize("payload", _CALIBRATIONS_LIST)
+def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cookie):
+    """BCC devices can only push their own calibration data to /ws/devices/ and not those of others"""
+    original_data_in_db = find_in_collection(
+        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
+    )
+
+    name = payload["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers(name)
+
     # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.post(
-            "/calibrations/",
-            json=payload,
-            cookies=user_jwt_cookie,
+    with client.websocket_connect(url, headers=headers) as client:
+        payload["name"] = f"{payload['name']}extra"
+        client.send_json(
+            {
+                "status": "recalibrated",
+                "data": payload,
+            }
         )
+        response = client.receive_json()
         final_data_in_db = find_in_collection(
             db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
         )
-        final_data_in_db = order_by(final_data_in_db, "name")
 
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
+        assert response == {
+            "status": "error",
+            "detail": f"forbidden: editing '{payload['name']}' is not allowed",
+        }
 
         assert original_data_in_db == []
         assert final_data_in_db == []
+
+
+@pytest.mark.parametrize("payload", _CALIBRATIONS_LIST)
+def test_create_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
+    """BCC devices can only push to their own urls /ws/devices/{name}/ and not those of others"""
+    original_data_in_db = find_in_collection(
+        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
+    )
+
+    name = payload["name"]
+    url = f"/devices/ws/{name}extra"
+    headers = create_bcc_headers(name)
+
+    with pytest.raises(WebSocketDisconnect) as exp:
+        with client.websocket_connect(url, headers=headers):
+            pass
+
+    final_data_in_db = find_in_collection(
+        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
+    )
+
+    assert exp.value.code == 1008
+    assert exp.value.reason == "forbidden"
+    assert original_data_in_db == []
+    assert final_data_in_db == []
 
 
 def _attach_str_ids(

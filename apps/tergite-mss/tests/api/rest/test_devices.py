@@ -13,7 +13,9 @@
 from typing import Any, Dict, List, Optional
 
 import pytest
+from fastapi.websockets import WebSocketDisconnect
 
+from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import is_not_older_than
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mongodb import find_in_collection, insert_in_collection
@@ -129,27 +131,31 @@ def test_read_one_device(db, client, name: str, user_jwt_cookie):
 
 
 @pytest.mark.parametrize("payload", _DEVICE_LIST)
-def test_create_device(db, client, payload: Dict[str, Any], system_app_token_header):
-    """PUT to /devices/ creates a new device if it does not exist already"""
+def test_create_device(db, client, payload: Dict[str, Any]):
+    """DeviceStatusMessage with status 'initialized' to /devices/ws/{name} creates a new device if it does not exist"""
     original_data_in_db = find_in_collection(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
     )
+    name = payload["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers(name)
 
     # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.put(
-            "/devices/",
-            json=payload,
-            headers=system_app_token_header,
+    with client.websocket_connect(url, headers=headers) as client:
+        client.send_json(
+            {
+                "status": "initialized",
+                "data": payload,
+            }
         )
+        json_response = client.receive_json()
         final_data_in_db = find_in_collection(
             db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
         )
-        json_response: dict = response.json()
-        json_response.pop("id")
 
-        assert response.status_code == 200
-        assert json_response == final_data_in_db[0]
+        assert json_response["status"] == "success"
+        json_response["data"].pop("id")
+        assert json_response["data"] == final_data_in_db[0]
 
         created_at_timestamps = pop_field(final_data_in_db, "created_at")
         updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
@@ -161,92 +167,129 @@ def test_create_device(db, client, payload: Dict[str, Any], system_app_token_hea
 
 
 @pytest.mark.parametrize("payload", _DEVICE_LIST)
-def test_create_device_non_system_user(
-    db, client, payload: Dict[str, Any], user_jwt_cookie
-):
-    """Only system users can PUT to /devices/"""
+def test_create_device_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie):
+    """Only clients with the certificate known to MSS can push to /devices/ws/{name}"""
     original_data_in_db = find_in_collection(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
     )
 
+    name = payload["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers("WrongCert")
+
+    with pytest.raises(WebSocketDisconnect) as exp:
+        with client.websocket_connect(url, headers=headers):
+            pass
+
+    final_data_in_db = find_in_collection(
+        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
+    )
+
+    assert exp.value.code == 1008
+    assert exp.value.reason == "unauthorized"
+    assert original_data_in_db == []
+    assert final_data_in_db == []
+
+
+@pytest.mark.parametrize("payload", _DEVICE_LIST)
+def test_create_device_wrong_payload(
+    db, client, payload: Dict[str, Any], user_jwt_cookie
+):
+    """BCC devices can only push their own device data to /devices/ws/{name} and not those of others"""
+    original_data_in_db = find_in_collection(
+        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
+    )
+
+    name = payload["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers(name)
+
     # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.put(
-            "/devices/",
-            json=payload,
-            cookies=user_jwt_cookie,
+    with client.websocket_connect(url, headers=headers) as client:
+        payload["name"] = f"{payload['name']}extra"
+        client.send_json(
+            {
+                "status": "initialized",
+                "data": payload,
+            }
         )
+        response = client.receive_json()
         final_data_in_db = find_in_collection(
             db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
         )
 
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
+        assert response == {
+            "status": "error",
+            "detail": f"forbidden: editing '{payload['name']}' is not allowed",
+        }
 
         assert original_data_in_db == []
         assert final_data_in_db == []
 
 
 @pytest.mark.parametrize("payload", _DEVICE_LIST)
-def test_create_pre_existing_device(
-    db, client, payload: Dict[str, Any], system_app_token_header
-):
-    """PUT to /devices/ a pre-existing device will do nothing except update updated_at"""
-    insert_in_collection(db, collection_name=_DEVICES_COLLECTION, data=[payload])
+def test_create_device_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
+    """BCC devices can only push to their own urls /devices/ws/{name}/ and not those of others"""
     original_data_in_db = find_in_collection(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
     )
 
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.put(
-            "/devices/",
-            json=payload,
-            headers=system_app_token_header,
-        )
-        final_data_in_db = find_in_collection(
-            db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-        )
-        json_response: dict = response.json()
-        json_response.pop("id")
+    name = payload["name"]
+    url = f"/devices/ws/{name}extra"
+    headers = create_bcc_headers(name)
 
-        assert response.status_code == 200
-        assert json_response == final_data_in_db[0]
+    with pytest.raises(WebSocketDisconnect) as exp:
+        with client.websocket_connect(url, headers=headers):
+            pass
 
-        updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
+    final_data_in_db = find_in_collection(
+        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
+    )
 
-        assert original_data_in_db == [payload]
-        assert final_data_in_db == original_data_in_db
-        assert all([is_not_older_than(x, seconds=30) for x in updated_at_timestamps])
+    assert exp.value.code == 1008
+    assert exp.value.reason == "forbidden"
+    assert original_data_in_db == []
+    assert final_data_in_db == []
 
 
 @pytest.mark.parametrize("backend_dict", _DEVICE_LIST)
-def test_update_device(
+def test_update_pre_existing_device(
     db, client, backend_dict: Dict[str, Any], system_app_token_header
 ):
-    """PUT to /devices/{name} updates the given device"""
+    """Pushing 'initialized'-DeviceStatusMessage to /devices/ws/{name} a pre-existing device updates it"""
     insert_in_collection(db, collection_name=_DEVICES_COLLECTION, data=[backend_dict])
     original_data_in_db = find_in_collection(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
     )
-    backend_name = backend_dict["name"]
-    payload = {"foo": "bar", "hey": "you"}
+    name = backend_dict["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers(name)
+    payload = {
+        **backend_dict,
+        "number_of_couplers": 100,
+        "number_of_qubits": 80,
+    }
 
     # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.put(
-            f"/devices/{backend_name}",
-            json=payload,
-            headers=system_app_token_header,
+    with client.websocket_connect(url, headers=headers) as client:
+        client.send_json(
+            {
+                "status": "initialized",
+                "data": payload,
+            }
         )
+        json_response = client.receive_json()
         final_data_in_db = find_in_collection(
             db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
         )
-        json_response: dict = response.json()
-        json_response.pop("id")
 
-        assert response.status_code == 200
-        assert json_response == final_data_in_db[0]
+        assert json_response["status"] == "success"
+        json_response["data"].pop("id")
+        # when a device makes a connection, it sets last_online to None
+        # but this 'last_online' property can be changed directly in payload
+        if final_data_in_db[0]["last_online"] is None:
+            del final_data_in_db[0]["last_online"]
+        assert json_response["data"] == final_data_in_db[0]
 
         updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
         expected = {
@@ -257,33 +300,3 @@ def test_update_device(
         assert original_data_in_db == [backend_dict]
         assert final_data_in_db[0] == expected
         assert all([is_not_older_than(x, seconds=30) for x in updated_at_timestamps])
-
-
-@pytest.mark.parametrize("backend_dict", _DEVICE_LIST)
-def test_update_device_non_system_user(
-    db, client, backend_dict: Dict[str, Any], user_jwt_cookie
-):
-    """Only system users can PUT to /devices/{name}"""
-    insert_in_collection(db, collection_name=_DEVICES_COLLECTION, data=[backend_dict])
-    original_data_in_db = find_in_collection(
-        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
-    backend_name = backend_dict["name"]
-    payload = {"foo": "bar", "hey": "you"}
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.put(
-            f"/devices/{backend_name}",
-            json=payload,
-            cookies=user_jwt_cookie,
-        )
-        final_data_in_db = find_in_collection(
-            db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-        )
-
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
-
-        assert original_data_in_db == [backend_dict]
-        assert final_data_in_db[0] == backend_dict

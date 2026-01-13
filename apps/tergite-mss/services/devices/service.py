@@ -131,8 +131,10 @@ async def patch_device(
     return Device.model_validate(device)
 
 
-async def connect_device(db: AsyncIOMotorDatabase, name: str):
-    """Connects the given device to this API
+async def try_connect_device(db: AsyncIOMotorDatabase, name: str):
+    """Tries to connect the given device to this API
+
+    It ignores devices that do not exist
 
     Args:
         db: the mongo database where the device data is stored
@@ -141,13 +143,18 @@ async def connect_device(db: AsyncIOMotorDatabase, name: str):
     Returns:
         the updated device
     """
-    return await patch_device(
-        db, name=name, payload={"last_online": None, "is_online": True}
-    )
+    try:
+        return await patch_device(
+            db, name=name, payload={"last_online": None, "is_online": True}
+        )
+    except NotFoundError:
+        pass
 
 
-async def disconnect_device(db: AsyncIOMotorDatabase, name: str):
-    """Disconnects the given device to this API
+async def try_disconnect_device(db: AsyncIOMotorDatabase, name: str):
+    """Tries to disconnect the given device from this API
+
+    It ignores devices that do not exist
 
     Args:
         db: the mongo database where the device data is stored
@@ -156,11 +163,14 @@ async def disconnect_device(db: AsyncIOMotorDatabase, name: str):
     Returns:
         the updated device
     """
-    return await patch_device(
-        db,
-        name=name,
-        payload={"last_online": get_current_timestamp(), "is_online": False},
-    )
+    try:
+        return await patch_device(
+            db,
+            name=name,
+            payload={"last_online": get_current_timestamp(), "is_online": False},
+        )
+    except NotFoundError:
+        pass
 
 
 async def disconnect_all(db: AsyncIOMotorDatabase):

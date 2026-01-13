@@ -32,7 +32,7 @@ from services.external.bcc.dtos import (
     BookingsConfig,
     NewBookingInfo,
 )
-from utils.api import PaginatedListResponse, GeneralMessage
+from utils.api import GeneralMessage, PaginatedListResponse
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 

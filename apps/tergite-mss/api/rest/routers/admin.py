@@ -24,7 +24,7 @@ from services.auth import (
     user_requests,
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo
-from utils.api import PaginatedListResponse, GeneralMessage
+from utils.api import GeneralMessage, PaginatedListResponse
 from utils.exc import UnknownBccError
 
 from ..dependencies import (

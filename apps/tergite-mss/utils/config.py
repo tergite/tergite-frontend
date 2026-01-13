@@ -13,9 +13,12 @@
 
 import enum
 import json
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from pydantic import AnyHttpUrl, BaseModel, MongoDsn
+from pydantic import AnyHttpUrl, BaseModel, MongoDsn, RedisDsn, field_validator
+
+_PROJECT_FOLDER = Path(__file__).parent.parent
 
 
 class DatetimePrecision(str, enum.Enum):
@@ -37,6 +40,7 @@ class DatabaseConfig(BaseModel):
 
     name: str
     url: MongoDsn
+    redis_url: RedisDsn = "redis://localhost:6379/3"
 
 
 class BccConfig(BaseModel):
@@ -49,7 +53,19 @@ class BccConfig(BaseModel):
     # request timeout in seconds beyond which a timeout error is raised; default = 10
     timeout: int = 10
     # path to the public key of this backend
-    public_key_path: Optional[Path] = None
+    public_key_path: Path
+
+    @field_validator("public_key_path", mode="before")
+    @classmethod
+    def validate_public_key_path(cls, v: Any):
+        """Validate the public key path to ensure all relative paths are relative to the app root"""
+        try:
+            value_path = Path(v)
+            if not value_path.is_absolute():
+                return _PROJECT_FOLDER / value_path
+            return value_path
+        except TypeError:
+            raise ValueError("public_key_path must be a Path or str")
 
 
 class PuhuriConfig(BaseModel):
@@ -216,7 +232,7 @@ class AppConfig(BaseModel, extra="allow"):
         return self._backends_dict
 
     @classmethod
-    def from_json_str(cls, data_str: str):
+    def from_json_str(cls, data_str: str) -> "AppConfig":
         """Parses a JSON string into an AppConfig instance
 
         Args:

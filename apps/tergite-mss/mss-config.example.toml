@@ -16,7 +16,7 @@ environment = "production"
 datetime_precision = "auto"
 # the password used to encrypt the private key file;
 # defaults to None.
-# private_key_password
+private_key_password="some-secret-password"
 
 # time-to-live for the nonce; defaults to 5 minutes
 bcc_nonce_ttl = 300
@@ -26,6 +26,9 @@ bcc_nonce_ttl = 300
 name = "sample-database"
 # database URI
 url = "mongodb://user:pass@host:port"
+# redis URI; default=redis://localhost:6379/3
+redis_url = "redis://localhost:6379/3"
+
 
 # Add backends in the form: Note: [[...]] creates an array of tables
 [[backends]]

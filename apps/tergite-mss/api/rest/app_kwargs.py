@@ -25,9 +25,9 @@ from services import calibration as calib_service
 from services.auth import service as auth_service
 from services.devices import service as devices_service
 from services.external import bcc, puhuri
-from .routers.devices import ws_manager as devices_ws_manager
 
 from .dependencies import get_default_mongodb
+from .routers.devices import ws_manager as devices_ws_manager
 
 
 def get_app_kwargs() -> Dict[str, Any]:

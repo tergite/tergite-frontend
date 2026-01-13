@@ -17,14 +17,15 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Dict,
     Generic,
     List,
     Literal,
+    NotRequired,
     Optional,
+    TypedDict,
     TypeVar,
     Union,
-    TypedDict,
-    NotRequired, Dict,
 )
 
 from cryptography.hazmat.primitives import hashes, serialization
@@ -33,12 +34,19 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from fastapi import HTTPException, Response, status
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.requests import Request
-from pydantic import BaseModel
+from fastapi.websockets import WebSocket
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.main import IncEx
+from redis import Redis
 
+import settings
+from utils.date_time import get_current_timestamp
+from utils.redis_store import Collection, Schema
 
 ITEM = TypeVar("ITEM", bound=BaseModel)
 _BCC_PUBLIC_KEYS: Dict[str, RSAPublicKey] = {}
+_REQUEST_LOGS_STORE: Optional[Collection["WebsocketRequestLog"]] = None
+
 
 class PaginatedListResponse(BaseModel, Generic[ITEM]):
     """The response when sending paginated data"""
@@ -92,6 +100,41 @@ class GeneralMessage(TypedDict):
 
     status: Literal["success", "error", "cancelled", "failed"]
     detail: NotRequired[str]
+    data: NotRequired[dict | list]
+
+
+class WebsocketRequestLog(Schema):
+    """Schema for tracking websocket requests"""
+
+    __primary_key_fields__ = ("request_id",)
+    __index_fields__ = (
+        "id",
+        "ip_address",
+    )
+    model_config = ConfigDict(extra="allow")
+
+    request_id: str
+    id: Optional[str] = None
+    ip_address: Optional[str] = None
+    created_at: Optional[str] = Field(default_factory=get_current_timestamp)
+    updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
+
+    @classmethod
+    def from_request(cls, websocket: WebSocket) -> "WebsocketRequestLog":
+        """Generates a request log object from the request
+
+        Args:
+            websocket: the received HTTP request
+
+        Returns:
+            the request log object
+        """
+        request_id = websocket.headers.get("x-request-id", websocket.state.request_id)
+        return cls(
+            request_id=request_id,
+            id=websocket.headers.get("x-id"),
+            ip_address=f"{websocket.client.host}",
+        )
 
 
 def get_bearer_token(request: Request, raise_if_error: bool = True) -> Optional[str]:
@@ -143,10 +186,8 @@ def to_http_error(
     return handler
 
 
-def verify_bcc_signature(
-    signature: str, message: str, key_path: Path
-) -> None:
-    """Verifies that the given message is from BCC, given the signature
+def verify_ws_signature(signature: str, message: str, key_path: Path) -> None:
+    """Verifies that the given message is from an approved source, given the signature
 
     Args:
         signature: the signature of the message signed by BCC
@@ -185,3 +226,19 @@ def _get_bcc_public_key(key_path: Path):
             _BCC_PUBLIC_KEYS[key_path_str] = serialization.load_pem_public_key(data)
 
     return _BCC_PUBLIC_KEYS[key_path_str]
+
+
+def get_request_logs_store() -> Collection[WebsocketRequestLog]:
+    """Gets the store for the given url for the request logs
+
+    Returns:
+        the RedisCollection containing the jobs
+    """
+    global _REQUEST_LOGS_STORE
+    if _REQUEST_LOGS_STORE is None:
+        connection = Redis.from_url(url=f"{settings.CONFIG.database.redis_url}")
+        _REQUEST_LOGS_STORE = Collection(
+            connection=connection, schema=WebsocketRequestLog
+        )
+
+    return _REQUEST_LOGS_STORE

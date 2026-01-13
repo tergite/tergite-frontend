@@ -30,11 +30,12 @@ from typing import (
 
 from beanie import PydanticObjectId
 from fastapi import Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator, ValidationInfo
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 from pydantic.main import IncEx
 
-from ..calibration.dtos import DeviceCalibrationCreate
 from utils.models import create_partial_model
+
+from ..calibration.dtos import DeviceCalibrationCreate
 
 if TYPE_CHECKING:
     DictStrAny = Dict[str, Any]

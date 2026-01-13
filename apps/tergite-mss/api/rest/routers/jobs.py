@@ -44,7 +44,7 @@ from services.jobs.dtos import (
     JobStatusResponse,
     JobUpdate,
 )
-from utils.api import PaginatedListResponse, GeneralMessage
+from utils.api import GeneralMessage, PaginatedListResponse
 from utils.exc import UnknownBccError
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])

@@ -52,6 +52,8 @@ dependencies = [
     "email-validator>=2.0.0.post2",
     "cryptography~=45.0.2",
     "websockets~=15.0.1",
+    "hiredis~=3.2.1",
+    "redis[hiredis]~=7.1.0",
     "python-waldur-client @ https://github.com/waldur/python-waldur-client/archive/refs/tags/0.4.6.zip",
 ]
 

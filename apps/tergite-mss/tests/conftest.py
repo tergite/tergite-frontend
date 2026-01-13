@@ -1,3 +1,6 @@
+import redis
+from redis import Redis
+
 from tests._utils.env import (
     TEST_BACKENDS,
     TEST_DB_NAME,
@@ -5,6 +8,7 @@ from tests._utils.env import (
     TEST_JWT_SECRET,
     TEST_MONGODB_URL,
     TEST_PUHURI_CONFIG_ENDPOINT,
+    TEST_REDIS_URL,
     setup_test_env,
 )
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
@@ -68,6 +72,14 @@ PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
 JOB_LIST = load_json_fixture("job_list.json")
 TEST_NEXT_COOKIE_URL = "https://testserver/"
+_redis_connection = redis.Redis.from_url(TEST_REDIS_URL)
+
+
+@pytest.fixture
+def redis_client() -> Generator[Redis, Any, None]:
+    """A mock redis client"""
+    yield _redis_connection
+    _redis_connection.flushall()
 
 
 @pytest.fixture
