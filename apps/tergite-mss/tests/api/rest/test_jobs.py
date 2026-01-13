@@ -41,7 +41,7 @@ _JOB_BCC_TOKEN_MAP: Dict[str, dict] = load_json_fixture("bcc_jwt_tokens.json")
 _JOB_TIMESTAMPED_UPDATES = load_json_fixture("job_timestamped_updates.json")
 _JOB_UPDATES = load_json_fixture("job_updates.json")
 _JOB_IDS = [item["job_id"] for item in _JOBS_LIST]
-_DEVICES = ["loke", "loki", "pingu"]
+_DEVICES = ["Loke", "Loki", "Pingu"]
 _CREATE_JOB_PAYLOADS = [
     (
         {
@@ -73,10 +73,10 @@ _SKIP_LIMIT_SORT_PARAMS = [
     (3, None, ["created_at"]),
 ]
 _SEARCH_PARAMS = [
-    {"device": "loke"},
-    {"device": "pingu"},
-    {"device": "pingu", "status": "successful"},
-    {"device": "pingu", "status": "pending"},
+    {"device": "Loke"},
+    {"device": "Pingu"},
+    {"device": "Pingu", "status": "successful"},
+    {"device": "Pingu", "status": "pending"},
     {"status": "successful"},
     {"status": "pending"},
     {},

@@ -66,7 +66,7 @@ from tests._utils.mock_backend import CREATED_BOOKINGS
 from tests._utils.modules import remove_modules
 from tests._utils.waldur import MockWaldurClient
 
-BACKEND_SLUGS = ("loke", "pingu")
+BACKEND_SLUGS = ("Loke", "Pingu")
 _PUHURI_OPENID_CONFIG = load_json_fixture("puhuri_openid_config.json")
 PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")

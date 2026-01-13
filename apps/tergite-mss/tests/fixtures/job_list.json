@@ -2,17 +2,17 @@
   {
     "job_id": "951bcab8-4d88-4a27-9f1c-23197d92148a",
     "status": "pending",
-    "device": "pingu"
+    "device": "Pingu"
   },
   {
     "job_id": "cee16be6-5869-4820-8686-98c761c8a0e1",
     "status": "pending",
-    "device": "loke"
+    "device": "Loke"
   },
   {
   "job_id": "5b11de5b-34d2-4618-bbc2-a25112981b44",
   "status": "successful",
-  "device": "pingu",
+  "device": "Pingu",
   "result": {
     "memory": [
       [
@@ -25,12 +25,12 @@
   {
     "job_id": "17ddd1b7-b867-4ba3-ad0e-2cea04215e56",
     "status": "pending",
-    "device": "loke"
+    "device": "Loke"
   },
   {
   "job_id": "2df4ad77-4a36-4837-b3ce-0b9acd9493eb",
   "status": "successful",
-  "device": "pingu",
+  "device": "Pingu",
   "result": {
     "memory": [
       [
@@ -1066,22 +1066,22 @@
   {
     "job_id": "05159bca-5b47-4f05-a11e-6410d159b853",
     "status": "pending",
-    "device": "pingu"
+    "device": "Pingu"
   },
   {
     "job_id": "d332996f-6286-4ad2-b102-4572779b9f09",
     "status": "pending",
-    "device": "pingu"
+    "device": "Pingu"
   },
   {
     "job_id": "cc929f41-a7ec-4ccf-b7e3-5f2d6089ee47",
     "status": "pending",
-    "device": "pingu"
+    "device": "Pingu"
   },
   {
   "job_id": "aa37d115-eddb-493e-b5e9-4e4c14c8482f",
   "status": "successful",
-  "device": "pingu",
+  "device": "Pingu",
   "result": {
     "memory": [
       [
@@ -1094,21 +1094,21 @@
   {
     "job_id": "76bf7f38-fc50-4242-a0cb-e94365568622",
     "status": "pending",
-    "device": "pingu"
+    "device": "Pingu"
   },
   {
     "job_id": "b65d5e22-08d4-4ac2-b634-abd5f12199b9",
     "status": "pending",
-    "device": "loke"
+    "device": "Loke"
   },
   {
     "job_id": "f15a3bf8-d508-44dd-bcec-1db186506e50",
     "status": "pending",
-    "device": "pingu"
+    "device": "Pingu"
   },
   {
     "job_id": "ea7dcb91-7237-42c9-b86c-cfff24aff47e",
     "status": "pending",
-    "device": "pingu"
+    "device": "Pingu"
   }
 ]
