@@ -40,7 +40,9 @@ from pydantic.main import IncEx
 from redis import Redis
 
 import settings
+from utils.crypto import get_uuid4_str
 from utils.date_time import get_current_timestamp
+from utils.logging import access_logger
 from utils.redis_store import Collection, Schema
 
 ITEM = TypeVar("ITEM", bound=BaseModel)
@@ -242,3 +244,49 @@ def get_request_logs_store() -> Collection[WebsocketRequestLog]:
         )
 
     return _REQUEST_LOGS_STORE
+
+
+class WebsocketConnectionManager:
+    """Manages connections to a websockets endpoint"""
+
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        """Allows a connection to be established"""
+        request_id = websocket.headers.get("x-request-id")
+        if request_id is None:
+            request_id = get_uuid4_str()
+
+        websocket.state.request_id = request_id
+        requests_store = get_request_logs_store()
+        if not requests_store.exists(request_id):
+            requests_store.insert(WebsocketRequestLog.from_request(websocket))
+
+        await websocket.accept(headers=[(b"x-request-id", request_id.encode("utf8"))])
+        self.active_connections.append(websocket)
+        access_logger.info(f"Connected: {websocket.client.host} at {websocket.url}")
+
+    def disconnect(self, websocket: WebSocket):
+        """Removes a given websocket connection"""
+        self.active_connections.remove(websocket)
+        access_logger.info(f"Disconnected: {websocket.client.host} at {websocket.url}")
+
+    async def reply(self, websocket: WebSocket, message: GeneralMessage):
+        """Sends a message to the given websocket"""
+        await websocket.send_json(message)
+
+    async def broadcast(self, message: str):
+        """Broadcasts a message to all connections on a websocket endpoint"""
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+    async def close_all(self, reason: str = "Server closing connection"):
+        """Closes all active connections
+
+        Args:
+            reason: Reason for closing the connection
+        """
+        for connection in list(self.active_connections):
+            access_logger.info(f"Closing: {connection.client.host} at {connection.url}")
+            await connection.close(code=1001, reason=reason)

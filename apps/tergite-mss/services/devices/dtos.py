@@ -24,7 +24,9 @@ from typing import (
     Literal,
     Mapping,
     Optional,
+    Protocol,
     Tuple,
+    Type,
     Union,
 )
 
@@ -33,9 +35,11 @@ from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 from pydantic.main import IncEx
 
+from utils.api import GeneralMessage
 from utils.models import create_partial_model
 
 from ..calibration.dtos import DeviceCalibrationCreate
+from ..jobs.dtos import JobUpdate
 
 if TYPE_CHECKING:
     DictStrAny = Dict[str, Any]
@@ -44,9 +48,10 @@ if TYPE_CHECKING:
     MappingIntStrAny = Mapping[IntStr, Any]
 
 
-class DeviceStatus(str, Enum):
+class DeviceEventName(str, Enum):
     INITIALIZED = "initialized"
     RECALIBRATED = "recalibrated"
+    JOB_UPDATED = "job_updated"
 
 
 class DeviceUpsert(BaseModel):
@@ -124,30 +129,49 @@ class Device(DeviceUpsert):
     updated_at: Optional[str] = None
 
 
-class DeviceStatusMessage(BaseModel):
-    """The schema for device status message"""
+type DeviceEventData = Union[DeviceUpsert, DeviceCalibrationCreate, JobUpdate]
+"""Data type for the data attached to device events"""
 
-    status: DeviceStatus
-    data: DeviceUpsert | DeviceCalibrationCreate
+
+class DeviceEventHandler(Protocol):
+    """The signature of all event handlers for device events"""
+
+    async def __call__(self, device: str, data: JobUpdate, **kwargs) -> GeneralMessage:
+        """Handles the given device event
+
+        Args:
+            device: The device where the event occurred
+            data: The data associated with the event
+
+        Returns:
+            the general message showing the output from the handler
+        """
+
+
+class DeviceEvent(BaseModel):
+    """The schema for device events"""
+
+    __status_data_map__: Dict[DeviceEventName, Type[DeviceEventData]] = {
+        DeviceEventName.INITIALIZED: DeviceUpsert,
+        DeviceEventName.RECALIBRATED: DeviceCalibrationCreate,
+        DeviceEventName.JOB_UPDATED: JobUpdate,
+    }
+
+    name: DeviceEventName
+    data: DeviceEventData
 
     @field_validator("data", mode="after")
     @classmethod
     def validate_data(
-        cls, value: DeviceUpsert | DeviceCalibrationCreate, info: ValidationInfo
-    ) -> DeviceUpsert | DeviceCalibrationCreate:
-        """Validates the data depending on the status type"""
-        if info.data["status"] == DeviceStatus.INITIALIZED and not isinstance(
-            value, DeviceUpsert
-        ):
+        cls, value: DeviceEventData, info: ValidationInfo
+    ) -> DeviceEventData:
+        """Validates the data depending on the name type"""
+        expected_data_cls = cls.__status_data_map__[info.data["name"]]
+        if not isinstance(value, expected_data_cls):
             raise ValueError(
-                f"data must be of type {DeviceUpsert.__name__}, was {type(value)}"
+                f"data must be of type {expected_data_cls.__name__}, was {type(value)}"
             )
-        elif info.data["status"] == DeviceStatus.RECALIBRATED and not isinstance(
-            value, DeviceCalibrationCreate
-        ):
-            raise ValueError(
-                f"data must be of type {DeviceCalibrationCreate.__name__}, was {type(value)}"
-            )
+
         return value
 
 

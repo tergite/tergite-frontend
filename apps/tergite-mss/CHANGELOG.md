@@ -24,12 +24,14 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added the `private_key_password` in AppConfig containing the password used for encrypting private key PEM files
 - [BREAKING]: Added the `redis_url` property under the database configuration
 - [BREAKING]: Added the `public_key_path` property under the backend configuration
+- [BREAKING]: Added the `/devices/ws/{name}` endpoint for handling device events e.g. 'initialized', 'recalibrated', 'job_updated'
 
 ### Changed
 
 - [BREAKING]: Removed the ability to load mss config toml file in python. One must use the `start_mss.sh` script.
 - [BREAKING]: Changed backend connection to MSS to use RSA-secured websockets
 - [BREAKING]: Removed the `/devices` and `/calibrations` POST and PUT endpoints
+- [BREAKING]: Removed the `/jobs` PUT endpoint
 
 ## [2025.09.0] - 2025-10-02
 

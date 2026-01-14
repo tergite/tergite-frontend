@@ -146,7 +146,7 @@ def test_read_calibration(name: str, db, client, freezer):
 
 @pytest.mark.parametrize("payload", _CALIBRATIONS_LIST)
 def test_create(db, client, payload, freezer):
-    """Push to /devices/ws/{name} event with status 'recalibrated' creates new calibration and returns it"""
+    """Push to /devices/ws/{name} event with name 'recalibrated' creates new calibration and returns it"""
     name = payload["name"]
     url = f"/devices/ws/{name}"
     headers = create_bcc_headers(name)
@@ -155,7 +155,7 @@ def test_create(db, client, payload, freezer):
     with client.websocket_connect(url, headers=headers) as client:
         client.send_json(
             {
-                "status": "recalibrated",
+                "name": "recalibrated",
                 "data": payload,
             }
         )
@@ -199,7 +199,7 @@ def test_upsert(db, client, raw_payload, freezer):
     with client.websocket_connect(url, headers=headers) as client:
         client.send_json(
             {
-                "status": "recalibrated",
+                "name": "recalibrated",
                 "data": payload,
             }
         )
@@ -244,7 +244,7 @@ def test_create_log(db, client, system_app_token_header, raw_payload, freezer):
     with client.websocket_connect(url, headers=headers) as client:
         client.send_json(
             {
-                "status": "recalibrated",
+                "name": "recalibrated",
                 "data": payload,
             }
         )
@@ -299,7 +299,7 @@ def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cook
         payload["name"] = f"{payload['name']}extra"
         client.send_json(
             {
-                "status": "recalibrated",
+                "name": "recalibrated",
                 "data": payload,
             }
         )

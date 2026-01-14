@@ -135,6 +135,8 @@ class Job(JobCreate):
     timestamps: Optional[JobTimestamps] = None
     download_url: Optional[str] = None
     result: Optional[JobResult] = None
+    estimated_duration: Optional[float] = None
+    actual_duration: Optional[float] = None
     # encrypted JWT token for use to get logfiles from BCC, and submit job to BCC
     access_token: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
@@ -204,5 +206,5 @@ class JobStatusResponse(BaseModel):
 # Derived models
 JobQuery = create_partial_model("JobQuery", original=Job, default=Query(None))
 JobUpdate = create_partial_model(
-    "JobUpdate", original=Job, exclude=("job_id", "duration_in_secs")
+    "JobUpdate", original=Job, exclude=("duration_in_secs",)
 )

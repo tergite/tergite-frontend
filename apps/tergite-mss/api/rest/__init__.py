@@ -18,7 +18,7 @@
 from fastapi import FastAPI
 from fastapi.requests import Request
 
-from api.rest.utils import TergiteCORSMiddleware
+from api.rest.middleware import TergiteCORSMiddleware
 from services.auth.utils import TooManyListQueryParams
 from utils.api import WebsocketRequestLog, get_request_logs_store, to_http_error
 from utils.crypto import get_uuid4_str
@@ -34,7 +34,6 @@ from .app_kwargs import get_app_kwargs
 from .dependencies import (
     CurrentProjectDep,
     CurrentStrictProjectDep,
-    get_default_mongodb,
 )
 from .routers.admin import router as admin_router
 from .routers.auth import include_auth_router
@@ -43,6 +42,7 @@ from .routers.calibrations import router as calibrations_router
 from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
+from .utils import get_default_mongodb
 
 # application
 app = FastAPI(**get_app_kwargs())

@@ -14,7 +14,7 @@
 #
 # Refactored by Martin Ahindura - 2023-11-08, 2024-08-01
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Query, WebSocketException
 from fastapi.websockets import WebSocket
@@ -22,15 +22,31 @@ from pydantic import ValidationError
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocketDisconnect
 
-from api.rest.dependencies import MongoDbDep
-from api.rest.utils import WebsocketConnectionManager, get_verified_device_name
-from services import calibration as calibration_service
+from api.rest.dependencies import MongoDbDep, ProjectDbDep
+from api.rest.utils import get_verified_device_name
 from services import devices
-from services.devices.dtos import DeviceQuery, DeviceStatus, DeviceStatusMessage
-from utils.api import PaginatedListResponse
+from services.devices.dtos import (
+    DeviceEvent,
+    DeviceEventHandler,
+    DeviceEventName,
+    DeviceQuery,
+)
+from utils.api import PaginatedListResponse, WebsocketConnectionManager
+
+from .events import (
+    on_device_initialized_event,
+    on_device_recalibrated_event,
+    on_job_updated_event,
+)
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 ws_manager = WebsocketConnectionManager()
+_EVENT_HANDLER_MAP: Dict[DeviceEventName, DeviceEventHandler] = {
+    DeviceEventName.INITIALIZED: on_device_initialized_event,
+    DeviceEventName.RECALIBRATED: on_device_recalibrated_event,
+    DeviceEventName.JOB_UPDATED: on_job_updated_event,
+}
+"""A map of event handlers for device events"""
 
 
 @router.get("/")
@@ -72,10 +88,11 @@ async def read_one(db: MongoDbDep, name: str):
 
 
 @router.websocket("/ws/{name}")
-async def update_device_status(
+async def handle_device_events(
     websocket: WebSocket,
     name: str,
     db: MongoDbDep,
+    project_db: ProjectDbDep,
     verified_name: str = Depends(get_verified_device_name),
 ):
     """Receives updates about the given device
@@ -84,6 +101,7 @@ async def update_device_status(
         websocket: the websocket instance
         name: the name of the device
         db: the mongo db instance
+        project_db: the database containing the project
         verified_name: the verified name of the device
     """
     if verified_name != name:
@@ -95,43 +113,24 @@ async def update_device_status(
         while True:
             data = await websocket.receive_json()
             try:
-                parsed_data = DeviceStatusMessage.model_validate(data)
-                response = {}
-                if parsed_data.data.name != verified_name:
-                    raise PermissionError(
-                        f"editing '{parsed_data.data.name}' is not allowed"
-                    )
-                elif parsed_data.status == DeviceStatus.INITIALIZED:
-                    response = await devices.upsert_device(db, payload=parsed_data.data)
-                    response = response.model_dump(mode="json")
-
-                elif parsed_data.status == DeviceStatus.RECALIBRATED:
-                    response = await calibration_service.insert_one(
-                        db, parsed_data.data
-                    )
-                    response = response.model_dump(mode="json")
-
-                await ws_manager.reply(
-                    websocket,
-                    {
-                        "status": "success",
-                        "data": response,
-                    },
+                parsed_data = DeviceEvent.model_validate(data)
+                handler = _EVENT_HANDLER_MAP[parsed_data.name]
+                response = await handler(
+                    device=verified_name,
+                    data=parsed_data.data,
+                    db=db,
+                    project_db=project_db,
                 )
+
             except ValidationError as exp:
-                await ws_manager.reply(
-                    websocket, {"status": "error", "detail": f"invalid data: {exp}"}
-                )
+                response = {"status": "error", "detail": f"invalid data: {exp}"}
             except PermissionError as exp:
-                await ws_manager.reply(
-                    websocket, {"status": "error", "detail": f"forbidden: {exp}"}
-                )
+                response = {"status": "error", "detail": f"forbidden: {exp}"}
             except Exception as exp:
                 logging.error(exp)
-                await ws_manager.reply(
-                    websocket,
-                    {"status": "error", "detail": f"unexpected server error"},
-                )
+                response = {"status": "error", "detail": f"unexpected server error"}
+
+            await ws_manager.reply(websocket, response)
 
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)

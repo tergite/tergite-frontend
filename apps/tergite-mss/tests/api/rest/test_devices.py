@@ -132,7 +132,7 @@ def test_read_one_device(db, client, name: str, user_jwt_cookie):
 
 @pytest.mark.parametrize("payload", _DEVICE_LIST)
 def test_create_device(db, client, payload: Dict[str, Any]):
-    """DeviceStatusMessage with status 'initialized' to /devices/ws/{name} creates a new device if it does not exist"""
+    """DeviceEvent with name 'initialized' to /devices/ws/{name} creates a new device if it does not exist"""
     original_data_in_db = find_in_collection(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
     )
@@ -144,7 +144,7 @@ def test_create_device(db, client, payload: Dict[str, Any]):
     with client.websocket_connect(url, headers=headers) as client:
         client.send_json(
             {
-                "status": "initialized",
+                "name": "initialized",
                 "data": payload,
             }
         )
@@ -209,7 +209,7 @@ def test_create_device_wrong_payload(
         payload["name"] = f"{payload['name']}extra"
         client.send_json(
             {
-                "status": "initialized",
+                "name": "initialized",
                 "data": payload,
             }
         )
@@ -256,7 +256,7 @@ def test_create_device_wrong_url(db, client, payload: Dict[str, Any], user_jwt_c
 def test_update_pre_existing_device(
     db, client, backend_dict: Dict[str, Any], system_app_token_header
 ):
-    """Pushing 'initialized'-DeviceStatusMessage to /devices/ws/{name} a pre-existing device updates it"""
+    """Pushing 'initialized'-DeviceEvent to /devices/ws/{name} a pre-existing device updates it"""
     insert_in_collection(db, collection_name=_DEVICES_COLLECTION, data=[backend_dict])
     original_data_in_db = find_in_collection(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
@@ -274,7 +274,7 @@ def test_update_pre_existing_device(
     with client.websocket_connect(url, headers=headers) as client:
         client.send_json(
             {
-                "status": "initialized",
+                "name": "initialized",
                 "data": payload,
             }
         )

@@ -12,11 +12,11 @@
 """Data Transfer objects for the puhuri external service"""
 import enum
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Union
+from typing import TYPE_CHECKING, AbstractSet, Any, Dict, List, Mapping, Optional, Union
 
 import pymongo
 from beanie import Document
-from pydantic import BaseModel, field_serializer, field_validator
+from pydantic import BaseModel, field_serializer
 from pymongo import IndexModel
 from waldur_client import ComponentUsage
 

@@ -16,8 +16,6 @@ from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing_extensions import Annotated
 
-import settings
-from api.rest.utils import get_request_id
 from services.auth import Project, ProjectDatabase, User, get_project_db
 
 # from api.database import get_mongodb
@@ -33,37 +31,8 @@ from services.auth.service import (
 )
 from services.auth.users import UserDatabase
 from services.external import bcc
-from utils.exc import UnknownBccError
-from utils.mongodb import get_mongodb
 
-
-async def get_default_mongodb():
-    return get_mongodb(
-        url=f"{settings.CONFIG.database.url}", name=settings.CONFIG.database.name
-    )
-
-
-async def get_bcc_client(
-    backend: str,
-    bcc_clients_map: Dict[str, bcc.BccClient] = Depends(bcc.get_client_map),
-) -> bcc.BccClient:
-    """Dependency injector to return the BCC client
-
-    Args:
-        backend (str): the name of the backend
-        bcc_clients_map (BccClientsMap): the map of BCC clients
-
-    Returns:
-        bcc.BccClient: the BCC client
-
-    Raises:
-        UnknownBccError: Unknown backend '{backend}'
-    """
-    try:
-        return bcc_clients_map[backend]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{backend}'")
-
+from .utils import get_bcc_client, get_default_mongodb, get_request_id
 
 CurrentSystemUserProjectDep = Annotated[User, Depends(GET_CURRENT_SYSTEM_USER_PROJECT)]
 CurrentProjectDep = Depends(GET_CURRENT_PROJECT)
