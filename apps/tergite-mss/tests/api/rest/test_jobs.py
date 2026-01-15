@@ -289,34 +289,35 @@ def test_update_job(db, client, device: str, raw_payload: dict, freezer):
     headers = create_bcc_headers(device)
 
     # using context manager to ensure on_startup runs
-    with client.websocket_connect(url, headers=headers) as client:
-        client.send_json(
-            {
-                "name": "job_updated",
-                "data": raw_payload,
-            }
-        )
-        response = client.receive_json()
-        got = response["data"]
+    with client as client:
+        with client.websocket_connect(url, headers=headers) as client:
+            client.send_json(
+                {
+                    "name": "job_updated",
+                    "data": raw_payload,
+                }
+            )
+            response = client.receive_json()
+            got = response["data"]
 
-        actual_update, _ = prune(raw_payload, ignored_fields)
-        expected_job.update(
-            actual_update,
-        )
-        expected_response.update(
-            actual_update,
-        )
+            actual_update, _ = prune(raw_payload, ignored_fields)
+            expected_job.update(
+                actual_update,
+            )
+            expected_response.update(
+                actual_update,
+            )
 
-        job_after_update = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-            _filter={"job_id": job_id},
-        )[0]
+            job_after_update = find_in_collection(
+                db,
+                collection_name=_COLLECTION,
+                fields_to_exclude=_EXCLUDED_FIELDS,
+                _filter={"job_id": job_id},
+            )[0]
 
-        assert response["status"] == "success"
-        assert got == expected_response
-        assert job_after_update == expected_job
+            assert response["status"] == "success"
+            assert got == expected_response
+            assert job_after_update == expected_job
 
 
 @pytest.mark.parametrize("device, raw_payload", _DEVICES_AND_JOB_TIMESTAMPED_UPDATES)
@@ -329,7 +330,6 @@ def test_update_job_resource_usage(
     )
     raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
     job_list = [{**item, "project_id": str(project_id)} for item in raw_jobs]
-    job_id = raw_payload["job_id"]
 
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
 
@@ -341,15 +341,16 @@ def test_update_job_resource_usage(
     headers = create_bcc_headers(device)
 
     # using context manager to ensure on_startup runs
-    with client.websocket_connect(url, headers=headers) as client:
-        client.send_json(
-            {
-                "name": "job_updated",
-                "data": raw_payload,
-            }
-        )
-        response = client.receive_json()
-        assert response["status"] == "success"
+    with client as client:
+        with client.websocket_connect(url, headers=headers) as client:
+            client.send_json(
+                {
+                    "name": "job_updated",
+                    "data": raw_payload,
+                }
+            )
+            response = client.receive_json()
+            assert response["status"] == "success"
 
     project_after_update = get_db_record(
         db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
@@ -382,15 +383,16 @@ def test_update_job_resource_usage_advanced(
     headers = create_bcc_headers(device)
 
     # using context manager to ensure on_startup runs
-    with client.websocket_connect(url, headers=headers) as client:
-        client.send_json(
-            {
-                "name": "job_updated",
-                "data": payload,
-            }
-        )
-        response = client.receive_json()
-        assert response["status"] == "success"
+    with client as client:
+        with client.websocket_connect(url, headers=headers) as client:
+            client.send_json(
+                {
+                    "name": "job_updated",
+                    "data": payload,
+                }
+            )
+            response = client.receive_json()
+            assert response["status"] == "success"
 
     project_after_update = get_db_record(
         db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}

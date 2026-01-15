@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the devices router"""
+import copy
 from typing import Any, Dict, List, Optional
 
 import pytest
@@ -141,29 +142,36 @@ def test_create_device(db, client, payload: Dict[str, Any]):
     headers = create_bcc_headers(name)
 
     # using context manager to ensure on_startup runs
-    with client.websocket_connect(url, headers=headers) as client:
-        client.send_json(
-            {
-                "name": "initialized",
-                "data": payload,
-            }
-        )
-        json_response = client.receive_json()
-        final_data_in_db = find_in_collection(
-            db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-        )
+    with client as client:
+        with client.websocket_connect(url, headers=headers) as client:
+            client.send_json(
+                {
+                    "name": "initialized",
+                    "data": payload,
+                }
+            )
+            json_response = client.receive_json()
+            final_data_in_db = find_in_collection(
+                db,
+                collection_name=_DEVICES_COLLECTION,
+                fields_to_exclude=_EXCLUDED_FIELDS,
+            )
 
-        assert json_response["status"] == "success"
-        json_response["data"].pop("id")
-        assert json_response["data"] == final_data_in_db[0]
+            assert json_response["status"] == "success"
+            json_response["data"].pop("id")
+            assert json_response["data"] == final_data_in_db[0]
 
-        created_at_timestamps = pop_field(final_data_in_db, "created_at")
-        updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
+            created_at_timestamps = pop_field(final_data_in_db, "created_at")
+            updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
 
-        assert original_data_in_db == []
-        assert final_data_in_db == [payload]
-        assert all([is_not_older_than(x, seconds=30) for x in created_at_timestamps])
-        assert all([is_not_older_than(x, seconds=30) for x in updated_at_timestamps])
+            assert original_data_in_db == []
+            assert final_data_in_db == [payload]
+            assert all(
+                [is_not_older_than(x, seconds=30) for x in created_at_timestamps]
+            )
+            assert all(
+                [is_not_older_than(x, seconds=30) for x in updated_at_timestamps]
+            )
 
 
 @pytest.mark.parametrize("payload", _DEVICE_LIST)
@@ -178,8 +186,9 @@ def test_create_device_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_
     headers = create_bcc_headers("WrongCert")
 
     with pytest.raises(WebSocketDisconnect) as exp:
-        with client.websocket_connect(url, headers=headers):
-            pass
+        with client as client:
+            with client.websocket_connect(url, headers=headers):
+                pass
 
     final_data_in_db = find_in_collection(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
@@ -200,31 +209,36 @@ def test_create_device_wrong_payload(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
     )
 
+    # just to ensure mutations occur on copies and not on the original object
+    payload = copy.deepcopy(payload)
     name = payload["name"]
     url = f"/devices/ws/{name}"
     headers = create_bcc_headers(name)
 
     # using context manager to ensure on_startup runs
-    with client.websocket_connect(url, headers=headers) as client:
-        payload["name"] = f"{payload['name']}extra"
-        client.send_json(
-            {
-                "name": "initialized",
-                "data": payload,
+    with client as client:
+        with client.websocket_connect(url, headers=headers) as client:
+            payload["name"] = f"{payload['name']}extra"
+            client.send_json(
+                {
+                    "name": "initialized",
+                    "data": payload,
+                }
+            )
+            response = client.receive_json()
+            final_data_in_db = find_in_collection(
+                db,
+                collection_name=_DEVICES_COLLECTION,
+                fields_to_exclude=_EXCLUDED_FIELDS,
+            )
+
+            assert response == {
+                "status": "error",
+                "detail": f"forbidden: editing '{payload['name']}' is not allowed",
             }
-        )
-        response = client.receive_json()
-        final_data_in_db = find_in_collection(
-            db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-        )
 
-        assert response == {
-            "status": "error",
-            "detail": f"forbidden: editing '{payload['name']}' is not allowed",
-        }
-
-        assert original_data_in_db == []
-        assert final_data_in_db == []
+            assert original_data_in_db == []
+            assert final_data_in_db == []
 
 
 @pytest.mark.parametrize("payload", _DEVICE_LIST)
@@ -239,8 +253,9 @@ def test_create_device_wrong_url(db, client, payload: Dict[str, Any], user_jwt_c
     headers = create_bcc_headers(name)
 
     with pytest.raises(WebSocketDisconnect) as exp:
-        with client.websocket_connect(url, headers=headers):
-            pass
+        with client as client:
+            with client.websocket_connect(url, headers=headers):
+                pass
 
     final_data_in_db = find_in_collection(
         db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
@@ -271,32 +286,37 @@ def test_update_pre_existing_device(
     }
 
     # using context manager to ensure on_startup runs
-    with client.websocket_connect(url, headers=headers) as client:
-        client.send_json(
-            {
-                "name": "initialized",
-                "data": payload,
+    with client as client:
+        with client.websocket_connect(url, headers=headers) as client:
+            client.send_json(
+                {
+                    "name": "initialized",
+                    "data": payload,
+                }
+            )
+            json_response = client.receive_json()
+            final_data_in_db = find_in_collection(
+                db,
+                collection_name=_DEVICES_COLLECTION,
+                fields_to_exclude=_EXCLUDED_FIELDS,
+            )
+
+            assert json_response["status"] == "success"
+            json_response["data"].pop("id")
+            # when a device makes a connection, it sets last_online to None
+            # but this 'last_online' property can be changed directly in payload
+            if final_data_in_db[0]["last_online"] is None:
+                del final_data_in_db[0]["last_online"]
+            assert json_response["data"] == final_data_in_db[0]
+
+            updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
+            expected = {
+                **original_data_in_db[0],
+                **payload,
             }
-        )
-        json_response = client.receive_json()
-        final_data_in_db = find_in_collection(
-            db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-        )
 
-        assert json_response["status"] == "success"
-        json_response["data"].pop("id")
-        # when a device makes a connection, it sets last_online to None
-        # but this 'last_online' property can be changed directly in payload
-        if final_data_in_db[0]["last_online"] is None:
-            del final_data_in_db[0]["last_online"]
-        assert json_response["data"] == final_data_in_db[0]
-
-        updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
-        expected = {
-            **original_data_in_db[0],
-            **payload,
-        }
-
-        assert original_data_in_db == [backend_dict]
-        assert final_data_in_db[0] == expected
-        assert all([is_not_older_than(x, seconds=30) for x in updated_at_timestamps])
+            assert original_data_in_db == [backend_dict]
+            assert final_data_in_db[0] == expected
+            assert all(
+                [is_not_older_than(x, seconds=30) for x in updated_at_timestamps]
+            )

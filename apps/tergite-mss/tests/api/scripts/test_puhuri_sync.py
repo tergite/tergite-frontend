@@ -20,6 +20,7 @@ from waldur_client import ComponentUsage
 from api.scripts import puhuri_sync
 from services.auth import Project
 from tests._utils.auth import TEST_PROJECT_EXT_ID, get_db_record
+from tests._utils.bcc import create_bcc_headers
 from tests._utils.env import TEST_PUHURI_POLL_INTERVAL
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.json import to_json
@@ -39,10 +40,12 @@ _JOBS_COLLECTION = "jobs"
 _INTERNAL_USAGE_COLLECTION = "internal_resource_usages"
 _PROJECTS_COLLECTION = "auth_projects"
 _EXCLUDED_FIELDS = ["_id", "id"]
+_DEVICES = ["Loke", "Loki"]
 
 
 # @pytest.mark.sequential
-def test_save_resource_usages(db, client, project_id, app_token_header):
+@pytest.mark.parametrize("device", _DEVICES)
+def test_save_resource_usages(db, client, project_id, device):
     """PUT to "/jobs/{job_id}" updates the resource usage in database for that project id"""
     project_id_str = f"{project_id}"
     job_list = [{**item, "project_id": project_id_str} for item in _JOBS_LIST]
@@ -58,31 +61,36 @@ def test_save_resource_usages(db, client, project_id, app_token_header):
     project = get_db_record(db, schema=Project, _id=project_id_str)
     expected_usages: List[dict] = []
 
+    url = f"/devices/ws/{device}"
+    headers = create_bcc_headers(device)
+
     # using context manager to ensure on_startup runs
     with client as client:
-        # push job resource usages to MSS
-        for payload in _JOB_TIMESTAMPED_UPDATES.copy():
-            current_qpu_seconds = project["qpu_seconds"]
-            job_id = payload.pop("job_id")
-
-            response = client.put(
-                f"/jobs/{job_id}",
-                json=payload,
-                headers=app_token_header,
-            )
-            assert response.status_code == 200
-
-            project = get_db_record(db, schema=Project, _id=project_id_str)
-            usage = round(current_qpu_seconds - project["qpu_seconds"], 1)
-            if usage > 0:
-                expected_usages.append(
+        with client.websocket_connect(url, headers=headers) as client:
+            # push job resource usages to MSS
+            for payload in _JOB_TIMESTAMPED_UPDATES.copy():
+                current_qpu_seconds = project["qpu_seconds"]
+                job_id = payload["job_id"]
+                client.send_json(
                     {
-                        "job_id": job_id,
-                        "project_id": TEST_PROJECT_EXT_ID,
-                        "qpu_seconds": usage,
-                        "is_processed": False,
+                        "name": "job_updated",
+                        "data": payload,
                     }
                 )
+                response = client.receive_json()
+                assert response["status"] == "success"
+
+                project = get_db_record(db, schema=Project, _id=project_id_str)
+                usage = round(current_qpu_seconds - project["qpu_seconds"], 1)
+                if usage > 0:
+                    expected_usages.append(
+                        {
+                            "job_id": job_id,
+                            "project_id": TEST_PROJECT_EXT_ID,
+                            "qpu_seconds": usage,
+                            "is_processed": False,
+                        }
+                    )
 
         final_data = find_in_collection(
             db,

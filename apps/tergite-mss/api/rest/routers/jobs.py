@@ -177,7 +177,7 @@ async def cancel_job(
     if response["status"] == "success":
         await jobs_service.update_job(
             db,
-            job_id=job_id,
+            job_id=str(job_id),
             payload=JobUpdate(
                 cancellation_reason=details.reason,
                 status=JobStatus.CANCELLED,
