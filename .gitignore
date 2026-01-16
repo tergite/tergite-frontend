@@ -3,6 +3,7 @@
 .DS_Store
 .idea/
 mss-config.toml
+bcc_certs/
 
 # e2e
 temp/

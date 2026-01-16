@@ -25,6 +25,7 @@ variables:
       alias: mongo
   variables:
     FF_NETWORK_PER_BUILD: 1
+    REDIS_PORT: 6380
   cache:
     key:
       files:
@@ -32,6 +33,12 @@ variables:
     paths:
       - .cache/pip
   before_script:
+    # Install redis
+    - apt-get update
+    - apt-get install redis -y
+    # Run the redis server
+    - redis-server --daemonize yes --port "$REDIS_PORT"
+
     - pip install --upgrade pip
     - cd apps/tergite-mss
     - pip install ."[dev]"
@@ -39,6 +46,7 @@ variables:
     - ulimit -n
     # Update test fixtures to point to the mongo service
     - sed -i 's/mongodb:\/\/localhost:27017/mongodb:\/\/mongo:27017/g' tests/fixtures/*
+    - sed -i "s/redis:\/\/localhost:6379/redis:\/\/localhost:$REDIS_PORT/g" tests/fixtures/*
   parallel:
     matrix:
       - VERSION: ["3.12", "3.13"]

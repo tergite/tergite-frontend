@@ -115,26 +115,43 @@ cd ..
 # Adding configuration files to tergite-frontend folder
 echo "Adding configuration files to tergite-frontend"
 cd tergite-frontend
+mkdir bcc_certs
 cp "$FIXTURES_PATH/mongo-init.js" .
 cp "$FIXTURES_PATH/mongo-router.sh" .
 cp "$FIXTURES_PATH/mongo.Dockerfile" .
 cp "$FIXTURES_PATH/e2e-docker-compose.yml" .
 cp "$FIXTURES_PATH/qiskit_pulse_1q.toml" .
+cp "$FIXTURES_PATH/public-qiskit-pulse-1q-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-qiskit-pulse-1q-key.pem" .
 cp "$FIXTURES_PATH/qiskit_pulse_1q.seed.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.seed.toml" .
+cp "$FIXTURES_PATH/public-qiskit-pulse-2q-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-qiskit-pulse-2q-key.pem" .
 cp "$FIXTURES_PATH/generic.seed.toml" .
 cp "$FIXTURES_PATH/loke.toml" .
 cp "$FIXTURES_PATH/loke.seed.toml" .
+cp "$FIXTURES_PATH/public-loke-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-loke-key.pem" .
 cp "$FIXTURES_PATH/thor.toml" .
 cp "$FIXTURES_PATH/thor.seed.toml" .
+cp "$FIXTURES_PATH/public-thor-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-thor-key.pem" .
 cp "$FIXTURES_PATH/pingu.toml" .
 cp "$FIXTURES_PATH/pingu.seed.toml" .
+cp "$FIXTURES_PATH/public-pingu-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-pingu-key.pem" .
 cp "$FIXTURES_PATH/pegu.toml" .
+cp "$FIXTURES_PATH/public-pegu-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-pegu-key.pem" .
 cp "$FIXTURES_PATH/likee.toml" .
 cp "$FIXTURES_PATH/likee.seed.toml" .
+cp "$FIXTURES_PATH/public-likee-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-likee-key.pem" .
 cp "$FIXTURES_PATH/thea.toml" .
 cp "$FIXTURES_PATH/thea.seed.toml" .
+cp "$FIXTURES_PATH/public-thea-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-thea-key.pem" .
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_1q_booking_db.db
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_2q_booking_db.db
 cp "$FIXTURES_PATH/backend_db.sql" .

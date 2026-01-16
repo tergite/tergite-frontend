@@ -120,6 +120,7 @@ services:
       - ./.env:/code/.env:ro
       - ./qiskit_pulse_1q.toml:/code/backend_config.toml:ro
       - ./qiskit_pulse_1q.seed.toml:/code/calibration.seed.toml:ro
+      - ./private-qiskit-pulse-1q-key.pem:/code/private-bcc-key.pem:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
       - ./qiskit_pulse_1q_booking_db.db:/code/booking_db.db:ro
     networks:
@@ -165,6 +166,7 @@ services:
       - ./.env:/code/.env:ro
       - ./qiskit_pulse_2q.toml:/code/backend_config.toml:ro
       - ./qiskit_pulse_2q.seed.toml:/code/calibration.seed.toml:ro
+      - ./private-qiskit-pulse-2q-key.pem:/code/private-bcc-key.pem:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
       - ./qiskit_pulse_2q_booking_db.db:/code/booking_db.db:ro
     networks:
@@ -220,6 +222,7 @@ services:
       - ./loke.toml:/code/backend_config.toml:ro
       - ./loke.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-loke-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -273,6 +276,7 @@ services:
       - ./thor.toml:/code/backend_config.toml:ro
       - ./thor.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-thor-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -326,6 +330,7 @@ services:
       - ./pingu.toml:/code/backend_config.toml:ro
       - ./pingu.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-pingu-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -379,6 +384,7 @@ services:
       - ./pegu.toml:/code/backend_config.toml:ro
       - ./generic.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-pegu-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -432,6 +438,7 @@ services:
       - ./likee.toml:/code/backend_config.toml:ro
       - ./likee.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-likee-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -485,6 +492,7 @@ services:
       - ./thea.toml:/code/backend_config.toml:ro
       - ./thea.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-thea-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro

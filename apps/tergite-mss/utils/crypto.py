@@ -81,7 +81,7 @@ def _get_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey
 
     Args:
         key_file: the path to the private key file
-        password: the password that the private key was ecrypted with
+        password: the password that the private key was encrypted with
 
     Returns:
         the private key of the MSS
