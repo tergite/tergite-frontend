@@ -226,7 +226,7 @@ if ! [ "$APP_SETTINGS" = "production" ]; then
   extra_args=("--reload");
 fi
 
-MSS_CONFIG_JSON_STR="$__MSS_CONFIG_JSON__" python -m uvicorn --host 0.0.0.0 --port "$PORT_NUMBER" api.rest:app --proxy-headers "$extra_args[@]" &
+MSS_CONFIG_JSON_STR="$__MSS_CONFIG_JSON__" python -m uvicorn --host 0.0.0.0 --port "$PORT_NUMBER" api.rest:app --proxy-headers "${extra_args[@]}" &
 uvicorn_script=$!
 
 wait_for_process $puhuri_script
