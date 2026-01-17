@@ -217,7 +217,7 @@ APP_SETTINGS=$(extract_env_var ".general.environment");
 set_sigterm_handler
 
 # puhuri sync
-python -m api.scripts.puhuri_sync --ignore-if-disabled &
+MSS_CONFIG_JSON_STR="$__MSS_CONFIG_JSON__" python -m api.scripts.puhuri_sync --ignore-if-disabled &
 puhuri_script=$!
 
 # rest-api
