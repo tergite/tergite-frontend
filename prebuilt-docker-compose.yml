@@ -13,6 +13,7 @@ services:
     volumes:
       - ./mss-config.toml:/code/mss-config.toml:ro
       - ./private-mss-key.pem:/code/private-mss-key.pem:ro
+      - ./bcc_certs:/code/bcc_certs:ro
     env_file:
       - .env
     extra_hosts:
