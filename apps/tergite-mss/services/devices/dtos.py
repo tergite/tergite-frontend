@@ -136,7 +136,9 @@ type DeviceEventData = Union[DeviceUpsert, DeviceCalibrationCreate, JobUpdate]
 class DeviceEventHandler(Protocol):
     """The signature of all event handlers for device events"""
 
-    async def __call__(self, device: str, data: DeviceEventData, **kwargs) -> GeneralMessage:
+    async def __call__(
+        self, device: str, data: DeviceEventData, **kwargs
+    ) -> GeneralMessage:
         """Handles the given device event
 
         Args:

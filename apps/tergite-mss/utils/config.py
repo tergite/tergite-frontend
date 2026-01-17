@@ -13,10 +13,18 @@
 
 import enum
 import json
+import socket
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pydantic import AnyHttpUrl, BaseModel, MongoDsn, RedisDsn, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    MongoDsn,
+    RedisDsn,
+    computed_field,
+    field_validator,
+)
 
 _PROJECT_FOLDER = Path(__file__).parent.parent
 
@@ -66,6 +74,12 @@ class BccConfig(BaseModel):
             return value_path
         except TypeError:
             raise ValueError("public_key_path must be a Path or str")
+
+    @computed_field
+    @property
+    def ip_address(self) -> str:
+        """The IP address of the server where the device is"""
+        return get_ip_addr(self.url.host)
 
 
 class PuhuriConfig(BaseModel):
@@ -246,3 +260,13 @@ class AppConfig(BaseModel, extra="allow"):
             conf.pop("general", {}),
         )
         return cls.model_validate(conf)
+
+
+def get_ip_addr(url: str) -> str:
+    """Get the IP address from the url
+    Args:
+        url: the url to get the IP address from
+    Returns:
+        the IP address for the given url
+    """
+    return socket.gethostbyname(url)

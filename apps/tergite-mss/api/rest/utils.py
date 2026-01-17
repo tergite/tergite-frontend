@@ -27,6 +27,7 @@ from starlette.websockets import WebSocket
 import settings
 from services.external import bcc
 from utils.api import get_request_logs_store, verify_ws_signature
+from utils.config import get_ip_addr
 from utils.exc import InvalidRequestIDError, UnknownBccError
 from utils.mongodb import get_mongodb
 
@@ -81,8 +82,9 @@ def get_verified_device_name(websocket: WebSocket) -> str:
         timestamp = websocket.headers["x-timestamp"]
         signature = websocket.headers["x-signature"]
 
-        if websocket.client.host != settings.CONFIG.backends_dict[name].url.host:
-            raise ValueError(f"unexpected origin {websocket.client.host}")
+        client_ip = get_ip_addr(websocket.client.host)
+        if client_ip != settings.CONFIG.backends_dict[name].ip_address:
+            raise ValueError(f"unexpected websocket client IP {client_ip}")
 
         message = f"{name}-{nonce}-{timestamp}"
         verify_ws_signature(
