@@ -8,6 +8,8 @@ variables:
 
 .setup_dashboard: &setup_dashboard
   image: cypress/base:20.17.0
+  variables:
+    FF_NETWORK_PER_BUILD: 1
   cache:
     key:
       files:
@@ -81,15 +83,17 @@ full e2e:
   needs: []
   image: docker:latest
   services:
-    - name: docker:dind
+    - name: docker:25-dind
+      alias: dockerregistry
   stage: e2e
   when: manual
   manual_confirmation: "Are you sure you want to run the end-to-end test?"
   variables:
+    FF_NETWORK_PER_BUILD: 1
     BACKEND_REPO: "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_NAMESPACE}/tergite-backend.git"
     BACKEND_BRANCH: "main"
     DOCKER_TLS_CERTDIR: ""
-    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_HOST: tcp://dockerregistry:2375/
     CYPRESS_IMAGE: cypress/base:20.17.0
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
