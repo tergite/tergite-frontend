@@ -288,5 +288,7 @@ class WebsocketConnectionManager:
             reason: Reason for closing the connection
         """
         for connection in list(self.active_connections):
-            access_logger.info(f"Closing: %s at %s", connection.client.host, connection.url)
+            access_logger.info(
+                f"Closing: %s at %s", connection.client.host, connection.url
+            )
             await connection.close(code=1001, reason=reason)
