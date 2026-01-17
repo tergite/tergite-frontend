@@ -7,6 +7,10 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed 'dasel: error: unknown flag -r' when run in docker
+
 ### Added
 
 - Added the booking calendar to the device details screen

@@ -34,8 +34,8 @@ fi
 # as environment variables
 if [ -f "$MSS_CONFIG_FILE" ]; then
     # read the variables from the toml config file
-    cookie_domain=$(cat "$MSS_CONFIG_FILE" | /usr/sbin/dasel -r toml 'auth.cookie_domain');
-    cookie_name=$(cat "$MSS_CONFIG_FILE" | /usr/sbin/dasel -r toml 'auth.cookie_name');
+    cookie_domain=$(yq -p=toml ".auth.cookie_domain" "$MSS_CONFIG_FILE" 2>/dev/null);
+    cookie_name=$(yq -p=toml ".auth.cookie_name" "$MSS_CONFIG_FILE" 2>/dev/null);
 
     COOKIE_DOMAIN=$(var_or_default "$COOKIE_DOMAIN" "$cookie_domain");
     COOKIE_NAME=$(var_or_default "$COOKIE_NAME" "$cookie_name");

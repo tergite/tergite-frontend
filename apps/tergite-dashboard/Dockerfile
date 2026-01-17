@@ -14,10 +14,7 @@ RUN npm ci
 
 COPY . .
 
-RUN apk --no-cache add curl
-
-# Get a TOML reader CLI 'dasel'
-RUN curl -sSLf "$(curl -sSLf https://api.github.com/repos/tomwright/dasel/releases/latest | grep browser_download_url | grep linux_amd64 | grep -v .gz | cut -d\" -f 4)" -L -o dasel && chmod +x dasel
+RUN apk --no-cache add curl yq
 
 # If $MSS_CONFIG_FILE was copied, update .env.production.local
 RUN \
@@ -25,8 +22,8 @@ RUN \
     cookie_name=""; \
     if [ -f "$MSS_CONFIG_FILE" ]; then \
         # read the variables from the toml config file
-        cookie_domain=$(cat "$MSS_CONFIG_FILE" | ./dasel -r toml 'auth.cookie_domain');\
-        cookie_name=$(cat "$MSS_CONFIG_FILE" | ./dasel -r toml 'auth.cookie_name');\
+        cookie_domain=$(yq -p=toml ".auth.cookie_domain" "$MSS_CONFIG_FILE" 2>/dev/null);\
+        cookie_name=$(yq -p=toml ".auth.cookie_name" "$MSS_CONFIG_FILE" 2>/dev/null);\
     fi; \
     # add them to the .env.production.local file
     # cookie domain; try build arg VITE_COOKIE_DOMAIN first before falling back to value from MSS_CONFIG_FILE
@@ -62,12 +59,11 @@ FROM nginx:1.27.1-alpine-slim AS prod
 
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY --from=build /app/.env.production.local /etc/nginx/.env.local
-COPY --from=build /app/dasel /usr/sbin/dasel
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY run-nginx.sh /usr/sbin/run-nginx
 
+RUN apk --no-cache add yq
 RUN chmod +x /usr/sbin/run-nginx
-RUN chmod +x /usr/sbin/dasel
 
 EXPOSE 80/tcp
 
