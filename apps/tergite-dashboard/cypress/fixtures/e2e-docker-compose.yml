@@ -202,7 +202,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "loke"
+      DEFAULT_PREFIX: "Loke"
       MAX_TIME_SLOT_LENGTH: 7200
       MIN_TIME_SLOT_LENGTH: 1200
       MAX_SLOTS_PER_DAY: 20
@@ -255,7 +255,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "thor"
+      DEFAULT_PREFIX: "Thor"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -308,7 +308,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "pingu"
+      DEFAULT_PREFIX: "Pingu"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -361,7 +361,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "pegu"
+      DEFAULT_PREFIX: "Pegu"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -414,7 +414,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "likee"
+      DEFAULT_PREFIX: "Likee"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -467,7 +467,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "thea"
+      DEFAULT_PREFIX: "Thea"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
