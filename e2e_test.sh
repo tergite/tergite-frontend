@@ -35,7 +35,6 @@ OPENID_CONFIG_URL="${OPENID_CONFIG_URL:-https://samples.auth0.com/.well-known/op
 OPENID_CLIENT_ID="${OPENID_CLIENT_ID:-kbyuFDidLLm280LIwVFiazOqjO3ty8KH}"
 OPENID_CLIENT_SECRET="${OPENID_CLIENT_SECRET:-60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa}"
 OPENID_AUTH_URL="${OPENID_AUTH_URL:-https://samples.auth0.com/authorize}"
-APP_TOKEN="W0imS_n_J5ZwP8wFYvbBCiDkJVhQcEROEfyTPvFko1E"
 ROOT_PATH="$(pwd)"
 TEMP_DIR_PATH="$ROOT_PATH/$TEMP_DIR"
 FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/cypress/fixtures"
@@ -160,7 +159,6 @@ cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/quantify-config.json" .
 cp "$FIXTURES_PATH/quantify-metadata.yml" .
 cp "$FIXTURES_PATH/e2e.env" .env
-printf "\nMSS_APP_TOKEN=\"$APP_TOKEN\"" >> .env
 cp "$FIXTURES_PATH/mss-config.toml" .
 
 # Update the mongo-init.js to include the JSON data from the fixtures
