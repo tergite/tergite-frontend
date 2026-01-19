@@ -81,16 +81,17 @@ def get_verified_device_name(websocket: WebSocket) -> str:
         nonce = websocket.headers["x-request-id"]
         timestamp = websocket.headers["x-timestamp"]
         signature = websocket.headers["x-signature"]
+        backend_conf = settings.CONFIG.backends_dict[name]
 
         client_ip = get_ip_addr(websocket.client.host)
-        if client_ip != settings.CONFIG.backends_dict[name].ip_address:
+        if client_ip != backend_conf.ip_address:
             raise ValueError(f"unexpected websocket client IP {client_ip}")
 
         message = f"{name}-{nonce}-{timestamp}"
         verify_ws_signature(
             signature=signature,
             message=message,
-            key_path=settings.CONFIG.backends_dict[name].public_key_path,
+            key_path=backend_conf.public_key_path,
         )
 
         current_timestamp = datetime.now().timestamp()

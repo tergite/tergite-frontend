@@ -83,6 +83,20 @@ def redis_client() -> Generator[Redis, Any, None]:
 
 
 @pytest.fixture
+def mock_socket_gethostbyname(mocker):
+    """Mock socket gethostbyname because 'testclient' is not a valid domain name"""
+    from socket import gethostbyname as orig_gethostbyname
+
+    def dummy_gethostbyname(hostname: str, /) -> str:
+        if hostname in ("testclient",):
+            return hostname
+        return orig_gethostbyname(hostname)
+
+    mocker.patch("socket.gethostbyname", side_effect=dummy_gethostbyname)
+    yield mocker
+
+
+@pytest.fixture
 def mock_puhuri_synchronize(mocker) -> Mock:
     """A mock of the internal puhuri synchronize"""
     mocker.patch("services.external.puhuri.synchronize")
@@ -206,7 +220,7 @@ def project_id(db) -> PydanticObjectId:
 
 
 @pytest.fixture
-def client(db) -> Generator[TestClient, Any, None]:
+def client(db, mock_socket_gethostbyname) -> Generator[TestClient, Any, None]:
     """A test client for fast api"""
     from api.rest import app
 
