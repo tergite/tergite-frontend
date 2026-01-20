@@ -1,8 +1,13 @@
 ---
 services:
+  tergite-redis:
+    networks:
+      - tergite-frontend-e2e
   mss:
     depends_on:
       tergite-mongo:
+        condition: service_healthy
+      tergite-redis:
         condition: service_healthy
     networks:
       - tergite-frontend-e2e
@@ -30,8 +35,6 @@ services:
       retries: 10
       start_period: 10s
 
-  # FIXME: the init script for mongo fails when condition: service_healthy is ised
-  #  for dependencies of mongodb or mss
   tergite-mongo:
     restart: always
     image: "tergite/tergite-mongo-e2e:latest"
@@ -69,23 +72,6 @@ services:
       - ./mongo-init.js:/scripts/init.js:ro
     networks:
       - tergite-frontend-e2e
-
-  tergite-redis:
-    restart: always
-    image: redis
-    logging:
-      driver: ${LOGGING_DRIVER}
-    ports:
-      - "6378:6379"
-    networks:
-      - tergite-frontend-e2e
-    env_file:
-      - .env
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 1s
-      timeout: 3s
-      retries: 30
 
   qiskit_pulse_1q:
     restart: always

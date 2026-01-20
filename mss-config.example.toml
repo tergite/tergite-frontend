@@ -26,8 +26,8 @@ bcc_nonce_ttl = 300
 name = "sample-database"
 # database URI
 url = "mongodb://user:pass@host:port"
-# redis URI; default=redis://localhost:6379/3
-redis_url = "redis://localhost:6379/3"
+# redis URI; default=redis://tergite-redis:6379/0
+redis_url = "redis://tergite-redis:6379/0"
 
 
 # Add backends in the form: Note: [[...]] creates an array of tables

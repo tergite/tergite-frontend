@@ -1,5 +1,18 @@
 ---
 services:
+  tergite-redis:
+    restart: "${SERVICE_RESTART:-no}"
+    image: redis:${REDIS_VERSION:-8.4.0}
+    logging:
+      driver: ${LOGGING_DRIVER}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   mss:
     restart: "${SERVICE_RESTART:-no}"
     image: "${REGISTRY:-tergite}/tergite-mss:${MSS_VERSION:-v2025.12.0}"

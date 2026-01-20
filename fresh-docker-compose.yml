@@ -1,7 +1,20 @@
 ---
 services:
+  tergite-redis:
+    restart: unless-stopped
+    image: redis:${REDIS_VERSION:-8.4.0}
+    logging:
+      driver: ${LOGGING_DRIVER}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   mss:
-    restart: always
+    restart: unless-stopped
     image: "tergite/tergite-mss:${MSS_VERSION:-v0.4.0}"
     build:
       context: apps/tergite-mss
@@ -23,7 +36,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   dashboard:
-    restart: always
+    restart: unless-stopped
     depends_on:
       - mss
     image: "tergite/tergite-dashboard:${DASHBOARD_VERSION:-v0.5.0}"
@@ -43,7 +56,7 @@ services:
       - .env
 
   loki-promtail:
-    restart: always
+    restart: unless-stopped
     image: grafana/promtail:${PROMTAIL_VERSION:-2.8.3}
     logging:
       driver: ${LOGGING_DRIVER}

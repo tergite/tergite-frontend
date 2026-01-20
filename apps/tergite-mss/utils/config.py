@@ -48,7 +48,7 @@ class DatabaseConfig(BaseModel):
 
     name: str
     url: MongoDsn
-    redis_url: RedisDsn = "redis://localhost:6379/3"
+    redis_url: RedisDsn = "redis://tergite-redis:6379/0"
 
 
 class BccConfig(BaseModel):
