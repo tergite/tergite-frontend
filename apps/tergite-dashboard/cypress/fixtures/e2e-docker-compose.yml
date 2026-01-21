@@ -11,16 +11,6 @@ services:
         condition: service_healthy
     networks:
       - tergite-frontend-e2e
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'wget -qO- --server-response --tries=1 --quiet http://mss:8002/devices/ 2>&1 | grep -q "HTTP/1.1 200" || exit 1',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
 
   dashboard:
     depends_on:

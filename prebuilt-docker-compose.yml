@@ -15,6 +15,9 @@ services:
 
   mss:
     restart: "${SERVICE_RESTART:-no}"
+    depends_on:
+      tergite-redis:
+        condition: service_healthy
     image: "${REGISTRY:-tergite}/tergite-mss:${MSS_VERSION:-v2025.12.0}"
     logging:
       driver: ${LOGGING_DRIVER}
@@ -31,11 +34,22 @@ services:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'wget -qO- --server-response --tries=1 --quiet http://mss:${MSS_PORT:-80}/devices/ 2>&1 | grep -q "HTTP/1.1 200" || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   dashboard:
     restart: "${SERVICE_RESTART:-no}"
     depends_on:
-      - mss
+      mss:
+        condition: service_healthy
     image: "${REGISTRY:-tergite}/tergite-dashboard:${DASHBOARD_VERSION:-v2025.12.0}"
     environment:
       # pick COOKIE_DOMAIN, COOKIE_NAME from the environment file
