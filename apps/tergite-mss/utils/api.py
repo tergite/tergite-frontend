@@ -42,7 +42,7 @@ from redis import Redis
 import settings
 from utils.crypto import get_uuid4_str
 from utils.date_time import get_current_timestamp
-from utils.logging import access_logger
+from utils.logging import err_logger as access_logger
 from utils.redis_store import Collection, Schema
 
 ITEM = TypeVar("ITEM", bound=BaseModel)
@@ -272,7 +272,9 @@ class WebsocketConnectionManager:
     def disconnect(self, websocket: WebSocket):
         """Removes a given websocket connection"""
         self.active_connections.remove(websocket)
-        access_logger.info("Disconnected: %s at %s", websocket.url, str(websocket.url))
+        access_logger.info(
+            "Disconnected: %s at %s", websocket.client.host, str(websocket.url)
+        )
 
     async def reply(self, websocket: WebSocket, message: GeneralMessage):
         """Sends a message to the given websocket"""
