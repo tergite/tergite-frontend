@@ -223,7 +223,14 @@ puhuri_script=$!
 # rest-api
 extra_args=();
 if ! [ "$APP_SETTINGS" = "production" ]; then
-  extra_args=("--reload");
+  extra_args+=("--reload");
+fi
+
+# Allow forwarding of IPS only if done by the docker container
+# When running in docker, the /.dockerenv file is always available
+if [ -f /.dockerenv ]; then
+  docker_gateway_ip="$( ip route | grep default | awk '{print $3}')";
+  extra_args+=("--forwarded-allow-ips" "$docker_gateway_ip");
 fi
 
 MSS_CONFIG_JSON_STR="$__MSS_CONFIG_JSON__" python -m uvicorn --host 0.0.0.0 --port "$PORT_NUMBER" api.rest:app --proxy-headers "${extra_args[@]}" &
