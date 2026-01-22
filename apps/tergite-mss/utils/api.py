@@ -265,12 +265,14 @@ class WebsocketConnectionManager:
 
         await websocket.accept(headers=[(b"x-request-id", request_id.encode("utf8"))])
         self.active_connections.append(websocket)
-        access_logger.info("Connected: %s at %s", websocket.client.host, websocket.url)
+        access_logger.info(
+            "Connected: %s at %s", websocket.client.host, str(websocket.url)
+        )
 
     def disconnect(self, websocket: WebSocket):
         """Removes a given websocket connection"""
         self.active_connections.remove(websocket)
-        access_logger.info("Disconnected: %s at %s", websocket.url, {websocket.url})
+        access_logger.info("Disconnected: %s at %s", websocket.url, str(websocket.url))
 
     async def reply(self, websocket: WebSocket, message: GeneralMessage):
         """Sends a message to the given websocket"""
@@ -289,6 +291,6 @@ class WebsocketConnectionManager:
         """
         for connection in list(self.active_connections):
             access_logger.info(
-                f"Closing: %s at %s", connection.client.host, connection.url
+                f"Closing: %s at %s", connection.client.host, str(connection.url)
             )
             await connection.close(code=1001, reason=reason)
