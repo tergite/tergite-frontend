@@ -159,6 +159,7 @@ class DeviceEvent(BaseModel):
         DeviceEventName.JOB_UPDATED: JobUpdate,
     }
 
+    id: str
     name: DeviceEventName
     data: DeviceEventData
 

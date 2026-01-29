@@ -31,7 +31,7 @@ from services.devices.dtos import (
     DeviceEventName,
     DeviceQuery,
 )
-from utils.api import PaginatedListResponse, WebsocketConnectionManager
+from utils.api import EventResponse, PaginatedListResponse, WebsocketConnectionManager
 
 from .events import (
     on_device_initialized_event,
@@ -111,26 +111,36 @@ async def handle_device_events(
     await ws_manager.connect(websocket)
     try:
         while True:
+            event_response: EventResponse = {"id": "unknown", "status": "success"}
             data = await websocket.receive_json()
             try:
+                # This maybe a ping, how do I handle it
                 parsed_data = DeviceEvent.model_validate(data)
+                event_response.update(id=parsed_data.id)
                 handler = _EVENT_HANDLER_MAP[parsed_data.name]
-                response = await handler(
+                general_response = await handler(
                     device=verified_name,
                     data=parsed_data.data,
                     db=db,
                     project_db=project_db,
                 )
+                event_response.update(general_response)
 
             except ValidationError as exp:
-                response = {"status": "error", "detail": f"invalid data: {exp}"}
+                event_response.update(
+                    {"status": "error", "detail": f"invalid data: {exp}"}
+                )
             except PermissionError as exp:
-                response = {"status": "error", "detail": f"forbidden: {exp}"}
+                event_response.update(
+                    {"status": "error", "detail": f"forbidden: {exp}"}
+                )
             except Exception as exp:
                 logging.error(exp)
-                response = {"status": "error", "detail": f"unexpected server error"}
+                event_response.update(
+                    {"status": "error", "detail": f"unexpected server error"}
+                )
 
-            await ws_manager.reply(websocket, response)
+            await ws_manager.reply(websocket, event_response)
 
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)

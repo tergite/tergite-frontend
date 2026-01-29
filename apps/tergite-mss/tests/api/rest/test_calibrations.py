@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 """Tests for calibrations"""
 import copy
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -155,8 +156,10 @@ def test_create(db, client, payload, freezer):
     # using context manager to ensure on_startup runs
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "recalibrated",
                     "data": payload,
                 }
@@ -164,6 +167,7 @@ def test_create(db, client, payload, freezer):
             json_response = client.receive_json()
 
             assert json_response == {
+                "id": event_id,
                 "status": "success",
                 "data": {
                     **payload,
@@ -200,8 +204,10 @@ def test_upsert(db, client, raw_payload, freezer):
     # using context manager to ensure on_startup runs
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "recalibrated",
                     "data": payload,
                 }
@@ -210,6 +216,7 @@ def test_upsert(db, client, raw_payload, freezer):
             record_id = json_response["data"]["id"]
 
             assert json_response == {
+                "id": event_id,
                 "status": "success",
                 "data": {**payload, "updated_at": now, "id": record_id},
             }
@@ -246,8 +253,10 @@ def test_create_log(db, client, system_app_token_header, raw_payload, freezer):
     # using context manager to ensure on_startup runs
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "recalibrated",
                     "data": payload,
                 }
@@ -305,8 +314,10 @@ def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cook
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
             payload["name"] = f"{payload['name']}extra"
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "recalibrated",
                     "data": payload,
                 }
@@ -317,6 +328,7 @@ def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cook
             )
 
             assert response == {
+                "id": event_id,
                 "status": "error",
                 "detail": f"forbidden: editing '{payload['name']}' is not allowed",
             }

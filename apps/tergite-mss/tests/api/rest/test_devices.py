@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 """Integration tests for the devices router"""
 import copy
+import uuid
 from typing import Any, Dict, List, Optional
 
 import pytest
@@ -144,8 +145,10 @@ def test_create_device(db, client, payload: Dict[str, Any]):
     # using context manager to ensure on_startup runs
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "initialized",
                     "data": payload,
                 }
@@ -219,8 +222,10 @@ def test_create_device_wrong_payload(
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
             payload["name"] = f"{payload['name']}extra"
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "initialized",
                     "data": payload,
                 }
@@ -233,6 +238,7 @@ def test_create_device_wrong_payload(
             )
 
             assert response == {
+                "id": event_id,
                 "status": "error",
                 "detail": f"forbidden: editing '{payload['name']}' is not allowed",
             }
@@ -288,8 +294,10 @@ def test_update_pre_existing_device(
     # using context manager to ensure on_startup runs
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "initialized",
                     "data": payload,
                 }

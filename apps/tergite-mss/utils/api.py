@@ -139,6 +139,64 @@ class WebsocketRequestLog(Schema):
         )
 
 
+class EventResponse(GeneralMessage):
+    """Response to an event"""
+
+    id: str
+
+
+class WebsocketConnectionManager:
+    """Manages connections to a websockets endpoint"""
+
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        """Allows a connection to be established"""
+        request_id = websocket.headers.get("x-request-id")
+        if request_id is None:
+            request_id = get_uuid4_str()
+
+        websocket.state.request_id = request_id
+        requests_store = get_request_logs_store()
+        if not requests_store.exists(request_id):
+            requests_store.insert(WebsocketRequestLog.from_request(websocket))
+
+        await websocket.accept(headers=[(b"x-request-id", request_id.encode("utf8"))])
+        self.active_connections.append(websocket)
+        access_logger.info(
+            "Connected: %s at %s", websocket.client.host, str(websocket.url)
+        )
+
+    def disconnect(self, websocket: WebSocket):
+        """Removes a given websocket connection"""
+        self.active_connections.remove(websocket)
+        access_logger.info(
+            "Disconnected: %s at %s", websocket.client.host, str(websocket.url)
+        )
+
+    async def reply(self, websocket: WebSocket, message: EventResponse):
+        """Sends a message to the given websocket"""
+        await websocket.send_json(message)
+
+    async def broadcast(self, message: str):
+        """Broadcasts a message to all connections on a websocket endpoint"""
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+    async def close_all(self, reason: str = "Server closing connection"):
+        """Closes all active connections
+
+        Args:
+            reason: Reason for closing the connection
+        """
+        for connection in list(self.active_connections):
+            access_logger.info(
+                f"Closing: %s at %s", connection.client.host, str(connection.url)
+            )
+            await connection.close(code=1001, reason=reason)
+
+
 def get_bearer_token(request: Request, raise_if_error: bool = True) -> Optional[str]:
     """Extracts the bearer token from the request or throws a 401 exception if not exist and `raise_if_error` is True
 
@@ -244,55 +302,3 @@ def get_request_logs_store() -> Collection[WebsocketRequestLog]:
         )
 
     return _REQUEST_LOGS_STORE
-
-
-class WebsocketConnectionManager:
-    """Manages connections to a websockets endpoint"""
-
-    def __init__(self):
-        self.active_connections: list[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        """Allows a connection to be established"""
-        request_id = websocket.headers.get("x-request-id")
-        if request_id is None:
-            request_id = get_uuid4_str()
-
-        websocket.state.request_id = request_id
-        requests_store = get_request_logs_store()
-        if not requests_store.exists(request_id):
-            requests_store.insert(WebsocketRequestLog.from_request(websocket))
-
-        await websocket.accept(headers=[(b"x-request-id", request_id.encode("utf8"))])
-        self.active_connections.append(websocket)
-        access_logger.info(
-            "Connected: %s at %s", websocket.client.host, str(websocket.url)
-        )
-
-    def disconnect(self, websocket: WebSocket):
-        """Removes a given websocket connection"""
-        self.active_connections.remove(websocket)
-        access_logger.info(
-            "Disconnected: %s at %s", websocket.client.host, str(websocket.url)
-        )
-
-    async def reply(self, websocket: WebSocket, message: GeneralMessage):
-        """Sends a message to the given websocket"""
-        await websocket.send_json(message)
-
-    async def broadcast(self, message: str):
-        """Broadcasts a message to all connections on a websocket endpoint"""
-        for connection in self.active_connections:
-            await connection.send_text(message)
-
-    async def close_all(self, reason: str = "Server closing connection"):
-        """Closes all active connections
-
-        Args:
-            reason: Reason for closing the connection
-        """
-        for connection in list(self.active_connections):
-            access_logger.info(
-                f"Closing: %s at %s", connection.client.host, str(connection.url)
-            )
-            await connection.close(code=1001, reason=reason)
