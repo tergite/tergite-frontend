@@ -291,8 +291,10 @@ def test_update_job(db, client, device: str, raw_payload: dict, freezer):
     # using context manager to ensure on_startup runs
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "job_updated",
                     "data": raw_payload,
                 }
@@ -343,8 +345,10 @@ def test_update_job_resource_usage(
     # using context manager to ensure on_startup runs
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "job_updated",
                     "data": raw_payload,
                 }
@@ -385,8 +389,10 @@ def test_update_job_resource_usage_advanced(
     # using context manager to ensure on_startup runs
     with client as client:
         with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
             client.send_json(
                 {
+                    "id": event_id,
                     "name": "job_updated",
                     "data": payload,
                 }
