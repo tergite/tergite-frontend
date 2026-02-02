@@ -48,3 +48,7 @@ class NotFoundError(BaseMssException):
 
 class InvalidRequestIDError(BaseMssException):
     """Exception when the request id in the header is invalid"""
+
+
+class InvalidWebsocketDataTypeError(BaseMssException):
+    """Exception when the data type used by the websocket client is not permitted"""

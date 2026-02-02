@@ -31,7 +31,13 @@ from services.devices.dtos import (
     DeviceEventName,
     DeviceQuery,
 )
-from utils.api import EventResponse, PaginatedListResponse, WebsocketConnectionManager
+from utils.api import (
+    EventResponse,
+    PaginatedListResponse,
+    WebsocketConnectionManager,
+    get_websocket_json,
+)
+from utils.exc import InvalidWebsocketDataTypeError
 
 from .events import (
     on_device_initialized_event,
@@ -112,9 +118,9 @@ async def handle_device_events(
     try:
         while True:
             event_response: EventResponse = {"id": "unknown", "status": "success"}
-            data = await websocket.receive_json()
+            data = await get_websocket_json(websocket, data_type="text")
+
             try:
-                # This maybe a ping, how do I handle it
                 parsed_data = DeviceEvent.model_validate(data)
                 event_response.update(id=parsed_data.id)
                 handler = _EVENT_HANDLER_MAP[parsed_data.name]

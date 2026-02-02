@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the Puhuri background jobs"""
+import uuid
 from datetime import datetime
 from time import sleep
 from typing import List
@@ -71,8 +72,10 @@ def test_save_resource_usages(db, client, project_id, device):
             for payload in _JOB_TIMESTAMPED_UPDATES.copy():
                 current_qpu_seconds = project["qpu_seconds"]
                 job_id = payload["job_id"]
+                event_id = str(uuid.uuid4())
                 client.send_json(
                     {
+                        "id": event_id,
                         "name": "job_updated",
                         "data": payload,
                     }

@@ -31,7 +31,7 @@ from typing import (
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
-from fastapi import HTTPException, Response, status
+from fastapi import HTTPException, Response, WebSocketException, status
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.requests import Request
 from fastapi.websockets import WebSocket
@@ -42,6 +42,7 @@ from redis import Redis
 import settings
 from utils.crypto import get_uuid4_str
 from utils.date_time import get_current_timestamp
+from utils.exc import InvalidWebsocketDataTypeError
 from utils.logging import err_logger as access_logger
 from utils.redis_store import Collection, Schema
 
@@ -266,6 +267,27 @@ def verify_ws_signature(signature: str, message: str, key_path: Path) -> None:
         ),
         hashes.SHA256(),
     )
+
+
+async def get_websocket_json(
+    websocket: WebSocket, data_type: Literal["text", "binary"]
+) -> dict:
+    """Gets the JSON data in the given websocket
+
+    Args:
+        websocket: the websocket object
+        data_type: the type of the data to expect to come from the websocket
+
+    Raises:
+        fastapi.WebSocketException: invalid data type: websocket only supports {data_type} data
+    """
+    try:
+        return await websocket.receive_json(mode=data_type)
+    except KeyError:
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION,
+            reason=f"invalid data type: websocket only supports {data_type} data",
+        )
 
 
 def _get_bcc_public_key(key_path: Path):
