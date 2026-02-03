@@ -22,6 +22,12 @@ import {
   DurationLikeObject,
   DurationUnit,
 } from "luxon";
+import {
+  QueryClient,
+  QueryKey,
+  UndefinedInitialDataOptions,
+  DataTag,
+} from "@tanstack/react-query";
 
 const MAX_YEARS = 273_000;
 
@@ -365,4 +371,28 @@ export function toClientSideBooking(
   metadata: { backend: string; [k: string]: unknown }
 ): Booking {
   return { ...data, ...metadata };
+}
+
+/**
+ * Tries to fetch many items of the given query, ignoring any errors if options.throwOnError is false
+ *
+ * @param client - the QueryClient instance
+ * @param options - the query data options to pass to ensureQueryData
+ * @returns - the list of items got from the query
+ */
+export async function tryQueryFetchMany<T, K extends QueryKey = QueryKey>(
+  client: QueryClient,
+  options: UndefinedInitialDataOptions<T[], Error, T[], K> & {
+    queryKey: DataTag<K, T[]>;
+  },
+) {
+  try {
+    console.log({ options });
+    return await client.ensureQueryData(options);
+  } catch (error) {
+    if (options.throwOnError) {
+      throw error;
+    }
+    return [];
+  }
 }

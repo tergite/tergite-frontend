@@ -300,8 +300,27 @@ users.forEach((user) => {
       }
     });
 
-    it("renders the list of all upcoming bookings", () => {
+    it("renders the list of all upcoming bookings, ignoring any unavailable devices", () => {
       cy.viewport(1080, 750);
+
+      const offlineDevices = devices.filter((v, idx) => idx % 2 === 0);
+      const onlineDevices = devices.filter((v, idx) => idx % 2 === 1);
+      cy.wrap(offlineDevices).each((device: Device) => {
+        cy.intercept("GET", `${apiBaseUrl}/bookings/${device.name}*`, {
+          statusCode: 503,
+          body: { detail: "Device is offline" },
+        }).as(`booking-fail-${device.name}`);
+      });
+
+      cy.visit("/");
+      cy.wait("@my-project-list");
+      cy.wait("@devices-list");
+
+      // wait for bookings requests
+      cy.wrap(devices).each(() => {
+        cy.wait(`@my-bookings-list`);
+      });
+
       cy.contains(".bg-card", /my upcoming bookings/i).within(() => {
         cy.get("table").as("bookings-table");
 
@@ -313,10 +332,10 @@ users.forEach((user) => {
           });
 
         const expectedBookings: { [k: string]: Booking[] } = {};
-        cy.wrap(devices)
+        cy.wrap(onlineDevices)
           .each((device: Device) => {
             cy.request(
-              `${apiBaseUrl}/bookings/${device.name}?user_id=${user.id}&min_start_utc=${currentDateStr}&sort=start_utc`
+              `${apiBaseUrl}/bookings/${device.name}?user_id=${user.id}&min_start_utc=${currentDateStr}&sort=start_utc`,
             ).then((resp) => {
               expectedBookings[device.name] = resp.body.data;
             });
@@ -324,7 +343,7 @@ users.forEach((user) => {
           .then(() => {
             const bookings = sortBookings(expectedBookings).slice(
               0,
-              maxBookings
+              maxBookings,
             );
 
             // body
@@ -344,21 +363,21 @@ users.forEach((user) => {
                               if (prop === "start_utc") {
                                 expect(cell.td.text()).to.match(
                                   // '1 day' or '2 days 2 hours'
-                                  /(\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?),?)+/i
+                                  /(\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?),?)+/i,
                                 );
                               } else if (prop === "total_duration") {
                                 expect(cell.td.text()).to.match(
                                   cell.booking.total_duration
                                     ? // FIXME: Not the right regx for ~ '1 days, 2 minutes, 30 seconds' but might work
                                       /(\d+ (secs?)|(mins?)|(hrs?)|(days?)|(wks?)|(mths?)|(yrs?),?)+/i
-                                    : /N\/A/i
+                                    : /N\/A/i,
                                 );
                               } else {
                                 expect(cell.td.text()).to.eql(
-                                  `${cell.booking[prop]}`
+                                  `${cell.booking[prop]}`,
                                 );
                               }
-                            }
+                            },
                           );
                         });
                       });

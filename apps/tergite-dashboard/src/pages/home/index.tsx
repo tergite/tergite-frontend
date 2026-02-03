@@ -30,7 +30,7 @@ import {
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr, tryQueryFetchMany } from "@/lib/utils";
 import { DateTime } from "luxon";
 import { BookingsTable } from "./components/bookings-table";
 
@@ -167,10 +167,12 @@ export function loader(appState: AppState, queryClient: QueryClient) {
       upcomingBookingsQuery({
         backend,
         user_id: currentUser.id,
-      })
+        throwOnError: false,
+      }),
     );
+
     const bookingsPerBackend = await Promise.all(
-      bookingsQueries.map((v) => queryClient.ensureQueryData(v))
+      bookingsQueries.map((v) => tryQueryFetchMany(queryClient, v)),
     );
 
     const bookings = sortBookings(bookingsPerBackend);
