@@ -44,6 +44,7 @@ t2_decoherence      = 3.3e-5
 frequency           = 4511480043.556283
 pi_pulse_amplitude  = 0.17555712637424228
 pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_type          = "Gaussian"
 pulse_sigma         = 7e-9
 
@@ -54,6 +55,7 @@ t2_decoherence      = 3.3e-5
 frequency           = 4677112343.360253
 pi_pulse_amplitude  = 0.17535338530538067
 pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_type          = "Gaussian"
 pulse_sigma         = 7e-9
 
@@ -64,6 +66,7 @@ t2_decoherence      = 3.3e-5
 frequency           = 5770226599.80365
 pi_pulse_amplitude  = 0.17873594718151276
 pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_type          = "Gaussian"
 pulse_sigma         = 7e-9
 
@@ -73,6 +76,7 @@ t1_decoherence      = 3.4e-5
 t2_decoherence      = 3.3e-5
 frequency           = 5770226599.80365
 pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_motzoi     = 0.02
 pi_pulse_duration   = 5.6e-8
 pulse_type          = "Gaussian"
 pulse_sigma         = 7e-9
@@ -84,6 +88,7 @@ t2_decoherence      = 3.3e-5
 frequency           = 5770226599.80365
 pi_pulse_amplitude  = 0.17873594718151276
 pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_type          = "Gaussian"
 pulse_sigma         = 7e-9
 
@@ -94,6 +99,7 @@ t2_decoherence      = 3.3e-5
 frequency           = 5770226599.80365
 pi_pulse_amplitude  = 0.17873594718151276
 pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_type          = "Gaussian"
 pulse_sigma         = 7e-9
 
@@ -104,6 +110,7 @@ t2_decoherence      = 3.3e-5
 frequency           = 5770226599.80365
 pi_pulse_amplitude  = 0.17873594718151276
 pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_type          = "Gaussian"
 pulse_sigma         = 7e-9
 
@@ -114,6 +121,7 @@ t2_decoherence      = 3.3e-5
 frequency           = 5770226599.80365
 pi_pulse_amplitude  = 0.17873594718151276
 pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_type          = "Gaussian"
 pulse_sigma         = 7e-9
 

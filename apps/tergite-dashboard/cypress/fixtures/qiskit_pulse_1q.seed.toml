@@ -25,6 +25,7 @@ intercept = ""
 frequency = 4_700_000_000
 pi_pulse_amplitude = 0.0284977
 pi_pulse_duration = 56e-9
+pi_pulse_motzoi     = 0.02
 pulse_sigma = 7e-9
 pulse_type = "Gaussian"
 t1_decoherence = 0.000071

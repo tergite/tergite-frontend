@@ -87,6 +87,7 @@ qubit_parameters = [
   "frequency",
   "pi_pulse_amplitude",
   "pi_pulse_duration",
+  "pi_pulse_motzoi",
   "pulse_type",
   "pulse_sigma",
   "t1_decoherence",

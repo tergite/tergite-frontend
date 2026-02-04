@@ -43,6 +43,7 @@ export interface Qubit {
   readout_assignment_error?: CalibrationValue;
   pi_pulse_amplitude?: CalibrationValue;
   pi_pulse_duration?: CalibrationValue;
+  pi_pulse_motzoi?: CalibrationValue;
   pulse_type?: CalibrationValue;
   pulse_sigma?: CalibrationValue;
   index?: CalibrationValue;

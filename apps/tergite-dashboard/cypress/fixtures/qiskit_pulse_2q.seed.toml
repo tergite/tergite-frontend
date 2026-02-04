@@ -40,6 +40,7 @@ t1_decoherence = 3.4e-5
 t2_decoherence = 3.3e-5
 pi_pulse_amplitude = 0.029
 pi_pulse_duration = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_sigma = 7e-9
 pulse_type = "Gaussian"
 
@@ -51,6 +52,7 @@ t1_decoherence = 3.4e-5
 t2_decoherence = 3.3e-5
 pi_pulse_amplitude = 0.029
 pi_pulse_duration = 5.6e-8
+pi_pulse_motzoi     = 0.02
 pulse_sigma = 7e-9
 pulse_type = "Gaussian"
 
