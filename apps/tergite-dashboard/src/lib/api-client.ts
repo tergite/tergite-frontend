@@ -285,6 +285,7 @@ export function myProjectsQpuTimeRequestsQuery(options: {
  *            - max_start_utc - the maximum start UTC datetime for getting a range of bookings
  *            - skip - the number of records to skip; default = 0
  *            - limit - the maximum number of records to return; default = '5'
+ *           - throwOnError - whether to throw on error or not; default = true
  */
 export function upcomingBookingsQuery(options: {
   backend: string;
@@ -293,6 +294,7 @@ export function upcomingBookingsQuery(options: {
   max_start_utc?: string;
   skip?: string;
   limit?: string;
+  throwOnError?: boolean;
 }) {
   // by default, we get the upcoming 5 events tops per backend (i.e. limit = '5')
   const {
@@ -300,6 +302,7 @@ export function upcomingBookingsQuery(options: {
     skip = "0",
     backend,
     limit = "5",
+    throwOnError = true,
     user_id,
     max_start_utc,
   } = options;
@@ -326,7 +329,7 @@ export function upcomingBookingsQuery(options: {
         skip,
       }),
     refetchInterval,
-    throwOnError: true,
+    throwOnError,
   });
 }
 
