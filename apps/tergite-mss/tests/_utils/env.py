@@ -14,7 +14,7 @@
 import json
 from os import environ
 from pathlib import Path
-from typing import Dict, List, TypedDict
+from typing import Dict, List, NotRequired, TypedDict
 
 import tomli
 
@@ -61,3 +61,4 @@ def setup_test_env():
 class BackendConfDict(TypedDict):
     name: str
     url: str
+    public_url: NotRequired[str]

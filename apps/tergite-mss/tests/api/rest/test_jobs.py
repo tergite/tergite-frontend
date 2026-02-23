@@ -140,7 +140,8 @@ def test_create_job(
     base64_b64encode_spy = mocker.spy(base64, "b64encode")
 
     device = payload["device"]
-    expected_bcc_base_url = TEST_BACKENDS_MAP[device]["url"]
+    device_url = TEST_BACKENDS_MAP[device]["url"]
+    expected_bcc_base_url = TEST_BACKENDS_MAP[device].get("public_url", device_url)
     jobs_before_creation = find_in_collection(
         db,
         collection_name=_COLLECTION,

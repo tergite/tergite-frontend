@@ -75,7 +75,10 @@ async def create_clients(configs: List[BccConfig]):
     global _BCC_CLIENTS
     await close_clients()
     _BCC_CLIENTS = {
-        item.name: BccClient(base_url=f"{item.url}", name=item.name) for item in configs
+        item.name: BccClient(
+            f"{item.url}", name=item.name, public_base_url=f"{item.public_url}"
+        )
+        for item in configs
     }
 
 
@@ -102,12 +105,14 @@ class BccClient:
     Attributes:
         base_url: the base URL for the given BCC instance
         name: name of the backend
+        public_base_url: the base URL that can be accessed publicly
     """
 
-    def __init__(self, base_url: str, name: str):
+    def __init__(self, base_url: str, name: str, public_base_url: str):
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
         self.name = name
+        self.public_base_url = public_base_url.rstrip("/")
 
     async def get_token(
         self,

@@ -13,6 +13,7 @@ redis_url = "redis://localhost:6379/3"
 name = "Loke"
 url = "http://testclient"
 public_key_path = "tests/fixtures/public-loke-key.pem"
+public_url = "http://proxy-bcc.com/loke"
 
 [[backends]]
 name = "Loki"
@@ -23,6 +24,7 @@ public_key_path = "tests/fixtures/public-loki-key.pem"
 name = "Pingu"
 url = "http://testclient"
 public_key_path = "tests/fixtures/public-pingu-key.pem"
+public_url = "http://proxy-bcc.com/pingu"
 
 [[backends]]
 name = "Pegu"
@@ -38,6 +40,7 @@ public_key_path = "tests/fixtures/public-thor-key.pem"
 name = "Likee"
 url = "http://testclient"
 public_key_path = "tests/fixtures/public-likee-key.pem"
+public_url = "http://proxy-bcc.com/likee"
 
 [[backends]]
 name = "Thea"

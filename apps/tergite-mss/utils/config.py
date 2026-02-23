@@ -24,6 +24,7 @@ from pydantic import (
     RedisDsn,
     computed_field,
     field_validator,
+    model_validator,
 )
 
 _PROJECT_FOLDER = Path(__file__).parent.parent
@@ -62,6 +63,8 @@ class BccConfig(BaseModel):
     timeout: int = 10
     # path to the public key of this backend
     public_key_path: Path
+    # the URL to access this BCC publicly
+    public_url: AnyHttpUrl = None
 
     @field_validator("public_key_path", mode="before")
     @classmethod
@@ -74,6 +77,15 @@ class BccConfig(BaseModel):
             return value_path
         except TypeError:
             raise ValueError("public_key_path must be a Path or str")
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_public_url_if_none(cls, data: Any) -> Any:
+        """Sets the public URL to the value of URL if public URL is none"""
+        if isinstance(data, dict):
+            if "public_url" not in data:
+                data["public_url"] = data["url"]
+        return data
 
     @computed_field
     @property
