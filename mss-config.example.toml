@@ -39,6 +39,8 @@ url = "http://127.0.0.1:8002"
 # request timeout in seconds beyond which a timeout error is raised; default = 10
 timeout = 10
 public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
+# the public url for the backend; defaults to the 'url' if not set but can be set to say a reverse proxy
+public_url = "http://proxy.example.com/simulator-arusha"
 
 # Add as many backends as you wish to have
 [[backends]]
@@ -51,6 +53,8 @@ name = "simulator-stockholm"
 url = "http://127.0.0.1:8004"
 timeout = 2
 public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
+# the public url for the backend; defaults to the 'url' if not set but can be set to say a reverse proxy
+public_url = "http://proxy.example.com/simulator-stockholm"
 
 [auth]
 # Secret for signing JWT tokens. https://jwt.io/introduction

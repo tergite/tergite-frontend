@@ -25,6 +25,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - [BREAKING]: Added the `redis_url` property under the database configuration
 - [BREAKING]: Added the `public_key_path` property under the backend configuration
 - [BREAKING]: Added the `/devices/ws/{name}` endpoint for handling device events e.g. 'initialized', 'recalibrated', 'job_updated'
+- Added `public_url` property on BCC config, just in case the public URL for a backend is different from the private one
 
 ### Changed
 
