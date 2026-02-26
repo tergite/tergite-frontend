@@ -232,6 +232,14 @@ class AppConfig(BaseModel, extra="allow"):
     # time-to-live for the nonce; defaults to 5 minutes
     bcc_nonce_ttl: float = 300
 
+    # The time to live in seconds for the request logs in the store.
+    # default: 1209600 (two weeks)
+    request_log_ttl: float = 1209600
+
+    # Interval in seconds between expired index cleanups for the request log store.
+    # default: 18000 (5 hours)
+    request_log_clean_interval: float = 18000
+
     # configuration for one database; it might become possible to add multiple databases
     database: DatabaseConfig
 

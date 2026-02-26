@@ -21,6 +21,14 @@ private_key_password="some-secret-password"
 # time-to-live for the nonce; defaults to 5 minutes
 bcc_nonce_ttl = 300
 
+# The time to live in seconds for the request logs in the store.
+# default: 1209600 (two weeks)
+request_log_ttl = 1209600
+
+# Interval in seconds between expired index cleanups for the request log store.
+# default: 18000 (5 hours)
+request_log_clean_interval = 18000
+
 [database]
 # configurations for the database
 name = "sample-database"

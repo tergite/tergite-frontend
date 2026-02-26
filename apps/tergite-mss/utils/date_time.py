@@ -2,6 +2,7 @@
 #
 # (C) Copyright Simon Genne, Arvid Holmqvist, Bashar Oumari, Jakob Ristner,
 #               Björn Rosengren, and Jakob Wik 2022 (BSc project)
+# (C) Copyright Chalmers Next Labs 2025, 2026
 #
 # This code is licensed under the Apache License, Version 2.0. You may
 # obtain a copy of this license in the LICENSE.txt file in the root directory
@@ -12,8 +13,8 @@
 # that they have been altered from the originals.
 
 
-from datetime import datetime, timezone
-from typing import Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Tuple
 
 from fastapi import HTTPException
 
@@ -88,6 +89,54 @@ def datetime_to_zulu(d: datetime, precision=settings.CONFIG.datetime_precision) 
 def get_current_timestamp(precision=settings.CONFIG.datetime_precision):
     """Returns current time in UTC string but with hours replaced with a Z"""
     return datetime_to_zulu(datetime.now(timezone.utc), precision=precision)
+
+
+def get_utc_now() -> datetime:
+    """Gets the current timestamp in UTC
+
+    Returns:
+        datetime of now with UTC timezone
+    """
+    return datetime.now(timezone.utc)
+
+
+def get_relative_time(
+    days: float = 0,
+    seconds: float = 0,
+    microseconds: float = 0,
+    milliseconds: float = 0,
+    minutes: float = 0,
+    hours: float = 0,
+    weeks: float = 0,
+    baseline: Optional[datetime] = None,
+) -> datetime:
+    """Gets the datetime given number of seconds, microseconds etc. from the baseline in UTC
+
+    Args:
+        days: the number of days
+        seconds: the number of seconds
+        microseconds: the number of microseconds
+        milliseconds: the number of milliseconds
+        minutes: the number of minutes
+        hours: the number of hours
+        weeks: the number of weeks
+        baseline: the starting point. It defaults to now in UTC
+
+    Returns:
+        datetime a given number of seconds, microseconds etc. from the baseline
+    """
+    if baseline is None:
+        baseline = get_utc_now()
+
+    return baseline + timedelta(
+        days=days,
+        seconds=seconds,
+        microseconds=microseconds,
+        milliseconds=milliseconds,
+        minutes=minutes,
+        hours=hours,
+        weeks=weeks,
+    )
 
 
 DEFAULT_FROM_DATETIME_STR = datetime(2000, 1, 1, 0, 0, tzinfo=timezone.utc).isoformat()
