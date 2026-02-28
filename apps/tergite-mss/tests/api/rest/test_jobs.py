@@ -22,6 +22,7 @@ from pytest_mock import MockerFixture
 
 from services.auth import Project
 from tests._utils.auth import TEST_PROJECT_EXT_ID, TEST_USER_ID, get_db_record
+from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import (
     get_current_timestamp_str,
 )
@@ -41,7 +42,7 @@ _JOB_BCC_TOKEN_MAP: Dict[str, dict] = load_json_fixture("bcc_jwt_tokens.json")
 _JOB_TIMESTAMPED_UPDATES = load_json_fixture("job_timestamped_updates.json")
 _JOB_UPDATES = load_json_fixture("job_updates.json")
 _JOB_IDS = [item["job_id"] for item in _JOBS_LIST]
-_DEVICES = ["loke", "loki", "pingu"]
+_DEVICES = ["Loke", "Loki", "Pingu"]
 _CREATE_JOB_PAYLOADS = [
     (
         {
@@ -73,10 +74,10 @@ _SKIP_LIMIT_SORT_PARAMS = [
     (3, None, ["created_at"]),
 ]
 _SEARCH_PARAMS = [
-    {"device": "loke"},
-    {"device": "pingu"},
-    {"device": "pingu", "status": "successful"},
-    {"device": "pingu", "status": "pending"},
+    {"device": "Loke"},
+    {"device": "Pingu"},
+    {"device": "Pingu", "status": "successful"},
+    {"device": "Pingu", "status": "pending"},
     {"status": "successful"},
     {"status": "pending"},
     {},
@@ -85,6 +86,14 @@ _PAGINATE_AND_SEARCH_PARAMS = [
     (skip, limit, sort, search)
     for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS
     for search in _SEARCH_PARAMS
+]
+_DEVICES_AND_JOB_UPDATES = [
+    (device, job_update) for device in _DEVICES[:2] for job_update in _JOB_UPDATES
+]
+_DEVICES_AND_JOB_TIMESTAMPED_UPDATES = [
+    (device, job_update)
+    for device in _DEVICES[:2]
+    for job_update in _JOB_TIMESTAMPED_UPDATES
 ]
 
 
@@ -257,9 +266,9 @@ def test_find_jobs(
         assert got == expected
 
 
-@pytest.mark.parametrize("raw_payload", _JOB_UPDATES)
-def test_update_job(db, client, raw_payload: dict, app_token_header, freezer):
-    """PUT to /jobs/{job_id} updates the job with the given object, it ignores job_id"""
+@pytest.mark.parametrize("device, raw_payload", _DEVICES_AND_JOB_UPDATES)
+def test_update_job(db, client, device: str, raw_payload: dict, freezer):
+    """Pushing 'job_updated'-DeviceEvent to /devices/ws/{name} updates the job with the given object"""
     job_id = raw_payload["job_id"]
     raw_jobs = with_incremental_timestamps(
         _JOBS_LIST, fields=["created_at", "calibration_date"]
@@ -274,48 +283,55 @@ def test_update_job(db, client, raw_payload: dict, app_token_header, freezer):
 
     insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
 
-    ignored_fields = ["unexpected_field", "random_field", "job_id"]
-    payload = {**raw_payload, "job_id": f"{uuid.uuid4()}"}
+    ignored_fields = ["unexpected_field", "random_field"]
+
+    url = f"/devices/ws/{device}"
+    headers = create_bcc_headers(device)
 
     # using context manager to ensure on_startup runs
     with client as client:
-        response = client.put(
-            f"/jobs/{job_id}",
-            json={**payload},
-            headers=app_token_header,
-        )
-        got = response.json()
-        actual_update, _ = prune(raw_payload, ignored_fields)
-        expected_job.update(
-            actual_update,
-        )
-        expected_response.update(
-            actual_update,
-        )
+        with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
+            client.send_json(
+                {
+                    "id": event_id,
+                    "name": "job_updated",
+                    "data": raw_payload,
+                }
+            )
+            response = client.receive_json()
+            got = response["data"]
 
-        job_after_update = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-            _filter={"job_id": job_id},
-        )[0]
+            actual_update, _ = prune(raw_payload, ignored_fields)
+            expected_job.update(
+                actual_update,
+            )
+            expected_response.update(
+                actual_update,
+            )
 
-        assert response.status_code == 200
-        assert got == expected_response
-        assert job_after_update == expected_job
+            job_after_update = find_in_collection(
+                db,
+                collection_name=_COLLECTION,
+                fields_to_exclude=_EXCLUDED_FIELDS,
+                _filter={"job_id": job_id},
+            )[0]
+
+            assert response["status"] == "success"
+            assert got == expected_response
+            assert job_after_update == expected_job
 
 
-@pytest.mark.parametrize("raw_payload", _JOB_TIMESTAMPED_UPDATES)
+@pytest.mark.parametrize("device, raw_payload", _DEVICES_AND_JOB_TIMESTAMPED_UPDATES)
 def test_update_job_resource_usage(
-    db, client, project_id, raw_payload: dict, app_token_header, freezer
+    db, client, project_id, device: str, raw_payload: dict, freezer
 ):
-    """PUT to /jobs/{job_id} updates the job's resource usage if passed a payload with "timestamps" property"""
+    """Pushing 'job_updated' event to /devices/ws/{name} updates the job's resource usage if passed with 'timestamps' field"""
     raw_jobs = with_incremental_timestamps(
         _JOBS_LIST, fields=["created_at", "calibration_date"]
     )
     raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
     job_list = [{**item, "project_id": str(project_id)} for item in raw_jobs]
-    job_id = raw_payload["job_id"]
 
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
 
@@ -323,16 +339,22 @@ def test_update_job_resource_usage(
         db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
     )
 
+    url = f"/devices/ws/{device}"
+    headers = create_bcc_headers(device)
+
     # using context manager to ensure on_startup runs
     with client as client:
-        # check for idempotence
-        for _ in range(3):
-            response = client.put(
-                f"/jobs/{job_id}",
-                json=raw_payload,
-                headers=app_token_header,
+        with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
+            client.send_json(
+                {
+                    "id": event_id,
+                    "name": "job_updated",
+                    "data": raw_payload,
+                }
             )
-            assert response.status_code == 200
+            response = client.receive_json()
+            assert response["status"] == "success"
 
     project_after_update = get_db_record(
         db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
@@ -345,33 +367,38 @@ def test_update_job_resource_usage(
     assert actual_resource_usage == expected_resource_usage
 
 
-@pytest.mark.parametrize("payload", _JOB_TIMESTAMPED_UPDATES)
+@pytest.mark.parametrize("device, payload", _DEVICES_AND_JOB_TIMESTAMPED_UPDATES)
 def test_update_job_resource_usage_advanced(
-    db, client, project_id, payload: dict, app_token_header, freezer
+    db, client, project_id, device: str, payload: dict, freezer
 ):
-    """PUT to /jobs/{job_id} updates the job's resource usage if passed a payload with "timestamps.execution" field"""
+    """Pushing 'job_updated' event to /devices/ws/{name} updates the job's resource usage if passed with "timestamps.execution" field"""
     raw_jobs = with_incremental_timestamps(
         _JOBS_LIST, fields=["created_at", "calibration_date"]
     )
     raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
     job_list = [{**item, "project_id": str(project_id)} for item in raw_jobs]
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
-    job_id = payload["job_id"]
 
     project_before_update = get_db_record(
         db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
     )
 
+    url = f"/devices/ws/{device}"
+    headers = create_bcc_headers(device)
+
     # using context manager to ensure on_startup runs
     with client as client:
-        # check for idempotence
-        for _ in range(3):
-            response = client.put(
-                f"/jobs/{job_id}",
-                json=payload,
-                headers=app_token_header,
+        with client.websocket_connect(url, headers=headers) as client:
+            event_id = str(uuid.uuid4())
+            client.send_json(
+                {
+                    "id": event_id,
+                    "name": "job_updated",
+                    "data": payload,
+                }
             )
-            assert response.status_code == 200
+            response = client.receive_json()
+            assert response["status"] == "success"
 
     project_after_update = get_db_record(
         db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}

@@ -1,7 +1,23 @@
 ---
 services:
+  tergite-redis:
+    restart: unless-stopped
+    image: redis:${REDIS_VERSION:-8.4.0}
+    logging:
+      driver: ${LOGGING_DRIVER}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   mss:
-    restart: always
+    restart: unless-stopped
+    depends_on:
+      tergite-redis:
+        condition: service_healthy
     image: "tergite/tergite-mss:${MSS_VERSION:-v0.4.0}"
     build:
       context: apps/tergite-mss
@@ -16,15 +32,27 @@ services:
     volumes:
       - ./mss-config.toml:/code/mss-config.toml:ro
       - ./private-mss-key.pem:/code/private-mss-key.pem:ro
+      - ./bcc_certs:/code/bcc_certs:ro
     env_file:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'wget -qO- --server-response --tries=1 --quiet http://mss:${MSS_PORT:-80}/devices/ 2>&1 | grep -q "HTTP/1.1 200" || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   dashboard:
-    restart: always
+    restart: unless-stopped
     depends_on:
-      - mss
+      mss:
+        condition: service_healthy
     image: "tergite/tergite-dashboard:${DASHBOARD_VERSION:-v0.5.0}"
     build:
       context: apps/tergite-dashboard
@@ -42,7 +70,7 @@ services:
       - .env
 
   loki-promtail:
-    restart: always
+    restart: unless-stopped
     image: grafana/promtail:${PROMTAIL_VERSION:-2.8.3}
     logging:
       driver: ${LOGGING_DRIVER}

@@ -1,22 +1,17 @@
 ---
 services:
+  tergite-redis:
+    networks:
+      - tergite-frontend-e2e
   mss:
     image: "tergite/tergite-mss:frontend-e2e"
     depends_on:
       tergite-mongo:
         condition: service_healthy
+      tergite-redis:
+        condition: service_healthy
     networks:
       - tergite-frontend-e2e
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'wget --header="Authorization: Bearer $MSS_APP_TOKEN" --quiet --tries=1 --spider http://mss:8002/jobs || exit 1',
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
 
   dashboard:
     image: "tergite/tergite-dashboard:frontend-e2e"
@@ -32,8 +27,6 @@ services:
       retries: 10
       start_period: 10s
 
-  # FIXME: the init script for mongo fails when condition: service_healthy is ised
-  #  for dependencies of mongodb or mss
   tergite-mongo:
     restart: always
     image: "tergite/tergite-mongo-e2e:frontend-e2e"
@@ -72,23 +65,6 @@ services:
     networks:
       - tergite-frontend-e2e
 
-  tergite-redis:
-    restart: always
-    image: redis
-    logging:
-      driver: ${LOGGING_DRIVER}
-    ports:
-      - "6378:6379"
-    networks:
-      - tergite-frontend-e2e
-    env_file:
-      - .env
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 1s
-      timeout: 3s
-      retries: 30
-
   qiskit_pulse_1q:
     restart: always
     depends_on:
@@ -111,7 +87,6 @@ services:
       BCC_PORT: 8000
       EXECUTOR_TYPE: "qiskit_pulse_1q"
       DEFAULT_PREFIX: "qiskit_pulse_1q"
-      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
       APP_SETTINGS: "production"
       IS_AUTH_ENABLED: "True"
       REDIS_PORT: 6379
@@ -122,6 +97,7 @@ services:
       - ./.env:/code/.env:ro
       - ./qiskit_pulse_1q.toml:/code/backend_config.toml:ro
       - ./qiskit_pulse_1q.seed.toml:/code/calibration.seed.toml:ro
+      - ./private-qiskit-pulse-1q-key.pem:/code/private-bcc-key.pem:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
       - ./qiskit_pulse_1q_booking_db.db:/code/booking_db.db:ro
     networks:
@@ -156,7 +132,6 @@ services:
       BCC_PORT: 8000
       EXECUTOR_TYPE: "qiskit_pulse_2q"
       DEFAULT_PREFIX: "qiskit_pulse_2q"
-      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
       APP_SETTINGS: "production"
       IS_AUTH_ENABLED: "True"
       REDIS_PORT: 6379
@@ -167,6 +142,7 @@ services:
       - ./.env:/code/.env:ro
       - ./qiskit_pulse_2q.toml:/code/backend_config.toml:ro
       - ./qiskit_pulse_2q.seed.toml:/code/calibration.seed.toml:ro
+      - ./private-qiskit-pulse-2q-key.pem:/code/private-bcc-key.pem:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
       - ./qiskit_pulse_2q_booking_db.db:/code/booking_db.db:ro
     networks:
@@ -204,8 +180,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "loke"
-      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      DEFAULT_PREFIX: "Loke"
       MAX_TIME_SLOT_LENGTH: 7200
       MIN_TIME_SLOT_LENGTH: 1200
       MAX_SLOTS_PER_DAY: 20
@@ -222,6 +197,7 @@ services:
       - ./loke.toml:/code/backend_config.toml:ro
       - ./loke.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-loke-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -257,8 +233,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "thor"
-      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      DEFAULT_PREFIX: "Thor"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -275,6 +250,7 @@ services:
       - ./thor.toml:/code/backend_config.toml:ro
       - ./thor.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-thor-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -310,8 +286,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "pingu"
-      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      DEFAULT_PREFIX: "Pingu"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -328,6 +303,7 @@ services:
       - ./pingu.toml:/code/backend_config.toml:ro
       - ./pingu.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-pingu-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -363,8 +339,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "pegu"
-      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      DEFAULT_PREFIX: "Pegu"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -381,6 +356,7 @@ services:
       - ./pegu.toml:/code/backend_config.toml:ro
       - ./generic.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-pegu-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -416,8 +392,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "likee"
-      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      DEFAULT_PREFIX: "Likee"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -434,6 +409,7 @@ services:
       - ./likee.toml:/code/backend_config.toml:ro
       - ./likee.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-likee-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
@@ -469,8 +445,7 @@ services:
       BCC_MACHINE_ROOT_URL: "http://localhost:8000"
       BCC_PORT: 8000
       EXECUTOR_TYPE: "quantify"
-      DEFAULT_PREFIX: "thea"
-      MSS_APP_TOKEN: ${MSS_APP_TOKEN}
+      DEFAULT_PREFIX: "Thea"
       APP_SETTINGS: "staging"
       CURRENT_DATE: "2025-10-01T00:00:00.000Z"
       IS_AUTH_ENABLED: "True"
@@ -487,6 +462,7 @@ services:
       - ./thea.toml:/code/backend_config.toml:ro
       - ./thea.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
+      - ./private-thea-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro

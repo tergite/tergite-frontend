@@ -146,7 +146,7 @@ async def get_latest_many(
     )
 
 
-async def update_job(db: AsyncIOMotorDatabase, job_id: UUID, payload: JobUpdate) -> Job:
+async def update_job(db: AsyncIOMotorDatabase, job_id: str, payload: JobUpdate) -> Job:
     """Updates the job of the given job_id
 
     Args:
@@ -162,7 +162,7 @@ async def update_job(db: AsyncIOMotorDatabase, job_id: UUID, payload: JobUpdate)
     """
     document = await mongodb_utils.update_one(
         db.jobs,
-        _filter={"job_id": str(job_id)},
+        _filter={"job_id": job_id},
         payload=payload.model_dump(),
         return_document=ReturnDocument.BEFORE,
     )

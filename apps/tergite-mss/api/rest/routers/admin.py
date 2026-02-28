@@ -23,8 +23,8 @@ from services.auth import (
     User,
     user_requests,
 )
-from services.external.bcc.dtos import BCCUserProfile, GeneralMessage, NewBCCUserInfo
-from utils.api import PaginatedListResponse
+from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo
+from utils.api import GeneralMessage, PaginatedListResponse
 from utils.exc import UnknownBccError
 
 from ..dependencies import (

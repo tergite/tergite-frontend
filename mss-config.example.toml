@@ -14,14 +14,21 @@ environment = "production"
 # See https://docs.python.org/3/library/datetime.html#datetime.datetime.isoformat
 # <any of 'milliseconds', 'auto', 'microseconds', 'seconds', 'minutes', 'hours'>; default = auto
 datetime_precision = "auto"
+# the password used to encrypt the private key file;
 # defaults to None.
-# private_key_password
+private_key_password="some-secret-password"
+
+# time-to-live for the nonce; defaults to 5 minutes
+bcc_nonce_ttl = 300
 
 [database]
 # configurations for the database
 name = "sample-database"
 # database URI
 url = "mongodb://user:pass@host:port"
+# redis URI; default=redis://tergite-redis:6379/0
+redis_url = "redis://tergite-redis:6379/0"
+
 
 # Add backends in the form: Note: [[...]] creates an array of tables
 [[backends]]
@@ -31,23 +38,21 @@ name = "simulator-arusha"
 url = "http://127.0.0.1:8002"
 # request timeout in seconds beyond which a timeout error is raised; default = 10
 timeout = 10
+public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
 
 # Add as many backends as you wish to have
 [[backends]]
 name = "simulator-kampala"
-# host.docker.internal resolves to the host's 127.0.0.1
-# see https://stackoverflow.com/questions/31324981/how-to-access-host-port-from-docker-container#answer-43541732
-url = "http://host.docker.internal:8003"
+url = "http://127.0.0.1:8003"
+public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
 
 [[backends]]
 name = "simulator-stockholm"
-# see https://stackoverflow.com/questions/31324981/how-to-access-host-port-from-docker-container#answer-43541732
-url = "http://host.docker.internal:8004"
+url = "http://127.0.0.1:8004"
 timeout = 2
+public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
 
 [auth]
-# turn auth OFF or ON, default=true
-is_enabled = true
 # Secret for signing JWT tokens. https://jwt.io/introduction
 jwt_secret = "some hidden secret"
 # Time-to-live for the JWT tokens created by this app, default=3600
@@ -84,6 +89,8 @@ client_type = "okta"
 # to allow only john.doe@example.com, jane@example.com and aggrey@example.com to login via this method
 # default = ".*"
 email_regex = ".*"
+# the domain of the emails of the users that should be directed to this auth client
+email_domain = "example.com"
 # The set of roles every user who logs in via this method should get.
 # Possible roles include: "admin", "user", "researcher", "partner". Default is 'user'
 roles = ["user"]
@@ -91,6 +98,8 @@ roles = ["user"]
 # other client-type specific key-word arguments e.g. OpenID requires a openid_configuration_endpoint
 # openid_configuration_endpoint = "https://example.com/.well-known/openid-configuration"
 # You might need to check their initialization arguments in the `httpx_oauth.clients` module.
+# e.g. Github may have scopes
+# scopes = ["user:email"]
 
 # Add as many clients as you wish to have
 [[auth.clients]]
@@ -100,6 +109,7 @@ client_secret = "some-github-obtained-client-secret"
 redirect_url = "http://127.0.0.1:8002/auth/github/callback"
 client_type = "github"
 email_regex = "^(john\\.doe|jane|aggrey)@example\\.com$"
+email_domain = "example.com"
 roles = ["admin", "user"]
 
 [[auth.clients]]
@@ -109,6 +119,7 @@ client_secret = "some-puhuri-obtained-client-secret"
 redirect_url = "http://127.0.0.1:8002/auth/puhuri/callback"
 client_type = "openid"
 email_regex = "^(john\\.doe|jane)@example\\.com$"
+email_domain = "example.com"
 roles = ["user"]
 openid_configuration_endpoint = "https://proxy.acc.puhuri.eduteams.org/.well-known/openid-configuration"
 

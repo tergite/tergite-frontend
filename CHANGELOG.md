@@ -35,6 +35,7 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 - Fixed e2e error '(0 , crypto**WEBPACK_IMPORTED_MODULE_11**.randomUUID) is not a function'
 - Fixed connection error in production compose settings when connecting to mongodb
 - Fixed 'mongo service already exists' by moving mongo service to the test_mss job and adding the `FF_NETWORK_PER_BUILD: 1` for proper isolation between jobs
+- Fixed 'failed to connect to the docker API at tcp://docker:2375/' in full e2e tests
 
 ## [2025.09.0] - 2025-10-02
 

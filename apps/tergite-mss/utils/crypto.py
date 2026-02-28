@@ -13,6 +13,7 @@
 import base64
 from pathlib import Path
 from typing import Dict, Optional
+from uuid import uuid4
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -80,7 +81,7 @@ def _get_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey
 
     Args:
         key_file: the path to the private key file
-        password: the password that the private key was ecrypted with
+        password: the password that the private key was encrypted with
 
     Returns:
         the private key of the MSS
@@ -97,3 +98,8 @@ def _get_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey
                 file.read(), password=password
             )
         return key
+
+
+def get_uuid4_str():
+    """Gets a UUID4 string"""
+    return str(uuid4())

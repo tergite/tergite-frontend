@@ -35,7 +35,6 @@ OPENID_CONFIG_URL="${OPENID_CONFIG_URL:-https://samples.auth0.com/.well-known/op
 OPENID_CLIENT_ID="${OPENID_CLIENT_ID:-kbyuFDidLLm280LIwVFiazOqjO3ty8KH}"
 OPENID_CLIENT_SECRET="${OPENID_CLIENT_SECRET:-60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa}"
 OPENID_AUTH_URL="${OPENID_AUTH_URL:-https://samples.auth0.com/authorize}"
-APP_TOKEN="W0imS_n_J5ZwP8wFYvbBCiDkJVhQcEROEfyTPvFko1E"
 ROOT_PATH="$(pwd)"
 TEMP_DIR_PATH="$ROOT_PATH/$TEMP_DIR"
 FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/cypress/fixtures"
@@ -116,26 +115,43 @@ cd ..
 # Adding configuration files to tergite-frontend folder
 echo "Adding configuration files to tergite-frontend"
 cd tergite-frontend
+mkdir bcc_certs
 cp "$FIXTURES_PATH/mongo-init.js" .
 cp "$FIXTURES_PATH/mongo-router.sh" .
 cp "$FIXTURES_PATH/mongo.Dockerfile" .
 cp "$FIXTURES_PATH/e2e-docker-compose.yml" .
 cp "$FIXTURES_PATH/qiskit_pulse_1q.toml" .
+cp "$FIXTURES_PATH/public-qiskit-pulse-1q-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-qiskit-pulse-1q-key.pem" .
 cp "$FIXTURES_PATH/qiskit_pulse_1q.seed.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.toml" .
 cp "$FIXTURES_PATH/qiskit_pulse_2q.seed.toml" .
+cp "$FIXTURES_PATH/public-qiskit-pulse-2q-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-qiskit-pulse-2q-key.pem" .
 cp "$FIXTURES_PATH/generic.seed.toml" .
 cp "$FIXTURES_PATH/loke.toml" .
 cp "$FIXTURES_PATH/loke.seed.toml" .
+cp "$FIXTURES_PATH/public-loke-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-loke-key.pem" .
 cp "$FIXTURES_PATH/thor.toml" .
 cp "$FIXTURES_PATH/thor.seed.toml" .
+cp "$FIXTURES_PATH/public-thor-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-thor-key.pem" .
 cp "$FIXTURES_PATH/pingu.toml" .
 cp "$FIXTURES_PATH/pingu.seed.toml" .
+cp "$FIXTURES_PATH/public-pingu-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-pingu-key.pem" .
 cp "$FIXTURES_PATH/pegu.toml" .
+cp "$FIXTURES_PATH/public-pegu-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-pegu-key.pem" .
 cp "$FIXTURES_PATH/likee.toml" .
 cp "$FIXTURES_PATH/likee.seed.toml" .
+cp "$FIXTURES_PATH/public-likee-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-likee-key.pem" .
 cp "$FIXTURES_PATH/thea.toml" .
 cp "$FIXTURES_PATH/thea.seed.toml" .
+cp "$FIXTURES_PATH/public-thea-key.pem" bcc_certs/
+cp "$FIXTURES_PATH/private-thea-key.pem" .
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_1q_booking_db.db
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_2q_booking_db.db
 cp "$FIXTURES_PATH/backend_db.sql" .
@@ -144,7 +160,6 @@ cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/quantify-config.json" .
 cp "$FIXTURES_PATH/quantify-metadata.yml" .
 cp "$FIXTURES_PATH/e2e.env" .env
-printf "\nMSS_APP_TOKEN=\"$APP_TOKEN\"" >> .env
 cp "$FIXTURES_PATH/mss-config.toml" .
 
 # Update the mongo-init.js to include the JSON data from the fixtures

@@ -17,46 +17,56 @@ mss_host = "127.0.0.1"
 name = "testing"
 # database URI
 url = "mongodb://tergite-mongo:27017"
+# the redis URL
+redis_url = "redis://tergite-redis:6379/8"
 
 [[backends]]
 name = "qiskit_pulse_2q"
 # the URL where this backend is running
 url = "http://qiskit_pulse_2q:8000"
+public_key_path = "bcc_certs/public-qiskit-pulse-2q-key.pem"
 
 [[backends]]
 name = "qiskit_pulse_1q"
 # the URL where this backend is running
 url = "http://qiskit_pulse_1q:8000"
+public_key_path = "bcc_certs/public-qiskit-pulse-1q-key.pem"
 
 [[backends]]
 name = "Loke"
 # the URL where this backend is running
 url = "http://loke:8000"
+public_key_path = "bcc_certs/public-loke-key.pem"
 
 [[backends]]
 name = "Thor"
 # the URL where this backend is running
 url = "http://thor:8000"
+public_key_path = "bcc_certs/public-thor-key.pem"
 
 [[backends]]
 name = "Pingu"
 # the URL where this backend is running
 url = "http://pingu:8000"
+public_key_path = "bcc_certs/public-pingu-key.pem"
 
 [[backends]]
 name = "Pegu"
 # the URL where this backend is running
 url = "http://pegu:8000"
+public_key_path = "bcc_certs/public-pegu-key.pem"
 
 [[backends]]
 name = "Likee"
 # the URL where this backend is running
 url = "http://likee:8000"
+public_key_path = "bcc_certs/public-likee-key.pem"
 
 [[backends]]
 name = "Thea"
 # the URL where this backend is running
 url = "http://thea:8000"
+public_key_path = "bcc_certs/public-thea-key.pem"
 
 [auth]
 cookie_domain = "127.0.0.1"

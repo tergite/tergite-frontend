@@ -8,6 +8,8 @@ variables:
 
 .setup_dashboard: &setup_dashboard
   image: cypress/base:20.17.0
+  variables:
+    FF_NETWORK_PER_BUILD: 1
   cache:
     key:
       files:
@@ -25,6 +27,7 @@ variables:
       alias: mongo
   variables:
     FF_NETWORK_PER_BUILD: 1
+    REDIS_PORT: 6380
   cache:
     key:
       files:
@@ -32,6 +35,12 @@ variables:
     paths:
       - .cache/pip
   before_script:
+    # Install redis
+    - apt-get update
+    - apt-get install redis -y
+    # Run the redis server
+    - redis-server --daemonize yes --port "$REDIS_PORT"
+
     - pip install --upgrade pip
     - cd apps/tergite-mss
     - pip install ."[dev]"
@@ -39,6 +48,7 @@ variables:
     - ulimit -n
     # Update test fixtures to point to the mongo service
     - sed -i 's/mongodb:\/\/localhost:27017/mongodb:\/\/mongo:27017/g' tests/fixtures/*
+    - sed -i "s/redis:\/\/localhost:6379/redis:\/\/localhost:$REDIS_PORT/g" tests/fixtures/*
   parallel:
     matrix:
       - VERSION: ["3.12", "3.13"]
@@ -73,15 +83,17 @@ full e2e:
   needs: []
   image: docker:latest
   services:
-    - name: docker:dind
+    - name: docker:25-dind
+      alias: dockerregistry
   stage: e2e
   when: manual
   manual_confirmation: "Are you sure you want to run the end-to-end test?"
   variables:
+    FF_NETWORK_PER_BUILD: 1
     BACKEND_REPO: "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_NAMESPACE}/tergite-backend.git"
     BACKEND_BRANCH: "main"
     DOCKER_TLS_CERTDIR: ""
-    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_HOST: tcp://dockerregistry:2375/
     CYPRESS_IMAGE: cypress/base:20.17.0
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"

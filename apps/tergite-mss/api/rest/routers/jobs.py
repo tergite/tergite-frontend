@@ -21,21 +21,17 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from fastapi.requests import Request
 
-import settings
 from api.rest.dependencies import (
     BccClientsMapDep,
     CurrentLaxProjectDep,
-    CurrentStrictProjectDep,
     CurrentStrictProjectUserIds,
     CurrentUserDep,
     MongoDbDep,
-    ProjectDbDep,
     RequestIdDep,
 )
 from services import jobs as jobs_service
 from services.auth import User
-from services.external import puhuri as puhuri_service
-from services.external.bcc.dtos import CancellationDetails, GeneralMessage
+from services.external.bcc.dtos import CancellationDetails
 from services.jobs.dtos import (
     Job,
     JobCreate,
@@ -44,7 +40,7 @@ from services.jobs.dtos import (
     JobStatusResponse,
     JobUpdate,
 )
-from utils.api import PaginatedListResponse
+from utils.api import GeneralMessage, PaginatedListResponse
 from utils.exc import UnknownBccError
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -141,37 +137,6 @@ async def create_one(
     )
 
 
-@router.put("/{job_id}")
-async def update_one(
-    db: MongoDbDep,
-    project_db: ProjectDbDep,
-    project: CurrentStrictProjectDep,
-    job_id: UUID,
-    payload: JobUpdate,
-):
-    """Updates the job of the given job_id with the payload
-
-    This may raise pydantic.error_wrappers.ValidationError in case
-    the timestamps have an unexpected structure
-
-    Returns:
-        the updated job
-    """
-    old_job = await jobs_service.update_job(db, job_id=job_id, payload=payload)
-
-    qpu_usage = getattr(payload.timestamps, "resource_usage", None)
-    if old_job.duration_in_secs is None and qpu_usage is not None:
-        project = await jobs_service.update_qpu_usage(
-            db, project_db=project_db, job_id=job_id, qpu_usage=qpu_usage
-        )
-
-        if settings.CONFIG.puhuri.is_enabled:
-            await puhuri_service.save_qpu_usage(
-                db, job_id=job_id, project=project, qpu_usage=qpu_usage
-            )
-    return await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)
-
-
 @router.post("/{job_id}/cancel")
 async def cancel_job(
     db: MongoDbDep,
@@ -212,7 +177,7 @@ async def cancel_job(
     if response["status"] == "success":
         await jobs_service.update_job(
             db,
-            job_id=job_id,
+            job_id=str(job_id),
             payload=JobUpdate(
                 cancellation_reason=details.reason,
                 status=JobStatus.CANCELLED,

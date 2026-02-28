@@ -1,3 +1,6 @@
+import redis
+from redis import Redis
+
 from tests._utils.env import (
     TEST_BACKENDS,
     TEST_DB_NAME,
@@ -5,6 +8,7 @@ from tests._utils.env import (
     TEST_JWT_SECRET,
     TEST_MONGODB_URL,
     TEST_PUHURI_CONFIG_ENDPOINT,
+    TEST_REDIS_URL,
     setup_test_env,
 )
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
@@ -62,12 +66,34 @@ from tests._utils.mock_backend import CREATED_BOOKINGS
 from tests._utils.modules import remove_modules
 from tests._utils.waldur import MockWaldurClient
 
-BACKEND_SLUGS = ("loke", "pingu")
+BACKEND_SLUGS = ("Loke", "Pingu")
 _PUHURI_OPENID_CONFIG = load_json_fixture("puhuri_openid_config.json")
 PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
 JOB_LIST = load_json_fixture("job_list.json")
 TEST_NEXT_COOKIE_URL = "https://testserver/"
+_redis_connection = redis.Redis.from_url(TEST_REDIS_URL)
+
+
+@pytest.fixture
+def redis_client() -> Generator[Redis, Any, None]:
+    """A mock redis client"""
+    yield _redis_connection
+    _redis_connection.flushall()
+
+
+@pytest.fixture
+def mock_socket_gethostbyname(mocker):
+    """Mock socket gethostbyname because 'testclient' is not a valid domain name"""
+    from socket import gethostbyname as orig_gethostbyname
+
+    def dummy_gethostbyname(hostname: str, /) -> str:
+        if hostname in ("testclient",):
+            return hostname
+        return orig_gethostbyname(hostname)
+
+    mocker.patch("socket.gethostbyname", side_effect=dummy_gethostbyname)
+    yield mocker
 
 
 @pytest.fixture
@@ -194,7 +220,7 @@ def project_id(db) -> PydanticObjectId:
 
 
 @pytest.fixture
-def client(db) -> Generator[TestClient, Any, None]:
+def client(db, mock_socket_gethostbyname) -> Generator[TestClient, Any, None]:
     """A test client for fast api"""
     from api.rest import app
 

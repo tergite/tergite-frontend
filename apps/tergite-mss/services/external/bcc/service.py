@@ -42,11 +42,11 @@ from services.external.bcc.dtos import (
     Booking,
     BookingsConfig,
     CancellationDetails,
-    GeneralMessage,
     NewBCCUserInfo,
     NewBookingInfo,
 )
 from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
+from utils.api import GeneralMessage
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
 from utils.exc import ServiceUnavailableError

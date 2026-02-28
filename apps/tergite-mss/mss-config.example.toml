@@ -16,13 +16,19 @@ environment = "production"
 datetime_precision = "auto"
 # the password used to encrypt the private key file;
 # defaults to None.
-# private_key_password
+private_key_password="some-secret-password"
+
+# time-to-live for the nonce; defaults to 5 minutes
+bcc_nonce_ttl = 300
 
 [database]
 # configurations for the database
 name = "sample-database"
 # database URI
 url = "mongodb://user:pass@host:port"
+# redis URI; default=redis://tergite-redis:6379/0
+redis_url = "redis://tergite-redis:6379/0"
+
 
 # Add backends in the form: Note: [[...]] creates an array of tables
 [[backends]]
@@ -32,16 +38,19 @@ name = "simulator-arusha"
 url = "http://127.0.0.1:8002"
 # request timeout in seconds beyond which a timeout error is raised; default = 10
 timeout = 10
+public_key_path = "data/simulator-kampala-pub-key.pem"
 
 # Add as many backends as you wish to have
 [[backends]]
 name = "simulator-kampala"
 url = "http://127.0.0.1:8003"
+public_key_path = "data/simulator-kampala-pub-key.pem"
 
 [[backends]]
 name = "simulator-stockholm"
 url = "http://127.0.0.1:8004"
 timeout = 2
+public_key_path = "data/simulator-kampala-pub-key.pem"
 
 [auth]
 # Secret for signing JWT tokens. https://jwt.io/introduction

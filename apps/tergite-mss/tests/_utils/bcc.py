@@ -11,23 +11,36 @@
 # that they have been altered from the originals.
 """Utilities for mocking requests to BCC"""
 import base64
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import NotRequired, Optional, TypedDict
+from typing import Dict, NotRequired, Optional, TypedDict
 
 import httpx
 import jwt
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, padding, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from jwt import InvalidTokenError
 from pydantic import BaseModel, model_validator
 
 from services.external.bcc import BccClientHeaders
 from tests._utils.env import TEST_JWT_SECRET, TEST_MSS_PUBLIC_KEY_PATH
+from tests._utils.fixtures import get_fixture_path
 
 _MSS_PUBLIC_KEY: Optional[RSAPublicKey] = None
+_BCC_PRIVATE_KEYS: Dict[str, RSAPrivateKey] = {}
+_BCC_PRIVATE_KEY_PATHS: Dict[str, str] = {
+    "Loke": get_fixture_path("private-loke-key.pem"),
+    "Loki": get_fixture_path("private-loki-key.pem"),
+    "Pingu": get_fixture_path("private-pingu-key.pem"),
+    "Pegu": get_fixture_path("private-pegu-key.pem"),
+    "Thor": get_fixture_path("private-thor-key.pem"),
+    "Likee": get_fixture_path("private-likee-key.pem"),
+    "Thea": get_fixture_path("private-thea-key.pem"),
+    "WrongCert": get_fixture_path("private-wrong-cert-key.pem"),
+}
 
 
 def create_bcc_client_jwt_token(user_id: str, job_id: str) -> str:
@@ -168,6 +181,69 @@ def to_booking_payload(booking_info: "BasicBookingInfo") -> "BookingPayload":
         "start_utc": start_utc.isoformat().replace("+00:00", "Z"),
         "end_utc": end_utc.isoformat().replace("+00:00", "Z"),
     }
+
+
+def create_bcc_headers(device: str) -> Dict[str, str]:
+    """Creates headers to show that the request is a valid one from BCC
+
+    Args:
+        device: the name of the device
+
+    Returns:
+        The dictionary of headers that show a given request is from BCC
+    """
+    request_id = f"{uuid.uuid4()}"
+    timestamp = time.time()
+    message = f"{device}-{request_id}-{timestamp}"
+    signature = create_bcc_signature(device, message)
+    headers = {
+        "x-request-id": request_id,
+        "x-timestamp": f"{timestamp}",
+        "x-signature": signature,
+        "x-id": device,
+    }
+
+    return headers
+
+
+def create_bcc_signature(device: str, message: str) -> str:
+    """Creates an BCC-signed signature given a message
+
+    Args:
+        device: the name of the BCC device
+        message: the message from BCC
+
+    Returns:
+        the string form of the signature
+    """
+    bcc_private_key = _get_bcc_private_key(device)
+    signature = bcc_private_key.sign(
+        message.encode(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256(),
+    )
+    return base64.b64encode(signature).decode()
+
+
+def _get_bcc_private_key(device) -> RSAPrivateKey:
+    """Loads the private key for the BCC device
+
+    Returns:
+        the private key of the BCC device
+    """
+    global _BCC_PRIVATE_KEYS
+
+    private_key_path = _BCC_PRIVATE_KEY_PATHS[device]
+
+    try:
+        return _BCC_PRIVATE_KEYS[private_key_path]
+    except KeyError:
+        with open(private_key_path, "rb") as file:
+            private_key = serialization.load_pem_private_key(file.read(), password=None)
+            _BCC_PRIVATE_KEYS[private_key_path] = private_key
+            return private_key
 
 
 def _get_mss_public_key():

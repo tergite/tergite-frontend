@@ -13,6 +13,7 @@
 # that they have been altered from the originals.
 #
 # Refactored by Martin Ahindura 2023-11-08
+from enum import Enum
 from typing import (
     TYPE_CHECKING,
     AbstractSet,
@@ -23,22 +24,34 @@ from typing import (
     Literal,
     Mapping,
     Optional,
+    Protocol,
     Tuple,
+    Type,
     Union,
 )
 
 from beanie import PydanticObjectId
 from fastapi import Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 from pydantic.main import IncEx
 
+from utils.api import GeneralMessage
 from utils.models import create_partial_model
+
+from ..calibration.dtos import DeviceCalibrationCreate
+from ..jobs.dtos import JobUpdate
 
 if TYPE_CHECKING:
     DictStrAny = Dict[str, Any]
     IntStr = Union[int, str]
     AbstractSetIntStr = AbstractSet[IntStr]
     MappingIntStrAny = Mapping[IntStr, Any]
+
+
+class DeviceEventName(str, Enum):
+    INITIALIZED = "initialized"
+    RECALIBRATED = "recalibrated"
+    JOB_UPDATED = "job_updated"
 
 
 class DeviceUpsert(BaseModel):
@@ -114,6 +127,55 @@ class Device(DeviceUpsert):
     id: PydanticObjectId = Field(alias="_id")
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+type DeviceEventData = Union[DeviceUpsert, DeviceCalibrationCreate, JobUpdate]
+"""Data type for the data attached to device events"""
+
+
+class DeviceEventHandler(Protocol):
+    """The signature of all event handlers for device events"""
+
+    async def __call__(
+        self, device: str, data: DeviceEventData, **kwargs
+    ) -> GeneralMessage:
+        """Handles the given device event
+
+        Args:
+            device: The device where the event occurred
+            data: The data associated with the event
+
+        Returns:
+            the general message showing the output from the handler
+        """
+
+
+class DeviceEvent(BaseModel):
+    """The schema for device events"""
+
+    __status_data_map__: Dict[DeviceEventName, Type[DeviceEventData]] = {
+        DeviceEventName.INITIALIZED: DeviceUpsert,
+        DeviceEventName.RECALIBRATED: DeviceCalibrationCreate,
+        DeviceEventName.JOB_UPDATED: JobUpdate,
+    }
+
+    id: str
+    name: DeviceEventName
+    data: DeviceEventData
+
+    @field_validator("data", mode="after")
+    @classmethod
+    def validate_data(
+        cls, value: DeviceEventData, info: ValidationInfo
+    ) -> DeviceEventData:
+        """Validates the data depending on the name type"""
+        expected_data_cls = cls.__status_data_map__[info.data["name"]]
+        if not isinstance(value, expected_data_cls):
+            raise ValueError(
+                f"data must be of type {expected_data_cls.__name__}, was {type(value)}"
+            )
+
+        return value
 
 
 # derived models

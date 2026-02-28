@@ -46,6 +46,7 @@ TEST_BACKENDS_MAP: Dict[str, "BackendConfDict"] = {
     item["name"]: item for item in TEST_BACKENDS
 }
 TEST_PUHURI_POLL_INTERVAL: int = TEST_APP_CONFIG["puhuri"]["poll_interval"]
+TEST_REDIS_URL = TEST_APP_CONFIG["database"]["redis_url"]
 
 
 def setup_test_env():
