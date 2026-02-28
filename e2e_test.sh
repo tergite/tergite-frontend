@@ -86,10 +86,11 @@ read_json() {
 # Clean up any remaining docker things
 echo "Cleaning up docker artefacts from previous runs"
 docker compose -p tergite-frontend-e2e  down --rmi all --volumes 2>/dev/null
-docker rmi -f tergite/tergite-mss 2>/dev/null
-docker rmi -f tergite/tergite-dashboard 2>/dev/null
-docker rmi -f tergite/tergite-backend-e2e:latest 2>/dev/null
-docker rmi -f tergite/tergite-backend-with-db-e2e:latest 2>/dev/null
+docker rmi -f tergite/tergite-mss:frontend-e2e 2>/dev/null
+docker rmi -f tergite/tergite-dashboard:frontend-e2e 2>/dev/null
+docker rmi -f tergite/tergite-backend-e2e:frontend-e2e 2>/dev/null
+docker rmi -f tergite/tergite-backend-with-db-e2e:frontend-e2e 2>/dev/null
+docker rmi -f tergite/tergite-mongo-e2e:frontend-e2e 2>/dev/null
 docker system prune -f
 
 # Create and navigating to temporary directory

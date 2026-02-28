@@ -52,6 +52,7 @@ class QubitCalibration(BaseModel, extra="allow"):
     # parameters for x gate
     pi_pulse_amplitude: Optional[CalibrationValue] = None
     pi_pulse_duration: Optional[CalibrationValue] = None
+    pi_pulse_motzoi: Optional[CalibrationValue] = None
     pulse_type: Optional[CalibrationValue] = None
     pulse_sigma: Optional[CalibrationValue] = None
     id: Optional[int] = None
