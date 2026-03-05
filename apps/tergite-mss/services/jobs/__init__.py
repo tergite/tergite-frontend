@@ -104,7 +104,9 @@ async def create_job(
     job.access_token = encrypted_token
     await mongodb_utils.insert_one(collection=db.jobs, document=job.model_dump())
 
-    upload_url = _without_special_docker_host_domain(f"{bcc_client.base_url}/jobs")
+    upload_url = _without_special_docker_host_domain(
+        f"{bcc_client.public_base_url}/jobs"
+    )
 
     return {
         "job_id": job.job_id,
