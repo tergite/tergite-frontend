@@ -61,16 +61,16 @@ services:
     env_file:
       - .env
 
-  loki-promtail:
-    restart: "${SERVICE_RESTART:-no}"
-    image: grafana/promtail:${PROMTAIL_VERSION:-2.8.3}
+  grafana-alloy:
+    restart: "${SERVICE_RESTART:-unless-stopped}"
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.13.2}
     logging:
       driver: ${LOGGING_DRIVER}
     volumes:
-      - ./promtail.yaml:/etc/promtail/config.yaml:ro
+      - ./config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./.data/promtail:/tmp
-    command: "-config.expand-env=true -config.file=/etc/promtail/config.yaml"
+      - ./.data/alloy:/var/lib/alloy/data
+    command: "--server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy"
     env_file:
       - .env
     extra_hosts:
