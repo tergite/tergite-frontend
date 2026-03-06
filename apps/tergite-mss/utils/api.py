@@ -42,7 +42,6 @@ from redis import Redis
 import settings
 from utils.crypto import get_uuid4_str
 from utils.date_time import get_current_timestamp
-from utils.exc import InvalidWebsocketDataTypeError
 from utils.logging import err_logger as access_logger
 from utils.redis_store import Collection, Schema
 
@@ -320,7 +319,10 @@ def get_request_logs_store() -> Collection[WebsocketRequestLog]:
     if _REQUEST_LOGS_STORE is None:
         connection = Redis.from_url(url=f"{settings.CONFIG.database.redis_url}")
         _REQUEST_LOGS_STORE = Collection(
-            connection=connection, schema=WebsocketRequestLog
+            connection=connection,
+            schema=WebsocketRequestLog,
+            default_ttl=settings.CONFIG.request_log_ttl,
+            cleanup_interval=settings.CONFIG.request_log_clean_interval,
         )
 
     return _REQUEST_LOGS_STORE
