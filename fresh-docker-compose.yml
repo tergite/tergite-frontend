@@ -69,17 +69,25 @@ services:
     env_file:
       - .env
 
-  loki-promtail:
+  grafana-alloy:
     restart: unless-stopped
-    image: grafana/promtail:${PROMTAIL_VERSION:-2.8.3}
+    image: grafana/alloy:${GRAFANA_ALLOY_VERSION:-v1.13.2}
     logging:
       driver: ${LOGGING_DRIVER}
+    ports:
+      - "12345:12345"
     volumes:
-      - ./promtail.yaml:/etc/promtail/config.yaml:ro
+      - ./config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./.data/promtail:/tmp
-    command: "-config.expand-env=true -config.file=/etc/promtail/config.yaml"
+      - ./.data/alloy:/var/lib/alloy/data
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     env_file:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:12345/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
