@@ -14,6 +14,10 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+## [2026.03.0] - 2026-03-06
+
+- No Change
+
 ## [2025.12.0] - 2026-03-16
 
 ### Added
