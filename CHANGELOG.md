@@ -14,6 +14,8 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+## [2025.12.0] - 2026-03-16
+
 ### Added
 
 - Added healthchecks for all services in e2e docker compose
