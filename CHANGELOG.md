@@ -14,12 +14,15 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+## [2025.12.0] - 2026-03-16
+
 ### Added
 
 - Added healthchecks for all services in e2e docker compose
 - Added cleanup backend databases via the `/refreshed-db` endpoint in e2e.
 - Added `SERVICE_RESTART` env variable to determine whether the services should restart automatically or not
 - Added `DASHBOARD_EXT_PORT` and `MSS_EXT_PORT` to make the external ports of the mss and dashboard services more configurable
+- Added `pi_pulse_motzoi` parameter for qubit calibration
 
 ### Changed
 
