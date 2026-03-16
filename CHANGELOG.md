@@ -29,6 +29,7 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 - Removed the `network_mode = none` in the `prebuilt-docker-compose.yml` file
 - Removed the mss-config volume from the dashboard service as it will only be served by environment variables, not mss config file
 - Changed the default version of the images used for mss and the dashboard to `v2025.12.0`
+- Replaced promtail with Grafana alloy for logs collection
 
 ### Fixed
 
