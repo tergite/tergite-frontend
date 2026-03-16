@@ -22,7 +22,6 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 - Added cleanup backend databases via the `/refreshed-db` endpoint in e2e.
 - Added `SERVICE_RESTART` env variable to determine whether the services should restart automatically or not
 - Added `DASHBOARD_EXT_PORT` and `MSS_EXT_PORT` to make the external ports of the mss and dashboard services more configurable
-- Added `pi_pulse_motzoi` parameter for qubit calibration
 
 ### Changed
 

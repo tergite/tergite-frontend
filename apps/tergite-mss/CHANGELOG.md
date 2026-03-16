@@ -30,6 +30,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added `public_url` property on BCC config, just in case the public URL for a backend is different from the private one
 - Added `request_log_ttl` and `request_log_clean_interval` to control the rate at which request logs are cleared
 - Added TTL on `Collection` of the redis_store
+- Added `pi_pulse_motzoi` parameter for qubit calibration
 
 ### Changed
 
