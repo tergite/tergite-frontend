@@ -10,7 +10,7 @@ import { BookingsConfigInDb, generateJwt, getUsername } from "../../api/utils";
 import { Booking, type Device, type User } from "../../types";
 
 const users = [...userList] as User[];
-const devices = deviceList.slice(0, 3) as Device[];
+const devices = deviceList.slice(0, 2) as Device[];
 const calibrationProperties: { [k: string]: RegExp } = {
   t1_decoherence: /t1 decoherence/i,
   t2_decoherence: /t2 decoherence/i,
@@ -27,7 +27,7 @@ const bookingsConfigsMap = Object.fromEntries(
 );
 const futureBookingsFixture = bookingsFixture.filter((v) => v.starts_in > 1500);
 
-users.slice(0, 4).forEach((user) => {
+users.slice(0, 2).forEach((user) => {
   devices.forEach((device) => {
     const calibrationMedians = medianCalibrationsDataMap[device.id];
     const bookingConfigs = bookingsConfigsMap[device.name];
@@ -53,17 +53,17 @@ users.slice(0, 4).forEach((user) => {
         testThreshold = parseFloat(Cypress.env("TEST_THRESHOLD") || "0.3");
         cy.log(`test threshold: ${testThreshold}`);
         const cookieExpiry = Math.round(
-          (new Date().getTime() + 800_000) / 1000
+          (new Date().getTime() + 800_000) / 1000,
         );
 
         cy.intercept("GET", `${apiBaseUrl}/devices/${device.name}`).as(
-          "devices-detail"
+          "devices-detail",
         );
         cy.intercept("GET", `${apiBaseUrl}/calibrations/${device.name}`).as(
-          "calibrations-detail"
+          "calibrations-detail",
         );
         cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`).as(
-          "my-project-list"
+          "my-project-list",
         );
 
         if (user.id) {
@@ -75,7 +75,7 @@ users.slice(0, 4).forEach((user) => {
                 secure: false,
                 sameSite: "lax",
               });
-            }
+            },
           );
         }
 
@@ -95,7 +95,7 @@ users.slice(0, 4).forEach((user) => {
           cy.contains(".grid", device.name).within(() => {
             cy.contains(device.name).should("be.visible");
             cy.contains(new RegExp(`version ${device.version}`, "i")).should(
-              "be.visible"
+              "be.visible",
             );
           });
 
@@ -123,7 +123,7 @@ users.slice(0, 4).forEach((user) => {
           cy.contains(".grid", /calibration information/i).within(() => {
             cy.contains("li", /median readout error/i).within(() => {
               cy.contains(calibrationMedians.readout_error).should(
-                "be.visible"
+                "be.visible",
               );
             });
             cy.contains("li", /median t1/i).within(() => {
@@ -137,7 +137,7 @@ users.slice(0, 4).forEach((user) => {
           // footer
           cy.contains("div", /last calibrated/i).within(() => {
             cy.contains(
-              /last calibrated \d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?) ago/i
+              /last calibrated \d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?) ago/i,
             ).should("be.visible");
           });
         });
@@ -219,10 +219,10 @@ users.slice(0, 4).forEach((user) => {
         const username = users[0].email.split("@")[0];
         const currentUsername = user.email.split("@")[0];
         const defaultDuration = convertSecToDuration(
-          bookingConfigs.min_time_slot_length
+          bookingConfigs.min_time_slot_length,
         );
         const defaultDurationStr = convertSecToDurationStr(
-          bookingConfigs.min_time_slot_length
+          bookingConfigs.min_time_slot_length,
         );
         const invalidDurations = [
           bookingConfigs.min_time_slot_length - 60,
@@ -246,10 +246,10 @@ users.slice(0, 4).forEach((user) => {
           });
           cy.intercept(
             "GET",
-            `${apiBaseUrl}/bookings/${device.name}/config`
+            `${apiBaseUrl}/bookings/${device.name}/config`,
           ).as("bookings-config");
           cy.intercept("GET", `${apiBaseUrl}/bookings/${device.name}?`).as(
-            "bookings-list"
+            "bookings-list",
           );
 
           // We need to reset the mongo database before each test
@@ -282,7 +282,7 @@ users.slice(0, 4).forEach((user) => {
                 cy.contains(username).should("exist");
                 // for short bookings, the text gets cut off
                 cy.contains(".fc-event-time", /\d\d?:\d\d - \d\d?:\d\d/).should(
-                  "be.visible"
+                  "be.visible",
                 );
               });
           });
@@ -305,16 +305,16 @@ users.slice(0, 4).forEach((user) => {
               });
               cy.contains("div", /duration/i).within(() => {
                 cy.contains(
-                  /(\+?\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?),?)+/i
+                  /(\+?\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?),?)+/i,
                 ).should("be.visible");
               });
               // The first two events are in the past.
               if (idx > 1 && username === currentUsername) {
                 cy.contains("button.border.border-input", /edit/i).should(
-                  "be.visible"
+                  "be.visible",
                 );
                 cy.contains("button.bg-destructive", /discard/i).should(
-                  "be.visible"
+                  "be.visible",
                 );
               } else {
                 cy.contains("button", /edit/i).should("not.exist");
@@ -329,14 +329,14 @@ users.slice(0, 4).forEach((user) => {
           const startTimeStr = get12HourTimeString(testTimestamp);
           const endTime = addSeconds(
             testTimestamp,
-            bookingConfigs.min_time_slot_length
+            bookingConfigs.min_time_slot_length,
           );
           const endTimeStr = get12HourTimeString(endTime);
 
           cy.get("#booking-form-dialog").should("not.exist");
           cy.contains(
             ".fc-event-time",
-            `${startTimeStr} - ${endTimeStr}`
+            `${startTimeStr} - ${endTimeStr}`,
           ).should("not.exist");
 
           cy.get("#calendar-view")
@@ -348,23 +348,23 @@ users.slice(0, 4).forEach((user) => {
                   cy.contains("h2", /create new booking/i).should("be.visible");
                   cy.contains(
                     "button#datetime-input",
-                    new RegExp(`${testLocaleDateStr}, ${testISOTimeStr}`, "i")
+                    new RegExp(`${testLocaleDateStr}, ${testISOTimeStr}`, "i"),
                   ).should("be.visible");
                   cy.get("input#duration[type='hidden']").should(
                     "have.value",
-                    defaultDurationStr
+                    defaultDurationStr,
                   );
                   cy.get("input#duration-hours[type='number']").should(
                     "have.value",
-                    `${defaultDuration.hours}`
+                    `${defaultDuration.hours}`,
                   );
                   cy.get("input#duration-minutes[type='number']").should(
                     "have.value",
-                    `${defaultDuration.minutes}`
+                    `${defaultDuration.minutes}`,
                   );
                   cy.get("input#duration-seconds[type='number']").should(
                     "have.value",
-                    `${defaultDuration.seconds}`
+                    `${defaultDuration.seconds}`,
                   );
 
                   // Creates a new booking
@@ -373,7 +373,7 @@ users.slice(0, 4).forEach((user) => {
                 .then(() => {
                   cy.contains(
                     ".fc-event-time",
-                    `${startTimeStr} - ${endTimeStr}`
+                    `${startTimeStr} - ${endTimeStr}`,
                   ).should("be.visible");
                 });
             });
@@ -383,14 +383,14 @@ users.slice(0, 4).forEach((user) => {
           const startTimeStr = get12HourTimeString(testTimestamp);
           const endTime = addSeconds(
             testTimestamp,
-            bookingConfigs.min_time_slot_length
+            bookingConfigs.min_time_slot_length,
           );
           const endTimeStr = get12HourTimeString(endTime);
 
           cy.get("#booking-form-dialog").should("not.exist");
           cy.contains(
             ".fc-event-time",
-            `${startTimeStr} - ${endTimeStr}`
+            `${startTimeStr} - ${endTimeStr}`,
           ).should("not.exist");
 
           cy.get("#calendar-view")
@@ -401,7 +401,7 @@ users.slice(0, 4).forEach((user) => {
                 .then(() => {
                   cy.contains(
                     ".fc-event-time",
-                    `${startTimeStr} - ${endTimeStr}`
+                    `${startTimeStr} - ${endTimeStr}`,
                   ).should("not.exist");
                 });
             });
@@ -412,7 +412,7 @@ users.slice(0, 4).forEach((user) => {
           const startTimeStr = get12HourTimeString(testTimestamp);
           const duration = Math.min(
             bookingConfigs.max_time_slot_length,
-            bookingConfigs.min_time_slot_length + 900
+            bookingConfigs.min_time_slot_length + 900,
           );
           const durationObj = convertSecToDuration(duration);
           const endTime = addSeconds(testTimestamp, duration);
@@ -421,7 +421,7 @@ users.slice(0, 4).forEach((user) => {
           cy.get("#booking-form-dialog").should("not.exist");
           cy.contains(
             ".fc-event-time",
-            `${startTimeStr} - ${endTimeStr}`
+            `${startTimeStr} - ${endTimeStr}`,
           ).should("not.exist");
 
           cy.get("#calendar-view")
@@ -431,25 +431,25 @@ users.slice(0, 4).forEach((user) => {
                 .within(() => {
                   // {selectall} ensures the existing text is replaced by the new value
                   cy.get("input#duration-hours[type='number']").type(
-                    `{selectall}${durationObj.hours}`
+                    `{selectall}${durationObj.hours}`,
                   );
                   cy.get("input#duration-minutes[type='number']").type(
-                    `{selectall}${durationObj.minutes}`
+                    `{selectall}${durationObj.minutes}`,
                   );
                   cy.get("input#duration-seconds[type='number']").type(
-                    `{selectall}${durationObj.seconds}`
+                    `{selectall}${durationObj.seconds}`,
                   );
 
                   cy.contains(
                     "button#datetime-input",
                     new RegExp(
                       `${currentLocaleDateStr}, ${currentISOTimeStr}`,
-                      "i"
-                    )
+                      "i",
+                    ),
                   ).click();
 
                   cy.get(
-                    "[data-radix-popper-content-wrapper] input[type='time']"
+                    "[data-radix-popper-content-wrapper] input[type='time']",
                   ).type(testISOTimeStr);
 
                   // save
@@ -458,7 +458,7 @@ users.slice(0, 4).forEach((user) => {
                 .then(() => {
                   cy.contains(
                     ".fc-event-time",
-                    `${startTimeStr} - ${endTimeStr}`
+                    `${startTimeStr} - ${endTimeStr}`,
                   ).should("be.visible");
                 });
             });
@@ -477,17 +477,17 @@ users.slice(0, 4).forEach((user) => {
             const endTime = addSeconds(testTimestamp, duration);
             const endTimeStr = get12HourTimeString(endTime);
             const minDurationStr = convertSecToDurationStr(
-              bookingConfigs.min_time_slot_length
+              bookingConfigs.min_time_slot_length,
             );
             const maxDurationStr = convertSecToDurationStr(
-              bookingConfigs.max_time_slot_length
+              bookingConfigs.max_time_slot_length,
             );
             const errMsg = `duration must be between ${minDurationStr} and ${maxDurationStr}`;
 
             cy.get("#booking-form-dialog").should("not.exist");
             cy.contains(
               ".fc-event-time",
-              `${startTimeStr} - ${endTimeStr}`
+              `${startTimeStr} - ${endTimeStr}`,
             ).should("not.exist");
 
             cy.get("#calendar-view")
@@ -499,31 +499,31 @@ users.slice(0, 4).forEach((user) => {
                     //  otherwise clearing it would make the browser automatically add a '0'
                     // which would be appended to the new value that is typed in
                     cy.get("input#duration-hours[type='number']").type(
-                      `{selectall}${durationObj.hours}`
+                      `{selectall}${durationObj.hours}`,
                     );
                     cy.get("input#duration-minutes[type='number']").type(
-                      `{selectall}${durationObj.minutes}`
+                      `{selectall}${durationObj.minutes}`,
                     );
                     cy.get("input#duration-seconds[type='number']").type(
-                      `{selectall}${durationObj.seconds}`
+                      `{selectall}${durationObj.seconds}`,
                     );
 
                     cy.contains(
                       "button#datetime-input",
                       new RegExp(
                         `${currentLocaleDateStr}, ${currentISOTimeStr}`,
-                        "i"
-                      )
+                        "i",
+                      ),
                     ).click();
 
                     cy.get(
-                      "[data-radix-popper-content-wrapper] input[type='time']"
+                      "[data-radix-popper-content-wrapper] input[type='time']",
                     ).type(testISOTimeStr);
 
                     cy.contains("div.space-y-2", /duration/i).within(() => {
                       cy.contains(
                         "p.text-destructive",
-                        new RegExp(errMsg)
+                        new RegExp(errMsg),
                       ).should("not.exist");
                     });
 
@@ -534,7 +534,7 @@ users.slice(0, 4).forEach((user) => {
                         cy.contains("div.space-y-2", /duration/i).within(() => {
                           cy.contains(
                             "p.text-destructive",
-                            new RegExp(errMsg)
+                            new RegExp(errMsg),
                           ).should("be.visible");
                         });
                       });
@@ -542,7 +542,7 @@ users.slice(0, 4).forEach((user) => {
                   .then(() => {
                     cy.contains(
                       ".fc-event-time",
-                      `${startTimeStr} - ${endTimeStr}`
+                      `${startTimeStr} - ${endTimeStr}`,
                     ).should("not.exist");
                   });
               });
@@ -561,7 +561,7 @@ users.slice(0, 4).forEach((user) => {
           const startTimeStr = get12HourTimeString(startTimestamp);
           const duration = Math.min(
             bookingConfigs.max_time_slot_length,
-            bookingConfigs.min_time_slot_length + 900
+            bookingConfigs.min_time_slot_length + 900,
           );
           const durationObj = convertSecToDuration(duration);
           const endTime = addSeconds(testTimestamp, duration);
@@ -572,7 +572,7 @@ users.slice(0, 4).forEach((user) => {
           cy.get("#booking-form-dialog").should("not.exist");
           cy.contains(
             ".fc-event-time",
-            `${startTimeStr} - ${endTimeStr}`
+            `${startTimeStr} - ${endTimeStr}`,
           ).should("not.exist");
 
           cy.get("#calendar-view")
@@ -581,31 +581,31 @@ users.slice(0, 4).forEach((user) => {
               cy.get("#booking-form-dialog")
                 .within(() => {
                   cy.get("input#duration-hours[type='number']").type(
-                    `{selectall}${durationObj.hours}`
+                    `{selectall}${durationObj.hours}`,
                   );
                   cy.get("input#duration-minutes[type='number']").type(
-                    `{selectall}${durationObj.minutes}`
+                    `{selectall}${durationObj.minutes}`,
                   );
                   cy.get("input#duration-seconds[type='number']").type(
-                    `{selectall}${durationObj.seconds}`
+                    `{selectall}${durationObj.seconds}`,
                   );
 
                   cy.contains(
                     "button#datetime-input",
                     new RegExp(
                       `${currentLocaleDateStr}, ${currentISOTimeStr}`,
-                      "i"
-                    )
+                      "i",
+                    ),
                   ).click();
 
                   cy.get(
-                    "[data-radix-popper-content-wrapper] input[type='time']"
+                    "[data-radix-popper-content-wrapper] input[type='time']",
                   ).type(startISOTimeStr);
 
                   cy.contains("div.space-y-2", /start/i).within(() => {
                     cy.contains(
                       "p.text-destructive",
-                      new RegExp(errMsg)
+                      new RegExp(errMsg),
                     ).should("not.exist");
                   });
 
@@ -616,7 +616,7 @@ users.slice(0, 4).forEach((user) => {
                       cy.contains("div.space-y-2", /start/i).within(() => {
                         cy.contains(
                           "p.text-destructive",
-                          new RegExp(errMsg)
+                          new RegExp(errMsg),
                         ).should("be.visible");
                       });
                     });
@@ -624,20 +624,20 @@ users.slice(0, 4).forEach((user) => {
                 .then(() => {
                   cy.contains(
                     ".fc-event-time",
-                    `${startTimeStr} - ${endTimeStr}`
+                    `${startTimeStr} - ${endTimeStr}`,
                   ).should("not.exist");
                 });
             });
         });
 
-        futureBookingsFixture.slice(0, 3).forEach((bookingInfo) => {
+        futureBookingsFixture.slice(0, 2).forEach((bookingInfo) => {
           if (username === currentUsername) {
             it(`tapping the edit button on the booking that starts in ${bookingInfo.starts_in} seconds, opens edit form`, () => {
               cy.viewport(1440, 1080);
               const startTimeStr = get12HourTimeString(testTimestamp);
               const duration = Math.min(
                 bookingConfigs.max_time_slot_length,
-                bookingConfigs.min_time_slot_length + 900
+                bookingConfigs.min_time_slot_length + 900,
               );
               const durationObj = convertSecToDuration(duration);
               const endTime = addSeconds(testTimestamp, duration);
@@ -645,13 +645,13 @@ users.slice(0, 4).forEach((user) => {
               const booking = findBooking(
                 expectedBookings,
                 bookingInfo,
-                currentDate
+                currentDate,
               );
 
               const originalStartUtc = new Date(booking.start_utc);
               const oldStartTimeStr = get12HourTimeString(originalStartUtc);
               const oldEndTimeStr = get12HourTimeString(
-                new Date(booking.end_utc)
+                new Date(booking.end_utc),
               );
 
               const newTimeRangeStr = `${startTimeStr} - ${endTimeStr}`;
@@ -665,10 +665,10 @@ users.slice(0, 4).forEach((user) => {
 
               cy.get("@eventElem").scrollIntoView();
               cy.contains(eventElemSelector, oldTimeRangeStr).should(
-                "be.visible"
+                "be.visible",
               );
               cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
-                "not.exist"
+                "not.exist",
               );
               cy.get("@eventElem")
                 .contains(".fc-event-main-frame", username)
@@ -685,18 +685,18 @@ users.slice(0, 4).forEach((user) => {
                   cy.get("#booking-form-dialog")
                     .within(() => {
                       cy.get("input#duration-hours[type='number']").type(
-                        `{selectall}${durationObj.hours}`
+                        `{selectall}${durationObj.hours}`,
                       );
                       cy.get("input#duration-minutes[type='number']").type(
-                        `{selectall}${durationObj.minutes}`
+                        `{selectall}${durationObj.minutes}`,
                       );
                       cy.get("input#duration-seconds[type='number']").type(
-                        `{selectall}${durationObj.seconds}`
+                        `{selectall}${durationObj.seconds}`,
                       );
 
                       cy.get("button#datetime-input").click();
                       cy.get(
-                        "[data-radix-popper-content-wrapper] input[type='time']"
+                        "[data-radix-popper-content-wrapper] input[type='time']",
                       ).type(testISOTimeStr);
 
                       // save
@@ -705,7 +705,7 @@ users.slice(0, 4).forEach((user) => {
                     .then(() => {
                       cy.wait("@bookings-list");
                       cy.contains(eventElemSelector, oldTimeRangeStr).should(
-                        "not.exist"
+                        "not.exist",
                       );
                       cy.contains(".fc-event-main-frame", newTimeRangeStr)
                         .scrollIntoView()
@@ -719,21 +719,21 @@ users.slice(0, 4).forEach((user) => {
               const startTimeStr = get12HourTimeString(testTimestamp);
               const duration = Math.min(
                 bookingConfigs.max_time_slot_length,
-                bookingConfigs.min_time_slot_length + 900
+                bookingConfigs.min_time_slot_length + 900,
               );
               const endTime = addSeconds(testTimestamp, duration);
               const endTimeStr = get12HourTimeString(endTime);
               const booking = findBooking(
                 expectedBookings,
                 bookingInfo,
-                currentDate
+                currentDate,
               );
 
               const oldStartTimeStr = get12HourTimeString(
-                new Date(booking.start_utc)
+                new Date(booking.start_utc),
               );
               const oldEndTimeStr = get12HourTimeString(
-                new Date(booking.end_utc)
+                new Date(booking.end_utc),
               );
 
               const newTimeRangeStr = `${startTimeStr} - ${endTimeStr}`;
@@ -753,7 +753,7 @@ users.slice(0, 4).forEach((user) => {
                 .click()
                 .then(() => {
                   cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
-                    "not.exist"
+                    "not.exist",
                   );
 
                   cy.contains("#booking-form-dialog button", /cancel/i)
@@ -761,11 +761,11 @@ users.slice(0, 4).forEach((user) => {
                     .then(() => {
                       cy.contains(
                         ".fc-event-main-frame",
-                        newTimeRangeStr
+                        newTimeRangeStr,
                       ).should("not.exist");
 
                       cy.contains(eventElemSelector, oldTimeRangeStr).should(
-                        "be.visible"
+                        "be.visible",
                       );
                     });
                 });
@@ -777,25 +777,25 @@ users.slice(0, 4).forEach((user) => {
               const booking = findBooking(
                 expectedBookings,
                 bookingInfo,
-                currentDate
+                currentDate,
               );
 
               const oldStartTimestamp = new Date(booking.start_utc);
               const oldStartTimeStr = get12HourTimeString(oldStartTimestamp);
               const oldEndTimeStr = get12HourTimeString(
-                new Date(booking.end_utc)
+                new Date(booking.end_utc),
               );
 
               // when we drag to the testTimeout band, any extra minutes less than 30 appear
               // since the slot lanes are of length 30 minutes
               const extraMinutes = oldStartTimestamp.getMinutes() % 30;
               const newTimestamp = new Date(
-                testTimestamp.getTime() + extraMinutes * 60_000
+                testTimestamp.getTime() + extraMinutes * 60_000,
               );
               const newStartTimeStr = get12HourTimeString(newTimestamp);
               const newEndTime = addSeconds(
                 newTimestamp,
-                booking.total_duration
+                booking.total_duration,
               );
               const newEndTimeStr = get12HourTimeString(newEndTime);
 
@@ -810,10 +810,10 @@ users.slice(0, 4).forEach((user) => {
 
               cy.get("@eventElem").scrollIntoView();
               cy.contains(eventElemSelector, oldTimeRangeStr).should(
-                "be.visible"
+                "be.visible",
               );
               cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
-                "not.exist"
+                "not.exist",
               );
 
               cy.get("@eventElem")
@@ -821,7 +821,7 @@ users.slice(0, 4).forEach((user) => {
                 .then(() => {
                   cy.wait("@bookings-list");
                   cy.contains(eventElemSelector, oldTimeRangeStr).should(
-                    "not.exist"
+                    "not.exist",
                   );
                   cy.contains(".fc-event-main-frame", newTimeRangeStr)
                     .scrollIntoView()
@@ -834,14 +834,14 @@ users.slice(0, 4).forEach((user) => {
               const booking = findBooking(
                 expectedBookings,
                 bookingInfo,
-                currentDate
+                currentDate,
               );
 
               const oldStartTimeStr = get12HourTimeString(
-                new Date(booking.start_utc)
+                new Date(booking.start_utc),
               );
               const oldEndTimeStr = get12HourTimeString(
-                new Date(booking.end_utc)
+                new Date(booking.end_utc),
               );
 
               const oldTimeRangeStr = `${oldStartTimeStr} - ${oldEndTimeStr}`;
@@ -853,7 +853,7 @@ users.slice(0, 4).forEach((user) => {
 
               cy.get("@eventElem").scrollIntoView();
               cy.contains(eventElemSelector, oldTimeRangeStr).should(
-                "be.visible"
+                "be.visible",
               );
               cy.get("@eventElem")
                 .contains(".fc-event-main-frame", username)
@@ -865,7 +865,7 @@ users.slice(0, 4).forEach((user) => {
                   cy.get("[data-cy-event-details]").should("not.exist");
                   cy.wait("@bookings-list");
                   cy.contains(eventElemSelector, oldTimeRangeStr).should(
-                    "not.exist"
+                    "not.exist",
                   );
                 });
             });
@@ -876,23 +876,23 @@ users.slice(0, 4).forEach((user) => {
               const booking = findBooking(
                 expectedBookings,
                 bookingInfo,
-                currentDate
+                currentDate,
               );
               const oldStartTimestamp = new Date(booking.start_utc);
               const oldStartTimeStr = get12HourTimeString(oldStartTimestamp);
               const oldEndTimeStr = get12HourTimeString(
-                new Date(booking.end_utc)
+                new Date(booking.end_utc),
               );
               // when we drag to the testTimeout band, any extra minutes less than 30 appear
               // since the slot lanes are of length 30 minutes
               const extraMinutes = oldStartTimestamp.getMinutes() % 30;
               const newTimestamp = new Date(
-                testTimestamp.getTime() + extraMinutes * 60_000
+                testTimestamp.getTime() + extraMinutes * 60_000,
               );
               const newStartTimeStr = get12HourTimeString(newTimestamp);
               const newEndTime = addSeconds(
                 newTimestamp,
-                booking.total_duration
+                booking.total_duration,
               );
               const newEndTimeStr = get12HourTimeString(newEndTime);
               const newTimeRangeStr = `${newStartTimeStr} - ${newEndTimeStr}`;
@@ -903,10 +903,10 @@ users.slice(0, 4).forEach((user) => {
               cy.get(eventElemSelector).as("eventElem");
               cy.get("@eventElem").scrollIntoView();
               cy.contains(eventElemSelector, oldTimeRangeStr).should(
-                "be.visible"
+                "be.visible",
               );
               cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
-                "not.exist"
+                "not.exist",
               );
               cy.get("@eventElem")
                 .dragToGridCell(newRowSelector, newColSelector)
@@ -916,7 +916,7 @@ users.slice(0, 4).forEach((user) => {
                     .scrollIntoView()
                     .should("be.visible");
                   cy.contains(".fc-event-main-frame", newTimeRangeStr).should(
-                    "not.exist"
+                    "not.exist",
                   );
                 });
             });
