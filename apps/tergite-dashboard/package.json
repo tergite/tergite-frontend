@@ -1,7 +1,7 @@
 {
   "name": "tergite-dashboard",
   "private": true,
-  "version": "2026.03.0",
+  "version": "2026.03.1",
   "type": "module",
   "scripts": {
     "test-api": "tsx --env-file=.env.test api/server.ts",
