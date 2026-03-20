@@ -26,7 +26,7 @@ authors = [
 maintainers = [
     {name = "Chalmers Next Labs AB", email = "contact@quantum.chalmersnextlabs.se"}
 ]
-version = "2026.03.0"
+version = "2026.03.1"
 description = "the public API for the WACQT quantum computer."
 readme = "README.md"
 requires-python = ">=3.12"
