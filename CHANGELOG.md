@@ -19,6 +19,7 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 ### Fixed
 
 - Fixed the "unhealthy" status of the grafana alloy service
+- Fixed failing GitHub actions tests for dashboard
 
 ## [2026.03.0] - 2026-03-06
 

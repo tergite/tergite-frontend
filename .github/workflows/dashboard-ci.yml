@@ -19,6 +19,8 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    env:
+      TEST_THRESHOLD: "${{ vars.TEST_THRESHOLD }}"
 
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +40,6 @@ jobs:
       - name: End-to-end tests
         run: |
           cd apps/tergite-dashboard
-          echo "TEST_THRESHOLD=${{ vars.TEST_THRESHOLD }}" >> .env.test
           npm run e2e
 
   release-staging:
