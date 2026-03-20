@@ -14,6 +14,12 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+## [2026.03.1] - 2026-03-20
+
+### Fixed
+
+- Fixed the "unhealthy" status of the grafana alloy service
+
 ## [2026.03.0] - 2026-03-06
 
 - No Change
