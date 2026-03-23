@@ -532,7 +532,7 @@ def test_insert_default_ttl(redis_client, payload):
     assert auth_logs.get_one(default_ttl_item_key) == default_ttl_item
     assert auth_logs.get_one(persistent_item_key) == persistent_item
 
-    time.sleep(default_ttl - custom_ttl)
+    time.sleep(default_ttl)
 
     with pytest.raises(NotFoundError):
         auth_logs.get_one(default_ttl_item_key)
