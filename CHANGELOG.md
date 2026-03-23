@@ -14,6 +14,13 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+## [2026.03.2] - 2026-03-23
+
+### Fixed
+
+- Fixed CI error 'pull access denied for tergite/tergite-backend-with-db-e2e, repository does not exist or may require 'docker login'
+- Fixed CI error 'test_insert_default_ttl[payload0] - Failed: DID NOT RAISE &lt;class 'utils.exc.NotFoundError'&gt;'
+
 ## [2026.03.1] - 2026-03-20
 
 ### Fixed
