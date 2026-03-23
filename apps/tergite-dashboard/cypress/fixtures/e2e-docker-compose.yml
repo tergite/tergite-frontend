@@ -5,6 +5,7 @@ services:
       - tergite-frontend-e2e
   mss:
     image: "tergite/tergite-mss:frontend-e2e"
+    pull_policy: never
     depends_on:
       tergite-mongo:
         condition: service_healthy
@@ -15,6 +16,7 @@ services:
 
   dashboard:
     image: "tergite/tergite-dashboard:frontend-e2e"
+    pull_policy: never
     depends_on:
       mss:
         condition: service_healthy
@@ -30,6 +32,7 @@ services:
   tergite-mongo:
     restart: always
     image: "tergite/tergite-mongo-e2e:frontend-e2e"
+    pull_policy: never
     build:
       context: ./
       dockerfile: mongo.Dockerfile
@@ -73,6 +76,7 @@ services:
       tergite-redis:
         condition: service_healthy
     image: "tergite/tergite-backend-e2e:frontend-e2e"
+    pull_policy: never
     build:
       context: ../tergite-backend
       dockerfile: Dockerfile
@@ -121,6 +125,7 @@ services:
       tergite-redis:
         condition: service_healthy
     image: "tergite/tergite-backend-e2e:frontend-e2e"
+    pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
@@ -166,6 +171,7 @@ services:
       tergite-redis:
         condition: service_healthy
     image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    pull_policy: never
     build:
       context: ../tergite-backend
       dockerfile: Dockerfile.with-db
@@ -222,6 +228,7 @@ services:
       tergite-redis:
         condition: service_healthy
     image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
@@ -275,6 +282,7 @@ services:
       tergite-redis:
         condition: service_healthy
     image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
@@ -327,7 +335,8 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-with-db-e2e:latest"
+    image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
@@ -381,6 +390,7 @@ services:
       tergite-redis:
         condition: service_healthy
     image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
@@ -434,6 +444,7 @@ services:
       tergite-redis:
         condition: service_healthy
     image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
