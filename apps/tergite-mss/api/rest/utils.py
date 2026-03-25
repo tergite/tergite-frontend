@@ -84,10 +84,7 @@ def get_verified_device_name(websocket: WebSocket) -> str:
         backend_conf = settings.CONFIG.backends_dict[name]
 
         client_ip = get_ip_addr(websocket.client.host)
-        if (
-            backend_conf.is_strict_ip
-            and settings.CONFIG.client_ip != backend_conf.ip_address
-        ):
+        if backend_conf.is_strict_ip and client_ip != backend_conf.ip_address:
             raise ValueError(f"unexpected websocket client IP {client_ip}")
 
         message = f"{name}-{nonce}-{timestamp}"
