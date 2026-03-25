@@ -65,6 +65,8 @@ class BccConfig(BaseModel):
     public_key_path: Path
     # the URL to access this BCC publicly
     public_url: AnyHttpUrl = None
+    # whether to ignore websocket's IP address check
+    is_strict_ip: bool = True
 
     @field_validator("public_key_path", mode="before")
     @classmethod

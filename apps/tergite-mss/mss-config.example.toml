@@ -49,6 +49,9 @@ timeout = 10
 public_key_path = "data/simulator-kampala-pub-key.pem"
 # the public url for the backend; defaults to the 'url' if not set but can be set to say a reverse proxy
 public_url = "http://proxy.example.com/simulator-arusha"
+# Whether we should always check source IP address of connections from this backend
+# default: true
+is_strict_ip = false
 
 # Add as many backends as you wish to have
 [[backends]]
