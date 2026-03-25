@@ -68,6 +68,16 @@ services:
       - "3000:80"
     env_file:
       - .env
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'wget -qO- --server-response --tries=1 --quiet http://dashboard:80 2>&1 | grep -q "HTTP/1.1 200" || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   grafana-alloy:
     restart: unless-stopped
