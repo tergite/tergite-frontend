@@ -7,6 +7,16 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+## [2026.03.3] - 2026-03-25
+
+### Added
+
+- Added `is_strict_ip` property to backend config in mss-config.toml
+
+### Fixed
+
+-  Fixed connection rejected error when no revers proxy is used
+
 ## [2026.03.2] - 2026-03-23
 
 - No Change
