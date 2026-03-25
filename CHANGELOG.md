@@ -14,6 +14,12 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+## [2026.03.3] - 2026-03-25
+
+### Added
+
+- Added healthcheck to dashboard service in compose files
+
 ## [2026.03.2] - 2026-03-23
 
 ### Fixed
