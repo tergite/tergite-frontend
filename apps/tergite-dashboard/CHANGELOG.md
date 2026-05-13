@@ -7,6 +7,11 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+### Added
+
+- Added the `/prvacy.html` and `/terms.html` pages
+- Added the footer on the dashboard showing the copy right and privacy and terms of use links
+
 ## [2026.03.3] - 2026-03-25
 
 - No Change
