@@ -15,6 +15,7 @@ import { AppStateContext } from "@/lib/app-state";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn, loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
+import { Footer } from "./components/footer";
 
 export function Dashboard() {
   const { currentUser, isUserAdmin } = useLoaderData() as DashboardData;
@@ -67,6 +68,7 @@ export function Dashboard() {
 
           <TopBanner />
           <Outlet />
+          <Footer />
           <Toaster />
         </div>
       </div>
