@@ -131,6 +131,9 @@ cp "$FIXTURES_PATH/private-qiskit-pulse-2q-key.pem" .
 cp "$FIXTURES_PATH/generic.seed.toml" .
 cp "$FIXTURES_PATH/loke.toml" .
 cp "$FIXTURES_PATH/loke.seed.toml" .
+cp "$FIXTURES_PATH/device_config.calib.toml" .
+cp "$FIXTURES_PATH/node_config.calib.toml" .
+cp "$FIXTURES_PATH/spi_config.calib.toml" .
 cp "$FIXTURES_PATH/public-loke-key.pem" bcc_certs/
 cp "$FIXTURES_PATH/private-loke-key.pem" .
 cp "$FIXTURES_PATH/thor.toml" .
