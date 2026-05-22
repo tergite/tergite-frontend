@@ -80,6 +80,8 @@ services:
     build:
       context: ../tergite-backend
       dockerfile: Dockerfile
+      args:
+        DEPS_GROUP: "qiskit"
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
@@ -108,12 +110,6 @@ services:
       - tergite-frontend-e2e
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
   qiskit_pulse_2q:
     restart: always
@@ -154,15 +150,10 @@ services:
       - tergite-frontend-e2e
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
   loke:
     restart: always
+    platform: linux/amd64
     depends_on:
       qiskit_pulse_1q:
         condition: service_healthy
@@ -175,6 +166,8 @@ services:
     build:
       context: ../tergite-backend
       dockerfile: Dockerfile.with-db
+      args:
+        DEPS_GROUP: "quantify"
     logging:
       driver: ${LOGGING_DRIVER}
     ports:
@@ -207,19 +200,17 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
+      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./node_config.calib.toml:/code/node_config.calib.toml:ro
+      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
   thor:
     restart: always
+    platform: linux/amd64
     depends_on:
       loke:
         condition: service_healthy
@@ -261,19 +252,17 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
+      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./node_config.calib.toml:/code/node_config.calib.toml:ro
+      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
   pingu:
     restart: always
+    platform: linux/amd64
     depends_on:
       loke:
         condition: service_healthy
@@ -315,19 +304,17 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
+      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./node_config.calib.toml:/code/node_config.calib.toml:ro
+      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
   pegu:
     restart: always
+    platform: linux/amd64
     depends_on:
       loke:
         condition: service_healthy
@@ -369,19 +356,17 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
+      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./node_config.calib.toml:/code/node_config.calib.toml:ro
+      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
   likee:
     restart: always
+    platform: linux/amd64
     depends_on:
       loke:
         condition: service_healthy
@@ -423,19 +408,17 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
+      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./node_config.calib.toml:/code/node_config.calib.toml:ro
+      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
   thea:
     restart: always
+    platform: linux/amd64
     depends_on:
       loke:
         condition: service_healthy
@@ -477,16 +460,13 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
+      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./node_config.calib.toml:/code/node_config.calib.toml:ro
+      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
       - .env
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/docs"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
 
 networks:
   tergite-frontend-e2e:
