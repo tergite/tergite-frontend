@@ -7,6 +7,11 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+### Added
+
+- Added `/admin/recalibration/{backend}/init`, `/admin/recalibration/{backend}/cancel`
+  and `/admin/recalibration/{backend}/info` endpoints for recalibration control
+
 ## [2026.06.0-rc.1] - 2026-05-13
 
 No change

@@ -914,6 +914,107 @@ def test_non_admin_remove_user(client, backend, user_jwt_cookie, mock_bcc):
         assert response.json() == {"detail": "Forbidden"}
 
 
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_admin_init_recalibration(
+    client, admin_jwt_cookie, user_jwt_cookie, backend, mock_bcc
+):
+    """POST '/admin/recalibration/{backend}/init' should start recalibration via MSS"""
+    with client as client:
+        params = {
+            "interval": 3000,
+            "start_timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        # non admins are not allowed
+        response = client.post(
+            f"/admin/recalibration/{backend}/init",
+            cookies=user_jwt_cookie,
+            params=params,
+        )
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.post(
+            f"/admin/recalibration/{backend}/init",
+            cookies=admin_jwt_cookie,
+            params=params,
+        )
+        actual_output = response.json()
+
+        assert response.status_code == 200
+        assert actual_output == {"status": "success"}
+
+
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_admin_get_recalibration_info(
+    client,
+    admin_jwt_cookie,
+    user_jwt_cookie,
+    backend,
+    mock_bcc,
+):
+    """GET '/admin/recalibration/{backend}/info' should get recalibration info via MSS"""
+    with client as client:
+        # non admins are not allowed
+        response = client.get(
+            f"/admin/recalibration/{backend}/info", cookies=user_jwt_cookie
+        )
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.get(
+            f"/admin/recalibration/{backend}/info", cookies=admin_jwt_cookie
+        )
+        actual_output = response.json()
+
+        assert response.status_code == 200
+        assert actual_output == {
+            "current_job_id": None,
+            "current_job_status": None,
+            "current_job_started_at": None,
+            "previous_job_id": "last_finished_rq_job_id",
+            "previous_job_status": "finished",
+            "previous_job_started_at": "2026-04-27T00:00:25.495000Z",
+            "previous_job_ended_at": "2026-04-27T00:00:25.495000Z",
+            "previous_job_error": None,
+            "next_job_id": "next_rq_job_id",
+            "next_job_status": "scheduled",
+            "next_job_enqueued_at": None,
+            "interval": 4000.0,
+        }
+
+
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_admin_cancel_recalibration(
+    client, admin_jwt_cookie, user_jwt_cookie, backend, mock_bcc
+):
+    """POST '/admin/recalibration/{backend}/cancel' should stop recalibration via MSS"""
+    with client as client:
+        params = {
+            "ignore_errors": True,
+        }
+        # non admins are not allowed
+        response = client.post(
+            f"/admin/recalibration/{backend}/cancel",
+            cookies=user_jwt_cookie,
+            params=params,
+        )
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.post(
+            f"/admin/recalibration/{backend}/cancel",
+            cookies=admin_jwt_cookie,
+            params=params,
+        )
+        actual_output = response.json()
+
+        assert response.status_code == 200
+        assert actual_output == {"status": "success"}
+
+
 def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
     """Converts a database item into an item that can be expected to be returned by HTTP server
 

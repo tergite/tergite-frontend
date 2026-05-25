@@ -505,6 +505,114 @@ class BccClient:
         )
         return BookingsConfig.model_validate({**response, "backend": self.name})
 
+    async def init_recalibration(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        is_admin: bool,
+        start_timestamp: Optional[datetime] = None,
+        interval: Optional[float] = None,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Initializes recalibration of the given backend
+
+        Only MSS admin users can initialize recalibration
+
+        Args:
+            user_id: the ID of the user requesting this operation
+            request_id: the unique identifier of the request
+            is_admin: whether the current user is an admin
+            start_timestamp: the start time of the recalibration; default = None i.e. straight away
+            interval: the recalibration interval; default = None i.e. no repeat
+            private_key_file: the path to the private key file
+
+        Returns:
+            the status of the recalibration
+        """
+        params: Dict[str, Any] = {}
+        if start_timestamp is not None:
+            params["start_timestamp"] = start_timestamp.isoformat()
+        if interval is not None:
+            params["interval"] = interval
+
+        response = await self._request(
+            "POST",
+            "/recalibration/init",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            is_admin=is_admin,
+            params=params,
+        )
+        return response
+
+    async def get_recalibration_info(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        is_admin: bool,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Gets the current information about the recalibration of the given backend
+
+        Only MSS admin users can get recalibration info
+
+        Args:
+            user_id: the ID of the user requesting this operation
+            request_id: the unique identifier of the request
+            is_admin: whether the current user is an admin
+            private_key_file: the path to the private key file
+
+        Returns:
+            the information about the recalibration
+        """
+        response = await self._request(
+            "GET",
+            "/recalibration/info",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            is_admin=is_admin,
+        )
+        return response
+
+    async def stop_recalibration(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        is_admin: bool,
+        ignore_errors: Optional[bool] = None,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Cancels recalibration on this device
+
+        Only MSS admin users can cancel recalibration
+
+        Args:
+            user_id: the ID of the user requesting this operation
+            request_id: the unique identifier of the request
+            is_admin: whether the current user is an admin
+            ignore_errors: whether to ignore errors during recalibration
+            private_key_file: the path to the private key file
+
+        Returns:
+            general information on the status of the request
+        """
+        params: Dict[str, Any] = {}
+        if ignore_errors is not None:
+            params["ignore_errors"] = ignore_errors
+
+        response = await self._request(
+            "POST",
+            "/recalibration/cancel",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            is_admin=is_admin,
+            params=params,
+        )
+        return response
+
     async def _request(
         self,
         method: Literal["POST", "GET", "PUT", "DELETE", "PATCH"],

@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Data Transfer Objects for the BCC service"""
+import enum
 from datetime import datetime
 from typing import Optional
 
@@ -90,3 +91,37 @@ class BookingsConfig(BaseModel):
     max_slots_per_day: int
     max_idle_time: int
     backend: str
+
+
+class RqJobStatus(str, enum.Enum):
+    """The Status of Job within its lifecycle at any given time."""
+
+    CREATED = "created"
+    QUEUED = "queued"
+    FINISHED = "finished"
+    FAILED = "failed"
+    STARTED = "started"
+    DEFERRED = "deferred"
+    SCHEDULED = "scheduled"
+    STOPPED = "stopped"
+    CANCELED = "canceled"
+
+
+class RecalibrationInfo(BaseModel):
+    """Basic information about recalibration"""
+
+    current_job_id: Optional[str] = None
+    current_job_status: Optional[RqJobStatus] = None
+    current_job_started_at: Optional[datetime] = None
+
+    previous_job_id: Optional[str] = None
+    previous_job_status: Optional[RqJobStatus] = None
+    previous_job_started_at: Optional[datetime] = None
+    previous_job_ended_at: Optional[datetime] = None
+    previous_job_error: Optional[str] = None
+
+    next_job_id: Optional[str] = None
+    next_job_status: Optional[RqJobStatus] = None
+    next_job_enqueued_at: Optional[datetime] = None
+
+    interval: Optional[float] = None
