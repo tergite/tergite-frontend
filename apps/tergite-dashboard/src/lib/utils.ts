@@ -13,6 +13,7 @@ import {
   type ExtendedAppToken,
   type Project,
   type UserRequest,
+  NoticeSeverity,
 } from "../../types";
 import { LoaderFunction, LoaderFunctionArgs, redirect } from "react-router-dom";
 import {
@@ -30,6 +31,12 @@ import {
 } from "@tanstack/react-query";
 
 const MAX_YEARS = 273_000;
+
+export const SEVERITY_LABELS: Record<NoticeSeverity, string> = {
+  [NoticeSeverity.INFO]: "Info",
+  [NoticeSeverity.WARNING]: "Warning",
+  [NoticeSeverity.CRITICAL]: "Critical",
+};
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

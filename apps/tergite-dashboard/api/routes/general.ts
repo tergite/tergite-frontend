@@ -1069,6 +1069,7 @@ router.get(
 
     const { backend } = req.params;
 
+    // eslint-disable-next-line no-prototype-builtins
     if (!recalibrationInfoDb.hasOwnProperty(backend)) {
       recalibrationInfoDb[backend] = { ..._initialRecalibrationInfo };
     }

@@ -18,16 +18,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { refreshBookingsQueries } from "@/lib/api-client";
 import { DateTime, Duration } from "luxon";
-import { CalendarIcon } from "lucide-react";
 
 import { Booking } from "types";
-import {
-  Popover,
-  PopoverContentNoPortal,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { TimeInput } from "@/components/ui/time-input";
 import { DurationInput } from "@/components/ui/duration-input";
 import {
   Dialog,
@@ -38,6 +30,7 @@ import {
   DialogClose,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { DateTimeInput } from "@/components/ui/datetime-input";
 
 export function BookingForm({
   className = "",
@@ -211,7 +204,7 @@ export function BookingForm({
           <form
             data-cy-booking-form
             onSubmit={formObj.handleSubmit((values) =>
-              bookingUpdate.mutate(values)
+              bookingUpdate.mutate(values),
             )}
             onReset={handleCancel}
             className={cn("grid gap-4 w-full", className)}
@@ -222,53 +215,12 @@ export function BookingForm({
               render={({ field }) => (
                 <FormItem className="grid gap-2">
                   <FormLabel>Starts</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          id="datetime-input"
-                          variant={"outline"}
-                          disabled={bookingUpdate.isPending}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value?.date ? (
-                            mergeDatetime(field.value)
-                              .setLocale("en-gb")
-                              .toLocaleString(
-                                DateTime.DATETIME_MED_WITH_SECONDS
-                              )
-                          ) : (
-                            <span>Pick a date and time</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContentNoPortal
-                      className="w-auto p-0"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={field.value?.date as Date}
-                        onSelect={(date) =>
-                          field.onChange({ date, time: field.value?.time })
-                        }
-                        disabled={(date) => date < yesterday}
-                        initialFocus
-                      />
-                      <TimeInput
-                        className="w-max py-6 mx-auto my-3"
-                        value={field.value?.time}
-                        onChange={(time) =>
-                          field.onChange({ time, date: field.value?.date })
-                        }
-                      />
-                    </PopoverContentNoPortal>
-                  </Popover>
+                  <DateTimeInput
+                    disabled={bookingUpdate.isPending}
+                    value={field.value}
+                    onChange={field.onChange}
+                    minDate={yesterday}
+                  />
                   <FormMessage />
                 </FormItem>
               )}

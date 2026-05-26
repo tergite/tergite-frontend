@@ -222,7 +222,8 @@ export interface CreateProjectUserRequest extends UserRequest {
 }
 
 // the HTTP response body got when a project is got from API
-export interface Project extends Omit<CreateProjectPostBody, "user_emails">, DbRecord {
+export interface Project
+  extends Omit<CreateProjectPostBody, "user_emails">, DbRecord {
   user_ids: string[];
   admin_id: string;
   is_active: boolean;
@@ -404,15 +405,22 @@ export interface RecalibrationInfo {
   interval?: number;
 }
 
-export enum AnnouncementSeverity {
+export enum NoticeSeverity {
   INFO = "info",
   WARNING = "warning",
   CRITICAL = "critical",
 }
 
-export interface SystemAnnouncement extends DbRecord {
+export interface NoticePostRequest {
   message: string;
-  severity: AnnouncementSeverity;
-  expires_at: string | null;
+  severity: NoticeSeverity;
+  expires_at?: string | null;
+  target_user_emails?: string[];
+  starts_at?: string | null;
+}
+
+export interface Notice
+  extends DbRecord, Omit<NoticePostRequest, "target_user_emails"> {
   created_by: string;
+  target_user_ids?: string[];
 }
