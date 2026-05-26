@@ -38,12 +38,30 @@ import {
   BccUserProfile,
   NewBCCUserInfo,
   NewBookingInfo,
+  RecalibrationInfo,
+  RqJobStatus,
 } from "../../types";
 import { DateTime } from "luxon";
 
 const currentDateString = process.env.CURRENT_DATE;
 const apiBaseUrl = process.env.VITE_API_BASE_URL;
 const router = Router();
+const _apiStartTimestamp = DateTime.now();
+const _initialRecalibrationInfo: RecalibrationInfo = {
+  interval: 86_400,
+  current_job_id: "current_job_id",
+  current_job_status: RqJobStatus.FINISHED,
+  current_job_started_at: _apiStartTimestamp.toISO(),
+
+  previous_job_id: "previous_job_id",
+  previous_job_status: RqJobStatus.FINISHED,
+  previous_job_started_at: _apiStartTimestamp.minus({ days: 1 }).toISO(),
+  previous_job_ended_at: _apiStartTimestamp.minus({ hours: 22 }).toISO(),
+
+  next_job_id: "next_job_id",
+  next_job_status: RqJobStatus.SCHEDULED,
+};
+const recalibrationInfoDb: { [key: string]: RecalibrationInfo } = {};
 
 router.use(
   cors({
@@ -996,6 +1014,90 @@ router.get(
 
     res.json({ skip, limit, data });
   })
+);
+
+router.post(
+  "/admin/recalibration/:backend/init",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const {
+      interval: intervalAsString,
+      start_timestamp: startTimestampAsString,
+    } = req.query;
+    const { backend } = req.params;
+    const recalibrationInfo = recalibrationInfoDb[backend] || {
+      ..._initialRecalibrationInfo,
+    };
+
+    if (intervalAsString) {
+      recalibrationInfo.interval = parseFloat(intervalAsString as string);
+    }
+
+    if (startTimestampAsString) {
+      recalibrationInfo.next_job_enqueued_at = startTimestampAsString as string;
+    }
+
+    recalibrationInfoDb[backend] = recalibrationInfo;
+
+    res.json({ status: "success" });
+  }),
+);
+
+router.get(
+  "/admin/recalibration/:backend/info",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { backend } = req.params;
+
+    if (!recalibrationInfoDb.hasOwnProperty(backend)) {
+      recalibrationInfoDb[backend] = { ..._initialRecalibrationInfo };
+    }
+
+    res.json(recalibrationInfoDb[backend]);
+  }),
+);
+
+router.post(
+  "/admin/recalibration/:backend/cancel",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { ignore_errors: _ignoreErrorsAsString } = req.query;
+    const { backend } = req.params;
+
+    delete recalibrationInfoDb[backend];
+
+    res.json({ status: "success" });
+  }),
 );
 
 // NOTE: this mutates the database. I am using GET to avoid CORS issues

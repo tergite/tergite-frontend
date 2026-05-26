@@ -26,6 +26,9 @@ import {
   GeneralMessage,
   BookingsConfig,
   RawBooking,
+  RecalibrationInfo,
+  SystemAnnouncement,
+  AnnouncementSeverity,
 } from "../../types";
 import {
   normalizeCalibrationData,
@@ -405,6 +408,25 @@ export function bookingsConfigQuery(
   return queryOptions({
     queryKey: [baseUrl, "bookings", backend, "config"],
     queryFn: async () => await getBookingsConfig(backend, baseUrl),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
+ * React Query wrapper around getRecalibrationInfo
+ *
+ * @param backend - the name of the backend device
+ * @param options - extra options e.g. baseUrl
+ */
+export function recalibrationInfoQuery(
+  backend: string,
+  options: { baseUrl?: string } = {}
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  return queryOptions({
+    queryKey: [baseUrl, "admin", "recalibration", backend, "info"],
+    queryFn: async () => await getRecalibrationInfo(backend, { baseUrl }),
     refetchInterval,
     throwOnError: true,
   });
@@ -843,6 +865,169 @@ export async function rejectUserRequest(
     method: "PUT",
     body: JSON.stringify({ status: UserRequestStatus.REJECTED }),
     headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Starts a recalibration cycle
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g.
+ *             - baseUrl - the API base URL; default apiBaseUrl
+ *             - interval - the interval at which to repeat the recalibration
+ *             - start_timestamp - the timestamp when the cycle should start
+ */
+export async function startRecalibration(
+  backend: string,
+  options: { baseUrl?: string, interval?: number, start_timestamp?: string } = {}
+): Promise<UserRequest> {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const query = getQueryString(rest);
+  return await authenticatedFetch(`${baseUrl}/admin/recalibration/${backend}/init?${query}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Gets recalibration information
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g.
+ *             - baseUrl - the API base URL; default apiBaseUrl
+ */
+export async function getRecalibrationInfo(
+  backend: string,
+  options: { baseUrl?: string } = {},
+): Promise<RecalibrationInfo> {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const query = getQueryString(rest);
+  return await authenticatedFetch(
+    `${baseUrl}/admin/recalibration/${backend}/info?${query}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+}
+
+/**
+ * Stops a recalibration cycle
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g.
+ *             - baseUrl - the API base URL; default apiBaseUrl
+ *             - ignore_errors - whether to ignore errors when stopping recalibration or not
+ */
+export async function stopRecalibration(
+  backend: string,
+  options: { baseUrl?: string, ignore_errors?: boolean } = {}
+): Promise<UserRequest> {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const query = getQueryString(rest);
+  return await authenticatedFetch(`${baseUrl}/admin/recalibration/${backend}/cancel?${query}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Sets a backend device online
+ *
+ * TODO: wire to real endpoint once available (e.g. PUT /admin/devices/{backend})
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g. baseUrl
+ */
+export async function setBackendOnline(
+  backend: string,
+  options: { baseUrl?: string } = {}
+): Promise<Device> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/admin/devices/${backend}`, {
+    method: "PUT",
+    body: JSON.stringify({ is_online: true }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Sets a backend device offline
+ *
+ * TODO: wire to real endpoint once available (e.g. PUT /admin/devices/{backend})
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g. baseUrl
+ */
+export async function setBackendOffline(
+  backend: string,
+  options: { baseUrl?: string } = {}
+): Promise<Device> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/admin/devices/${backend}`, {
+    method: "PUT",
+    body: JSON.stringify({ is_online: false }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * React Query options for all system announcements
+ *
+ * TODO: wire to real endpoint once available (e.g. GET /admin/announcements)
+ */
+export const systemAnnouncementsQuery = queryOptions({
+  queryKey: [apiBaseUrl, "admin", "announcements"],
+  queryFn: (): Promise<SystemAnnouncement[]> =>
+    authenticatedFetch(`${apiBaseUrl}/admin/announcements`),
+  refetchInterval,
+  throwOnError: true,
+});
+
+/**
+ * Creates a system-wide announcement visible to all users
+ *
+ * TODO: wire to real endpoint once available (e.g. POST /admin/announcements)
+ *
+ * @param payload - the announcement fields
+ * @param options - extra options e.g. baseUrl
+ */
+export async function createSystemAnnouncement(
+  payload: { message: string; severity: AnnouncementSeverity; expires_at: string | null },
+  options: { baseUrl?: string } = {}
+): Promise<SystemAnnouncement> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/admin/announcements`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Deletes (dismisses) a system announcement
+ *
+ * TODO: wire to real endpoint once available (e.g. DELETE /admin/announcements/{id})
+ *
+ * @param id - the announcement ID
+ * @param options - extra options e.g. baseUrl
+ */
+export async function deleteSystemAnnouncement(
+  id: string,
+  options: { baseUrl?: string } = {}
+): Promise<void> {
+  const { baseUrl = apiBaseUrl } = options;
+  await authenticatedFetch(`${baseUrl}/admin/announcements/${id}`, {
+    method: "DELETE",
+  }, { isJsonOutput: false });
+}
+
+/**
+ * Refreshes the system announcements cache
+ */
+export async function refreshSystemAnnouncements(queryClient: QueryClient) {
+  await queryClient.invalidateQueries({
+    queryKey: systemAnnouncementsQuery.queryKey,
   });
 }
 

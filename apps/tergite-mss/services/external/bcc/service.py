@@ -44,6 +44,7 @@ from services.external.bcc.dtos import (
     CancellationDetails,
     NewBCCUserInfo,
     NewBookingInfo,
+    RecalibrationInfo,
 )
 from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils.api import GeneralMessage
@@ -552,7 +553,7 @@ class BccClient:
         request_id: str,
         is_admin: bool,
         private_key_file=PRIVATE_KEY_FILE,
-    ) -> GeneralMessage:
+    ) -> RecalibrationInfo:
         """Gets the current information about the recalibration of the given backend
 
         Only MSS admin users can get recalibration info
@@ -610,6 +611,68 @@ class BccClient:
             private_key_file=private_key_file,
             is_admin=is_admin,
             params=params,
+        )
+        return response
+
+    async def switch_off(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        is_admin: bool,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Switches off this BCC device
+
+        Only MSS admin users can switch off the device
+
+        Args:
+            user_id: the ID of the user requesting this operation
+            request_id: the unique identifier of the request
+            is_admin: whether the current user is an admin
+            private_key_file: the path to the private key file
+
+        Returns:
+            general information on the status of the request
+        """
+
+        response = await self._request(
+            "POST",
+            "/switch/off",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            is_admin=is_admin,
+        )
+        return response
+
+    async def switch_on(
+        self,
+        user_id: str | PydanticObjectId,
+        request_id: str,
+        is_admin: bool,
+        private_key_file=PRIVATE_KEY_FILE,
+    ) -> GeneralMessage:
+        """Switches on this BCC device
+
+        Only MSS admin users can switch off the device
+
+        Args:
+            user_id: the ID of the user requesting this operation
+            request_id: the unique identifier of the request
+            is_admin: whether the current user is an admin
+            private_key_file: the path to the private key file
+
+        Returns:
+            general information on the status of the request
+        """
+
+        response = await self._request(
+            "POST",
+            "/switch/on",
+            user_id=user_id,
+            request_id=request_id,
+            private_key_file=private_key_file,
+            is_admin=is_admin,
         )
         return response
 

@@ -13,6 +13,7 @@
 # that they have been altered from the originals.
 #
 # Refactored by Martin Ahindura 2023-11-08
+from datetime import datetime
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -52,6 +53,12 @@ class DeviceEventName(str, Enum):
     INITIALIZED = "initialized"
     RECALIBRATED = "recalibrated"
     JOB_UPDATED = "job_updated"
+    SWITCHED_OFF = "switched_off"
+    SWITCHED_ON = "switched_on"
+
+
+class DeviceSwitchData(BaseModel):
+    date: datetime
 
 
 class DeviceUpsert(BaseModel):
@@ -129,7 +136,9 @@ class Device(DeviceUpsert):
     updated_at: Optional[str] = None
 
 
-type DeviceEventData = Union[DeviceUpsert, DeviceCalibrationCreate, JobUpdate]
+type DeviceEventData = Union[
+    DeviceUpsert, DeviceCalibrationCreate, JobUpdate, DeviceSwitchData
+]
 """Data type for the data attached to device events"""
 
 
@@ -157,6 +166,8 @@ class DeviceEvent(BaseModel):
         DeviceEventName.INITIALIZED: DeviceUpsert,
         DeviceEventName.RECALIBRATED: DeviceCalibrationCreate,
         DeviceEventName.JOB_UPDATED: JobUpdate,
+        DeviceEventName.SWITCHED_OFF: DeviceSwitchData,
+        DeviceEventName.SWITCHED_ON: DeviceSwitchData,
     }
 
     id: str

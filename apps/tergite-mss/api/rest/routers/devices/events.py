@@ -20,6 +20,7 @@ from services import jobs as jobs_service
 from services.auth import ProjectDatabase
 from services.calibration import DeviceCalibration
 from services.devices import DeviceUpsert
+from services.devices.dtos import DeviceSwitchData
 from services.external import puhuri as puhuri_service
 from services.jobs import JobUpdate
 from utils.api import GeneralMessage
@@ -94,6 +95,70 @@ async def on_device_initialized_event(
     return {
         "status": "success",
         "data": upserted_record.model_dump(mode="json"),
+    }
+
+
+async def on_device_switched_off_event(
+    device: str, data: DeviceSwitchData, db: AsyncIOMotorDatabase, **kwargs
+) -> GeneralMessage:
+    """Handles the device event of device switched off event
+
+    Args:
+        device: the name of the device
+        data: the extra information about the event
+        db: the mongo db instance where device data is stored
+
+    Returns:
+        the general message with the updated job
+
+    Raises:
+        ValueError: server failed updating documents
+        NotFoundError: device {device} not found
+        ValidationError: if the final object is not validated
+    """
+    patched_record = await devices_service.patch_device(
+        db,
+        name=device,
+        payload={
+            "last_online": data.date.isoformat(),
+            "is_online": False,
+        },
+    )
+    return {
+        "status": "success",
+        "data": patched_record.model_dump(mode="json"),
+    }
+
+
+async def on_device_switched_on_event(
+    device: str, data: DeviceSwitchData, db: AsyncIOMotorDatabase, **kwargs
+) -> GeneralMessage:
+    """Handles the device event of device switched on event
+
+    Args:
+        device: the name of the device
+        data: the extra information about the event
+        db: the mongo db instance where device data is stored
+
+    Returns:
+        the general message with the updated job
+
+    Raises:
+        ValueError: server failed updating documents
+        NotFoundError: device {device} not found
+        ValidationError: if the final object is not validated
+    """
+    patched_record = await devices_service.patch_device(
+        db,
+        name=device,
+        payload={
+            "last_online": None,
+            "is_online": True,
+        },
+    )
+    return {
+        "status": "success",
+        "data": patched_record.model_dump(mode="json"),
     }
 
 

@@ -30,6 +30,10 @@ import {
   AdminRequests,
   loader as adminRequestsLoader,
 } from "./pages/admin-requests";
+import {
+  AdminControl,
+  loader as adminControlLoader,
+} from "./pages/admin-control";
 
 export function AppRouter({ routerConstructor }: Props) {
   const appState = useContext(AppStateContext);
@@ -125,6 +129,15 @@ function getRoutes(appState: AppState, queryClient: QueryClient) {
               </ErrorBound>
             }
             loader={adminRequestsLoader(appState, queryClient)}
+          />
+          <Route
+            path="admin-control"
+            element={
+              <ErrorBound>
+                <AdminControl />
+              </ErrorBound>
+            }
+            loader={adminControlLoader(appState, queryClient)}
           />
         </Route>
       </Route>

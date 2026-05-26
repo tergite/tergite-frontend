@@ -26,11 +26,9 @@ from services.auth import (
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
 from utils.api import GeneralMessage, PaginatedListResponse
-from utils.exc import UnknownBccError
 
 from ..dependencies import (
     BccClientDep,
-    BccClientsMapDep,
     CurrentSuperuserDep,
     CurrentUserDep,
     CurrentUserIdDep,
@@ -312,5 +310,57 @@ async def cancel_recalibration(
         request_id=request_id,
         is_admin=requester.is_superuser,
         ignore_errors=ignore_errors,
+    )
+    return response
+
+
+@router.post("/switch/{backend}/off")
+async def switch_backend_off(
+    bcc_client: BccClientDep,
+    request_id: RequestIdDep,
+    requester: User = CurrentSuperuserDep,
+) -> GeneralMessage:
+    """Switches off the backend
+
+    Only MSS admin users can switch off the device
+
+    Args:
+        bcc_client: the BCC client for the given backend
+        request_id: the unique identifier of the request
+        requester: the admin user requesting this operation
+
+    Returns:
+        general information on the status of the request
+    """
+    response = await bcc_client.switch_off(
+        user_id=requester.id,
+        request_id=request_id,
+        is_admin=requester.is_superuser,
+    )
+    return response
+
+
+@router.post("/switch/{backend}/on")
+async def switch_backend_on(
+    bcc_client: BccClientDep,
+    request_id: RequestIdDep,
+    requester: User = CurrentSuperuserDep,
+) -> GeneralMessage:
+    """Switches on the backend
+
+    Only MSS admin users can switch off the device
+
+    Args:
+        bcc_client: the BCC client for the given backend
+        request_id: the unique identifier of the request
+        requester: the admin user requesting this operation
+
+    Returns:
+        general information on the status of the request
+    """
+    response = await bcc_client.switch_on(
+        user_id=requester.id,
+        request_id=request_id,
+        is_admin=requester.is_superuser,
     )
     return response

@@ -1015,6 +1015,40 @@ def test_admin_cancel_recalibration(
         assert actual_output == {"status": "success"}
 
 
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_admin_switch_off(client, admin_jwt_cookie, user_jwt_cookie, backend, mock_bcc):
+    """POST '/admin/switch/{backend}/off' switches off the backend via MSS"""
+    with client as client:
+        # non admins are not allowed
+        response = client.post(f"/admin/switch/{backend}/off", cookies=user_jwt_cookie)
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.post(f"/admin/switch/{backend}/off", cookies=admin_jwt_cookie)
+        actual_output = response.json()
+
+        assert response.status_code == 200
+        assert actual_output == {"status": "success"}
+
+
+@pytest.mark.parametrize("backend", BACKEND_SLUGS)
+def test_admin_switch_on(client, admin_jwt_cookie, user_jwt_cookie, backend, mock_bcc):
+    """POST '/admin/switch/{backend}/on' switches on the backend via MSS"""
+    with client as client:
+        # non admins are not allowed
+        response = client.post(f"/admin/switch/{backend}/on", cookies=user_jwt_cookie)
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+        # admins are allowed
+        response = client.post(f"/admin/switch/{backend}/on", cookies=admin_jwt_cookie)
+        actual_output = response.json()
+
+        assert response.status_code == 200
+        assert actual_output == {"status": "success"}
+
+
 def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
     """Converts a database item into an item that can be expected to be returned by HTTP server
 

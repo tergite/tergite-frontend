@@ -472,6 +472,66 @@ def cancel_recalibration(request: httpx.Request):
         raise exp
 
 
+def switch_off(request: httpx.Request):
+    """Mock BCC switch-off endpoint
+
+    Args:
+        request: the httpx request
+
+    Returns:
+        dict of status and detail
+    """
+    try:
+        headers = get_bcc_client_verified_headers(request)
+        assert headers["x-mss-is-admin"] == "True"
+
+        return httpx.Response(
+            status_code=200,
+            json={"status": "success"},
+        )
+
+    except ValueError as exp:
+        return httpx.Response(
+            status_code=401, json={"detail": f"user not authenticated {exp}"}
+        )
+    except (KeyError, JSONDecodeError, TypeError) as exp:
+        return httpx.Response(
+            status_code=400, json={"detail": f"malformed request body {exp}"}
+        )
+    except Exception as exp:
+        raise exp
+
+
+def switch_on(request: httpx.Request):
+    """Mock BCC switch-on endpoint
+
+    Args:
+        request: the httpx request
+
+    Returns:
+        dict of status and detail
+    """
+    try:
+        headers = get_bcc_client_verified_headers(request)
+        assert headers["x-mss-is-admin"] == "True"
+
+        return httpx.Response(
+            status_code=200,
+            json={"status": "success"},
+        )
+
+    except ValueError as exp:
+        return httpx.Response(
+            status_code=401, json={"detail": f"user not authenticated {exp}"}
+        )
+    except (KeyError, JSONDecodeError, TypeError) as exp:
+        return httpx.Response(
+            status_code=400, json={"detail": f"malformed request body {exp}"}
+        )
+    except Exception as exp:
+        raise exp
+
+
 def get_recalibration_info(request: httpx.Request):
     """Mock BCC recalibration info endpoint
 
