@@ -232,7 +232,10 @@ export function BookingForm({
                 <FormItem className="">
                   <FormControl>
                     <div className="">
-                      <Label className="text-muted-foreground" htmlFor="name">
+                      <Label
+                        className="text-muted-foreground"
+                        htmlFor="duration"
+                      >
                         Duration (HH:mm:ss)
                       </Label>
                       <DurationInput id="duration" {...field} />

@@ -5,7 +5,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Notice, User, UserRole } from "../../../../../types";
+import { User, UserRole } from "../../../../../types";
 import { NoticeBanner } from "@/components/ui/notice-banner";
 import NoticeForm from "./form";
 import {
@@ -17,7 +17,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { DateTime } from "luxon";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { noticeCountQuery, noticesQuery } from "@/lib/api-client";
 
@@ -103,12 +103,14 @@ function PaginationControl({
   const disabledClass = "pointer-events-none opacity-50";
   const enabledClass = "cursor-pointer";
   return (
-    <Pagination>
+    <Pagination className="flex justify-end">
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
             onClick={onPrevious}
             className={isPreviousDisabled ? disabledClass : enabledClass}
+            aria-disabled={isPreviousDisabled}
+            iconOnly={true}
           />
         </PaginationItem>
         <PaginationItem>
@@ -119,6 +121,8 @@ function PaginationControl({
           <PaginationNext
             onClick={onNext}
             className={isNextDisabled ? disabledClass : enabledClass}
+            aria-disabled={isNextDisabled}
+            iconOnly={true}
           />
         </PaginationItem>
       </PaginationContent>

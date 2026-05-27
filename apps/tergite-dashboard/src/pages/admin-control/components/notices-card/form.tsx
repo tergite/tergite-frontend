@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
+  Form,
 } from "@/components/ui/form";
 import { mergeDatetime, SEVERITY_LABELS } from "@/lib/utils";
 import { DateTimeInput } from "@/components/ui/datetime-input";
@@ -29,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DurationInput } from "@/components/ui/duration-input";
+import { Label } from "@/components/ui/label";
 
 const MAX_CHARS = 280;
 const MIN_DURATION = Duration.fromObject({ minutes: 1 });
@@ -37,10 +40,7 @@ const MAX_DURATION = Duration.fromObject({ months: 3 });
 const formSchema = z.object({
   message: z.string().min(1).max(MAX_CHARS),
   severity: z.nativeEnum(NoticeSeverity),
-  expires_at: z.string().datetime().optional(),
-  target_user_emails: z
-    .array(z.string().email("invalid email; expected xxx@bxxxx.xxx"))
-    .optional(),
+  target_user_emails: z.string().email().min(1).array().optional(),
   starts_at: z
     .object({
       date: z.date(),
@@ -80,7 +80,19 @@ export default function NoticeForm() {
 
   const creationForm = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(formSchema),
-    // defaultValues: { message: "" },
+    defaultValues: {
+      message: "",
+      severity: NoticeSeverity.INFO,
+      starts_at: {
+        date: now.toJSDate(),
+        time: now,
+      },
+      duration: {
+        hours: 1,
+        minutes: 0,
+        seconds: 0,
+      },
+    },
   });
 
   const noticeCreation = useMutation({
@@ -111,80 +123,98 @@ export default function NoticeForm() {
   });
 
   return (
-    // <Form {...creationForm}>
-    <form
-      // onSubmit={creationForm.handleSubmit((values) =>
-      //   noticeCreation.mutate(values),
-      // )}
-      className="rounded-md border p-3 flex flex-col gap-3"
-    >
-      <p className="text-sm font-medium">New notice</p>
-      {/* <FormField
+    <Form {...creationForm}>
+      <form
+        onSubmit={creationForm.handleSubmit((values) =>
+          noticeCreation.mutate(values),
+        )}
+        className="rounded-md border p-3 flex flex-col gap-3"
+      >
+        <p className="text-sm font-medium">New notice</p>
+        <FormField
           control={creationForm.control}
           name="message"
           render={({ field }) => (
             <FormItem className="flex flex-col gap-1.5">
+              <FormLabel className="sr-only">Message</FormLabel>
               <FormControl>
-                <FormLabel className="sr-only">Message</FormLabel>
-                <Textarea
-                  id="ann-message"
-                  placeholder="Write a message..."
-                  className="h-20 resize-none text-sm"
-                  {...field}
-                />
-                <p
-                  className={`text-xs self-end ${field.value.length >= MAX_CHARS ? "text-destructive" : "text-muted-foreground"}`}
-                >
-                  {field.value.length}/{MAX_CHARS}
-                </p>
+                <>
+                  <Textarea
+                    id="notice-message"
+                    placeholder="Write a message..."
+                    className="h-20 resize-none text-sm"
+                    {...field}
+                  />
+                  <p
+                    className={`text-xs self-end ${field.value.length >= MAX_CHARS ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {field.value.length}/{MAX_CHARS}
+                  </p>
+                </>
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
-        /> */}
+        />
 
-      <div className="flex items-center gap-2">
-        {/* <FormField
-            control={creationForm.control}
-            name="severity"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Select {...field}>
-                    <SelectTrigger className="h-8 text-xs flex-1">
-                      <SelectValue placeholder="Severity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.values(NoticeSeverity).map((s) => (
-                        <SelectItem key={s} value={s} className="text-xs">
-                          {SEVERITY_LABELS[s]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-              </FormItem>
-            )}
-          /> */}
+        <FormField
+          control={creationForm.control}
+          name="severity"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Select {...field}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Severity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(NoticeSeverity).map((s) => (
+                      <SelectItem key={s} value={s} className="text-xs">
+                        {SEVERITY_LABELS[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
-        {/* <FormField
-            control={creationForm.control}
-            name="starts_at"
-            render={({ field }) => (
-              <FormItem className="grid gap-2">
-                <FormLabel>Starts</FormLabel>
-                <DateTimeInput
-                  disabled={noticeCreation.isPending}
-                  value={field.value}
-                  onChange={field.onChange}
-                  minDate={yesterday}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          /> */}
-      </div>
-      {/* <Button
+        <FormField
+          control={creationForm.control}
+          name="starts_at"
+          render={({ field }) => (
+            <FormItem className="grid gap-2">
+              <DateTimeInput
+                disabled={noticeCreation.isPending}
+                value={field.value}
+                onChange={field.onChange}
+                minDate={yesterday}
+                label="Starts"
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={creationForm.control}
+          name="duration"
+          render={({ field }) => (
+            <FormItem className="">
+              <FormControl>
+                <div className="">
+                  <Label className="text-muted-foreground" htmlFor="duration">
+                    Duration (HH:mm:ss)
+                  </Label>
+                  <DurationInput id="duration" {...field} />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button
           type="submit"
           variant="default"
           size="sm"
@@ -192,8 +222,8 @@ export default function NoticeForm() {
           disabled={!creationForm.formState.isDirty}
         >
           Post
-        </Button> */}
-    </form>
-    // </Form>
+        </Button>
+      </form>
+    </Form>
   );
 }

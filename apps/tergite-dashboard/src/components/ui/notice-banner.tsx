@@ -24,7 +24,6 @@ const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {
 };
 
 export function NoticeBanner({ notice, isAdmin }: Props) {
-  console.log({ notice });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const severityClass = SEVERITY_BADGE_CLASSES[notice.severity];
@@ -46,19 +45,18 @@ export function NoticeBanner({ notice, isAdmin }: Props) {
     throwOnError: true,
   });
 
-    const noticeDeletion = useMutation({
-      mutationKey: [apiBaseUrl, "admin", "notices", "delete", notice.id],
-      async mutationFn(id: string) {
-        return await deleteNotice(id, { baseUrl: apiBaseUrl });
-      },
-      async onSuccess() {
-        await refreshAllNotices(queryClient);
-        await refreshAllNoticeCounts(queryClient);
-        toast({ title: "Notice deleted" });
-      },
-      throwOnError: true,
-    });
-
+  const noticeDeletion = useMutation({
+    mutationKey: [apiBaseUrl, "admin", "notices", "delete", notice.id],
+    async mutationFn(id: string) {
+      return await deleteNotice(id, { baseUrl: apiBaseUrl });
+    },
+    async onSuccess() {
+      await refreshAllNotices(queryClient);
+      await refreshAllNoticeCounts(queryClient);
+      toast({ title: "Notice deleted" });
+    },
+    throwOnError: true,
+  });
 
   return (
     <div className={`rounded-md border p-3 ${severityClass} border-current/20`}>
