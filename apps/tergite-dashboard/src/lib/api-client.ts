@@ -1,4 +1,8 @@
-import { QueryClient, queryOptions } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  QueryClient,
+  queryOptions,
+} from "@tanstack/react-query";
 import {
   type AppState,
   type Device,
@@ -29,6 +33,7 @@ import {
   RecalibrationInfo,
   Notice,
   NoticePostRequest,
+  CountResponse,
 } from "../../types";
 import {
   normalizeCalibrationData,
@@ -415,7 +420,6 @@ export function bookingsConfigQuery(
 
 /**
  * the notices query for using with react query
- * @param backend - the name of the device to consider
  * @param options - extra options for filtering
  *          - baseUrl - the base URL of the API
  *          - user_id: The IDs of the users to retrieve notices for
@@ -435,8 +439,8 @@ export function noticesQuery(
     max_start_utc?: string;
     min_expires_utc?: string;
     max_expires_utc?: string;
-    skip?: string;
-    limit?: string;
+    skip?: number;
+    limit?: number;
     sort?: string[];
   } = {},
 ) {
@@ -467,6 +471,53 @@ export function noticesQuery(
   return queryOptions({
     queryKey: queryKey,
     queryFn: async () => await getNotices(baseUrl, rest),
+    refetchInterval,
+    throwOnError: true,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * the notice count query
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ *          - user_id: The IDs of the users to retrieve notices for
+ *          - min_start_utc: The minimum UTC timestamp the notice should start
+ *          - max_start_utc: The maximum UTC timestamp the notice should start
+ *          - min_expires_utc: The minimum UTC timestamp the notice should expire
+ *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ */
+export function noticeCountQuery(
+  options: {
+    baseUrl?: string;
+    user_id?: string;
+    min_start_utc?: string;
+    max_start_utc?: string;
+    min_expires_utc?: string;
+    max_expires_utc?: string;
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const {
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    min_expires_utc,
+    max_expires_utc,
+  } = rest;
+  const queryKey = [
+    baseUrl,
+    "counts",
+    "notices",
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    min_expires_utc,
+    max_expires_utc,
+  ];
+  return queryOptions({
+    queryKey: queryKey,
+    queryFn: async () => await getNoticeCount(baseUrl, rest),
     refetchInterval,
     throwOnError: true,
   });
@@ -618,6 +669,24 @@ export async function refreshAllNotices(
   const { baseUrl = apiBaseUrl } = options;
   await queryClient.invalidateQueries({
     queryKey: [baseUrl, "admin", "notices"],
+  });
+}
+
+/**
+ * Refreshes all notice count cache
+ * @param queryClient - the query client for making queries
+ * @param options - the options including:
+ *          - baseUrl - the base URL of the API
+ */
+export async function refreshAllNoticeCounts(
+  queryClient: QueryClient,
+  options: {
+    baseUrl?: string;
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  await queryClient.invalidateQueries({
+    queryKey: [baseUrl, "counts", "notices"],
   });
 }
 
@@ -1074,8 +1143,8 @@ export async function getNotices(
     max_start_utc?: string;
     min_expires_utc?: string;
     max_expires_utc?: string;
-    skip?: string;
-    limit?: string;
+    skip?: number;
+    limit?: number;
     sort?: string[];
   } = {},
 ): Promise<Notice[]> {
@@ -1084,6 +1153,34 @@ export async function getNotices(
     `${baseUrl}/admin/notices?${queryString}`,
   );
   return data;
+}
+
+/**
+ * Retrieves the number of notices that fulfill some criteria
+ *
+ * @param options - extra options e.g.
+ *          - baseUrl: The base URL of the API
+ *          - user_id: The IDs of the users to retrieve notices for
+ *          - min_start_utc: The minimum UTC timestamp the notice should start
+ *          - max_start_utc: The maximum UTC timestamp the notice should start
+ *          - min_expires_utc: The minimum UTC timestamp the notice should expire
+ *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ */
+export async function getNoticeCount(
+  baseUrl: string = apiBaseUrl,
+  options: {
+    user_id?: string;
+    min_start_utc?: string;
+    max_start_utc?: string;
+    min_expires_utc?: string;
+    max_expires_utc?: string;
+  } = {},
+): Promise<number> {
+  const queryString = getQueryString(options);
+  const { count } = await authenticatedFetch<CountResponse>(
+    `${baseUrl}/counts/notices?${queryString}`,
+  );
+  return count;
 }
 
 /**
@@ -1097,7 +1194,7 @@ export async function createNotice(
   options: { baseUrl?: string } = {},
 ): Promise<Notice> {
   const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/admin/notices`, {
+  return await authenticatedFetch(`${baseUrl}/admin/notices/`, {
     method: "POST",
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json" },
@@ -1464,6 +1561,7 @@ async function authenticatedFetch<T>(
 
   if (response.ok) {
     const { isJsonOutput = true } = options;
+    // @ts-ignore
     return isJsonOutput ? await response.json() : await response.text();
   }
 

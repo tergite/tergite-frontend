@@ -10,6 +10,7 @@ import bccUsersFixture from "../cypress/fixtures/bcc-users.json";
 import bookingsFixture from "../cypress/fixtures/bookings.json";
 import bookingsConfigList from "../cypress/fixtures/bookings-configs.json";
 import userRequestList from "../cypress/fixtures/user-requests.json";
+import noticeList from "../cypress/fixtures/notices.json";
 import { type ParsedQs } from "qs";
 import {
   type NextFunction,
@@ -32,6 +33,7 @@ import {
   User,
   UserRequest,
   UserRole,
+  Notice,
 } from "../types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -135,6 +137,7 @@ class MockDb {
     user_requests: [...(userRequestList as UserRequest[])],
     auth_providers: [...(authProviderList as AuthProvider[])],
     bcc_users: [...(bccUserList as BccUserInDb[])],
+    notices: [...(noticeList as Notice[])],
   };
   deleted: { [k: string | ItemType]: DeletedIndex } = {
     projects: {},
@@ -148,6 +151,7 @@ class MockDb {
     user_requests: {},
     auth_providers: {},
     bcc_users: {},
+    notices: {},
   };
 
   constructor() {
@@ -180,6 +184,7 @@ class MockDb {
       user_requests: [...(userRequestList as UserRequest[])],
       auth_providers: [...(authProviderList as AuthProvider[])],
       bcc_users: [...(bccUserList as BccUserInDb[])],
+      notices: [...(noticeList as Notice[])],
     };
     this.deleted = {
       projects: {},
@@ -193,6 +198,7 @@ class MockDb {
       user_requests: {},
       auth_providers: {},
       bcc_users: {},
+      notices: {},
     };
   }
 
@@ -220,16 +226,17 @@ class MockDb {
     filterFn: FilterFunc<T> = () => true,
     skip: number = 0,
     limit: number | undefined = undefined,
-    sort: string[] | undefined = undefined
+    sort: string[] | undefined = undefined,
   ): T[] {
     let data = (this.cache[itemType] as T[]).filter(
-      (item) => filterFn(item) && !this.deleted[itemType][item.id]
+      (item) => filterFn(item) && !this.deleted[itemType][item.id],
     );
     if (sort) {
       data = data.sort(createFieldsSorter(sort));
     }
 
-    return data.slice(skip, limit);
+    const effectiveLimit = limit ? skip + limit : limit;
+    return data.slice(skip, effectiveLimit);
   }
 
   /**
@@ -242,10 +249,10 @@ class MockDb {
    */
   getOne<T extends DbRecord>(
     itemType: ItemType,
-    filterFn: FilterFunc<T>
+    filterFn: FilterFunc<T>,
   ): T | undefined {
     return (this.cache[itemType] as T[]).filter(
-      (item) => filterFn(item) && !this.deleted[itemType][item.id]
+      (item) => filterFn(item) && !this.deleted[itemType][item.id],
     )[0];
   }
 
@@ -260,11 +267,11 @@ class MockDb {
   create<T extends DbRecord>(
     itemType: ItemType,
     payload: UnknownObject | T,
-    unique_fields: string[] | undefined = undefined
+    unique_fields: string[] | undefined = undefined,
   ): T {
     const filters = unique_fields?.reduce(
       (prev, k) => ({ ...prev, k: payload[k] }),
-      {}
+      {},
     );
     const preExistingItems =
       filters &&
@@ -298,7 +305,7 @@ class MockDb {
   update<T extends DbRecord>(
     itemType: ItemType,
     filterFn: FilterFunc<T>,
-    payload: Partial<T>
+    payload: Partial<T>,
   ): T {
     const preExistingItem = this.getOne(itemType, filterFn);
     if (!preExistingItem) {
@@ -309,7 +316,7 @@ class MockDb {
 
     const newItem = { ...preExistingItem, ...payload };
     this.cache[itemType] = (this.cache[itemType] as T[]).map((item) =>
-      filterFn(item) ? newItem : item
+      filterFn(item) ? newItem : item,
     );
 
     return newItem;
@@ -529,6 +536,7 @@ type ItemType =
   | "bookings"
   | "bookings_configs"
   | "user_requests"
+  | "notices"
   | "auth_providers";
 
 type DeletedIndex = { [k: string]: boolean };

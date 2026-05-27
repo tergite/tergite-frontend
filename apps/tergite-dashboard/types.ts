@@ -414,13 +414,18 @@ export enum NoticeSeverity {
 export interface NoticePostRequest {
   message: string;
   severity: NoticeSeverity;
-  expires_at?: string | null;
+  expires_at: string;
   target_user_emails?: string[];
-  starts_at?: string | null;
+  starts_at: string;
 }
 
 export interface Notice
   extends DbRecord, Omit<NoticePostRequest, "target_user_emails"> {
   created_by: string;
   target_user_ids?: string[];
+  dismissed_by: string[];
+}
+
+export interface CountResponse {
+  count: number;
 }

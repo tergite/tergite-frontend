@@ -394,7 +394,7 @@ export async function tryQueryFetchMany<T, K extends QueryKey = QueryKey>(
   },
 ) {
   try {
-    console.log({ options });
+    // console.log({ options });
     return await client.ensureQueryData(options);
   } catch (error) {
     if (options.throwOnError) {

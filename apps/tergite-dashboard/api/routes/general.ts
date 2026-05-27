@@ -40,6 +40,9 @@ import {
   NewBookingInfo,
   RecalibrationInfo,
   RqJobStatus,
+  Notice,
+  GeneralMessage,
+  CountResponse,
 } from "../../types";
 import { DateTime } from "luxon";
 
@@ -1098,6 +1101,226 @@ router.post(
     delete recalibrationInfoDb[backend];
 
     res.json({ status: "success" });
+  }),
+);
+
+router.post(
+  "/admin/notices/",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const payload = { ...req.body, created_by: userId, dismissed_by: [] };
+    let target_user_ids = null;
+    const user_emails = payload.target_user_emails;
+
+    if (user_emails) {
+      const users = mockDb.getMany<User>("users", (user) =>
+        user_emails.includes(user.email),
+      );
+      target_user_ids = users.map((v) => v.id);
+    }
+
+    payload["target_user_ids"] = target_user_ids;
+    payload["id"] = randomUUID();
+
+    mockDb.create<Notice>("notices", payload);
+    res.status(201);
+    res.json(payload as Notice);
+  }),
+);
+
+router.post(
+  "/admin/notices/:id/dismiss",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const { id } = req.params;
+
+    const notice = mockDb.getOne<Notice>("notices", (v) =>
+      conformsToFilter(v, { id }),
+    );
+    if (!notice) {
+      res.status(404).json({ detail: `NotFound` });
+      return;
+    }
+
+    mockDb.update<Notice>("notices", (v) => v.id === id, {
+      dismissed_by: [...notice.dismissed_by, userId],
+    });
+
+    res.status(200);
+    res.json({ status: "success" } as GeneralMessage);
+  }),
+);
+
+router.get(
+  "/admin/notices",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const {
+      user_id,
+      min_start_utc,
+      max_start_utc,
+      min_expires_utc,
+      max_expires_utc,
+      skip: skipAsString,
+      limit: limitAsString,
+      sort: sortQuery,
+    } = req.query;
+    const skip = skipAsString ? parseInt(skipAsString as string, 10) : 0;
+    const limit = limitAsString
+      ? parseInt(limitAsString as string, 10)
+      : undefined;
+    const sort = sortQuery
+      ? Array.isArray(sortQuery)
+        ? (sortQuery as string[])
+        : [sortQuery as string]
+      : undefined;
+
+    const filterFunc = (v: Notice) => {
+      let isMatch = true;
+      if (user_id) {
+        isMatch =
+          isMatch &&
+          (!v.target_user_ids ||
+            v.target_user_ids?.includes(user_id as string));
+      }
+
+      if (min_start_utc) {
+        isMatch =
+          isMatch &&
+          DateTime.fromISO(v.starts_at) >=
+            DateTime.fromISO(min_start_utc as string);
+      }
+      if (max_start_utc) {
+        isMatch =
+          isMatch &&
+          DateTime.fromISO(v.starts_at) <=
+            DateTime.fromISO(max_start_utc as string);
+      }
+      if (min_expires_utc) {
+        isMatch =
+          isMatch &&
+          DateTime.fromISO(v.expires_at) >=
+            DateTime.fromISO(min_expires_utc as string);
+      }
+      if (max_expires_utc) {
+        isMatch =
+          isMatch &&
+          DateTime.fromISO(v.expires_at) <=
+            DateTime.fromISO(max_expires_utc as string);
+      }
+
+      return isMatch;
+    };
+
+    const data = mockDb.getMany<Notice>(
+      "notices",
+      filterFunc,
+      skip,
+      limit,
+      sort,
+    );
+
+    res.status(200);
+    res.json({ skip, limit, data } as PaginatedData<Notice[]>);
+  }),
+);
+
+router.delete(
+  "/admin/notices/:id",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    mockDb.del("notices", req.params.id);
+
+    res.status(200);
+    res.json({ status: "success" } as GeneralMessage);
+  }),
+);
+
+router.get(
+  "/counts/notices",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const {
+      user_id,
+      min_start_utc,
+      max_start_utc,
+      min_expires_utc,
+      max_expires_utc,
+    } = req.query;
+
+    const filterFunc = (v: Notice) => {
+      let isMatch = true;
+      if (user_id) {
+        isMatch =
+          isMatch &&
+          (!v.target_user_ids ||
+            v.target_user_ids?.includes(user_id as string));
+      }
+
+      if (min_start_utc) {
+        isMatch =
+          isMatch &&
+          DateTime.fromISO(v.starts_at) >=
+            DateTime.fromISO(min_start_utc as string);
+      }
+      if (max_start_utc) {
+        isMatch =
+          isMatch &&
+          DateTime.fromISO(v.starts_at) <=
+            DateTime.fromISO(max_start_utc as string);
+      }
+      if (min_expires_utc) {
+        isMatch =
+          isMatch &&
+          DateTime.fromISO(v.expires_at) >=
+            DateTime.fromISO(min_expires_utc as string);
+      }
+      if (max_expires_utc) {
+        isMatch =
+          isMatch &&
+          DateTime.fromISO(v.expires_at) <=
+            DateTime.fromISO(max_expires_utc as string);
+      }
+
+      return isMatch;
+    };
+
+    const data = mockDb.getMany<Notice>("notices", filterFunc);
+
+    res.status(200);
+    res.json({ count: data.length } as CountResponse);
   }),
 );
 

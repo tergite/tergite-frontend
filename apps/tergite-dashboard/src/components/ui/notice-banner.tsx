@@ -4,13 +4,15 @@ import {
   apiBaseUrl,
   deleteNotice,
   dismissNotice,
+  refreshAllNoticeCounts,
   refreshAllNotices,
 } from "@/lib/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, X } from "lucide-react";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import { NoticeSeverity, Notice } from "types";
+import { NoticeSeverity, Notice } from "../../../types";
+import { SEVERITY_LABELS } from "@/lib/utils";
 
 const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {
   [NoticeSeverity.INFO]:
@@ -22,6 +24,7 @@ const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {
 };
 
 export function NoticeBanner({ notice, isAdmin }: Props) {
+  console.log({ notice });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const severityClass = SEVERITY_BADGE_CLASSES[notice.severity];
@@ -31,40 +34,30 @@ export function NoticeBanner({ notice, isAdmin }: Props) {
   );
 
   const noticeDismissal = useMutation({
-    mutationKey: [
-      apiBaseUrl,
-      "admin",
-      "notices",
-      "dismiss",
-      notice.id,
-    ],
+    mutationKey: [apiBaseUrl, "admin", "notices", "dismiss", notice.id],
     async mutationFn(id: string) {
       return await dismissNotice(id, { baseUrl: apiBaseUrl });
     },
-    onSuccess(data) {
-      refreshAllNotices(queryClient);
+    async onSuccess(data) {
+      await refreshAllNotices(queryClient);
+      await refreshAllNoticeCounts(queryClient);
       toast({ title: `Notice dismissal: ${data.status}` });
     },
     throwOnError: true,
   });
 
     const noticeDeletion = useMutation({
-    mutationKey: [
-      apiBaseUrl,
-      "admin",
-      "notices",
-      "delete",
-      notice.id,
-    ],
-    async mutationFn(id: string) {
-      return await deleteNotice(id, { baseUrl: apiBaseUrl });
-    },
-    onSuccess() {
-      refreshAllNotices(queryClient);
-      toast({ title: "Notice deleted" });
-    },
-    throwOnError: true,
-  });
+      mutationKey: [apiBaseUrl, "admin", "notices", "delete", notice.id],
+      async mutationFn(id: string) {
+        return await deleteNotice(id, { baseUrl: apiBaseUrl });
+      },
+      async onSuccess() {
+        await refreshAllNotices(queryClient);
+        await refreshAllNoticeCounts(queryClient);
+        toast({ title: "Notice deleted" });
+      },
+      throwOnError: true,
+    });
 
 
   return (
@@ -87,7 +80,7 @@ export function NoticeBanner({ notice, isAdmin }: Props) {
           <IconButton
             Icon={Trash2}
             aria-label="Delete notice"
-            className="rounded-full text-destructive"
+            className="rounded-full text-destructive-foreground bg-destructive"
             onClick={() => noticeDeletion.mutate(notice.id)}
           />
         ) : null}
@@ -97,7 +90,6 @@ export function NoticeBanner({ notice, isAdmin }: Props) {
           Expires {DateTime.fromISO(notice.expires_at).toRelative()}
         </p>
       )}
-
     </div>
   );
 }

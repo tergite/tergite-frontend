@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { useForm } from "node_modules/react-hook-form/dist/useForm";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form } from "react-hook-form";
+import { Form, useForm } from "react-hook-form";
 import {
   FormControl,
   FormField,
@@ -18,9 +17,10 @@ import { DateTime, Duration } from "luxon";
 import {
   apiBaseUrl,
   createNotice,
-  refreshAllNotices as refreshAllNotices,
+  refreshAllNoticeCounts,
+  refreshAllNotices,
 } from "@/lib/api-client";
-import { NoticeSeverity } from "types";
+import { NoticeSeverity } from "../../../../../types";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -80,7 +80,7 @@ export default function NoticeForm() {
 
   const creationForm = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(formSchema),
-    defaultValues: { message: "" },
+    // defaultValues: { message: "" },
   });
 
   const noticeCreation = useMutation({
@@ -90,8 +90,8 @@ export default function NoticeForm() {
       starts_at: startTimestamp,
       ...rest
     }: FormOutput) {
-      const expires_at = startTimestamp.plus(duration).toISO();
-      const starts_at = startTimestamp.toISO();
+      const expires_at = startTimestamp.plus(duration).toISO()!;
+      const starts_at = startTimestamp.toISO()!;
       return await createNotice(
         {
           expires_at,
@@ -101,8 +101,9 @@ export default function NoticeForm() {
         { baseUrl: apiBaseUrl },
       );
     },
-    onSuccess(data) {
-      refreshAllNotices(queryClient);
+    async onSuccess(data) {
+      await refreshAllNotices(queryClient);
+      await refreshAllNoticeCounts(queryClient);
       const description = `Visible to ${data.target_user_ids?.length ?? "all"} users.`;
       toast({ title: "Notice posted", description });
     },
@@ -110,15 +111,15 @@ export default function NoticeForm() {
   });
 
   return (
-    <Form {...creationForm}>
-      <form
-        onSubmit={creationForm.handleSubmit((values) =>
-          noticeCreation.mutate(values),
-        )}
-        className="rounded-md border p-3 flex flex-col gap-3"
-      >
-        <p className="text-sm font-medium">New notice</p>
-        <FormField
+    // <Form {...creationForm}>
+    <form
+      // onSubmit={creationForm.handleSubmit((values) =>
+      //   noticeCreation.mutate(values),
+      // )}
+      className="rounded-md border p-3 flex flex-col gap-3"
+    >
+      <p className="text-sm font-medium">New notice</p>
+      {/* <FormField
           control={creationForm.control}
           name="message"
           render={({ field }) => (
@@ -140,10 +141,10 @@ export default function NoticeForm() {
               <FormMessage />
             </FormItem>
           )}
-        />
+        /> */}
 
-        <div className="flex items-center gap-2">
-          <FormField
+      <div className="flex items-center gap-2">
+        {/* <FormField
             control={creationForm.control}
             name="severity"
             render={({ field }) => (
@@ -164,9 +165,9 @@ export default function NoticeForm() {
                 </FormControl>
               </FormItem>
             )}
-          />
+          /> */}
 
-          <FormField
+        {/* <FormField
             control={creationForm.control}
             name="starts_at"
             render={({ field }) => (
@@ -181,9 +182,9 @@ export default function NoticeForm() {
                 <FormMessage />
               </FormItem>
             )}
-          />
-        </div>
-        <Button
+          /> */}
+      </div>
+      {/* <Button
           type="submit"
           variant="default"
           size="sm"
@@ -191,9 +192,8 @@ export default function NoticeForm() {
           disabled={!creationForm.formState.isDirty}
         >
           Post
-        </Button>
-      </form>
-    </Form>
+        </Button> */}
+    </form>
+    // </Form>
   );
 }
-
