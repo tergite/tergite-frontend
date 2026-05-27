@@ -9,7 +9,7 @@ import {
   FormMessage,
   Form,
 } from "@/components/ui/form";
-import { mergeDatetime, SEVERITY_LABELS } from "@/lib/utils";
+import { mergeDatetime } from "@/lib/utils";
 import { DateTimeInput } from "@/components/ui/datetime-input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -32,14 +32,21 @@ import {
 } from "@/components/ui/select";
 import { DurationInput } from "@/components/ui/duration-input";
 import { Label } from "@/components/ui/label";
+import { MultiInput } from "@/components/ui/multi-input";
+import { ButtonGroup } from "@/components/ui/button-group";
 
 const MAX_CHARS = 280;
 const MIN_DURATION = Duration.fromObject({ minutes: 1 });
 const MAX_DURATION = Duration.fromObject({ months: 3 });
+const SEVERITY_OPTIONS = [
+  NoticeSeverity.INFO,
+  NoticeSeverity.WARNING,
+  NoticeSeverity.CRITICAL,
+] as const;
 
 const formSchema = z.object({
   message: z.string().min(1).max(MAX_CHARS),
-  severity: z.nativeEnum(NoticeSeverity),
+  severity: z.enum(SEVERITY_OPTIONS),
   target_user_emails: z.string().email().min(1).array().optional(),
   starts_at: z
     .object({
@@ -52,10 +59,7 @@ const formSchema = z.object({
       }),
     })
     .transform(mergeDatetime)
-    .refine((dt) => dt.isValid, { message: "invalid date" })
-    .refine((dt) => dt >= DateTime.now(), {
-      message: "date must be in future",
-    }),
+    .refine((dt) => dt.isValid, { message: "invalid date" }),
   duration: z
     .object({
       hours: z.number().int(),
@@ -133,10 +137,42 @@ export default function NoticeForm() {
         <p className="text-sm font-medium">New notice</p>
         <FormField
           control={creationForm.control}
+          name="severity"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Select
+                  value={field.value}
+                  name={field.name}
+                  onValueChange={field.onChange}
+                >
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      placeholder="Severity"
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEVERITY_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s} className="text-xs">
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={creationForm.control}
           name="message"
           render={({ field }) => (
-            <FormItem className="flex flex-col gap-1.5">
-              <FormLabel className="sr-only">Message</FormLabel>
+            <FormItem className="flex flex-col gap-1">
+              <FormLabel className="sr-only" htmlFor="notice-message">
+                Message
+              </FormLabel>
               <FormControl>
                 <>
                   <Textarea
@@ -159,39 +195,25 @@ export default function NoticeForm() {
 
         <FormField
           control={creationForm.control}
-          name="severity"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <Select {...field}>
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Severity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(NoticeSeverity).map((s) => (
-                      <SelectItem key={s} value={s} className="text-xs">
-                        {SEVERITY_LABELS[s]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={creationForm.control}
           name="starts_at"
           render={({ field }) => (
-            <FormItem className="grid gap-2">
-              <DateTimeInput
-                disabled={noticeCreation.isPending}
-                value={field.value}
-                onChange={field.onChange}
-                minDate={yesterday}
-                label="Starts"
-              />
+            <FormItem>
+              <ButtonGroup className="w-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-muted-foreground pointer-events-none"
+                >
+                  Starts
+                </Button>
+
+                <DateTimeInput
+                  disabled={noticeCreation.isPending}
+                  value={field.value}
+                  onChange={field.onChange}
+                  minDate={yesterday}
+                />
+              </ButtonGroup>
               <FormMessage />
             </FormItem>
           )}
@@ -201,11 +223,11 @@ export default function NoticeForm() {
           control={creationForm.control}
           name="duration"
           render={({ field }) => (
-            <FormItem className="">
+            <FormItem>
               <FormControl>
                 <div className="">
                   <Label className="text-muted-foreground" htmlFor="duration">
-                    Duration (HH:mm:ss)
+                    Duration
                   </Label>
                   <DurationInput id="duration" {...field} />
                 </div>
@@ -214,6 +236,28 @@ export default function NoticeForm() {
             </FormItem>
           )}
         />
+
+        <FormField
+          control={creationForm.control}
+          name="target_user_emails"
+          render={({ field }) => (
+            <FormItem className="">
+              <FormControl>
+                <div className="flex flex-col">
+                  <Label
+                    className="text-muted-foreground mb-1"
+                    htmlFor="user_emails"
+                  >
+                    Audience
+                  </Label>
+                  <MultiInput id="user_emails" type="email" {...field} />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button
           type="submit"
           variant="default"

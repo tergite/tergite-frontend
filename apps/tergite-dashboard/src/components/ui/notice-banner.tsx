@@ -2,13 +2,12 @@ import { IconButton } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
   apiBaseUrl,
-  deleteNotice,
   dismissNotice,
   refreshAllNoticeCounts,
   refreshAllNotices,
 } from "@/lib/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trash2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import { NoticeSeverity, Notice } from "../../../types";
@@ -23,7 +22,7 @@ const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {
     "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 };
 
-export function NoticeBanner({ notice, isAdmin }: Props) {
+export function NoticeBanner({ notice }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const severityClass = SEVERITY_BADGE_CLASSES[notice.severity];
@@ -45,19 +44,6 @@ export function NoticeBanner({ notice, isAdmin }: Props) {
     throwOnError: true,
   });
 
-  const noticeDeletion = useMutation({
-    mutationKey: [apiBaseUrl, "admin", "notices", "delete", notice.id],
-    async mutationFn(id: string) {
-      return await deleteNotice(id, { baseUrl: apiBaseUrl });
-    },
-    async onSuccess() {
-      await refreshAllNotices(queryClient);
-      await refreshAllNoticeCounts(queryClient);
-      toast({ title: "Notice deleted" });
-    },
-    throwOnError: true,
-  });
-
   return (
     <div className={`rounded-md border p-3 ${severityClass} border-current/20`}>
       <div className="flex items-start justify-between gap-2">
@@ -74,14 +60,6 @@ export function NoticeBanner({ notice, isAdmin }: Props) {
           className="rounded-full"
           onClick={() => noticeDismissal.mutate(notice.id)}
         />
-        {isAdmin ? (
-          <IconButton
-            Icon={Trash2}
-            aria-label="Delete notice"
-            className="rounded-full text-destructive-foreground bg-destructive"
-            onClick={() => noticeDeletion.mutate(notice.id)}
-          />
-        ) : null}
       </div>
       {notice.expires_at && (
         <p className="text-xs opacity-60 mt-1.5">

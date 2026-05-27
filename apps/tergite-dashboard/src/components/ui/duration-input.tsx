@@ -1,6 +1,8 @@
 import { ChangeEvent, useCallback, forwardRef, useMemo } from "react";
 import { Input } from "./input";
 import { safeParseInt } from "@/lib/utils";
+import { ButtonGroup } from "./button-group";
+import { Button } from "./button";
 
 const DurationInput = forwardRef<HTMLInputElement, Props>(
   ({ value, onChange, ...props }, ref) => {
@@ -47,38 +49,60 @@ const DurationInput = forwardRef<HTMLInputElement, Props>(
 
     return (
       <>
-        <div
-          className="flex justify-between gap-2 items-baseline max-w-fit"
-          {...props}
-        >
-          <Input
-            id="duration-hours"
-            type="number"
-            min={0}
-            placeholder="HH"
-            value={value?.hours ?? undefined}
-            onChange={handleHoursChange}
-          />
-          <span>:</span>
-          <Input
-            id="duration-minutes"
-            type="number"
-            min={0}
-            max={59}
-            placeholder="MM"
-            value={value?.minutes ?? undefined}
-            onChange={handleMinutesChange}
-          />
-          <span>:</span>
-          <Input
-            id="duration-seconds"
-            type="number"
-            min={0}
-            max={59}
-            placeholder="SS"
-            value={value?.seconds ?? undefined}
-            onChange={handleSecondsChange}
-          />
+        <div className="grid grid-cols-3 gap-1" {...props}>
+          <ButtonGroup className="w-full">
+            <Button
+              type="button"
+              variant="outline"
+              className="text-muted-foreground pointer-events-none"
+            >
+              hrs
+            </Button>
+            <Input
+              id="duration-hours"
+              type="number"
+              min={0}
+              placeholder="HH"
+              value={value?.hours ?? undefined}
+              onChange={handleHoursChange}
+            />
+          </ButtonGroup>
+          <ButtonGroup className="w-full">
+            <Button
+              type="button"
+              variant="outline"
+              className="text-muted-foreground pointer-events-none"
+            >
+              mins
+            </Button>
+            <Input
+              id="duration-minutes"
+              type="number"
+              min={0}
+              max={59}
+              placeholder="MM"
+              value={value?.minutes ?? undefined}
+              onChange={handleMinutesChange}
+            />
+          </ButtonGroup>
+          <ButtonGroup className="w-full">
+            <Button
+              type="button"
+              variant="outline"
+              className="text-muted-foreground pointer-events-none"
+            >
+              secs
+            </Button>
+            <Input
+              id="duration-seconds"
+              type="number"
+              min={0}
+              max={59}
+              placeholder="SS"
+              value={value?.seconds ?? undefined}
+              onChange={handleSecondsChange}
+            />
+          </ButtonGroup>
         </div>
 
         <Input type="hidden" value={valueStr} ref={ref} readOnly {...props} />

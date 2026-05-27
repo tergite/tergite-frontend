@@ -5,8 +5,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, UserRole } from "../../../../../types";
-import { NoticeBanner } from "@/components/ui/notice-banner";
+import { User } from "../../../../../types";
 import NoticeForm from "./form";
 import {
   Pagination,
@@ -20,26 +19,21 @@ import { DateTime } from "luxon";
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { noticeCountQuery, noticesQuery } from "@/lib/api-client";
+import { AdminNoticeBanner } from "./banner";
 
 export function NoticesCard({ currentUser }: Props) {
-  const isAdmin = useMemo(
-    () => currentUser?.roles.includes(UserRole.ADMIN) ?? false,
-    [currentUser],
-  );
   const [page, setPage] = useState(1);
-  const filters = useMemo(() => {
-    const currentTimestamp = DateTime.now().toISO();
-    return {
-      user_id: currentUser?.id,
-      max_start_utc: currentTimestamp,
-      min_expires_utc: currentTimestamp,
-    };
-  }, [currentUser]);
+  const currentTimestamp = useMemo(() => DateTime.now().toISO(), [page]);
+  const filters = {
+    user_id: currentUser?.id,
+    max_start_utc: currentTimestamp,
+    min_expires_utc: currentTimestamp,
+  };
 
   const { data: notices, isPlaceholderData } = useQuery(
     noticesQuery({
       ...filters,
-      sort: ["-severity"],
+      sort: ["-severity", "starts_at"],
       limit: 1,
       skip: page - 1,
     }),
@@ -76,7 +70,7 @@ export function NoticesCard({ currentUser }: Props) {
         ) : (
           <div className="flex flex-col gap-2">
             {notices?.map((notice) => (
-              <NoticeBanner key={notice.id} notice={notice} isAdmin={isAdmin} />
+              <AdminNoticeBanner key={notice.id} notice={notice} />
             ))}
           </div>
         )}
