@@ -24,6 +24,7 @@ import settings
 from services import calibration as calib_service
 from services.auth import service as auth_service
 from services.devices import service as devices_service
+from services.notices import service as notices_service
 from services.external import bcc, puhuri
 
 from .routers.devices import ws_manager as devices_ws_manager
@@ -55,6 +56,7 @@ async def lifespan(_app: FastAPI):
     db = await get_default_mongodb()
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)
+    await notices_service.on_startup(db)
     await puhuri.initialize_db(db)
 
     yield

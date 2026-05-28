@@ -52,3 +52,7 @@ class InvalidRequestIDError(BaseMssException):
 
 class InvalidWebsocketDataTypeError(BaseMssException):
     """Exception when the data type used by the websocket client is not permitted"""
+
+
+class ForbiddenError(BaseMssException):
+    """Exception when a request is forbidden"""

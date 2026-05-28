@@ -25,7 +25,9 @@ from services.auth import (
     user_requests,
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
+from services.notices.dtos import NoticeCreate, Notice
 from utils.api import GeneralMessage, PaginatedListResponse
+from services import notices as notices_service
 
 from ..dependencies import (
     BccClientDep,
@@ -33,6 +35,7 @@ from ..dependencies import (
     CurrentUserDep,
     CurrentUserIdDep,
     RequestIdDep,
+    MongoDbDep,
 )
 
 router = APIRouter(prefix="/admin")
@@ -364,3 +367,120 @@ async def switch_backend_on(
         is_admin=requester.is_superuser,
     )
     return response
+
+
+@router.post("/notices/")
+async def publish_notice(
+    db: MongoDbDep,
+    payload: NoticeCreate,
+    current_user: User = CurrentSuperuserDep,
+) -> Notice:
+    """Publishes a notice
+
+    Only MSS admin users can publish notices
+
+    Args:
+        db: the MongoDB database where the notice will be stored
+        payload: the notice payload
+        current_user: the current user
+
+    Returns:
+        the created notice
+    """
+    return await notices_service.publish_notice(
+        db, current_user_id=current_user.id, payload=payload
+    )
+
+
+@router.delete("/notices/{notice_id}", dependencies=[CurrentSuperuserDep])
+async def delete_notice(
+    db: MongoDbDep,
+    notice_id: PydanticObjectId,
+) -> Notice:
+    """Deletes a notice
+
+    Only MSS admin users can delete notices
+
+    Args:
+        db: the MongoDB database where the notice will be stored
+        notice_id: the unique identifier of the notice
+
+    Returns:
+        the deleted notice
+    """
+    return await notices_service.delete_notice(db, pk=notice_id)
+
+
+@router.post("/notices/{notice_id}/dismiss")
+async def dismiss_notice(
+    db: MongoDbDep,
+    notice_id: PydanticObjectId,
+    current_user_id: PydanticObjectId = CurrentUserIdDep,
+) -> GeneralMessage:
+    """Dismisses a notice
+
+    Args:
+        db: the MongoDB database where the notice will be stored
+        notice_id: the unique identifier of the notice
+        current_user_id: the unique identifier of the current user
+
+    Returns:
+        a general message about the status of the operation
+    """
+    await notices_service.dismiss_notice(db, pk=notice_id, user_id=current_user_id)
+    return {"status": "success"}
+
+
+@router.get("/notices")
+async def get_many_notices(
+    db: MongoDbDep,
+    current_user: User = CurrentUserDep,
+    skip: int = 0,
+    limit: Optional[int] = None,
+    sort: List[str] = Query(("starts_at",)),
+    user_id: PydanticObjectId = Query(
+        None, description="User ID whose notice count is requested"
+    ),
+    min_start_utc: datetime = Query(None),
+    max_start_utc: datetime = Query(None),
+    min_expires_utc: datetime = Query(None),
+    max_expires_utc: datetime = Query(None),
+    include_dismissed: bool = Query(False),
+) -> PaginatedListResponse[Notice]:
+    """Gets many notices, filtering them accordingly
+
+    Args:
+        db: the MongoDB database where the notice will be stored
+        current_user: the current logged-in user
+        skip: the number of notices to skip
+        limit: the maximum number of notices to return
+        sort: the sort order
+        user_id: The IDs of the users to retrieve notices for
+        min_start_utc: The minimum UTC timestamp the notice should start
+        max_start_utc: The maximum UTC timestamp the notice should start
+        min_expires_utc: The minimum UTC timestamp the notice should expire
+        max_expires_utc: The maximum UTC timestamp the notice should expire
+        include_dismissed: whether to include dismissed notices; defaults to False
+
+    Returns:
+        a paginated list of notices
+    """
+    # Make sure for ordinary users, the user id is always of the current user
+    if not current_user.is_superuser:
+        user_id = current_user.id
+
+    data = await notices_service.find_many_notices(
+        db,
+        limit=limit,
+        skip=skip,
+        sort=sort,
+        user_id=user_id,
+        min_start_utc=min_start_utc,
+        max_start_utc=max_start_utc,
+        min_expires_utc=min_expires_utc,
+        max_expires_utc=max_expires_utc,
+        include_dismissed=include_dismissed,
+    )
+    return PaginatedListResponse(skip=skip, limit=limit, data=data).model_dump(
+        mode="json", exclude_data_none_fields=False
+    )

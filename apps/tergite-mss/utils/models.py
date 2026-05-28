@@ -31,7 +31,7 @@ from pydantic.main import IncEx
 
 from utils.exc import DbValidationError
 
-ModelOrDict = TypeVar("ModelOrDict", dict, BaseModel)
+ModelOrDict = TypeVar("ModelOrDict", bound=(dict, BaseModel))
 Model = TypeVar("Model", bound=BaseModel)
 
 

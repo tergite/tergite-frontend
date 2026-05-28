@@ -27,6 +27,7 @@ from utils.exc import (
     NotFoundError,
     ServiceUnavailableError,
     UnknownBccError,
+    ForbiddenError,
 )
 
 from . import app_kwargs
@@ -42,6 +43,7 @@ from .routers.calibrations import router as calibrations_router
 from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
+from .routers.counts import router as counts_router
 from .utils import get_default_mongodb
 
 # application
@@ -109,6 +111,7 @@ app.add_exception_handler(
 app.add_exception_handler(ServiceUnavailableError, to_http_error(503))
 app.add_exception_handler(UnknownBccError, to_http_error(400))
 app.add_exception_handler(TooManyListQueryParams, to_http_error(400))
+app.add_exception_handler(ForbiddenError, to_http_error(403))
 
 # routes
 include_auth_router(app)
@@ -118,6 +121,7 @@ app.include_router(my_router)
 app.include_router(admin_router)
 app.include_router(jobs_router)
 app.include_router(booking_router)
+app.include_router(counts_router)
 
 
 @app.get("/")

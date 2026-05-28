@@ -105,6 +105,12 @@ class GeneralMessage(TypedDict):
     data: NotRequired[dict | list]
 
 
+class CountsResponse(TypedDict):
+    """The response when a counts API endpoint is hit"""
+
+    count: int
+
+
 class WebsocketRequestLog(Schema):
     """Schema for tracking websocket requests"""
 
