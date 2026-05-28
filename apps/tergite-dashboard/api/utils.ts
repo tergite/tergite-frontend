@@ -10,7 +10,7 @@ import bccUsersFixture from "../cypress/fixtures/bcc-users.json";
 import bookingsFixture from "../cypress/fixtures/bookings.json";
 import bookingsConfigList from "../cypress/fixtures/bookings-configs.json";
 import userRequestList from "../cypress/fixtures/user-requests.json";
-import noticeList from "../cypress/fixtures/notices.json";
+import rawNoticeList from "../cypress/fixtures/notices.json";
 import { type ParsedQs } from "qs";
 import {
   type NextFunction,
@@ -66,6 +66,9 @@ const bookingList = deviceList
     )
   )
   .flat(1);
+const processedNoticeList = rawNoticeList.map((n) =>
+  toNoticeInDb(n as NoticeFixtureInfo, currentDateFromEnv)
+);
 
 /**
  * Generate a valid test JWT for the given user
@@ -138,7 +141,7 @@ class MockDb {
     user_requests: [...(userRequestList as UserRequest[])],
     auth_providers: [...(authProviderList as AuthProvider[])],
     bcc_users: [...(bccUserList as BccUserInDb[])],
-    notices: [...(noticeList as Notice[])],
+    notices: [...processedNoticeList],
   };
   deleted: { [k: string | ItemType]: DeletedIndex } = {
     projects: {},
@@ -185,7 +188,7 @@ class MockDb {
       user_requests: [...(userRequestList as UserRequest[])],
       auth_providers: [...(authProviderList as AuthProvider[])],
       bcc_users: [...(bccUserList as BccUserInDb[])],
-      notices: [...(noticeList as Notice[])],
+      notices: [...processedNoticeList],
     };
     this.deleted = {
       projects: {},
@@ -631,6 +634,32 @@ function toBccUserInDb(
 }
 
 /**
+ * Converts a notice fixture record (using relative time offsets) into a full Notice as saved in the database.
+ *
+ * @param record - the fixture record with offset fields
+ * @param currentDate - the reference "now" date
+ * @returns - the Notice object with absolute ISO timestamps
+ */
+function toNoticeInDb(record: NoticeFixtureInfo, currentDate: Date): Notice {
+  const now = currentDate.getTime();
+  const startsAt = new Date(now + record.starts_at_offset_hours * 3_600_000);
+  const expiresAt = new Date(now + record.expires_at_offset_hours * 3_600_000);
+  return {
+    id: record.id,
+    message: record.message,
+    severity: record.severity,
+    severity_number: record.severity_number,
+    starts_at: startsAt.toISOString(),
+    expires_at: expiresAt.toISOString(),
+    created_at: startsAt.toISOString(),
+    updated_at: startsAt.toISOString(),
+    created_by: record.created_by,
+    target_user_ids: record.target_user_ids,
+    dismissed_by: [...record.dismissed_by],
+  } as unknown as Notice;
+}
+
+/**
  * Creates a comparison function to sort by multiple fields where sort direction is descending if field name starts with "-".
  *
  * @param sortFields - e.g., ['lastName', '-age']
@@ -700,6 +729,23 @@ export interface BookingInDb extends Booking {}
  * Schema for Bookings
  */
 export interface BookingsConfigInDb extends BookingsConfig, DbRecord {}
+
+/**
+ * Basic info for a notice as stored in the fixture, using relative time offsets
+ * instead of absolute ISO timestamps so the data stays valid regardless of when
+ * the test suite runs.
+ */
+interface NoticeFixtureInfo {
+  id: string;
+  message: string;
+  severity: string;
+  severity_number: number;
+  starts_at_offset_hours: number;
+  expires_at_offset_hours: number;
+  created_by: string;
+  target_user_ids: string[] | null;
+  dismissed_by: string[];
+}
 
 /**
  * Generates a notices filter for a given user request

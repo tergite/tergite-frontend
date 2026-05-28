@@ -3,6 +3,7 @@
 import userList from "../fixtures/users.json";
 import projectList from "../fixtures/projects.json";
 import userRequestList from "../fixtures/user-requests.json";
+import rawNoticeList from "../fixtures/notices.json";
 import { generateJwt, getUsername } from "../../api/utils";
 import {
   UserRequest,
@@ -12,9 +13,53 @@ import {
   type User,
 } from "../../types";
 
+/**
+ * Shape of a notice record in the fixture (uses relative-time offsets instead
+ * of absolute ISO strings so the data stays valid on any run date).
+ */
+interface NoticeFixture {
+  id: string;
+  starts_at_offset_hours: number;
+  expires_at_offset_hours: number;
+  target_user_ids: string[] | null;
+  dismissed_by: string[];
+}
+
+/**
+ * Returns the subset of notices that are active for the given user at the
+ * supplied reference time, mirroring the server-side getUserNoticesFilter logic.
+ *
+ * A notice is active when:
+ *  - it has already started  (starts_at <= now)
+ *  - it has not yet expired  (expires_at >= now, or expires_at is null = permanent)
+ *  - it targets this user    (target_user_ids is null = everyone, or includes userId)
+ *  - it has not been dismissed by this user (dismissed_by excludes userId)
+ */
+function getActiveNoticesForUser(
+  userId: string,
+  notices: NoticeFixture[],
+  currentDate: Date
+): NoticeFixture[] {
+  const now = currentDate.getTime();
+  return notices.filter((n) => {
+    const startsAt = now + n.starts_at_offset_hours * 3_600_000;
+    const expiresAt = now + n.expires_at_offset_hours * 3_600_000;
+
+    if (startsAt > now) return false; // not yet started
+    if (expiresAt < now) return false; // already expired
+    if (n.target_user_ids !== null && !n.target_user_ids.includes(userId))
+      return false; // not targeted at this user
+    if (n.dismissed_by.includes(userId)) return false; // dismissed
+
+    return true;
+  });
+}
+
 const users = [...userList] as User[];
 const projects = [...projectList] as Project[];
 const userRequests = [...userRequestList] as UserRequest[];
+
+const rawNotices = [...rawNoticeList] as NoticeFixture[];
 
 users.forEach((user) => {
   const userProjects = projects.filter(
@@ -26,6 +71,10 @@ users.forEach((user) => {
     (v) => v.status === UserRequestStatus.PENDING
   );
   const requestsCount = pendingUserRequests.length;
+  const currentDateStr = Cypress.env("CURRENT_DATE");
+  const currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
+  const activeNotices = getActiveNoticesForUser(user.id, rawNotices, currentDate);
+  const activeNoticeCount = activeNotices.length;
 
   describe(`dashboard-layout for ${username}`, () => {
     const dashboardUrl = Cypress.config("baseUrl");
@@ -45,6 +94,11 @@ users.forEach((user) => {
       );
       cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
       cy.intercept("POST", `${apiBaseUrl}/auth/logout`).as("logout");
+      cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
+      cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
+      cy.intercept("POST", `${apiBaseUrl}/admin/notices/*/dismiss`).as(
+        "dismiss-notice"
+      );
 
       if (user.id) {
         cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
@@ -90,6 +144,10 @@ users.forEach((user) => {
 
           cy.get("nav")
             .contains(/projects/i)
+            .should("be.visible");
+
+          cy.get("nav")
+            .contains(/control/i)
             .should("be.visible");
         }
 
@@ -142,6 +200,10 @@ users.forEach((user) => {
           cy.get("nav")
             .contains(/projects/i)
             .should("have.text", "ProjectsProjects");
+
+          cy.get("nav")
+            .contains(/control/i)
+            .should("have.text", "ControlControl");
         }
         cy.get("[aria-label='PanelLeftClose']").should("be.visible");
         cy.get("[aria-label='PanelRightClose']").should("not.exist");
@@ -156,6 +218,7 @@ users.forEach((user) => {
         if (isAdmin) {
           cy.get("nav [aria-label='HandHelping']").should("be.visible");
           cy.get("nav [aria-label='HardHat']").should("be.visible");
+          cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
         }
 
         cy.get("nav")
@@ -173,6 +236,10 @@ users.forEach((user) => {
           cy.get("nav")
             .contains(/projects/i)
             .should("have.text", "Projects");
+
+          cy.get("nav")
+            .contains(/control/i)
+            .should("have.text", "Control");
         }
 
         cy.get("[aria-label='PanelRightClose']").parent().click();
@@ -186,6 +253,7 @@ users.forEach((user) => {
         if (isAdmin) {
           cy.get("nav [aria-label='HandHelping']").should("be.visible");
           cy.get("nav [aria-label='HardHat']").should("be.visible");
+          cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
         }
 
         cy.get("nav")
@@ -202,6 +270,10 @@ users.forEach((user) => {
           cy.get("nav")
             .contains(/projects/i)
             .should("have.text", "ProjectsProjects");
+
+          cy.get("nav")
+            .contains(/control/i)
+            .should("have.text", "ControlControl");
         }
       });
     });
@@ -237,7 +309,68 @@ users.forEach((user) => {
         cy.get("input").should("be.visible");
         cy.get("[aria-label='RefreshCcw']").should("be.visible");
         cy.get("[aria-label='Copy']").should("be.visible");
+        // Notice count badge (bell icon) is always visible in the banner
+        cy.get('[data-icon="inline-end"]').should("exist");
       });
+    });
+
+    it(`displays the correct notice count badge (expected: ${activeNoticeCount}) in the top banner`, () => {
+      cy.wait("@notices");
+      cy.wait("@notice-count");
+
+      // The badge renders: <count><BellIcon data-icon="inline-end" />
+      cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
+        .parent()
+        .invoke("text")
+        .then((text) => {
+          const count = parseInt(text.trim(), 10);
+          expect(count).to.equal(activeNoticeCount);
+        });
+    });
+
+    it("shows an active notice banner in the top banner", () => {
+      // Every user in the fixture has at least two active notices visible to them
+      // (ntc_007 and ntc_009 target all users and fall within the test date range)
+      cy.wait("@notices");
+      cy.wait("@notice-count");
+
+      cy.get('[data-testid="top-banner"]').within(() => {
+        cy.get('[aria-label="Dismiss notice"]').should("be.visible");
+        // Severity label is rendered in the banner
+        cy.contains(/\b(info|warning|critical)\b/i).should("be.visible");
+      });
+    });
+
+    it("decreases the notice count badge by one when a notice banner is dismissed", () => {
+      cy.wait("@notices");
+      cy.wait("@notice-count");
+
+      // Capture the initial badge count before any dismissal
+      cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
+        .parent()
+        .invoke("text")
+        .then((before) => {
+          const initialCount = parseInt(before.trim(), 10);
+          expect(initialCount).to.be.gt(0);
+
+          // Dismiss the visible notice
+          cy.get(
+            '[data-testid="top-banner"] [aria-label="Dismiss notice"]'
+          ).click();
+          cy.wait("@dismiss-notice");
+          // Both the notices list and the count are refreshed after dismissal
+          cy.wait("@notices");
+          cy.wait("@notice-count");
+
+          // Badge must now show exactly one less than before
+          cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
+            .parent()
+            .invoke("text")
+            .then((after) => {
+              const newCount = parseInt(after.trim(), 10);
+              expect(newCount).to.equal(initialCount - 1);
+            });
+        });
     });
 
     it("logout button logs current user out", () => {
