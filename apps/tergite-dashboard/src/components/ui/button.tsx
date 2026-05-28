@@ -26,13 +26,14 @@ const buttonVariants = cva(
         sm: "h-8 rounded-sm px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "h-9 w-9 rounded-sm",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
     },
-  }
+  },
 );
 
 export interface ButtonProps

@@ -36,6 +36,7 @@ import {
   Notice,
 } from "../types";
 import { v4 as uuidv4 } from "uuid";
+import { DateTime } from "luxon";
 
 const currentDateString = process.env.CURRENT_DATE;
 const jwtSecret = process.env.JWT_SECRET ?? "no-token-really-noooo";
@@ -699,3 +700,84 @@ export interface BookingInDb extends Booking {}
  * Schema for Bookings
  */
 export interface BookingsConfigInDb extends BookingsConfig, DbRecord {}
+
+/**
+ * Generates a notices filter for a given user request
+ * 
+ * @param req - the request object
+ * @returns 
+ */
+export function getUserNoticesFilter(req: ExpressRequest) {
+  const {
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    min_expires_utc,
+    max_expires_utc,
+    include_dismissed: includeDismissedAsStr,
+  } = req.query;
+
+  const include_dismissed = `${includeDismissedAsStr}`?.toLowerCase() === "true";
+
+  return (v: Notice) => {
+    let isMatch = true;
+    if (user_id) {
+      // admins should always see all notices even if they dismissed
+      // them in the past
+      isMatch =
+        isMatch &&
+        (!v.target_user_ids ||
+          v.target_user_ids?.includes(user_id as string)) &&
+        (!v.dismissed_by.includes(user_id as string) || include_dismissed);
+    }
+
+    if (min_start_utc) {
+      isMatch =
+        isMatch &&
+        DateTime.fromISO(v.starts_at) >=
+          DateTime.fromISO(min_start_utc as string);
+    }
+
+    if (max_start_utc) {
+      isMatch =
+        isMatch &&
+        DateTime.fromISO(v.starts_at) <=
+          DateTime.fromISO(max_start_utc as string);
+    }
+
+    if (min_expires_utc) {
+      isMatch =
+        isMatch &&
+        DateTime.fromISO(v.expires_at) >=
+          DateTime.fromISO(min_expires_utc as string);
+    }
+
+    if (max_expires_utc) {
+      isMatch =
+        isMatch &&
+        DateTime.fromISO(v.expires_at) <=
+          DateTime.fromISO(max_expires_utc as string);
+    }
+
+    return isMatch;
+  };
+}
+
+/**
+ * Converts a severity string to its corresponding number
+ * 
+ * @param severity - the severity passed
+ * @returns the number that corresponds to the given severity
+ */
+export function getSeverityNumber(severity: string) {
+  switch (severity.toUpperCase()) {
+    case "CRITICAL":
+      return 1;
+    case "WARNING":
+      return 2;
+    case "INFO":
+      return 3;
+    default:
+      throw new Error(`Invalid severity: ${severity}`);
+  }
+}

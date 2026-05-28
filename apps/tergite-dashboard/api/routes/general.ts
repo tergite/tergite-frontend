@@ -1,4 +1,4 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import cors from "cors";
 import {
   archiveDb,
@@ -15,6 +15,8 @@ import {
   respond401,
   use,
   randomUUID,
+  getUserNoticesFilter,
+  getSeverityNumber,
 } from "../utils";
 import {
   AuthProvider,
@@ -43,6 +45,7 @@ import {
   Notice,
   GeneralMessage,
   CountResponse,
+  NoticeSeverityNumber,
 } from "../../types";
 import { DateTime } from "luxon";
 
@@ -65,59 +68,6 @@ const _initialRecalibrationInfo: RecalibrationInfo = {
   next_job_status: RqJobStatus.SCHEDULED,
 };
 const recalibrationInfoDb: { [key: string]: RecalibrationInfo } = {};
-
-function getUserNoticesFilter(req: Request, isAdmin: boolean = false) {
-  const {
-    user_id,
-    min_start_utc,
-    max_start_utc,
-    min_expires_utc,
-    max_expires_utc,
-  } = req.query;
-
-  return (v: Notice) => {
-    let isMatch = true;
-    if (user_id) {
-      // admins should always see all notices even if they dismissed
-      // them in the past
-      isMatch =
-        isMatch &&
-        (!v.target_user_ids ||
-          v.target_user_ids?.includes(user_id as string)) &&
-        (!v.dismissed_by.includes(user_id as string) || isAdmin);
-    }
-
-    if (min_start_utc) {
-      isMatch =
-        isMatch &&
-        DateTime.fromISO(v.starts_at) >=
-          DateTime.fromISO(min_start_utc as string);
-    }
-
-    if (max_start_utc) {
-      isMatch =
-        isMatch &&
-        DateTime.fromISO(v.starts_at) <=
-          DateTime.fromISO(max_start_utc as string);
-    }
-
-    if (min_expires_utc) {
-      isMatch =
-        isMatch &&
-        DateTime.fromISO(v.expires_at) >=
-          DateTime.fromISO(min_expires_utc as string);
-    }
-
-    if (max_expires_utc) {
-      isMatch =
-        isMatch &&
-        DateTime.fromISO(v.expires_at) <=
-          DateTime.fromISO(max_expires_utc as string);
-    }
-
-    return isMatch;
-  };
-}
 
 router.use(
   cors({
@@ -1184,6 +1134,7 @@ router.post(
 
     payload["target_user_ids"] = target_user_ids;
     payload["id"] = randomUUID();
+    payload["severity_number"] = getSeverityNumber(payload.severity);
 
     mockDb.create<Notice>("notices", payload);
     res.status(201);
@@ -1241,8 +1192,7 @@ router.get(
         : [sortQuery as string]
       : undefined;
 
-    const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
-    const filterFunc = getUserNoticesFilter(req, isAdmin);
+    const filterFunc = getUserNoticesFilter(req);
     const data = mockDb.getMany<Notice>(
       "notices",
       filterFunc,
@@ -1285,8 +1235,7 @@ router.get(
       return respond401(res);
     }
 
-    const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
-    const filterFunc = getUserNoticesFilter(req, isAdmin);
+    const filterFunc = getUserNoticesFilter(req);
     const data = mockDb.getMany<Notice>("notices", filterFunc);
 
     res.status(200);

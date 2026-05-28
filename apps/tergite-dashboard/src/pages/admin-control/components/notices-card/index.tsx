@@ -28,12 +28,13 @@ export function NoticesCard({ currentUser }: Props) {
     user_id: currentUser?.id,
     max_start_utc: currentTimestamp,
     min_expires_utc: currentTimestamp,
+    include_dismissed: true,
   };
 
   const { data: notices, isPlaceholderData } = useQuery(
     noticesQuery({
       ...filters,
-      sort: ["-severity", "starts_at"],
+      sort: ["severity_number", "starts_at"],
       limit: 1,
       skip: page - 1,
     }),

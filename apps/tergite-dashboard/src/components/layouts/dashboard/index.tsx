@@ -76,7 +76,7 @@ export function Dashboard() {
             isUserAdmin={isUserAdmin}
           />
 
-          {!isAdminScreen && <TopBanner />}
+          {!isAdminScreen && <TopBanner currentUser={currentUser} />}
           <Outlet />
           <Footer />
           <Toaster />

@@ -427,6 +427,7 @@ export function bookingsConfigQuery(
  *          - max_start_utc: The maximum UTC timestamp the notice should start
  *          - min_expires_utc: The minimum UTC timestamp the notice should expire
  *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ *          - include_dismissed: whether to include dismissed notices
  *          - skip: the number of records to skip
  *          - limit: the maximum number of records to return
  *          - sort: the fields to sort by
@@ -439,6 +440,7 @@ export function noticesQuery(
     max_start_utc?: string;
     min_expires_utc?: string;
     max_expires_utc?: string;
+    include_dismissed?: boolean;
     skip?: number;
     limit?: number;
     sort?: string[];
@@ -451,6 +453,7 @@ export function noticesQuery(
     max_start_utc,
     min_expires_utc,
     max_expires_utc,
+    include_dismissed,
     skip,
     limit,
     sort,
@@ -464,6 +467,7 @@ export function noticesQuery(
     max_start_utc,
     min_expires_utc,
     max_expires_utc,
+    include_dismissed,
     limit,
     skip,
     sort,
@@ -486,6 +490,7 @@ export function noticesQuery(
  *          - max_start_utc: The maximum UTC timestamp the notice should start
  *          - min_expires_utc: The minimum UTC timestamp the notice should expire
  *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ *          - include_dismissed: whether to include dismissed notices
  */
 export function noticeCountQuery(
   options: {
@@ -495,6 +500,7 @@ export function noticeCountQuery(
     max_start_utc?: string;
     min_expires_utc?: string;
     max_expires_utc?: string;
+    include_dismissed?: boolean;
   } = {},
 ) {
   const { baseUrl = apiBaseUrl, ...rest } = options;
@@ -504,6 +510,7 @@ export function noticeCountQuery(
     max_start_utc,
     min_expires_utc,
     max_expires_utc,
+    include_dismissed,
   } = rest;
   const queryKey = [
     baseUrl,
@@ -514,6 +521,7 @@ export function noticeCountQuery(
     max_start_utc,
     min_expires_utc,
     max_expires_utc,
+    include_dismissed,
   ];
   return queryOptions({
     queryKey: queryKey,
@@ -1131,6 +1139,7 @@ export async function switchBackendOff(
  *          - max_start_utc: The maximum UTC timestamp the notice should start
  *          - min_expires_utc: The minimum UTC timestamp the notice should expire
  *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ *          - include_dismissed: whether to include dismissed notices
  *          - skip: the number of records to skip
  *          - limit: the maximum number of records to return
  *          - sort: the fields to sort by
@@ -1143,6 +1152,7 @@ export async function getNotices(
     max_start_utc?: string;
     min_expires_utc?: string;
     max_expires_utc?: string;
+    include_dismissed?: boolean;
     skip?: number;
     limit?: number;
     sort?: string[];
@@ -1165,6 +1175,7 @@ export async function getNotices(
  *          - max_start_utc: The maximum UTC timestamp the notice should start
  *          - min_expires_utc: The minimum UTC timestamp the notice should expire
  *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ *          - include_dismissed: whether to include dismissed notices
  */
 export async function getNoticeCount(
   baseUrl: string = apiBaseUrl,
@@ -1174,6 +1185,7 @@ export async function getNoticeCount(
     max_start_utc?: string;
     min_expires_utc?: string;
     max_expires_utc?: string;
+    include_dismissed?: boolean;
   } = {},
 ): Promise<number> {
   const queryString = getQueryString(options);
