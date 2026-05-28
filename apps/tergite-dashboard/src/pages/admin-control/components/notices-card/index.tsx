@@ -22,6 +22,7 @@ import { AdminNoticeBanner } from "./banner";
 
 export function NoticesCard() {
   const [page, setPage] = useState(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const currentTimestamp = useMemo(() => DateTime.now().toISO(), [page]);
   const filters = {
     max_start_utc: currentTimestamp,
