@@ -10,16 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import {
-  currentUserQuery,
-  devicesQuery,
-  singleDeviceCalibrationQuery,
-} from "@/lib/api-client";
+import { currentUserQuery, devicesQuery } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import {
   type AppState,
   type Device,
-  type DeviceCalibration,
   type ErrorInfo,
   type User,
   UserRole,
@@ -43,11 +38,6 @@ export function AdminControl() {
     () => devices.find((d) => d.name === selectedDeviceName) ?? devices[0],
     [devices, selectedDeviceName],
   );
-
-  const { data: calibration = null } = useQuery({
-    ...singleDeviceCalibrationQuery(selectedDevice?.name ?? ""),
-    enabled: !!selectedDevice?.name,
-  });
 
   const onlineCount = useMemo(
     () => devices.filter((d) => d.is_online).length,
@@ -113,11 +103,8 @@ export function AdminControl() {
       {/* ── Three-panel grid ── */}
       {selectedDevice ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <BackendControlCard device={selectedDevice} />
-          <CalibrationCard
-            deviceName={selectedDevice.name}
-            calibration={calibration as DeviceCalibration | null}
-          />
+          <BackendControlCard deviceName={selectedDevice.name} />
+          <CalibrationCard deviceName={selectedDevice.name} />
           <NoticesCard currentUser={currentUser} />
         </div>
       ) : (
