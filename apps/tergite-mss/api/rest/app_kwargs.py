@@ -24,8 +24,8 @@ import settings
 from services import calibration as calib_service
 from services.auth import service as auth_service
 from services.devices import service as devices_service
-from services.notices import service as notices_service
 from services.external import bcc, puhuri
+from services.notices import service as notices_service
 
 from .routers.devices import ws_manager as devices_ws_manager
 from .utils import get_default_mongodb

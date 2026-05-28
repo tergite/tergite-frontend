@@ -24,10 +24,10 @@ from utils.api import WebsocketRequestLog, get_request_logs_store, to_http_error
 from utils.crypto import get_uuid4_str
 from utils.exc import (
     DbValidationError,
+    ForbiddenError,
     NotFoundError,
     ServiceUnavailableError,
     UnknownBccError,
-    ForbiddenError,
 )
 
 from . import app_kwargs
@@ -40,10 +40,10 @@ from .routers.admin import router as admin_router
 from .routers.auth import include_auth_router
 from .routers.booking import router as booking_router
 from .routers.calibrations import router as calibrations_router
+from .routers.counts import router as counts_router
 from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
-from .routers.counts import router as counts_router
 from .utils import get_default_mongodb
 
 # application

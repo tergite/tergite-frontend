@@ -12,10 +12,10 @@
 #
 
 from .service import (
-    dismiss_notice,
-    publish_notice,
-    delete_notice,
-    get_one_notice,
-    find_many_notices,
     count_many_notices,
+    delete_notice,
+    dismiss_notice,
+    find_many_notices,
+    get_one_notice,
+    publish_notice,
 )

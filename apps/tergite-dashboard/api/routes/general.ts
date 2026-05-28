@@ -1313,8 +1313,7 @@ router.get(
 
     res.status(200);
     res.json({ count: data.length } as CountResponse);
-    // prettier-ignore
-  };),
+  }),
 );
 
 // NOTE: this mutates the database. I am using GET to avoid CORS issues

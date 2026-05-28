@@ -297,6 +297,37 @@ def with_incremental_timestamps(
     ]
 
 
+def with_offset_datetimes(
+    data: List[dict],
+    offset_hours_fields: Dict[str, str],
+    now: Optional[datetime] = None,
+) -> List[dict]:
+    """Converts offset-hours fields to actual datetime values relative to now
+
+    Useful for fixture records that store relative time offsets (e.g. starts_at_offset_hours)
+    instead of absolute timestamps, so the test data stays valid regardless of the current date.
+
+    Args:
+        data: list of dicts containing offset-hours fields
+        offset_hours_fields: mapping of {target_field: source_offset_field},
+                             e.g. {"starts_at": "starts_at_offset_hours"}
+        now: reference datetime; defaults to UTC now
+
+    Returns:
+        list of dicts with the offset fields replaced by real datetime values
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    result = []
+    for item in data:
+        new_item = {**item}
+        for target_field, offset_field in offset_hours_fields.items():
+            offset_hours = new_item.pop(offset_field)
+            new_item[target_field] = now + timedelta(hours=offset_hours)
+        result.append(new_item)
+    return result
+
+
 def with_current_timestamps(
     data: List[dict],
     fields: Sequence[str] = ("updated_at",),

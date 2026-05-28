@@ -1,0 +1,72 @@
+[
+  {
+    "_id": "aaaaaaaaaaaaaaaaaaaaaaaa",
+    "message": "Notice for admin only",
+    "severity": "info",
+    "severity_number": 3,
+    "starts_at_offset_hours": -720,
+    "expires_at_offset_hours": 8760,
+    "created_by": "de7ddbd2500951be940356a2",
+    "target_user_ids": ["de7ddbd2500951be940356a2"],
+    "dismissed_by": [],
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "target_user_emails": null
+  },
+  {
+    "_id": "bbbbbbbbbbbbbbbbbbbbbbbb",
+    "message": "Notice for regular user",
+    "severity": "warning",
+    "severity_number": 2,
+    "starts_at_offset_hours": -720,
+    "expires_at_offset_hours": 8760,
+    "created_by": "de7ddbd2500951be940356a2",
+    "target_user_ids": ["8154077d9cb952b92453d575"],
+    "dismissed_by": [],
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "target_user_emails": null
+  },
+  {
+    "_id": "cccccccccccccccccccccccc",
+    "message": "Broadcast notice for all users",
+    "severity": "critical",
+    "severity_number": 1,
+    "starts_at_offset_hours": -720,
+    "expires_at_offset_hours": 8760,
+    "created_by": "de7ddbd2500951be940356a2",
+    "target_user_ids": null,
+    "dismissed_by": [],
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "target_user_emails": null
+  },
+  {
+    "_id": "dddddddddddddddddddddddd",
+    "message": "Notice already dismissed by user",
+    "severity": "info",
+    "severity_number": 3,
+    "starts_at_offset_hours": -720,
+    "expires_at_offset_hours": 8760,
+    "created_by": "de7ddbd2500951be940356a2",
+    "target_user_ids": ["8154077d9cb952b92453d575"],
+    "dismissed_by": ["8154077d9cb952b92453d575"],
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "target_user_emails": null
+  },
+  {
+    "_id": "eeeeeeeeeeeeeeeeeeeeeeee",
+    "message": "Future notice not yet started",
+    "severity": "info",
+    "severity_number": 3,
+    "starts_at_offset_hours": 720,
+    "expires_at_offset_hours": 9480,
+    "created_by": "de7ddbd2500951be940356a2",
+    "target_user_ids": ["8154077d9cb952b92453d575"],
+    "dismissed_by": [],
+    "created_at": "2026-01-01T00:00:00.000Z",
+    "updated_at": "2026-01-01T00:00:00.000Z",
+    "target_user_emails": null
+  }
+]

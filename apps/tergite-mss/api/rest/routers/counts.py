@@ -12,23 +12,22 @@
 
 """Routes for getting counts of different records"""
 from datetime import datetime
-from typing import Optional
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import CurrentUserIdDep, CurrentSuperuserDep, MongoDbDep
-from services.auth.users.dtos import User
+from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
 from services import notices as notice_service
+from services.auth.users.dtos import User
 from utils.api import CountsResponse
 
 router = APIRouter(prefix="/counts", tags=["counts"])
 
 
-@router.get("/notices", response_model=CountsResponse)
+@router.get("/notices")
 async def get_notice_count(
     db: MongoDbDep,
-    current_user: User = CurrentSuperuserDep,
+    current_user: User = CurrentUserDep,
     user_id: PydanticObjectId = Query(
         None, description="User ID whose notice count is requested"
     ),
@@ -37,7 +36,7 @@ async def get_notice_count(
     min_expires_utc: datetime = Query(None),
     max_expires_utc: datetime = Query(None),
     include_dismissed: bool = Query(False),
-):
+) -> CountsResponse:
     """Gets the number of notices of current user that fulfill a given
 
     Args:
@@ -53,7 +52,7 @@ async def get_notice_count(
     if not current_user.is_superuser:
         user_id = current_user.id
 
-    return await notice_service.count_many_notices(
+    count = await notice_service.count_many_notices(
         db,
         user_id=user_id,
         min_start_utc=min_start_utc,
@@ -62,6 +61,7 @@ async def get_notice_count(
         max_expires_utc=max_expires_utc,
         include_dismissed=include_dismissed,
     )
+    return {"count": count}
 
 
 @router.get("/job-submitters", response_model=CountsResponse)

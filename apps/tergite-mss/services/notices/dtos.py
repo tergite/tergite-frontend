@@ -13,13 +13,13 @@
 from contextlib import suppress
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
 from beanie import Document, PydanticObjectId
-from pydantic import Field, BaseModel, field_serializer, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 from pymongo import IndexModel
 
-from utils.date_time import get_current_timestamp, datetime_to_zulu, get_utc_now
+from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
 
 NOTICE_DB_COLLECTION = "notices"
 

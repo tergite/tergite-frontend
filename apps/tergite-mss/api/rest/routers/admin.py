@@ -18,6 +18,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, HTTPException, Query
 from fastapi import status as http_status
 
+from services import notices as notices_service
 from services.auth import (
     APP_TOKEN_AUTH,
     Project,
@@ -25,17 +26,16 @@ from services.auth import (
     user_requests,
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
-from services.notices.dtos import NoticeCreate, Notice
+from services.notices.dtos import Notice, NoticeCreate
 from utils.api import GeneralMessage, PaginatedListResponse
-from services import notices as notices_service
 
 from ..dependencies import (
     BccClientDep,
     CurrentSuperuserDep,
     CurrentUserDep,
     CurrentUserIdDep,
-    RequestIdDep,
     MongoDbDep,
+    RequestIdDep,
 )
 
 router = APIRouter(prefix="/admin")
@@ -369,7 +369,7 @@ async def switch_backend_on(
     return response
 
 
-@router.post("/notices/")
+@router.post("/notices/", response_model_by_alias=False)
 async def publish_notice(
     db: MongoDbDep,
     payload: NoticeCreate,
@@ -392,7 +392,11 @@ async def publish_notice(
     )
 
 
-@router.delete("/notices/{notice_id}", dependencies=[CurrentSuperuserDep])
+@router.delete(
+    "/notices/{notice_id}",
+    dependencies=[CurrentSuperuserDep],
+    response_model_by_alias=False,
+)
 async def delete_notice(
     db: MongoDbDep,
     notice_id: PydanticObjectId,
@@ -431,7 +435,7 @@ async def dismiss_notice(
     return {"status": "success"}
 
 
-@router.get("/notices")
+@router.get("/notices", response_model_by_alias=False)
 async def get_many_notices(
     db: MongoDbDep,
     current_user: User = CurrentUserDep,
@@ -481,6 +485,4 @@ async def get_many_notices(
         max_expires_utc=max_expires_utc,
         include_dismissed=include_dismissed,
     )
-    return PaginatedListResponse(skip=skip, limit=limit, data=data).model_dump(
-        mode="json", exclude_data_none_fields=False
-    )
+    return PaginatedListResponse(skip=skip, limit=limit, data=data)

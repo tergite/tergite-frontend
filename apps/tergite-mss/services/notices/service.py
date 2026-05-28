@@ -12,16 +12,16 @@
 #
 from copy import deepcopy
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pymongo
 from beanie import PydanticObjectId, init_beanie
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from services.auth.users.dtos import USER_DB_COLLECTION
-from services.notices.dtos import Notice, NoticeCreate, NOTICE_DB_COLLECTION
-from utils.date_time import get_current_timestamp
+from services.notices.dtos import NOTICE_DB_COLLECTION, Notice, NoticeCreate
 from utils import mongodb as mongodb_utils
+from utils.date_time import get_current_timestamp
 from utils.exc import NotFoundError
 
 
@@ -242,7 +242,9 @@ def _merge_filters(
         if not include_dismissed:
             _nested_append(result, path=("dismissed_by", "$nin"), value=user_id)
 
+        # either broadcast notices or those sent directly to user
         _nested_append(result, path=("target_user_ids", "$in"), value=user_id)
+        _nested_append(result, path=("target_user_ids", "$in"), value=None)
 
     if min_start_utc:
         _nested_insert(result, path=("starts_at", "$gte"), value=min_start_utc)
