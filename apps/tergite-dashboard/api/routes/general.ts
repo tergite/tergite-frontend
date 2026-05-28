@@ -1243,6 +1243,7 @@ router.get(
       skip: skipAsString,
       limit: limitAsString,
       sort: sortQuery,
+      user_id,
     } = req.query;
     const skip = skipAsString ? parseInt(skipAsString as string, 10) : 0;
     const limit = limitAsString
@@ -1254,7 +1255,17 @@ router.get(
         : [sortQuery as string]
       : undefined;
 
-    const filterFunc = getUserNoticesFilter(req);
+    const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
+
+    // Only admins are permitted to see notices of other users
+    if (user_id && user_id !== userId && !isAdmin) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    // only admins can request for notices that belong to other users
+    const defaultUserId = isAdmin ? undefined : userId;
+    const filterFunc = getUserNoticesFilter(req, defaultUserId);
     const data = mockDb.getMany<Notice>(
       "notices",
       filterFunc,
@@ -1265,6 +1276,7 @@ router.get(
 
     res.status(200);
     res.json({ skip, limit, data } as PaginatedData<Notice[]>);
+    // prettier-ignore
   }),
 );
 
@@ -1297,7 +1309,18 @@ router.get(
       return respond401(res);
     }
 
-    const filterFunc = getUserNoticesFilter(req);
+    const { user_id } = req.query;
+
+    // Only admins are permitted to see notices of other users
+    const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
+    if (user_id && user_id !== userId && !isAdmin) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    // only admins can request for notices that belong to other users
+    const defaultUserId = isAdmin ? undefined : userId;
+    const filterFunc = getUserNoticesFilter(req, defaultUserId);
     const data = mockDb.getMany<Notice>("notices", filterFunc);
 
     res.status(200);

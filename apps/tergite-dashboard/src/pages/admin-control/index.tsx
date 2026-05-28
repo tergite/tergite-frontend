@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useLoaderData } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { QueryClient } from "@tanstack/react-query";
 import {
@@ -16,7 +15,6 @@ import {
   type AppState,
   type Device,
   type ErrorInfo,
-  type User,
   UserRole,
 } from "../../../types";
 import { BackendControlCard } from "./components/backend-control-card";
@@ -26,7 +24,6 @@ import { Activity } from "lucide-react";
 import { StatusTile } from "./components/status-tile";
 
 export function AdminControl() {
-  const { currentUser } = useLoaderData() as AdminControlData;
   const { data: devices = [] } = useQuery(devicesQuery);
 
   const [selectedDeviceName, setSelectedDeviceName] = useState<string>(
@@ -102,10 +99,10 @@ export function AdminControl() {
 
       {/* ── Three-panel grid ── */}
       {selectedDevice ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <BackendControlCard deviceName={selectedDevice.name} />
           <CalibrationCard deviceName={selectedDevice.name} />
-          <NoticesCard currentUser={currentUser} />
+          <NoticesCard />
         </div>
       ) : (
         <div className="flex flex-1 items-center justify-center text-muted-foreground">
@@ -115,8 +112,6 @@ export function AdminControl() {
     </main>
   );
 }
-
-
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(_appState: AppState, queryClient: QueryClient) {
@@ -136,10 +131,8 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
     // Pre-fetch devices so the page renders immediately
     await queryClient.prefetchQuery(devicesQuery);
 
-    return { currentUser };
+    return {};
   });
 }
 
-interface AdminControlData {
-  currentUser: User;
-}
+interface AdminControlData {}

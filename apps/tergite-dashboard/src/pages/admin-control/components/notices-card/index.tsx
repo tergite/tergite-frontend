@@ -5,7 +5,6 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User } from "../../../../../types";
 import NoticeForm from "./form";
 import {
   Pagination,
@@ -21,11 +20,10 @@ import { useQuery } from "@tanstack/react-query";
 import { noticeCountQuery, noticesQuery } from "@/lib/api-client";
 import { AdminNoticeBanner } from "./banner";
 
-export function NoticesCard({ currentUser }: Props) {
+export function NoticesCard() {
   const [page, setPage] = useState(1);
   const currentTimestamp = useMemo(() => DateTime.now().toISO(), [page]);
   const filters = {
-    user_id: currentUser?.id,
     max_start_utc: currentTimestamp,
     min_expires_utc: currentTimestamp,
     include_dismissed: true,
@@ -133,6 +131,3 @@ interface PaginationProps {
   isPreviousDisabled: boolean;
 }
 
-interface Props {
-  currentUser: User;
-}
