@@ -97,7 +97,7 @@ export function BackendToggle({ deviceName, isOnline }: Props) {
       </div>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
+        <DialogContent data-testid="confirmation-dialog">
           <DialogHeader>
             <DialogTitle>Take backend offline?</DialogTitle>
             <DialogDescription className="py-5">

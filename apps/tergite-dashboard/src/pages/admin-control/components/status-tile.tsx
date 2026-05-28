@@ -11,7 +11,10 @@ export function StatusTile({
 }) {
   return (
     <div className="rounded-md border bg-muted/40 px-3 py-2">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
+      <p
+        id="status-label"
+        className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5"
+      >
         {label}
       </p>
       <div className="flex items-center gap-1.5">
@@ -23,6 +26,7 @@ export function StatusTile({
           />
         )}
         <p
+          id="status-value"
           className={`text-sm font-medium tabular-nums ${
             truncate ? "truncate" : ""
           }`}

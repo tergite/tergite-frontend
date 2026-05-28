@@ -37,7 +37,7 @@ export function CalibrationCard({ deviceName }: Props) {
     currentJobStatus !== undefined && ACTIVE_STATUSES.includes(currentJobStatus);
 
   return (
-    <Card className="h-full">
+    <Card className="h-full" data-testid="calibration-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardDescription>Calibration</CardDescription>

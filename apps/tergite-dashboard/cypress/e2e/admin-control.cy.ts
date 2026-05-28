@@ -58,12 +58,10 @@ const onlineDevice = devices.find((d) => d.is_online)!; // Thor
 users.forEach((user) => {
   const isAdmin = user.roles.includes(UserRole.ADMIN);
   const username = getUsername(user);
-  const currentDateStr = Cypress.env("CURRENT_DATE");
-  const currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
-  // The admin NoticesCard fetches all notices with no user_id filter, so the
-  // expected count is every notice that has started and not yet expired.
-  const activeNotices = getAllActiveNotices(rawNotices, currentDate);
-  const activeNoticeCount = activeNotices.length;
+  let currentDateStr: string;
+  let currentDate: Date;
+  let activeNotices: NoticeFixture[];
+  let activeNoticeCount: number;
 
   describe(`admin control page for ${username}`, () => {
     beforeEach(() => {
@@ -74,30 +72,39 @@ users.forEach((user) => {
       const secret = Cypress.env("JWT_SECRET");
       const audience = Cypress.env("AUTH_AUDIENCE");
       const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
+      currentDateStr = Cypress.env("CURRENT_DATE");
+      currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
+      // The admin NoticesCard fetches all notices with no user_id filter, so the
+      // expected count is every notice that has started and not yet expired.
+      activeNotices = getAllActiveNotices(rawNotices, currentDate);
+      activeNoticeCount = activeNotices.length;
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("device-req");
       cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`).as(
-        "my-project-list"
+        "my-project-list",
       );
       cy.intercept("GET", `${apiBaseUrl}/calibrations/*`).as("calibration");
-      cy.intercept("GET", `${apiBaseUrl}/admin/recalibration/*/info`).as(
-        "recalib-info"
+      cy.intercept("GET", `${apiBaseUrl}/admin/recalibration/**/info**`).as(
+        "recalib-info",
       );
-      cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/*/init`).as(
-        "start-recalib"
+      cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/**/init**`).as(
+        "start-recalib",
       );
-      cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/*/cancel`).as(
-        "stop-recalib"
+      cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/**/cancel**`).as(
+        "stop-recalib",
       );
-      cy.intercept("POST", `${apiBaseUrl}/admin/switch/*/on`).as("switch-on");
-      cy.intercept("POST", `${apiBaseUrl}/admin/switch/*/off`).as("switch-off");
+      cy.intercept("POST", `${apiBaseUrl}/admin/switch/**/on`).as("switch-on");
+      cy.intercept("POST", `${apiBaseUrl}/admin/switch/**/off`).as(
+        "switch-off",
+      );
       cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
       cy.intercept("POST", `${apiBaseUrl}/admin/notices/`).as("create-notice");
       cy.intercept("DELETE", `${apiBaseUrl}/admin/notices/*`).as(
-        "delete-notice"
+        "delete-notice",
       );
       cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
 
+      cy.clock(currentDate, ["Date"]);
       if (user.id) {
         cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
           (jwtToken) => {
@@ -107,7 +114,7 @@ users.forEach((user) => {
               secure: false,
               sameSite: "lax",
             });
-          }
+          },
         );
       }
 
@@ -128,139 +135,192 @@ users.forEach((user) => {
         cy.wait("@device-req");
       });
 
-      // ── Page header & status bar ──────────────────────────────────────────
-
       it("renders the control panel header with a live device count badge", () => {
         cy.contains("h1", /control panel/i).should("be.visible");
         cy.contains(`${onlineDeviceCount}/${totalDeviceCount} online`).should(
-          "be.visible"
+          "be.visible",
         );
       });
 
       it("renders the system status bar with total, online, and selected device tiles", () => {
         // Each StatusTile has an uppercase label paragraph and a value paragraph
-        cy.contains(/^Devices$/).should("be.visible");
-        cy.contains(/^Devices$/)
-          .parent()
-          .contains(`${totalDeviceCount}`)
-          .should("be.visible");
+        cy.contains("#system-status-bar #status-label", /^Devices$/).should(
+          "be.visible",
+        );
+        cy.contains(
+          "#system-status-bar #status-value",
+          `${totalDeviceCount}`,
+        ).should("be.visible");
 
-        cy.contains(/^Online$/).should("be.visible");
-        cy.contains(/^Online$/)
-          .parent()
-          .contains(`${onlineDeviceCount}`)
-          .should("be.visible");
+        cy.contains("#system-status-bar #status-label", /^Online$/).should(
+          "be.visible",
+        );
+        cy.contains(
+          "#system-status-bar #status-value",
+          `${onlineDeviceCount}`,
+        ).should("be.visible");
 
-        cy.contains(/^Selected$/).should("be.visible");
-        cy.contains(/^Selected$/)
-          .parent()
-          .contains(defaultDevice.name)
-          .should("be.visible");
+        cy.contains("#system-status-bar #status-label", /^Selected$/).should(
+          "be.visible",
+        );
+        cy.contains(
+          "#system-status-bar #status-value",
+          defaultDevice.name,
+        ).should("be.visible");
       });
-
-      // ── Device selector ───────────────────────────────────────────────────
 
       it("shows a device selector when there are multiple devices", () => {
         // With 6 devices in the fixture the selector must be present
-        cy.get("[role='combobox']").first().should("be.visible");
+        cy.get("[data-testid='admin-control-header'] [role='combobox']").should(
+          "be.visible",
+        );
       });
 
       it("switches the focused device when a different device is chosen", () => {
-        cy.get("[role='combobox']").first().click();
-        cy.contains(onlineDevice.name).click();
+        cy.get("[data-testid='admin-control-header'] [role='combobox']").as(
+          "deviceSelector",
+        );
+        cy.get("@deviceSelector").click();
+        cy.contains("[role='option']", onlineDevice.name).click();
 
         // Status bar and backend card both reflect the newly selected device
-        cy.contains(/^Selected$/)
+        cy.contains("#status-label", /^Selected$/)
           .parent()
           .contains(onlineDevice.name)
           .should("be.visible");
-        cy.contains(/backend control/i)
-          .closest("div")
-          .contains(onlineDevice.name)
-          .should("be.visible");
+        cy.contains(
+          "[data-testid='backend-control-card'] p",
+          onlineDevice.name,
+        ).should("be.visible");
       });
 
-      // ── BackendControlCard ────────────────────────────────────────────────
-
       it("shows the device name, qubit count, version, and Online/Offline badge", () => {
-        cy.contains(/backend control/i).should("be.visible");
+        cy.contains(
+          "[data-testid='backend-control-card']",
+          /backend control/i,
+        ).should("be.visible");
         // Default device is Loke (offline)
-        cy.contains(/offline/i).first().should("be.visible");
-        cy.contains(defaultDevice.name).should("be.visible");
-        cy.contains(String(defaultDevice.number_of_qubits)).should(
-          "be.visible"
-        );
-        cy.contains(defaultDevice.version).should("be.visible");
+        cy.contains("[data-testid='backend-control-card']", /offline/i)
+          .first()
+          .should("be.visible");
+        cy.contains(
+          "[data-testid='backend-control-card']",
+          defaultDevice.name,
+        ).should("be.visible");
+        cy.contains(
+          "[data-testid='backend-control-card']",
+          String(defaultDevice.number_of_qubits),
+        ).should("be.visible");
+        cy.contains(
+          "[data-testid='backend-control-card']",
+          defaultDevice.version,
+        ).should("be.visible");
       });
 
       it("displays the toggle in the OFF position and 'Backend disabled' label for an offline device", () => {
-        cy.contains(/backend disabled/i).should("be.visible");
-        cy.contains(/not accepting new jobs/i).should("be.visible");
-        cy.get("button[role='switch']")
-          .first()
-          .should("have.attr", "aria-checked", "false");
+        cy.contains(
+          "[data-testid='backend-control-card']",
+          /backend disabled/i,
+        ).should("be.visible");
+        cy.contains(
+          "[data-testid='backend-control-card']",
+          /not accepting new jobs/i,
+        ).should("be.visible");
+        cy.get(
+          "[data-testid='backend-control-card'] button[role='switch']",
+        ).should("have.attr", "aria-checked", "false");
       });
 
       it("brings an offline backend online immediately on toggle click (no confirmation)", () => {
-        cy.get("button[role='switch']")
-          .first()
-          .should("have.attr", "aria-checked", "false");
-        cy.get("button[role='switch']").first().click();
-        cy.wait("@switch-on");
-        // No confirmation dialog should have appeared
-        cy.contains(/take backend offline\?/i).should("not.exist");
-        cy.contains(/backend enabled/i).should("be.visible");
-        cy.contains(/accepting jobs from all users/i).should("be.visible");
-        cy.get("button[role='switch']")
-          .first()
-          .should("have.attr", "aria-checked", "true");
+        cy.get("[data-testid='backend-control-card']").within(() => {
+          cy.get("button[role='switch']").as("backendToggle");
+          cy.get("@backendToggle").should("have.attr", "aria-checked", "false");
+          cy.get("@backendToggle").click();
+          cy.wait("@switch-on");
+          // No confirmation dialog should have appeared
+          cy.contains(/take backend offline\?/i).should("not.exist");
+
+          cy.contains(/backend enabled/i).should("be.visible");
+          cy.contains(/accepting jobs from all users/i).should("be.visible");
+          cy.get("@backendToggle").should("have.attr", "aria-checked", "true");
+        });
       });
 
       it("requires confirmation before taking an online backend offline", () => {
         // Switch to an already-online device so we can test the offline flow
-        cy.get("[role='combobox']").first().click();
-        cy.contains(onlineDevice.name).click();
-        cy.contains(/backend enabled/i).should("be.visible");
-        cy.get("button[role='switch']")
-          .first()
-          .should("have.attr", "aria-checked", "true");
+        cy.get(
+          "[data-testid='admin-control-header'] [role='combobox']",
+        ).click();
+        cy.contains("[role='option']", onlineDevice.name).click();
+
+        cy.contains(
+          "[data-testid='backend-control-card'] label",
+          /backend enabled/i,
+        ).as("backendEnabledLabel");
+        cy.get("[data-testid='backend-control-card'] button[role='switch']").as(
+          "backendToggle",
+        );
+
+        cy.get("@backendEnabledLabel").should("be.visible");
+        cy.get("@backendToggle").should("have.attr", "aria-checked", "true");
 
         // Clicking the toggle should open a confirmation dialog
-        cy.get("button[role='switch']").first().click();
-        cy.contains(/take backend offline\?/i).should("be.visible");
+        cy.get("@backendToggle").click();
+        cy.contains(
+          "[data-testid='confirmation-dialog']",
+          /take backend offline\?/i,
+        ).should("be.visible");
 
         // Cancelling should leave the backend online and not call the API
-        cy.contains("button", /^Cancel$/i).click();
+        cy.contains(
+          "[data-testid='confirmation-dialog'] button",
+          /^Cancel$/i,
+        ).click();
         cy.get("@switch-off.all").should("have.length", 0);
-        cy.contains(/backend enabled/i).should("be.visible");
+        cy.get("@backendEnabledLabel").should("be.visible");
 
         // Confirming should call the switch-off endpoint
-        cy.get("button[role='switch']").first().click();
-        cy.contains("button", /take offline/i).click();
+        cy.get("@backendToggle").click();
+        cy.contains(
+          "[data-testid='confirmation-dialog'] button",
+          /take offline/i,
+        ).click();
         cy.wait("@switch-off");
-        cy.contains(/backend disabled/i).should("be.visible");
-        cy.get("button[role='switch']")
-          .first()
-          .should("have.attr", "aria-checked", "false");
+        cy.contains(
+          "[data-testid='backend-control-card'] label",
+          /backend disabled/i,
+        ).should("be.visible");
+        cy.get("@backendToggle").should("have.attr", "aria-checked", "false");
       });
-
-      // ── CalibrationCard ───────────────────────────────────────────────────
 
       it("shows calibration metrics (T1, T2, qubits) for the selected device", () => {
         cy.wait("@calibration");
         cy.wait("@recalib-info");
 
-        cy.contains(/^Calibration$/i).should("be.visible");
-        cy.contains(defaultDevice.name).should("be.visible");
+        cy.contains(
+          "[data-testid='calibration-card'] p",
+          /^Calibration$/i,
+        ).should("be.visible");
+        cy.contains(
+          "[data-testid='calibration-card']",
+          defaultDevice.name,
+        ).should("be.visible");
         // The fixture provides T1/T2 data for Loke
-        cy.contains(/median t1/i).should("be.visible");
-        cy.contains(/median t2/i).should("be.visible");
-        cy.contains(/qubits/i).should("be.visible");
+        cy.contains("[data-testid='calibration-card']", /median t1/i).should(
+          "be.visible",
+        );
+        cy.contains("[data-testid='calibration-card']", /median t2/i).should(
+          "be.visible",
+        );
+        cy.contains("[data-testid='calibration-card']", /qubits/i).should(
+          "be.visible",
+        );
       });
 
       it("triggers recalibration only after the confirmation dialog is accepted", () => {
         cy.wait("@calibration");
         cy.wait("@recalib-info");
+        cy.wait(20);
 
         // Click Trigger button — dialog should appear
         cy.contains("button", /trigger recalibration/i).click();
@@ -276,8 +336,6 @@ users.forEach((user) => {
         cy.wait("@start-recalib");
         cy.contains(/recalibration started/i).should("be.visible");
       });
-
-      // ── NoticesCard ───────────────────────────────────────────────────────
 
       it("renders the notices card with a 'New notice' form", () => {
         cy.wait("@notices");
@@ -354,12 +412,12 @@ users.forEach((user) => {
         cy.get("[aria-label='Go to previous page']").should(
           "have.attr",
           "aria-disabled",
-          "true"
+          "true",
         );
         cy.get("[aria-label='Go to next page']").should(
           "have.attr",
           "aria-disabled",
-          "false"
+          "false",
         );
 
         // Advance to page 2
@@ -371,7 +429,7 @@ users.forEach((user) => {
         cy.get("[aria-label='Go to previous page']").should(
           "have.attr",
           "aria-disabled",
-          "false"
+          "false",
         );
       });
     }

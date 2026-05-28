@@ -50,7 +50,7 @@ export function NoticesCard() {
   );
 
   return (
-    <Card className="h-full">
+    <Card className="h-full" data-testid="notices-card">
       <CardHeader className="pb-3">
         <CardDescription>Notices</CardDescription>
         <div className="flex items-center justify-between">

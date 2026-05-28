@@ -44,7 +44,10 @@ export function AdminControl() {
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 sm:px-6 sm:py-0">
       {/* ── Header ── */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        data-testid="admin-control-header"
+        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+      >
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-muted-foreground" />
           <h1 className="text-lg font-medium">Control panel</h1>
@@ -59,12 +62,20 @@ export function AdminControl() {
             value={selectedDevice?.name}
             onValueChange={setSelectedDeviceName}
           >
-            <SelectTrigger className="w-48 h-8 text-sm">
+            <SelectTrigger
+              data-testid="device-selector"
+              className="w-48 h-8 text-sm"
+            >
               <SelectValue placeholder="Select device" />
             </SelectTrigger>
             <SelectContent>
               {devices.map((d) => (
-                <SelectItem key={d.name} value={d.name} className="text-sm">
+                <SelectItem
+                  data-testid={`device-item-${d.name}`}
+                  key={d.name}
+                  value={d.name}
+                  className="text-sm"
+                >
                   <span className="flex items-center gap-2">
                     <span
                       className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
@@ -81,7 +92,10 @@ export function AdminControl() {
       </div>
 
       {/* ── System status bar ── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div
+        id="system-status-bar"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+      >
         <StatusTile label="Devices" value={`${devices.length}`} />
         <StatusTile label="Online" value={`${onlineCount}`} />
         <StatusTile
