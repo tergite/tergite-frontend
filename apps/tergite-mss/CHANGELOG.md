@@ -7,6 +7,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+## [2026.06.0-rc.2] - 2026-05-28
+
 ### Added
 
 - Added `/admin/recalibration/{backend}/init`, `/admin/recalibration/{backend}/cancel`

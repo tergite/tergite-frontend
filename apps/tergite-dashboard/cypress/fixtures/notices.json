@@ -111,7 +111,7 @@
   },
   {
     "id": "ntc_011",
-    "message": "Access granted to QPU-A for your research project 'Variational quantum eigensolver benchmarks'. Token quota: 500 jobs/day.",
+    "message": "Access granted to QPU-A for your research project: Variational quantum eigensolver benchmarks. Token quota: 500 jobs/day.",
     "severity": "info",
     "severity_number": 3,
     "starts_at_offset_hours": 24,

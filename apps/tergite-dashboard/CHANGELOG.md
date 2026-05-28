@@ -7,9 +7,11 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+## [2026.06.0-rc.2] - 2026-05-28
+
 ### Added
 
-- Added the control panel screen
+- Added the control panel screen to switch off backends, initialize recalibration and send out notices
 - Added the notices banner on top of the dashboard
 
 ## [2026.06.0-rc.1] - 2026-05-13
