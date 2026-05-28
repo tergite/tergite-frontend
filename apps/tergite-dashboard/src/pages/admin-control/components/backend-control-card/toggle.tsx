@@ -1,8 +1,16 @@
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   apiBaseUrl,
@@ -20,6 +28,7 @@ interface Props {
 export function BackendToggle({ deviceName, isOnline }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const goOnline = useMutation({
     mutationKey: [apiBaseUrl, "admin", "switch", deviceName, "on"],
@@ -53,6 +62,14 @@ export function BackendToggle({ deviceName, isOnline }: Props) {
 
   const isLoading = goOnline.isPending || goOffline.isPending;
 
+  function handleToggle(checked: boolean) {
+    if (checked) {
+      goOnline.mutate();
+    } else {
+      setConfirmOpen(true);
+    }
+  }
+
   return (
     <>
       <div className="rounded-md border p-3 flex items-center justify-between gap-3">
@@ -70,43 +87,48 @@ export function BackendToggle({ deviceName, isOnline }: Props) {
           </p>
         </div>
 
-        {isOnline ? (
-          <ConfirmDialog
-            trigger={
-              <Switch
-                id={`backend-toggle-${deviceName}`}
-                checked={true}
-                disabled={isLoading}
-                aria-label="Toggle backend online/offline"
-              />
-            }
-            title="Take backend offline?"
-            description={`This will stop ${deviceName} from accepting new jobs. Currently queued jobs may be affected. Are you sure?`}
-            confirmBtnLabel="Take offline"
-            cancelBtnLabel="Cancel"
-            onConfirm={() => goOffline.mutate()}
-          />
-        ) : (
-          <Switch
-            id={`backend-toggle-${deviceName}`}
-            checked={false}
-            disabled={isLoading}
-            aria-label="Toggle backend online/offline"
-            onCheckedChange={() => goOnline.mutate()}
-          />
-        )}
+        <Switch
+          id={`backend-toggle-${deviceName}`}
+          checked={isOnline}
+          disabled={isLoading}
+          aria-label="Toggle backend online/offline"
+          onCheckedChange={handleToggle}
+        />
       </div>
 
-      {!isOnline && (
-        <Button
-          variant="outline"
-          className="w-full border-green-600 text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
-          disabled={isLoading}
-          onClick={() => goOnline.mutate()}
-        >
-          Bring backend online
-        </Button>
-      )}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Take backend offline?</DialogTitle>
+            <DialogDescription className="py-5">
+              This will stop {deviceName} from accepting new jobs. Currently
+              queued jobs may be affected. Are you sure?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <div className="grid grid-cols-2 gap-2 w-full">
+              <Button
+                type="button"
+                variant="default"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  goOffline.mutate();
+                }}
+              >
+                Take offline
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="text-destructive border-destructive"
+                onClick={() => setConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

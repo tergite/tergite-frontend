@@ -101,7 +101,7 @@ export function CalibrationActions({ deviceName, currentJobStatus }: Props) {
         />
       )}
       <p className="text-xs text-muted-foreground text-center">
-        Pauses job queue for ~12 min
+        Pauses job queue for a few minutes
       </p>
     </div>
   );

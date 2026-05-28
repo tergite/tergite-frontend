@@ -8,6 +8,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { singleDeviceQuery } from "@/lib/api-client";
 import { BackendToggle } from "./toggle";
+import { DateTime } from "luxon";
 
 interface Props {
   deviceName: string;
@@ -57,7 +58,7 @@ export function BackendControlCard({ deviceName }: Props) {
             </p>
             <p className="text-sm font-medium tabular-nums text-muted-foreground">
               {device.last_online
-                ? new Date(device.last_online).toLocaleString()
+                ? DateTime.fromISO(device.last_online).toRelative()
                 : "—"}
             </p>
           </div>

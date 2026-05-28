@@ -1106,8 +1106,6 @@ export async function switchBackendOn(
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/admin/switch/${backend}/on`, {
     method: "POST",
-    body: JSON.stringify({ is_online: true }),
-    headers: { "Content-Type": "application/json" },
   });
 }
 

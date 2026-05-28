@@ -1108,6 +1108,68 @@ router.post(
 );
 
 router.post(
+  "/admin/switch/:backend/on",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { backend } = req.params;
+    const device = mockDb.getOne<Device>("devices", (v) => v.name === backend);
+    if (!device) {
+      res.status(404).json({ detail: `device '${backend}' not found` });
+      return;
+    }
+
+    mockDb.update<Device>(
+      "devices",
+      (v) => v.name === backend,
+      { is_online: true },
+    );
+
+    res.json({ status: "success" } as GeneralMessage);
+  }),
+);
+
+router.post(
+  "/admin/switch/:backend/off",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { backend } = req.params;
+    const device = mockDb.getOne<Device>("devices", (v) => v.name === backend);
+    if (!device) {
+      res.status(404).json({ detail: `device '${backend}' not found` });
+      return;
+    }
+
+    mockDb.update<Device>(
+      "devices",
+      (v) => v.name === backend,
+      { is_online: false, last_online: new Date().toISOString() },
+    );
+
+    res.json({ status: "success" } as GeneralMessage);
+  }),
+);
+
+router.post(
   "/admin/notices/",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
