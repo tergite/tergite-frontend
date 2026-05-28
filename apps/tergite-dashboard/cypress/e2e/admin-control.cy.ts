@@ -20,35 +20,26 @@ interface NoticeFixture {
 }
 
 /**
- * Returns the subset of notices that are active for the given user at the
- * supplied reference time, mirroring the server-side getUserNoticesFilter logic.
+ * Returns every notice that is temporally active at the supplied reference
+ * time, mirroring the admin NoticesCard query which omits user_id and sets
+ * include_dismissed: true.
  *
  * A notice is active when:
  *  - it has already started  (starts_at <= now)
- *  - it has not yet expired  (expires_at >= now, or expires_at is null = permanent)
- *  - it targets this user    (target_user_ids is null = everyone, or includes userId)
- *  - it has not been dismissed by this user (dismissed_by excludes userId)
+ *  - it has not yet expired  (expires_at >= now)
  *
- * When includeDismissed is true the dismissal check is skipped (admin panel view).
+ * No target_user_ids or dismissed_by filtering is applied because the admin
+ * panel shows all system notices regardless of audience.
  */
-function getActiveNoticesForUser(
-  userId: string,
+function getAllActiveNotices(
   notices: NoticeFixture[],
-  currentDate: Date,
-  includeDismissed = false
+  currentDate: Date
 ): NoticeFixture[] {
   const now = currentDate.getTime();
   return notices.filter((n) => {
     const startsAt = now + n.starts_at_offset_hours * 3_600_000;
     const expiresAt = now + n.expires_at_offset_hours * 3_600_000;
-
-    if (startsAt > now) return false;
-    if (expiresAt < now) return false;
-    if (n.target_user_ids !== null && !n.target_user_ids.includes(userId))
-      return false;
-    if (!includeDismissed && n.dismissed_by.includes(userId)) return false;
-
-    return true;
+    return startsAt <= now && expiresAt >= now;
   });
 }
 
@@ -69,15 +60,9 @@ users.forEach((user) => {
   const username = getUsername(user);
   const currentDateStr = Cypress.env("CURRENT_DATE");
   const currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
-  // Admin panel uses include_dismissed: true, so dismissed notices are counted too.
-  // Since all fixture notices start with dismissed_by: [], this equals the plain
-  // active count for a fresh database.
-  const activeNotices = getActiveNoticesForUser(
-    user.id,
-    rawNotices,
-    currentDate,
-    true
-  );
+  // The admin NoticesCard fetches all notices with no user_id filter, so the
+  // expected count is every notice that has started and not yet expired.
+  const activeNotices = getAllActiveNotices(rawNotices, currentDate);
   const activeNoticeCount = activeNotices.length;
 
   describe(`admin control page for ${username}`, () => {

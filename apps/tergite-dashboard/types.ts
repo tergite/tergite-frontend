@@ -411,12 +411,6 @@ export enum NoticeSeverity {
   CRITICAL = "critical",
 }
 
-export enum NoticeSeverityNumber {
-  INFO = 3,
-  WARNING = 2,
-  CRITICAL = 1,
-}
-
 export interface NoticePostRequest {
   message: string;
   severity: NoticeSeverity;
@@ -428,7 +422,7 @@ export interface NoticePostRequest {
 export interface Notice
   extends DbRecord, Omit<NoticePostRequest, "target_user_emails"> {
   created_by: string;
-  severity_number: NoticeSeverityNumber;
+  severity_number: number;
   target_user_ids?: string[];
   dismissed_by: string[];
 }

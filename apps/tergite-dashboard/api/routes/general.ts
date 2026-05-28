@@ -45,7 +45,6 @@ import {
   Notice,
   GeneralMessage,
   CountResponse,
-  NoticeSeverityNumber,
 } from "../../types";
 import { DateTime } from "luxon";
 
@@ -1256,16 +1255,10 @@ router.get(
       : undefined;
 
     const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
+    // ensure that ordinary users only query their own notices
+    const noticesUserId = isAdmin ? (user_id as string | undefined) : userId;
 
-    // Only admins are permitted to see notices of other users
-    if (user_id && user_id !== userId && !isAdmin) {
-      res.status(403).json({ detail: `Forbidden` });
-      return;
-    }
-
-    // only admins can request for notices that belong to other users
-    const defaultUserId = isAdmin ? undefined : userId;
-    const filterFunc = getUserNoticesFilter(req, defaultUserId);
+    const filterFunc = getUserNoticesFilter(req, noticesUserId);
     const data = mockDb.getMany<Notice>(
       "notices",
       filterFunc,
@@ -1311,21 +1304,17 @@ router.get(
 
     const { user_id } = req.query;
 
-    // Only admins are permitted to see notices of other users
     const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
-    if (user_id && user_id !== userId && !isAdmin) {
-      res.status(403).json({ detail: `Forbidden` });
-      return;
-    }
+    // ensure that ordinary users only query their own notices
+    const noticesUserId = isAdmin ? (user_id as string | undefined) : userId;
 
-    // only admins can request for notices that belong to other users
-    const defaultUserId = isAdmin ? undefined : userId;
-    const filterFunc = getUserNoticesFilter(req, defaultUserId);
+    const filterFunc = getUserNoticesFilter(req, noticesUserId);
     const data = mockDb.getMany<Notice>("notices", filterFunc);
 
     res.status(200);
     res.json({ count: data.length } as CountResponse);
-  }),
+    // prettier-ignore
+  };),
 );
 
 // NOTE: this mutates the database. I am using GET to avoid CORS issues

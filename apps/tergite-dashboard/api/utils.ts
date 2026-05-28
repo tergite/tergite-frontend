@@ -751,15 +751,11 @@ interface NoticeFixtureInfo {
  * Generates a notices filter for a given user request
  * 
  * @param req - the request object
- * @param defaultUserId - the default user id to use. For non-admins, it is the current user id
+ * @param user_id - the ID of the user whose notices are to be retrieved
  * @returns 
  */
-export function getUserNoticesFilter(
-  req: ExpressRequest,
-  defaultUserId?: string,
-) {
+export function getUserNoticesFilter(req: ExpressRequest, user_id?: string) {
   const {
-    user_id = defaultUserId,
     min_start_utc,
     max_start_utc,
     min_expires_utc,
