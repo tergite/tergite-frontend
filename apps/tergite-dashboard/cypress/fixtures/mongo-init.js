@@ -18,6 +18,49 @@ const toTokenDoc = ({ id, user_id, created_at, ...props }) => ({
 });
 
 /**
+ * Converts a notice fixture record into a MongoDB notice document.
+ * Timestamps are computed relative to the current real time so that notices
+ * are correctly active/inactive whenever the DB is seeded (e.g. on each
+ * beforeEach reset via mongo-router.sh).
+ *
+ * The fixture `id` field ("ntc_001" etc.) is intentionally dropped because it
+ * is not a valid 24-char hex ObjectId. MongoDB will auto-assign an `_id`.
+ *
+ * @param {Object} record - a notice fixture record with offset-hours fields
+ * @returns {Object} - a MongoDB-ready notice document
+ */
+const toNoticeDoc = ({
+  id, // dropped — let MongoDB assign ObjectId
+  starts_at_offset_hours,
+  expires_at_offset_hours,
+  created_by,
+  target_user_ids,
+  dismissed_by,
+  ...rest
+}) => {
+  const now = new Date();
+  const starts_at = new Date(
+    now.getTime() + starts_at_offset_hours * 3_600_000
+  );
+  const expires_at = new Date(
+    now.getTime() + expires_at_offset_hours * 3_600_000
+  );
+
+  return {
+    ...rest,
+    starts_at: ISODate(starts_at.toISOString()),
+    expires_at: ISODate(expires_at.toISOString()),
+    created_by: ObjectId(created_by),
+    target_user_ids: target_user_ids
+      ? target_user_ids.map((uid) => ObjectId(uid))
+      : null,
+    dismissed_by: dismissed_by.map((uid) => ObjectId(uid)),
+    created_at: starts_at.toISOString(),
+    updated_at: starts_at.toISOString(),
+  };
+};
+
+/**
  * Converts into a proper Job object
  * @param {Object} obj - the object to convert to document
  * @returns {Object} - a Job object
@@ -76,6 +119,7 @@ console.log("Inserting initial data in mongo...");
 const rawCalibrations = "[]";
 const rawDevices = "[]";
 const rawJobs = "[]";
+const rawNotices = "[]";
 const rawProjects = "[]";
 const rawTokens = "[]";
 const rawUserRequests = "[]";
@@ -89,6 +133,8 @@ const devices = JSON.parse(rawDevices).map(toDoc);
 console.log({ devices });
 const jobs = JSON.parse(rawJobs).map(toJob).map(toDoc);
 console.log({ jobs });
+const notices = JSON.parse(rawNotices).map(toNoticeDoc);
+console.log({ notices });
 const projects = JSON.parse(rawProjects).map(toDoc);
 console.log({ projects });
 const tokens = JSON.parse(rawTokens).map(toTokenDoc);
@@ -128,5 +174,9 @@ db.devices.insertMany(devices);
 console.log("Inserted devices");
 db.jobs.insertMany(jobs);
 console.log("Inserted jobs");
+if (notices.length > 0) {
+  db.notices.insertMany(notices);
+}
+console.log("Inserted notices");
 db.auth_user_requests.insertMany(userRequests);
 console.log("Inserted user requests");

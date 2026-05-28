@@ -169,6 +169,7 @@ cp "$FIXTURES_PATH/mss-config.toml" .
 replace_str mongo-init.js "rawCalibrations = \"\[\]\"" "rawCalibrations = $(read_json $FIXTURES_PATH/calibrations.json)"
 replace_str mongo-init.js "rawDevices = \"\[\]\"" "rawDevices = $(read_json $FIXTURES_PATH/device-list.json)"
 replace_str mongo-init.js "rawJobs = \"\[\]\"" "rawJobs = $(read_json $FIXTURES_PATH/jobs.json)"
+replace_str mongo-init.js "rawNotices = \"\[\]\"" "rawNotices = $(read_json $FIXTURES_PATH/notices.json)"
 replace_str mongo-init.js "rawProjects = \"\[\]\"" "rawProjects = $(read_json $FIXTURES_PATH/projects.json)"
 replace_str mongo-init.js "rawTokens = \"\[\]\"" "rawTokens = $(read_json $FIXTURES_PATH/tokens.json)"
 replace_str mongo-init.js "rawUserRequests = \"\[\]\"" "rawUserRequests = $(read_json $FIXTURES_PATH/user-requests.json)"
