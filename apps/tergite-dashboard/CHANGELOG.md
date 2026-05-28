@@ -7,6 +7,11 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+### Added
+
+- Added the control panel screen
+- Added the notices banner on top of the dashboard
+
 ## [2026.06.0-rc.1] - 2026-05-13
 
 ### Added
