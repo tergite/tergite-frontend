@@ -51,6 +51,17 @@
             "instrument_type": "QRM_RF"
           }
         }
+      },
+      "clusterB": {
+        "instrument_type": "Cluster",
+        "ref": "internal",
+        "modules": {
+          "1": { "instrument_type": "QCM_RF" },
+          "2": { "instrument_type": "QCM_RF" },
+          "3": { "instrument_type": "QCM_RF" },
+          "4": { "instrument_type": "QCM_RF" },
+          "5": { "instrument_type": "QRM_RF" }
+        }
       }
     },
     "hardware_options": {
@@ -303,7 +314,38 @@
         },
         "q15:res-q15.ro_3st_opt": {
           "lo_freq": 6800000000.0
-        }
+        },
+        "q0:mw-q0.01": { "lo_freq": 4500000000.0 },
+        "q0:mw-q0.12": { "lo_freq": 4500000000.0 },
+        "q1:mw-q1.01": { "lo_freq": 4700000000.0 },
+        "q1:mw-q1.12": { "lo_freq": 4700000000.0 },
+        "q2:mw-q2.01": { "lo_freq": 5800000000.0 },
+        "q2:mw-q2.12": { "lo_freq": 5800000000.0 },
+        "q3:mw-q3.01": { "lo_freq": 5800000000.0 },
+        "q3:mw-q3.12": { "lo_freq": 5800000000.0 },
+        "q4:mw-q4.01": { "lo_freq": 5800000000.0 },
+        "q4:mw-q4.12": { "lo_freq": 5800000000.0 },
+        "q5:mw-q5.01": { "lo_freq": 5800000000.0 },
+        "q5:mw-q5.12": { "lo_freq": 5800000000.0 },
+        "q6:mw-q6.01": { "lo_freq": 5800000000.0 },
+        "q6:mw-q6.12": { "lo_freq": 5800000000.0 },
+        "q7:mw-q7.01": { "lo_freq": 5800000000.0 },
+        "q7:mw-q7.12": { "lo_freq": 5800000000.0 },
+        "q0:res-q0.ro":         { "lo_freq": 7200000000.0 },
+        "q0:res-q0.ro1":        { "lo_freq": 7200000000.0 },
+        "q0:res-q0.ro2":        { "lo_freq": 7200000000.0 },
+        "q0:res-q0.ro_2st_opt": { "lo_freq": 7200000000.0 },
+        "q0:res-q0.ro_3st_opt": { "lo_freq": 7200000000.0 },
+        "q1:res-q1.ro":         { "lo_freq": 7200000000.0 },
+        "q1:res-q1.ro1":        { "lo_freq": 7200000000.0 },
+        "q1:res-q1.ro2":        { "lo_freq": 7200000000.0 },
+        "q1:res-q1.ro_2st_opt": { "lo_freq": 7200000000.0 },
+        "q1:res-q1.ro_3st_opt": { "lo_freq": 7200000000.0 },
+        "q2:res-q2.ro":         { "lo_freq": 7200000000.0 },
+        "q2:res-q2.ro1":        { "lo_freq": 7200000000.0 },
+        "q2:res-q2.ro2":        { "lo_freq": 7200000000.0 },
+        "q2:res-q2.ro_2st_opt": { "lo_freq": 7200000000.0 },
+        "q2:res-q2.ro_3st_opt": { "lo_freq": 7200000000.0 }
       },
       "mixer_corrections": {
         "q06:mw-q06.01": {
@@ -803,7 +845,38 @@
           "dc_offset_q": -0.0061963,
           "amp_ratio": 0.9616,
           "phase_error": 18.19954
-        }
+        },
+        "q0:mw-q0.01": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q0:mw-q0.12": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q1:mw-q1.01": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q1:mw-q1.12": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q2:mw-q2.01": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q2:mw-q2.12": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q3:mw-q3.01": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q3:mw-q3.12": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q4:mw-q4.01": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q4:mw-q4.12": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q5:mw-q5.01": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q5:mw-q5.12": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q6:mw-q6.01": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q6:mw-q6.12": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q7:mw-q7.01": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q7:mw-q7.12": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q0:res-q0.ro":         { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q0:res-q0.ro1":        { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q0:res-q0.ro2":        { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q0:res-q0.ro_2st_opt": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q0:res-q0.ro_3st_opt": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q1:res-q1.ro":         { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q1:res-q1.ro1":        { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q1:res-q1.ro2":        { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q1:res-q1.ro_2st_opt": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q1:res-q1.ro_3st_opt": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q2:res-q2.ro":         { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q2:res-q2.ro1":        { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q2:res-q2.ro2":        { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q2:res-q2.ro_2st_opt": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 },
+        "q2:res-q2.ro_3st_opt": { "dc_offset_i": 0.0, "dc_offset_q": 0.0, "amp_ratio": 1.0, "phase_error": 0.0 }
       }
     },
     "connectivity": {
@@ -1043,7 +1116,27 @@
           {
             "instrument_name": "QuantumDevice",
             "id": "q15:res"
-          }
+          },
+          { "instrument_name": "clusterB", "id": "clusterB.module1.complex_output_0" },
+          { "instrument_name": "clusterB", "id": "clusterB.module1.complex_output_1" },
+          { "instrument_name": "clusterB", "id": "clusterB.module2.complex_output_0" },
+          { "instrument_name": "clusterB", "id": "clusterB.module2.complex_output_1" },
+          { "instrument_name": "clusterB", "id": "clusterB.module3.complex_output_0" },
+          { "instrument_name": "clusterB", "id": "clusterB.module3.complex_output_1" },
+          { "instrument_name": "clusterB", "id": "clusterB.module4.complex_output_0" },
+          { "instrument_name": "clusterB", "id": "clusterB.module4.complex_output_1" },
+          { "instrument_name": "clusterB", "id": "clusterB.module5.complex_output_0" },
+          { "instrument_name": "QuantumDevice", "id": "q0:mw" },
+          { "instrument_name": "QuantumDevice", "id": "q1:mw" },
+          { "instrument_name": "QuantumDevice", "id": "q2:mw" },
+          { "instrument_name": "QuantumDevice", "id": "q3:mw" },
+          { "instrument_name": "QuantumDevice", "id": "q4:mw" },
+          { "instrument_name": "QuantumDevice", "id": "q5:mw" },
+          { "instrument_name": "QuantumDevice", "id": "q6:mw" },
+          { "instrument_name": "QuantumDevice", "id": "q7:mw" },
+          { "instrument_name": "QuantumDevice", "id": "q0:res" },
+          { "instrument_name": "QuantumDevice", "id": "q1:res" },
+          { "instrument_name": "QuantumDevice", "id": "q2:res" }
         ],
         "links": [
           {
@@ -1177,7 +1270,18 @@
           {
             "source": "clusterA.module17.complex_output_0",
             "target": "q15:res"
-          }
+          },
+          { "source": "clusterB.module1.complex_output_0", "target": "q0:mw" },
+          { "source": "clusterB.module1.complex_output_1", "target": "q1:mw" },
+          { "source": "clusterB.module2.complex_output_0", "target": "q2:mw" },
+          { "source": "clusterB.module2.complex_output_1", "target": "q3:mw" },
+          { "source": "clusterB.module3.complex_output_0", "target": "q4:mw" },
+          { "source": "clusterB.module3.complex_output_1", "target": "q5:mw" },
+          { "source": "clusterB.module4.complex_output_0", "target": "q6:mw" },
+          { "source": "clusterB.module4.complex_output_1", "target": "q7:mw" },
+          { "source": "clusterB.module5.complex_output_0", "target": "q0:res" },
+          { "source": "clusterB.module5.complex_output_0", "target": "q1:res" },
+          { "source": "clusterB.module5.complex_output_0", "target": "q2:res" }
         ]
       }
     }

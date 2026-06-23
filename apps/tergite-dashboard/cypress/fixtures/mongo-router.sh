@@ -20,6 +20,8 @@ if [[ "$path" == "/refreshed-db" ]]; then
     curl http://pingu:3001/refreshed-db
     curl http://pegu:3001/refreshed-db
     curl http://thor:3001/refreshed-db
+    curl http://qiskit_pulse_1q:3001/refreshed-db
+    curl http://qiskit_pulse_2q:3001/refreshed-db
 
     # Send success response
     echo "success"

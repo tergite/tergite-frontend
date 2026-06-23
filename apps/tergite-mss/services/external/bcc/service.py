@@ -773,7 +773,7 @@ class BccClient:
                 raise HTTPException(status_code=response.status_code, detail=message)
 
             return response.json()
-        except (httpx.ConnectError, httpx.ConnectTimeout) as exp:
+        except (httpx.ConnectError, httpx.TimeoutException) as exp:
             logging.error(exp)
             raise ServiceUnavailableError("device is currently unavailable")
 

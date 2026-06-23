@@ -23,15 +23,16 @@ owner = "QC2"
 attenuation = 10
 
 [device.resonator]
-q01 = { VNA_frequency = 6433000000.0 }
-q02 = { VNA_frequency = 6290000000.0 }
-q03 = { VNA_frequency = 6163000000.0 }
-q04 = { VNA_frequency = 5988000000.0 }
-q05 = { VNA_frequency = 6733000000.0 }
-q06 = { VNA_frequency = 6832073301.189378 }
-q07 = { VNA_frequency = 7080671753.192583 }
-q08 = { VNA_frequency = 6397230987.533971 }
-q09 = { VNA_frequency = 7276184309.188224 }
+q0 = { VNA_frequency = 6433000000.0 }
+q1 = { VNA_frequency = 6433000000.0 }
+q2 = { VNA_frequency = 6290000000.0 }
+q3 = { VNA_frequency = 6163000000.0 }
+q4 = { VNA_frequency = 5988000000.0 }
+q5 = { VNA_frequency = 6733000000.0 }
+q6 = { VNA_frequency = 6832073301.189378 }
+q7 = { VNA_frequency = 7080671753.192583 }
+q8 = { VNA_frequency = 6397230987.533971 }
+q9 = { VNA_frequency = 7276184309.188224 }
 q10 = { VNA_frequency = 7252681537.885626 }
 q11 = { VNA_frequency = 6987637290.0307665 }
 q12 = { VNA_frequency = 6437489163.849617 }

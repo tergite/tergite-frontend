@@ -81,28 +81,33 @@ users.forEach((user) => {
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("device-req");
       cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`).as(
-        "my-project-list",
+        "my-project-list"
       );
       cy.intercept("GET", `${apiBaseUrl}/calibrations/*`).as("calibration");
       cy.intercept("GET", `${apiBaseUrl}/admin/recalibration/**/info**`).as(
-        "recalib-info",
+        "recalib-info"
       );
       cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/**/init**`).as(
-        "start-recalib",
+        "start-recalib"
       );
       cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/**/cancel**`).as(
-        "stop-recalib",
+        "stop-recalib"
       );
       cy.intercept("POST", `${apiBaseUrl}/admin/switch/**/on`).as("switch-on");
       cy.intercept("POST", `${apiBaseUrl}/admin/switch/**/off`).as(
-        "switch-off",
+        "switch-off"
       );
       cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
       cy.intercept("POST", `${apiBaseUrl}/admin/notices/`).as("create-notice");
       cy.intercept("DELETE", `${apiBaseUrl}/admin/notices/*`).as(
-        "delete-notice",
+        "delete-notice"
       );
       cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
+
+      // for the home page
+      cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
+      cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
+      cy.intercept("GET", `${apiBaseUrl}/bookings/*`).as("my-bookings-list");
 
       cy.clock(currentDate, ["Date"]);
       if (user.id) {
@@ -114,7 +119,7 @@ users.forEach((user) => {
               secure: false,
               sameSite: "lax",
             });
-          },
+          }
         );
       }
 
@@ -122,15 +127,31 @@ users.forEach((user) => {
       cy.wait(500);
 
       cy.visit("/admin-control");
+      // prettier-ignore
     });
 
     if (!isAdmin) {
       it("redirects non-admin users away from the control panel", () => {
+        cy.wait("@devices-list");
+
+        // wait for bookings requests
+        cy.wrap(devices).each(() => {
+          cy.wait(`@my-bookings-list`);
+        });
         cy.url().should("not.include", "/admin-control");
       });
     } else {
       // Wait for the page to be fully loaded before each admin test
       beforeEach(() => {
+        const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
+
+        // reset the state
+        // Just make sure the online device is online because the tests change this sometimes
+        cy.request(
+          "POST",
+          `${apiBaseUrl}/admin/switch/${onlineDevice.name}/on`
+        );
+
         cy.wait("@my-project-list");
         cy.wait("@device-req");
       });
@@ -138,47 +159,47 @@ users.forEach((user) => {
       it("renders the control panel header with a live device count badge", () => {
         cy.contains("h1", /control panel/i).should("be.visible");
         cy.contains(`${onlineDeviceCount}/${totalDeviceCount} online`).should(
-          "be.visible",
+          "be.visible"
         );
       });
 
       it("renders the system status bar with total, online, and selected device tiles", () => {
         // Each StatusTile has an uppercase label paragraph and a value paragraph
         cy.contains("#system-status-bar #status-label", /^Devices$/).should(
-          "be.visible",
+          "be.visible"
         );
         cy.contains(
           "#system-status-bar #status-value",
-          `${totalDeviceCount}`,
+          `${totalDeviceCount}`
         ).should("be.visible");
 
         cy.contains("#system-status-bar #status-label", /^Online$/).should(
-          "be.visible",
+          "be.visible"
         );
         cy.contains(
           "#system-status-bar #status-value",
-          `${onlineDeviceCount}`,
+          `${onlineDeviceCount}`
         ).should("be.visible");
 
         cy.contains("#system-status-bar #status-label", /^Selected$/).should(
-          "be.visible",
+          "be.visible"
         );
         cy.contains(
           "#system-status-bar #status-value",
-          defaultDevice.name,
+          defaultDevice.name
         ).should("be.visible");
       });
 
       it("shows a device selector when there are multiple devices", () => {
         // With 6 devices in the fixture the selector must be present
         cy.get("[data-testid='admin-control-header'] [role='combobox']").should(
-          "be.visible",
+          "be.visible"
         );
       });
 
       it("switches the focused device when a different device is chosen", () => {
         cy.get("[data-testid='admin-control-header'] [role='combobox']").as(
-          "deviceSelector",
+          "deviceSelector"
         );
         cy.get("@deviceSelector").click();
         cy.contains("[role='option']", onlineDevice.name).click();
@@ -190,14 +211,14 @@ users.forEach((user) => {
           .should("be.visible");
         cy.contains(
           "[data-testid='backend-control-card'] p",
-          onlineDevice.name,
+          onlineDevice.name
         ).should("be.visible");
       });
 
       it("shows the device name, qubit count, version, and Online/Offline badge", () => {
         cy.contains(
           "[data-testid='backend-control-card']",
-          /backend control/i,
+          /backend control/i
         ).should("be.visible");
         // Default device is Loke (offline)
         cy.contains("[data-testid='backend-control-card']", /offline/i)
@@ -205,29 +226,29 @@ users.forEach((user) => {
           .should("be.visible");
         cy.contains(
           "[data-testid='backend-control-card']",
-          defaultDevice.name,
+          defaultDevice.name
         ).should("be.visible");
         cy.contains(
           "[data-testid='backend-control-card']",
-          String(defaultDevice.number_of_qubits),
+          String(defaultDevice.number_of_qubits)
         ).should("be.visible");
         cy.contains(
           "[data-testid='backend-control-card']",
-          defaultDevice.version,
+          defaultDevice.version
         ).should("be.visible");
       });
 
       it("displays the toggle in the OFF position and 'Backend disabled' label for an offline device", () => {
         cy.contains(
           "[data-testid='backend-control-card']",
-          /backend disabled/i,
+          /backend disabled/i
         ).should("be.visible");
         cy.contains(
           "[data-testid='backend-control-card']",
-          /not accepting new jobs/i,
+          /not accepting new jobs/i
         ).should("be.visible");
         cy.get(
-          "[data-testid='backend-control-card'] button[role='switch']",
+          "[data-testid='backend-control-card'] button[role='switch']"
         ).should("have.attr", "aria-checked", "false");
       });
 
@@ -249,16 +270,16 @@ users.forEach((user) => {
       it("requires confirmation before taking an online backend offline", () => {
         // Switch to an already-online device so we can test the offline flow
         cy.get(
-          "[data-testid='admin-control-header'] [role='combobox']",
+          "[data-testid='admin-control-header'] [role='combobox']"
         ).click();
         cy.contains("[role='option']", onlineDevice.name).click();
 
         cy.contains(
           "[data-testid='backend-control-card'] label",
-          /backend enabled/i,
+          /backend enabled/i
         ).as("backendEnabledLabel");
         cy.get("[data-testid='backend-control-card'] button[role='switch']").as(
-          "backendToggle",
+          "backendToggle"
         );
 
         cy.get("@backendEnabledLabel").should("be.visible");
@@ -268,13 +289,13 @@ users.forEach((user) => {
         cy.get("@backendToggle").click();
         cy.contains(
           "[data-testid='confirmation-dialog']",
-          /take backend offline\?/i,
+          /take backend offline\?/i
         ).should("be.visible");
 
         // Cancelling should leave the backend online and not call the API
         cy.contains(
           "[data-testid='confirmation-dialog'] button",
-          /^Cancel$/i,
+          /^Cancel$/i
         ).click();
         cy.get("@switch-off.all").should("have.length", 0);
         cy.get("@backendEnabledLabel").should("be.visible");
@@ -283,12 +304,12 @@ users.forEach((user) => {
         cy.get("@backendToggle").click();
         cy.contains(
           "[data-testid='confirmation-dialog'] button",
-          /take offline/i,
+          /take offline/i
         ).click();
         cy.wait("@switch-off");
         cy.contains(
           "[data-testid='backend-control-card'] label",
-          /backend disabled/i,
+          /backend disabled/i
         ).should("be.visible");
         cy.get("@backendToggle").should("have.attr", "aria-checked", "false");
       });
@@ -299,21 +320,21 @@ users.forEach((user) => {
 
         cy.contains(
           "[data-testid='calibration-card'] p",
-          /^Calibration$/i,
+          /^Calibration$/i
         ).should("be.visible");
         cy.contains(
           "[data-testid='calibration-card']",
-          defaultDevice.name,
+          defaultDevice.name
         ).should("be.visible");
         // The fixture provides T1/T2 data for Loke
         cy.contains("[data-testid='calibration-card']", /median t1/i).should(
-          "be.visible",
+          "be.visible"
         );
         cy.contains("[data-testid='calibration-card']", /median t2/i).should(
-          "be.visible",
+          "be.visible"
         );
         cy.contains("[data-testid='calibration-card']", /qubits/i).should(
-          "be.visible",
+          "be.visible"
         );
       });
 
@@ -412,12 +433,12 @@ users.forEach((user) => {
         cy.get("[aria-label='Go to previous page']").should(
           "have.attr",
           "aria-disabled",
-          "true",
+          "true"
         );
         cy.get("[aria-label='Go to next page']").should(
           "have.attr",
           "aria-disabled",
-          "false",
+          "false"
         );
 
         // Advance to page 2
@@ -429,7 +450,7 @@ users.forEach((user) => {
         cy.get("[aria-label='Go to previous page']").should(
           "have.attr",
           "aria-disabled",
-          "false",
+          "false"
         );
       });
     }

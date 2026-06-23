@@ -75,11 +75,11 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-e2e:frontend-e2e"
+    image: "tergite/tergite-backend-with-qiskit-e2e:frontend-e2e"
     pull_policy: never
     build:
       context: ../tergite-backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.with-db
       args:
         DEPS_GROUP: "qiskit"
     logging:
@@ -106,6 +106,7 @@ services:
       - ./private-qiskit-pulse-1q-key.pem:/code/private-bcc-key.pem:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
       - ./qiskit_pulse_1q_booking_db.db:/code/booking_db.db:ro
+      - ./backend_db.sql:/code/backend_db.sql:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -120,7 +121,7 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-e2e:frontend-e2e"
+    image: "tergite/tergite-backend-with-qiskit-e2e:frontend-e2e"
     pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
@@ -146,6 +147,7 @@ services:
       - ./private-qiskit-pulse-2q-key.pem:/code/private-bcc-key.pem:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
       - ./qiskit_pulse_2q_booking_db.db:/code/booking_db.db:ro
+      - ./backend_db.sql:/code/backend_db.sql:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -161,7 +163,7 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    image: "tergite/tergite-backend-with-quantify-e2e:frontend-e2e"
     pull_policy: never
     build:
       context: ../tergite-backend
@@ -200,9 +202,9 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
-      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./loke.device_config.calib.toml:/code/device_config.calib.toml:ro
       - ./node_config.calib.toml:/code/node_config.calib.toml:ro
-      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
+      - ./loke.spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -218,7 +220,7 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    image: "tergite/tergite-backend-with-quantify-e2e:frontend-e2e"
     pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
@@ -252,9 +254,9 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
-      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./thor.device_config.calib.toml:/code/device_config.calib.toml:ro
       - ./node_config.calib.toml:/code/node_config.calib.toml:ro
-      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
+      - ./thor.spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -270,7 +272,7 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    image: "tergite/tergite-backend-with-quantify-e2e:frontend-e2e"
     pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
@@ -304,9 +306,9 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
-      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./pingu.device_config.calib.toml:/code/device_config.calib.toml:ro
       - ./node_config.calib.toml:/code/node_config.calib.toml:ro
-      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
+      - ./pingu.spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -322,7 +324,7 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    image: "tergite/tergite-backend-with-quantify-e2e:frontend-e2e"
     pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
@@ -350,15 +352,15 @@ services:
     volumes:
       - ./.env:/code/.env:ro
       - ./pegu.toml:/code/backend_config.toml:ro
-      - ./generic.seed.toml:/code/calibration.seed.toml:ro
+      - ./pegu.seed.toml:/code/calibration.seed.toml:ro
       - ./public-mss-key.pem:/code/public-mss-key.pem:ro
       - ./private-pegu-key.pem:/code/private-bcc-key.pem:ro
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
-      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./pegu.device_config.calib.toml:/code/device_config.calib.toml:ro
       - ./node_config.calib.toml:/code/node_config.calib.toml:ro
-      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
+      - ./pegu.spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -374,7 +376,7 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    image: "tergite/tergite-backend-with-quantify-e2e:frontend-e2e"
     pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
@@ -408,9 +410,9 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
-      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./likee.device_config.calib.toml:/code/device_config.calib.toml:ro
       - ./node_config.calib.toml:/code/node_config.calib.toml:ro
-      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
+      - ./likee.spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:
@@ -426,7 +428,7 @@ services:
         condition: service_healthy
       tergite-redis:
         condition: service_healthy
-    image: "tergite/tergite-backend-with-db-e2e:frontend-e2e"
+    image: "tergite/tergite-backend-with-quantify-e2e:frontend-e2e"
     pull_policy: never
     logging:
       driver: ${LOGGING_DRIVER}
@@ -460,9 +462,9 @@ services:
       - ./backend_db.sql:/code/backend_db.sql:ro
       - ./quantify-config.json:/code/quantify-config.json:ro
       - ./quantify-metadata.yml:/code/quantify-metadata.yml:ro
-      - ./device_config.calib.toml:/code/device_config.calib.toml:ro
+      - ./thea.device_config.calib.toml:/code/device_config.calib.toml:ro
       - ./node_config.calib.toml:/code/node_config.calib.toml:ro
-      - ./spi_config.calib.toml:/code/spi_config.calib.toml:ro
+      - ./thea.spi_config.calib.toml:/code/spi_config.calib.toml:ro
     networks:
       - tergite-frontend-e2e
     env_file:

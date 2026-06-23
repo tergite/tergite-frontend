@@ -10,3 +10,5 @@ temp/
 e2e-runner.sh
 !apps/tergite-dashboard/cypress/fixtures/e2e-runner.sh
 !apps/tergite-dashboard/cypress/fixtures/mss-config.toml
+
+.vscode/
