@@ -38,7 +38,9 @@ const toNoticeDoc = ({
   dismissed_by,
   ...rest
 }) => {
-  const now = new Date();
+  const currentDateStr = process.env.CURRENT_DATE;
+  const now = currentDateStr ? new Date(currentDateStr) : new Date();
+  
   const starts_at = new Date(
     now.getTime() + starts_at_offset_hours * 3_600_000
   );
@@ -174,9 +176,7 @@ db.devices.insertMany(devices);
 console.log("Inserted devices");
 db.jobs.insertMany(jobs);
 console.log("Inserted jobs");
-if (notices.length > 0) {
-  db.notices.insertMany(notices);
-}
+db.notices.insertMany(notices);
 console.log("Inserted notices");
 db.auth_user_requests.insertMany(userRequests);
 console.log("Inserted user requests");

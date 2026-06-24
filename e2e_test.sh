@@ -176,6 +176,9 @@ cp "$FIXTURES_PATH/quantify-metadata.yml" .
 cp "$FIXTURES_PATH/e2e.env" .env
 cp "$FIXTURES_PATH/mss-config.toml" .
 
+# Update the process.env.CURRENT_DATE in mongo-init.js
+replace_str mongo-init.js "process.env.CURRENT_DATE" "\"2025-10-01T00:00:00.000Z\""
+
 # Update the mongo-init.js to include the JSON data from the fixtures
 replace_str mongo-init.js "rawCalibrations = \"\[\]\"" "rawCalibrations = $(read_json $FIXTURES_PATH/calibrations.json)"
 replace_str mongo-init.js "rawDevices = \"\[\]\"" "rawDevices = $(read_json $FIXTURES_PATH/device-list.json)"
