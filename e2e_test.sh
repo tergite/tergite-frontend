@@ -172,6 +172,10 @@ cp "$FIXTURES_PATH/backend_db.sql" .
 cp "$FIXTURES_PATH/private-mss-key.pem" .
 cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/quantify-config.json" .
+cp "$FIXTURES_PATH/loke-quantify-config.json" .
+cp "$FIXTURES_PATH/thea-quantify-config.json" .
+cp "$FIXTURES_PATH/thor-quantify-config.json" .
+cp "$FIXTURES_PATH/pegu-quantify-config.json" .
 cp "$FIXTURES_PATH/quantify-metadata.yml" .
 cp "$FIXTURES_PATH/e2e.env" .env
 cp "$FIXTURES_PATH/mss-config.toml" .

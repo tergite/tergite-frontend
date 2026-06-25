@@ -51,9 +51,7 @@ users.forEach((user) => {
       activeNoticeCount = activeNotices.length;
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
-      cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`).as(
-        "my-project-list",
-      );
+      cy.intercept("GET", `${apiBaseUrl}/me/projects/*`).as("my-project-list");
       cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
       cy.intercept("POST", `${apiBaseUrl}/auth/logout`).as("logout");
       cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");

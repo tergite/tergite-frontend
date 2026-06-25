@@ -158,32 +158,82 @@ readout_assignment_error = 0.03520000000000001
 
 [[calibration_config.readout_resonator]]
 id="q0"
-acq_delay            = 5e-8
-acq_integration_time = 1e-6
-frequency            = 7260080000.0
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6433000000.0
 pulse_amplitude      = 0.1266499392606423
 pulse_delay          = 0.0
-pulse_duration       = 9e-7
+pulse_duration       = 2.5e-6
 pulse_type           = "Square"
 
 [[calibration_config.readout_resonator]]
 id="q1"
-acq_delay            = 5e-8
-acq_integration_time = 1e-6
-frequency            = 7380000000.0
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6433000000.0
 pulse_amplitude      = 0.12660078572926436
 pulse_delay          = 0.0
-pulse_duration       = 9e-7
+pulse_duration       = 2.5e-6
 pulse_type           = "Square"
 
 [[calibration_config.readout_resonator]]
 id="q2"
-acq_delay            = 5e-8
-acq_integration_time = 1e-6
-frequency            = 7502000000.0
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6290000000.0
 pulse_amplitude      = 0.08245560237524203
 pulse_delay          = 0.0
-pulse_duration       = 9e-7
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q3"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6163000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q4"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 5988000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q5"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6733000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q6"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6832073301.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q7"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7080671753.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
 pulse_type           = "Square"
 
 [[calibration_config.coupler]]

@@ -303,32 +303,202 @@ pulse_sigma         = 7e-9
 
 [[calibration_config.readout_resonator]]
 id="q0"
-acq_delay            = 5e-8
-acq_integration_time = 1e-6
-frequency            = 7260080000.0
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6433000000.0
 pulse_amplitude      = 0.1266499392606423
 pulse_delay          = 0.0
-pulse_duration       = 9e-7
+pulse_duration       = 2.5e-6
 pulse_type           = "Square"
 
 [[calibration_config.readout_resonator]]
 id="q1"
-acq_delay            = 5e-8
-acq_integration_time = 1e-6
-frequency            = 7380000000.0
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6433000000.0
 pulse_amplitude      = 0.12660078572926436
 pulse_delay          = 0.0
-pulse_duration       = 9e-7
+pulse_duration       = 2.5e-6
 pulse_type           = "Square"
 
 [[calibration_config.readout_resonator]]
 id="q2"
-acq_delay            = 5e-8
-acq_integration_time = 1e-6
-frequency            = 7502000000.0
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6290000000.0
 pulse_amplitude      = 0.08245560237524203
 pulse_delay          = 0.0
-pulse_duration       = 9e-7
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q3"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6163000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q4"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 5988000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q5"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6733000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q6"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6832073301.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q7"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7080671753.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q8"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6397230988.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q9"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7276184309.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q10"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7252681538.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q11"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6987637290.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q12"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6437489164.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q13"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7120238630.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q14"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6595934828.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q15"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7237225705.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q16"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6519442199.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q17"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7155389181.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q18"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6686269972.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q19"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6928061441.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
 pulse_type           = "Square"
 
 [[calibration_config.coupler]]
@@ -381,3 +551,210 @@ coef_1    = -124239.32054386326
 intercept = -22.684588212281916
 coef_0    = -191087.42493249022
 coef_1    = -20803.06874845618
+
+[[calibration_config.qubit]]
+id="q20"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 4301600000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.qubit]]
+id="q21"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 5114900000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.qubit]]
+id="q22"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 4622900000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.qubit]]
+id="q23"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 5177400000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.qubit]]
+id="q24"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 4533800000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.qubit]]
+id="q25"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 5212800000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.qubit]]
+id="q26"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 4500000000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.qubit]]
+id="q27"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 4500000000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.qubit]]
+id="q28"
+t1_decoherence      = 300.0
+t2_decoherence      = 200.0
+frequency           = 4500000000.0
+anharmonicity       = -310000000.0
+pi_pulse_amplitude  = 0.17873594718151276
+pi_pulse_duration   = 5.6e-8
+pi_pulse_motzoi     = 0.02
+pulse_type          = "Gaussian"
+pulse_sigma         = 7e-9
+readout_assignment_error = 0.02
+
+[[calibration_config.readout_resonator]]
+id="q20"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6678809965.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q21"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7157387304.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q22"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6704571104.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q23"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6751899707.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q24"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6307983463.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q25"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 7098349517.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q26"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6433000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q27"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6433000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
+
+[[calibration_config.readout_resonator]]
+id="q28"
+acq_delay            = 220e-9
+acq_integration_time = 2.5e-6
+frequency            = 6433000000.0
+pulse_amplitude      = 0.1
+pulse_delay          = 0.0
+pulse_duration       = 2.5e-6
+pulse_type           = "Square"
