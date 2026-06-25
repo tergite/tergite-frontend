@@ -147,7 +147,6 @@ async def find_many_notices(
         max_expires_utc=max_expires_utc,
         include_dismissed=include_dismissed,
     )
-
     return await mongodb_utils.find(
         db[NOTICE_DB_COLLECTION],
         filters=filters,

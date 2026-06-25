@@ -419,19 +419,19 @@ async def delete_notice(
 async def dismiss_notice(
     db: MongoDbDep,
     notice_id: PydanticObjectId,
-    current_user_id: PydanticObjectId = CurrentUserIdDep,
+    current_user: User = CurrentUserDep,
 ) -> GeneralMessage:
     """Dismisses a notice
 
     Args:
         db: the MongoDB database where the notice will be stored
         notice_id: the unique identifier of the notice
-        current_user_id: the unique identifier of the current user
+        current_user: the current logged in user
 
     Returns:
         a general message about the status of the operation
     """
-    await notices_service.dismiss_notice(db, pk=notice_id, user_id=current_user_id)
+    await notices_service.dismiss_notice(db, pk=notice_id, user_id=current_user.id)
     return {"status": "success"}
 
 

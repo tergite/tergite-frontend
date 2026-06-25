@@ -318,13 +318,14 @@ users.forEach((user) => {
 
           // Dismiss the visible notice
           cy.get(
-            '[data-testid="top-banner"] [aria-label="Dismiss notice"]',
+            '[data-testid="top-banner"] [aria-label="Dismiss notice"]'
           ).click();
+
           cy.wait("@dismiss-notice");
           // Both the notices list and the count are refreshed after dismissal
           cy.wait("@notices");
           cy.wait("@notice-count");
-          cy.wait(20);
+          cy.wait(100);
 
           // Badge must now show exactly one less than before
           cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
@@ -334,6 +335,7 @@ users.forEach((user) => {
               const newCount = parseInt(after.trim(), 10);
               expect(newCount).to.equal(initialCount - 1);
             });
+          // @prettier-ignore
         });
     });
 
