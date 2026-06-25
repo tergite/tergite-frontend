@@ -545,383 +545,175 @@
           "unit": "",
           "value": 0.06340000000000001
         }
-      },
+      }
+    ]
+  },
+  {
+    "id": "67c5a73620bcf3fe612d685b",
+    "name": "Pegu",
+    "version": "2024.05.1",
+    "last_calibrated": "2024-05-24T09:12:00.733Z",
+    "qubits": [
       {
         "t1_decoherence": {
           "date": "2024-07-08T06:42:01Z",
           "unit": "us",
-          "value": 279.55070127909687
-        },
-        "t2_decoherence": {
-          "date": "2024-07-08T06:56:44Z",
-          "unit": "us",
-          "value": 53.57601064026625
-        },
-        "frequency": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.7382860724666065
-        },
-        "anharmonicity": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.3119696404967832
-        },
-        "readout_assignment_error": {
-          "date": "2024-07-08T06:16:05Z",
-          "unit": "",
-          "value": 0.46730000000000005
-        }
-      },
-      {
-        "t1_decoherence": {
-          "date": "2024-07-08T06:42:01Z",
-          "unit": "us",
-          "value": 261.33955214455665
+          "value": 250.0
         },
         "t2_decoherence": {
           "date": "2024-07-08T07:18:48Z",
           "unit": "us",
-          "value": 23.63847457667814
-        },
-        "frequency": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.773896970126417
-        },
-        "anharmonicity": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.3114254225761893
-        },
-        "readout_assignment_error": {
-          "date": "2024-07-08T06:16:05Z",
-          "unit": "",
-          "value": 0.2813
-        }
-      },
-      {
-        "t1_decoherence": {
-          "date": "2024-07-07T05:52:15Z",
-          "unit": "us",
-          "value": 435.8380369777706
-        },
-        "t2_decoherence": {
-          "date": "2024-07-08T06:56:44Z",
-          "unit": "us",
-          "value": 228.16060855156175
+          "value": 220.0
         },
         "frequency": {
           "date": "2024-07-08T22:03:09Z",
           "unit": "Hz",
-          "value": 4668479079.690902
+          "value": 4300000000.0
         },
         "anharmonicity": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.31331663183442576
+          "unit": "Hz",
+          "value": -310000000.0
         },
         "readout_assignment_error": {
           "date": "2024-07-08T06:16:05Z",
           "unit": "",
-          "value": 0.020299999999999985
+          "value": 0.01
         }
       },
       {
         "t1_decoherence": {
           "date": "2024-07-08T06:42:01Z",
           "unit": "us",
-          "value": 311.4139591283537
+          "value": 250.0
         },
         "t2_decoherence": {
           "date": "2024-07-08T07:18:48Z",
           "unit": "us",
-          "value": 295.0381088312648
+          "value": 220.0
         },
         "frequency": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.758097360564954
+          "unit": "Hz",
+          "value": 4323000000.0
         },
         "anharmonicity": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.31173856129806604
+          "unit": "Hz",
+          "value": -310000000.0
         },
         "readout_assignment_error": {
           "date": "2024-07-08T06:16:05Z",
           "unit": "",
-          "value": 0.013299999999999979
+          "value": 0.01
         }
       },
       {
         "t1_decoherence": {
           "date": "2024-07-08T06:42:01Z",
           "unit": "us",
-          "value": 434.9695999986262
-        },
-        "t2_decoherence": {
-          "date": "2024-07-08T06:56:44Z",
-          "unit": "us",
-          "value": 126.40870872741573
-        },
-        "frequency": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.611449904992542
-        },
-        "anharmonicity": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.31354982608399573
-        },
-        "readout_assignment_error": {
-          "date": "2024-07-08T06:16:05Z",
-          "unit": "",
-          "value": 0.01649999999999996
-        }
-      },
-      {
-        "t1_decoherence": {
-          "date": "2024-07-08T06:42:01Z",
-          "unit": "us",
-          "value": 261.42552554483217
+          "value": 250.0
         },
         "t2_decoherence": {
           "date": "2024-07-08T07:18:48Z",
           "unit": "us",
-          "value": 299.092640661312
+          "value": 220.0
         },
         "frequency": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.731641435221681
+          "unit": "Hz",
+          "value": 4279000000.0
         },
         "anharmonicity": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.3122550841543125
+          "unit": "Hz",
+          "value": -310000000.0
         },
         "readout_assignment_error": {
           "date": "2024-07-08T06:16:05Z",
           "unit": "",
-          "value": 0.02200000000000002
+          "value": 0.01
         }
       },
       {
         "t1_decoherence": {
           "date": "2024-07-08T06:42:01Z",
           "unit": "us",
-          "value": 325.07438173563037
-        },
-        "t2_decoherence": {
-          "date": "2024-07-08T06:56:44Z",
-          "unit": "us",
-          "value": 219.73958604202153
-        },
-        "frequency": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.777295787098587
-        },
-        "anharmonicity": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.31228117808626144
-        },
-        "readout_assignment_error": {
-          "date": "2024-07-08T06:16:05Z",
-          "unit": "",
-          "value": 0.008399999999999963
-        }
-      },
-      {
-        "t1_decoherence": {
-          "date": "2024-07-08T06:42:01Z",
-          "unit": "us",
-          "value": 441.90448040238476
+          "value": 250.0
         },
         "t2_decoherence": {
           "date": "2024-07-08T07:18:48Z",
           "unit": "us",
-          "value": 144.58400814150525
+          "value": 220.0
         },
         "frequency": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.680341907513583
+          "unit": "Hz",
+          "value": 4166000000.0
         },
         "anharmonicity": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.31282791406798793
+          "unit": "Hz",
+          "value": -310000000.0
         },
         "readout_assignment_error": {
           "date": "2024-07-08T06:16:05Z",
           "unit": "",
-          "value": 0.006900000000000017
+          "value": 0.01
         }
       },
       {
         "t1_decoherence": {
           "date": "2024-07-08T06:42:01Z",
           "unit": "us",
-          "value": 184.9870542923758
-        },
-        "t2_decoherence": {
-          "date": "2024-07-08T06:56:44Z",
-          "unit": "us",
-          "value": 74.64696399253995
-        },
-        "frequency": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.7436205529205395
-        },
-        "anharmonicity": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.27186381179166696
-        },
-        "readout_assignment_error": {
-          "date": "2024-07-08T06:16:05Z",
-          "unit": "",
-          "value": 0.040200000000000014
-        }
-      },
-      {
-        "t1_decoherence": {
-          "date": "2024-07-08T06:42:01Z",
-          "unit": "us",
-          "value": 442.04488155496966
+          "value": 250.0
         },
         "t2_decoherence": {
           "date": "2024-07-08T07:18:48Z",
           "unit": "us",
-          "value": 172.86807114966265
+          "value": 220.0
         },
         "frequency": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.791731784998609
+          "unit": "Hz",
+          "value": 3950000000.0
         },
         "anharmonicity": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.32426284330226407
+          "unit": "Hz",
+          "value": -310000000.0
         },
         "readout_assignment_error": {
           "date": "2024-07-08T06:16:05Z",
           "unit": "",
-          "value": 0.010299999999999976
+          "value": 0.01
         }
       },
       {
         "t1_decoherence": {
           "date": "2024-07-08T06:42:01Z",
           "unit": "us",
-          "value": 379.7693410154065
-        },
-        "t2_decoherence": {
-          "date": "2024-07-08T06:56:44Z",
-          "unit": "us",
-          "value": 380.8733017380764
-        },
-        "frequency": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.692904020384059
-        },
-        "anharmonicity": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.3126801438234927
-        },
-        "readout_assignment_error": {
-          "date": "2024-07-08T06:16:05Z",
-          "unit": "",
-          "value": 0.00869999999999993
-        }
-      },
-      {
-        "t1_decoherence": {
-          "date": "2024-07-08T06:42:01Z",
-          "unit": "us",
-          "value": 233.57511451540825
+          "value": 250.0
         },
         "t2_decoherence": {
           "date": "2024-07-08T07:18:48Z",
           "unit": "us",
-          "value": 38.00278498220496
+          "value": 220.0
         },
         "frequency": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 5.057533041193664
+          "unit": "Hz",
+          "value": 4000000000.0
         },
         "anharmonicity": {
           "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.3070059221402992
+          "unit": "Hz",
+          "value": -310000000.0
         },
         "readout_assignment_error": {
           "date": "2024-07-08T06:16:05Z",
           "unit": "",
-          "value": 0.009500000000000064
-        }
-      },
-      {
-        "t1_decoherence": {
-          "date": "2024-07-08T06:42:01Z",
-          "unit": "us",
-          "value": 250.9707150736723
-        },
-        "t2_decoherence": {
-          "date": "2024-07-08T06:56:44Z",
-          "unit": "us",
-          "value": 244.6208557648463
-        },
-        "frequency": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.92998139285195
-        },
-        "anharmonicity": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.30828223495463736
-        },
-        "readout_assignment_error": {
-          "date": "2024-07-08T06:16:05Z",
-          "unit": "",
-          "value": 0.025800000000000045
-        }
-      },
-      {
-        "t1_decoherence": {
-          "date": "2024-07-07T05:52:15Z",
-          "unit": "s",
-          "value": 0.0003773469120833599
-        },
-        "t2_decoherence": {
-          "date": "2024-07-08T07:18:48Z",
-          "unit": "us",
-          "value": 364.352421450391
-        },
-        "frequency": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": 4.677513017983542
-        },
-        "anharmonicity": {
-          "date": "2024-07-08T22:03:09Z",
-          "unit": "GHz",
-          "value": -0.3137282279838826
-        },
-        "readout_assignment_error": {
-          "date": "2024-07-08T06:16:05Z",
-          "unit": "",
-          "value": 0.009299999999999975
+          "value": 0.01
         }
       }
     ]
