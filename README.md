@@ -162,6 +162,11 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 [Apache 2.0 License](./LICENSE)
 
+## TODO
+
+- Handle 503 unavailbale service on the dashboard
+- Handle the disconnection issues between MSS and the backends
+
 ## Acknowledgements
 
 This project was sponsored by:

@@ -792,7 +792,7 @@ users.forEach((user) => {
                 `#projects-table tbody tr[data-id='${initialRowCount + idx}']`
               ).click();
 
-              cy.wait(100);
+              cy.wait(200);
 
               // the summary should be updated
               cy.contains(

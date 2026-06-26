@@ -1,0 +1,411 @@
+{
+  "hardware_description": {
+    "cluster": {
+      "instrument_type": "Cluster",
+      "ref": "internal",
+      "modules": {
+        "1": {
+          "instrument_type": "QCM_RF"
+        },
+        "2": {
+          "instrument_type": "QCM_RF"
+        },
+        "3": {
+          "instrument_type": "QCM_RF"
+        },
+        "4": {
+          "instrument_type": "QRM_RF"
+        }
+      }
+    }
+  },
+  "connectivity": {
+    "graph": {
+      "directed": false,
+      "multigraph": false,
+      "nodes": [
+        {
+          "id": "cluster.module1.complex_output_0"
+        },
+        {
+          "id": "cluster.module1.complex_output_1"
+        },
+        {
+          "id": "cluster.module2.complex_output_0"
+        },
+        {
+          "id": "cluster.module2.complex_output_1"
+        },
+        {
+          "id": "cluster.module3.complex_output_0"
+        },
+        {
+          "id": "cluster.module4.complex_output_0"
+        }
+      ],
+      "links": [
+        {
+          "source": "cluster.module1.complex_output_0",
+          "target": "q0:mw"
+        },
+        {
+          "source": "cluster.module1.complex_output_1",
+          "target": "q1:mw"
+        },
+        {
+          "source": "cluster.module2.complex_output_0",
+          "target": "q2:mw"
+        },
+        {
+          "source": "cluster.module2.complex_output_1",
+          "target": "q3:mw"
+        },
+        {
+          "source": "cluster.module3.complex_output_0",
+          "target": "q4:mw"
+        },
+        {
+          "source": "cluster.module4.complex_output_0",
+          "target": "q0:res"
+        },
+        {
+          "source": "cluster.module4.complex_output_0",
+          "target": "q1:res"
+        },
+        {
+          "source": "cluster.module4.complex_output_0",
+          "target": "q2:res"
+        },
+        {
+          "source": "cluster.module4.complex_output_0",
+          "target": "q3:res"
+        },
+        {
+          "source": "cluster.module4.complex_output_0",
+          "target": "q4:res"
+        }
+      ]
+    }
+  },
+  "hardware_options": {
+    "modulation_frequencies": {
+      "q0:mw-q0.01": {
+        "lo_freq": 4600000000.0
+      },
+      "q0:mw-q0.12": {
+        "lo_freq": 4600000000.0
+      },
+      "q1:mw-q1.01": {
+        "lo_freq": 4800000000.0
+      },
+      "q1:mw-q1.12": {
+        "lo_freq": 4800000000.0
+      },
+      "q2:mw-q2.01": {
+        "lo_freq": 4500000000.0
+      },
+      "q2:mw-q2.12": {
+        "lo_freq": 4500000000.0
+      },
+      "q3:mw-q3.01": {
+        "lo_freq": 4600000000.0
+      },
+      "q3:mw-q3.12": {
+        "lo_freq": 4600000000.0
+      },
+      "q4:mw-q4.01": {
+        "lo_freq": 4600000000.0
+      },
+      "q4:mw-q4.12": {
+        "lo_freq": 4600000000.0
+      },
+      "q0:res-q0.ro": {
+        "lo_freq": 6200000000.0
+      },
+      "q0:res-q0.ro1": {
+        "lo_freq": 6200000000.0
+      },
+      "q0:res-q0.ro2": {
+        "lo_freq": 6200000000.0
+      },
+      "q0:res-q0.ro_2st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q0:res-q0.ro_3st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q1:res-q1.ro": {
+        "lo_freq": 6200000000.0
+      },
+      "q1:res-q1.ro1": {
+        "lo_freq": 6200000000.0
+      },
+      "q1:res-q1.ro2": {
+        "lo_freq": 6200000000.0
+      },
+      "q1:res-q1.ro_2st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q1:res-q1.ro_3st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q2:res-q2.ro": {
+        "lo_freq": 6200000000.0
+      },
+      "q2:res-q2.ro1": {
+        "lo_freq": 6200000000.0
+      },
+      "q2:res-q2.ro2": {
+        "lo_freq": 6200000000.0
+      },
+      "q2:res-q2.ro_2st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q2:res-q2.ro_3st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q3:res-q3.ro": {
+        "lo_freq": 6200000000.0
+      },
+      "q3:res-q3.ro1": {
+        "lo_freq": 6200000000.0
+      },
+      "q3:res-q3.ro2": {
+        "lo_freq": 6200000000.0
+      },
+      "q3:res-q3.ro_2st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q3:res-q3.ro_3st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q4:res-q4.ro": {
+        "lo_freq": 6200000000.0
+      },
+      "q4:res-q4.ro1": {
+        "lo_freq": 6200000000.0
+      },
+      "q4:res-q4.ro2": {
+        "lo_freq": 6200000000.0
+      },
+      "q4:res-q4.ro_2st_opt": {
+        "lo_freq": 6200000000.0
+      },
+      "q4:res-q4.ro_3st_opt": {
+        "lo_freq": 6200000000.0
+      }
+    },
+    "mixer_corrections": {
+      "q0:mw-q0.01": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q0:mw-q0.12": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q1:mw-q1.01": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q1:mw-q1.12": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q2:mw-q2.01": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q2:mw-q2.12": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q3:mw-q3.01": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q3:mw-q3.12": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q4:mw-q4.01": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q4:mw-q4.12": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q0:res-q0.ro": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q0:res-q0.ro1": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q0:res-q0.ro2": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q0:res-q0.ro_2st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q0:res-q0.ro_3st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q1:res-q1.ro": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q1:res-q1.ro1": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q1:res-q1.ro2": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q1:res-q1.ro_2st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q1:res-q1.ro_3st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q2:res-q2.ro": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q2:res-q2.ro1": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q2:res-q2.ro2": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q2:res-q2.ro_2st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q2:res-q2.ro_3st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q3:res-q3.ro": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q3:res-q3.ro1": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q3:res-q3.ro2": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q3:res-q3.ro_2st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q3:res-q3.ro_3st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q4:res-q4.ro": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q4:res-q4.ro1": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q4:res-q4.ro2": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q4:res-q4.ro_2st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      },
+      "q4:res-q4.ro_3st_opt": {
+        "dc_offset_i": 0.0,
+        "dc_offset_q": 0.0,
+        "amp_ratio": 1.0,
+        "phase_error": 0.0
+      }
+    }
+  }
+}

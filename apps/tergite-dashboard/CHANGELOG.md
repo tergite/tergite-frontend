@@ -7,6 +7,24 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+## [2026.06.0] - 2026-06-26
+
+This is part of the tergite release v2026.06.0.
+
+### Added
+
+- Added the control panel screen to switch off backends, initialize recalibration and send out notices
+- Added the notices banner on top of the dashboard
+- Added the `/privacy.html` and `/terms.html` pages
+- Added the footer on the dashboard showing the copy right and privacy and terms of use links
+
+## [2026.06.0-rc.2] - 2026-05-28
+
+### Added
+
+- Added the control panel screen to switch off backends, initialize recalibration and send out notices
+- Added the notices banner on top of the dashboard
+
 ## [2026.06.0-rc.1] - 2026-05-13
 
 ### Added

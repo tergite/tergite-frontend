@@ -1,0 +1,24 @@
+[q0_q1]
+spi_module_number = 1
+dac_name = "dac1"
+edge_group = 1
+
+[q0_q2]
+spi_module_number = 2
+dac_name = "dac2"
+edge_group = 2
+
+[q2_q3]
+spi_module_number = 3
+dac_name = "dac3"
+edge_group = 3
+
+[q1_q4]
+spi_module_number = 4
+dac_name = "dac4"
+edge_group = 4
+
+[q3_q4]
+spi_module_number = 5
+dac_name = "dac5"
+edge_group = 5

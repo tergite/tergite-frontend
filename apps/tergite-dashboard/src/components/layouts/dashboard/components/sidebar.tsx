@@ -8,6 +8,7 @@ import {
   HelpingHand,
   ChevronDown,
   ChevronRight,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button, IconButton } from "@/components/ui/button";
@@ -86,6 +87,12 @@ export function Sidebar({
                 to="/admin-projects"
                 isExpanded={isExpanded}
                 text="Projects"
+              />
+              <NavItem
+                Icon={SlidersHorizontal}
+                to="/admin-control"
+                isExpanded={isExpanded}
+                text="Control"
               />
             </CollapsibleContent>
           </Collapsible>

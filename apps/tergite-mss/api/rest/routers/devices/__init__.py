@@ -42,6 +42,8 @@ from utils.exc import InvalidWebsocketDataTypeError
 from .events import (
     on_device_initialized_event,
     on_device_recalibrated_event,
+    on_device_switched_off_event,
+    on_device_switched_on_event,
     on_job_updated_event,
 )
 
@@ -51,6 +53,8 @@ _EVENT_HANDLER_MAP: Dict[DeviceEventName, DeviceEventHandler] = {
     DeviceEventName.INITIALIZED: on_device_initialized_event,
     DeviceEventName.RECALIBRATED: on_device_recalibrated_event,
     DeviceEventName.JOB_UPDATED: on_job_updated_event,
+    DeviceEventName.SWITCHED_OFF: on_device_switched_off_event,
+    DeviceEventName.SWITCHED_ON: on_device_switched_on_event,
 }
 """A map of event handlers for device events"""
 

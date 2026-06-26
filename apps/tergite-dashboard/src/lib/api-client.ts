@@ -1,4 +1,8 @@
-import { QueryClient, queryOptions } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  QueryClient,
+  queryOptions,
+} from "@tanstack/react-query";
 import {
   type AppState,
   type Device,
@@ -26,6 +30,10 @@ import {
   GeneralMessage,
   BookingsConfig,
   RawBooking,
+  RecalibrationInfo,
+  Notice,
+  NoticePostRequest,
+  CountResponse,
 } from "../../types";
 import {
   normalizeCalibrationData,
@@ -36,7 +44,7 @@ import { DateTime } from "luxon";
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 export const refetchInterval = parseFloat(
-  import.meta.env.VITE_REFETCH_INTERVAL_MS || "120000"
+  import.meta.env.VITE_REFETCH_INTERVAL_MS || "120000",
 ); // default: 2 minutes
 
 /**
@@ -56,7 +64,7 @@ export const devicesQuery = queryOptions({
  */
 export function singleDeviceQuery(
   name: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   return queryOptions({
@@ -93,7 +101,7 @@ export const currentUserQuery = queryOptions({
  */
 export function singleDeviceCalibrationQuery(
   name: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   return queryOptions({
@@ -110,7 +118,7 @@ export function singleDeviceCalibrationQuery(
  *          - baseUrl - the base URL of the API
  */
 export function myJobsQuery(
-  options: { project_id?: string; baseUrl?: string } = {}
+  options: { project_id?: string; baseUrl?: string } = {},
 ) {
   const { project_id = "", baseUrl = apiBaseUrl } = options;
   return queryOptions({
@@ -141,14 +149,14 @@ export function myTokensQuery(options: {
     queryFn: async () => {
       const rawTokens = await getMyTokens({ project_ext_id });
       const projectMap: { [k: string]: Project } = Object.fromEntries(
-        projectList.map((v) => [v.ext_id, { ...v }])
+        projectList.map((v) => [v.ext_id, { ...v }]),
       );
 
       return rawTokens
         .map(
           (v) =>
             projectMap[v.project_ext_id] &&
-            extendAppToken(v, projectMap[v.project_ext_id])
+            extendAppToken(v, projectMap[v.project_ext_id]),
         )
         .filter((v) => !!v);
     },
@@ -399,12 +407,144 @@ export function bookingsOfBackendQuery(options: {
  */
 export function bookingsConfigQuery(
   backend: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   return queryOptions({
     queryKey: [baseUrl, "bookings", backend, "config"],
     queryFn: async () => await getBookingsConfig(backend, baseUrl),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
+ * the notices query for using with react query
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ *          - user_id: The IDs of the users to retrieve notices for
+ *          - min_start_utc: The minimum UTC timestamp the notice should start
+ *          - max_start_utc: The maximum UTC timestamp the notice should start
+ *          - min_expires_utc: The minimum UTC timestamp the notice should expire
+ *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ *          - include_dismissed: whether to include dismissed notices
+ *          - skip: the number of records to skip
+ *          - limit: the maximum number of records to return
+ *          - sort: the fields to sort by
+ */
+export function noticesQuery(
+  options: {
+    baseUrl?: string;
+    user_id?: string;
+    min_start_utc?: string;
+    max_start_utc?: string;
+    min_expires_utc?: string;
+    max_expires_utc?: string;
+    include_dismissed?: boolean;
+    skip?: number;
+    limit?: number;
+    sort?: string[];
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const {
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    min_expires_utc,
+    max_expires_utc,
+    include_dismissed,
+    skip,
+    limit,
+    sort,
+  } = rest;
+  const queryKey = [
+    baseUrl,
+    "admin",
+    "notices",
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    min_expires_utc,
+    max_expires_utc,
+    include_dismissed,
+    limit,
+    skip,
+    sort,
+  ];
+  return queryOptions({
+    queryKey: queryKey,
+    queryFn: async () => await getNotices(baseUrl, rest),
+    refetchInterval,
+    throwOnError: true,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * the notice count query
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ *          - user_id: The IDs of the users to retrieve notices for
+ *          - min_start_utc: The minimum UTC timestamp the notice should start
+ *          - max_start_utc: The maximum UTC timestamp the notice should start
+ *          - min_expires_utc: The minimum UTC timestamp the notice should expire
+ *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ *          - include_dismissed: whether to include dismissed notices
+ */
+export function noticeCountQuery(
+  options: {
+    baseUrl?: string;
+    user_id?: string;
+    min_start_utc?: string;
+    max_start_utc?: string;
+    min_expires_utc?: string;
+    max_expires_utc?: string;
+    include_dismissed?: boolean;
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const {
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    min_expires_utc,
+    max_expires_utc,
+    include_dismissed,
+  } = rest;
+  const queryKey = [
+    baseUrl,
+    "counts",
+    "notices",
+    user_id,
+    min_start_utc,
+    max_start_utc,
+    min_expires_utc,
+    max_expires_utc,
+    include_dismissed,
+  ];
+  return queryOptions({
+    queryKey: queryKey,
+    queryFn: async () => await getNoticeCount(baseUrl, rest),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
+ * React Query wrapper around getRecalibrationInfo
+ *
+ * @param backend - the name of the backend device
+ * @param options - extra options e.g. baseUrl
+ */
+export function recalibrationInfoQuery(
+  backend: string,
+  options: { baseUrl?: string } = {},
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  return queryOptions({
+    queryKey: [baseUrl, "admin", "recalibration", backend, "info"],
+    queryFn: async () => await getRecalibrationInfo(backend, { baseUrl }),
     refetchInterval,
     throwOnError: true,
   });
@@ -421,7 +561,7 @@ export async function refreshMyTokensQueries(
   queryClient: QueryClient,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   await queryClient.invalidateQueries({ queryKey: [baseUrl, "me", "tokens"] });
@@ -438,7 +578,7 @@ export async function refreshMyProjectsQueries(
   queryClient: QueryClient,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   await queryClient.invalidateQueries({
@@ -457,7 +597,7 @@ export async function refreshMyProjectsQpuTimeRequestsQueries(
   queryClient: QueryClient,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   await queryClient.invalidateQueries({
@@ -476,7 +616,7 @@ export async function refreshAllRequestsQueries(
   queryClient: QueryClient,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   await queryClient.invalidateQueries({
@@ -495,7 +635,7 @@ export async function refreshAllAdminQueries(
   queryClient: QueryClient,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   await queryClient.invalidateQueries({ queryKey: [baseUrl, "admin"] });
@@ -508,18 +648,53 @@ export async function refreshAllAdminQueries(
  * @param  backend - the name of the device
  * @param options - the options including:
  *          - baseUrl - the base URL of the API
- *          - backend - the name of the device
  */
 export async function refreshBookingsQueries(
   queryClient: QueryClient,
   backend: string,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   await queryClient.invalidateQueries({
     queryKey: [baseUrl, "bookings", backend],
+  });
+}
+
+/**
+ * Refreshes all notices cache
+ * @param queryClient - the query client for making queries
+ * @param options - the options including:
+ *          - baseUrl - the base URL of the API
+ */
+export async function refreshAllNotices(
+  queryClient: QueryClient,
+  options: {
+    baseUrl?: string;
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  await queryClient.invalidateQueries({
+    queryKey: [baseUrl, "admin", "notices"],
+  });
+}
+
+/**
+ * Refreshes all notice count cache
+ * @param queryClient - the query client for making queries
+ * @param options - the options including:
+ *          - baseUrl - the base URL of the API
+ */
+export async function refreshAllNoticeCounts(
+  queryClient: QueryClient,
+  options: {
+    baseUrl?: string;
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  await queryClient.invalidateQueries({
+    queryKey: [baseUrl, "counts", "notices"],
   });
 }
 
@@ -533,7 +708,7 @@ export async function createAppToken(
   payload: AppTokenCreationRequest,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ): Promise<AppTokenCreationResponse> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/me/tokens/`, {
@@ -554,7 +729,7 @@ export async function createAppToken(
 export async function cancelBooking(
   backend: string,
   id: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ): Promise<GeneralMessage> {
   const { baseUrl = apiBaseUrl } = options;
   const resp: GeneralMessage = await authenticatedFetch(
@@ -562,7 +737,7 @@ export async function cancelBooking(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-    }
+    },
   );
   if (resp.status !== "success") {
     const errMsg = `${resp.status}: ${resp.detail}`;
@@ -588,7 +763,7 @@ export async function updateBooking(
   payload: NewBookingInfo,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ): Promise<Booking> {
   const { baseUrl = apiBaseUrl } = options;
   await cancelBooking(backend, id, { baseUrl });
@@ -608,7 +783,7 @@ export async function createNewBooking(
   payload: NewBookingInfo,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ): Promise<Booking> {
   const { baseUrl = apiBaseUrl } = options;
   const record = await authenticatedFetch<RawBooking>(
@@ -617,7 +792,7 @@ export async function createNewBooking(
       method: "POST",
       body: JSON.stringify(payload),
       headers: { "Content-Type": "application/json" },
-    }
+    },
   );
   return toClientSideBooking(record, { backend });
 }
@@ -634,7 +809,7 @@ export async function updateAppToken(
   payload: AppTokenUpdateRequest,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ): Promise<AppToken> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/me/tokens/${id}`, {
@@ -655,7 +830,7 @@ export async function requestQpuTimeExtension(
   payload: QpuTimeExtensionPostBody,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ): Promise<QpuTimeExtensionUserRequest> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/admin/qpu-time-requests/`, {
@@ -676,14 +851,13 @@ export async function getAuthProviders(
   email: string,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ): Promise<AuthProviderResponse[]> {
   const { baseUrl = apiBaseUrl } = options;
   const emailDomain = email.split("@")[1];
   const url = `${baseUrl}/auth/providers/?email_domain=${emailDomain}`;
-  const { data } = await authenticatedFetch<
-    PaginatedData<AuthProviderResponse[]>
-  >(url);
+  const { data } =
+    await authenticatedFetch<PaginatedData<AuthProviderResponse[]>>(url);
   return data;
 }
 
@@ -697,7 +871,7 @@ export async function getAuthProviders(
 export async function logout(
   queryClient: QueryClient,
   appState: AppState,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
   appState.clear();
@@ -713,7 +887,7 @@ export async function logout(
  */
 export async function deleteMyToken(
   id: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ): Promise<void> {
   const { baseUrl = apiBaseUrl } = options;
   await authenticatedFetch(
@@ -721,7 +895,7 @@ export async function deleteMyToken(
     {
       method: "delete",
     },
-    { isJsonOutput: false }
+    { isJsonOutput: false },
   );
 }
 
@@ -733,7 +907,7 @@ export async function deleteMyToken(
  */
 export async function deleteMyProject(
   id: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ): Promise<void> {
   const { baseUrl = apiBaseUrl } = options;
   await authenticatedFetch(
@@ -741,7 +915,7 @@ export async function deleteMyProject(
     {
       method: "delete",
     },
-    { isJsonOutput: false }
+    { isJsonOutput: false },
   );
 }
 
@@ -753,7 +927,7 @@ export async function deleteMyProject(
  */
 export async function deleteAdminProject(
   id: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ): Promise<void> {
   const { baseUrl = apiBaseUrl } = options;
   await authenticatedFetch(
@@ -761,7 +935,7 @@ export async function deleteAdminProject(
     {
       method: "delete",
     },
-    { isJsonOutput: false }
+    { isJsonOutput: false },
   );
 }
 
@@ -777,7 +951,7 @@ export async function updateAdminProject(
   payload: UpdateProjectPutBody,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ): Promise<AdminProject> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/admin/projects/${id}`, {
@@ -798,7 +972,7 @@ export async function createAdminProject(
   payload: AdminCreateProjectBody,
   options: {
     baseUrl?: string;
-  } = {}
+  } = {},
 ): Promise<AdminProject> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/admin/projects/`, {
@@ -817,7 +991,7 @@ export async function createAdminProject(
  */
 export async function approveUserRequest(
   id: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ): Promise<UserRequest> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/admin/user-requests/${id}`, {
@@ -836,12 +1010,240 @@ export async function approveUserRequest(
  */
 export async function rejectUserRequest(
   id: string,
-  options: { baseUrl?: string } = {}
+  options: { baseUrl?: string } = {},
 ): Promise<UserRequest> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/admin/user-requests/${id}`, {
     method: "PUT",
     body: JSON.stringify({ status: UserRequestStatus.REJECTED }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Starts a recalibration cycle
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g.
+ *             - baseUrl - the API base URL; default apiBaseUrl
+ *             - interval - the interval at which to repeat the recalibration
+ *             - start_timestamp - the timestamp when the cycle should start
+ */
+export async function startRecalibration(
+  backend: string,
+  options: {
+    baseUrl?: string;
+    interval?: number;
+    start_timestamp?: string;
+  } = {},
+): Promise<UserRequest> {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const query = getQueryString(rest);
+  return await authenticatedFetch(
+    `${baseUrl}/admin/recalibration/${backend}/init?${query}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+}
+
+/**
+ * Gets recalibration information
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g.
+ *             - baseUrl - the API base URL; default apiBaseUrl
+ */
+export async function getRecalibrationInfo(
+  backend: string,
+  options: { baseUrl?: string } = {},
+): Promise<RecalibrationInfo> {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const query = getQueryString(rest);
+  return await authenticatedFetch(
+    `${baseUrl}/admin/recalibration/${backend}/info?${query}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+}
+
+/**
+ * Stops a recalibration cycle
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g.
+ *             - baseUrl - the API base URL; default apiBaseUrl
+ *             - ignore_errors - whether to ignore errors when stopping recalibration or not
+ */
+export async function stopRecalibration(
+  backend: string,
+  options: { baseUrl?: string; ignore_errors?: boolean } = {},
+): Promise<UserRequest> {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const query = getQueryString(rest);
+  return await authenticatedFetch(
+    `${baseUrl}/admin/recalibration/${backend}/cancel?${query}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+}
+
+/**
+ * Sets a backend device online
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g. baseUrl
+ */
+export async function switchBackendOn(
+  backend: string,
+  options: { baseUrl?: string } = {},
+): Promise<GeneralMessage> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/admin/switch/${backend}/on`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Sets a backend device offline
+ *
+ * @param backend - the name of the backend
+ * @param options - extra options e.g. baseUrl
+ */
+export async function switchBackendOff(
+  backend: string,
+  options: { baseUrl?: string } = {},
+): Promise<GeneralMessage> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/admin/switch/${backend}/off`, {
+    method: "POST",
+    body: JSON.stringify({ is_online: false }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Retrieves notices
+ *
+ * @param options - extra options e.g.
+ *          - baseUrl: The base URL of the API
+ *          - user_id: The IDs of the users to retrieve notices for
+ *          - min_start_utc: The minimum UTC timestamp the notice should start
+ *          - max_start_utc: The maximum UTC timestamp the notice should start
+ *          - min_expires_utc: The minimum UTC timestamp the notice should expire
+ *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ *          - include_dismissed: whether to include dismissed notices
+ *          - skip: the number of records to skip
+ *          - limit: the maximum number of records to return
+ *          - sort: the fields to sort by
+ */
+export async function getNotices(
+  baseUrl: string = apiBaseUrl,
+  options: {
+    user_id?: string;
+    min_start_utc?: string;
+    max_start_utc?: string;
+    min_expires_utc?: string;
+    max_expires_utc?: string;
+    include_dismissed?: boolean;
+    skip?: number;
+    limit?: number;
+    sort?: string[];
+  } = {},
+): Promise<Notice[]> {
+  const queryString = getQueryString(options);
+  const { data } = await authenticatedFetch<PaginatedData<Notice[]>>(
+    `${baseUrl}/admin/notices?${queryString}`,
+  );
+  return data;
+}
+
+/**
+ * Retrieves the number of notices that fulfill some criteria
+ *
+ * @param options - extra options e.g.
+ *          - baseUrl: The base URL of the API
+ *          - user_id: The IDs of the users to retrieve notices for
+ *          - min_start_utc: The minimum UTC timestamp the notice should start
+ *          - max_start_utc: The maximum UTC timestamp the notice should start
+ *          - min_expires_utc: The minimum UTC timestamp the notice should expire
+ *          - max_expires_utc: The maximum UTC timestamp the notice should expire
+ *          - include_dismissed: whether to include dismissed notices
+ */
+export async function getNoticeCount(
+  baseUrl: string = apiBaseUrl,
+  options: {
+    user_id?: string;
+    min_start_utc?: string;
+    max_start_utc?: string;
+    min_expires_utc?: string;
+    max_expires_utc?: string;
+    include_dismissed?: boolean;
+  } = {},
+): Promise<number> {
+  const queryString = getQueryString(options);
+  const { count } = await authenticatedFetch<CountResponse>(
+    `${baseUrl}/counts/notices?${queryString}`,
+  );
+  return count;
+}
+
+/**
+ * Creates a notice for a given set of users or all users
+ *
+ * @param payload - the notice fields
+ * @param options - extra options e.g. baseUrl
+ */
+export async function createNotice(
+  payload: NoticePostRequest,
+  options: { baseUrl?: string } = {},
+): Promise<Notice> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/admin/notices/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Deletes a notice for all users
+ *
+ * @param id - the notice ID
+ * @param options - extra options e.g. baseUrl
+ */
+export async function deleteNotice(
+  id: string,
+  options: { baseUrl?: string } = {},
+): Promise<void> {
+  const { baseUrl = apiBaseUrl } = options;
+  await authenticatedFetch(
+    `${baseUrl}/admin/notices/${id}`,
+    {
+      method: "DELETE",
+    },
+    { isJsonOutput: false },
+  );
+}
+
+/**
+ * Dismisses a notice for the current user
+ *
+ * @param id - the notice ID
+ * @param options - extra options e.g. baseUrl
+ */
+export async function dismissNotice(
+  id: string,
+  options: { baseUrl?: string } = {},
+): Promise<GeneralMessage> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/admin/notices/${id}/dismiss`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
   });
 }
@@ -855,11 +1257,11 @@ export async function rejectUserRequest(
 async function getDevices(
   baseUrl: string = apiBaseUrl,
   skip: number | null = null,
-  limit: number | null = null
+  limit: number | null = null,
 ): Promise<Device[]> {
   const query = getQueryString({ skip, limit });
   const { data } = await authenticatedFetch<PaginatedData<Device[]>>(
-    `${baseUrl}/devices/?${query}`
+    `${baseUrl}/devices/?${query}`,
   );
   return data;
 }
@@ -871,7 +1273,7 @@ async function getDevices(
  */
 async function getDeviceDetail(
   name: string,
-  baseUrl: string = apiBaseUrl
+  baseUrl: string = apiBaseUrl,
 ): Promise<Device> {
   return await authenticatedFetch(`${baseUrl}/devices/${name}`);
 }
@@ -883,7 +1285,7 @@ async function getDeviceDetail(
  */
 async function getBookingsConfig(
   backend: string,
-  baseUrl: string = apiBaseUrl
+  baseUrl: string = apiBaseUrl,
 ): Promise<BookingsConfig> {
   return await authenticatedFetch(`${baseUrl}/bookings/${backend}/config`);
 }
@@ -905,7 +1307,7 @@ async function getCurrentUser(baseUrl: string = apiBaseUrl): Promise<User> {
 async function getCalibrations(
   baseUrl: string = apiBaseUrl,
   skip: number | null = null,
-  limit: number | null = null
+  limit: number | null = null,
 ): Promise<DeviceCalibration[]> {
   const queryString = getQueryString({ skip, limit });
   const rawResult = await authenticatedFetch<
@@ -921,10 +1323,10 @@ async function getCalibrations(
  */
 async function getCalibrationsForDevice(
   name: string,
-  baseUrl: string = apiBaseUrl
+  baseUrl: string = apiBaseUrl,
 ): Promise<DeviceCalibration> {
   const rawResult = await authenticatedFetch<DeviceCalibration>(
-    `${baseUrl}/calibrations/${name}`
+    `${baseUrl}/calibrations/${name}`,
   );
   return normalizeCalibrationData(rawResult);
 }
@@ -941,12 +1343,12 @@ async function getMyJobs(
     baseUrl?: string;
     skip?: number;
     limit?: number;
-  } = {}
+  } = {},
 ): Promise<Job[]> {
   const { project_id, skip, limit, baseUrl = apiBaseUrl } = options;
   const query = getQueryString({ skip, limit, project_id });
   const { data } = await authenticatedFetch<PaginatedData<Job[]>>(
-    `${baseUrl}/me/jobs/?${query}`
+    `${baseUrl}/me/jobs/?${query}`,
   );
   return data;
 }
@@ -958,12 +1360,12 @@ async function getMyJobs(
  *           - baseUrl - the API base URL; default apiBaseUrl
  */
 async function getMyTokens(
-  options: { project_ext_id?: string; baseUrl?: string } = {}
+  options: { project_ext_id?: string; baseUrl?: string } = {},
 ): Promise<AppToken[]> {
   const { project_ext_id, baseUrl = apiBaseUrl } = options;
   const query = getQueryString({ project_ext_id });
   const { data } = await authenticatedFetch<PaginatedData<AppToken[]>>(
-    `${baseUrl}/me/tokens/?${query}`
+    `${baseUrl}/me/tokens/?${query}`,
   );
   return data;
 }
@@ -975,11 +1377,11 @@ async function getMyTokens(
  */
 async function getMyProjects(
   baseUrl: string = apiBaseUrl,
-  filters: { [k: string]: string } = {}
+  filters: { [k: string]: string } = {},
 ): Promise<Project[]> {
   const queryString = getQueryString(filters);
   const { data } = await authenticatedFetch<PaginatedData<Project[]>>(
-    `${baseUrl}/me/projects/?${queryString}`
+    `${baseUrl}/me/projects/?${queryString}`,
   );
   return data;
 }
@@ -992,7 +1394,7 @@ async function getMyProjects(
 async function getProjectQpuTimeRequests(
   baseUrl: string = apiBaseUrl,
   projectIds: string[] = [],
-  status?: UserRequestStatus
+  status?: UserRequestStatus,
 ): Promise<QpuTimeExtensionUserRequest[]> {
   const queryString = getQueryString({ status, projectIds });
   const { data } = await authenticatedFetch<
@@ -1016,11 +1418,11 @@ async function getUserRequests(
     status?: UserRequestStatus;
     skip?: number;
     limit?: number;
-  }
+  },
 ): Promise<UserRequest[]> {
   const queryString = getQueryString(options);
   const { data } = await authenticatedFetch<PaginatedData<UserRequest[]>>(
-    `${baseUrl}/admin/user-requests/?${queryString}`
+    `${baseUrl}/admin/user-requests/?${queryString}`,
   );
 
   return data;
@@ -1040,11 +1442,11 @@ async function getAdminProjects(
     is_active?: boolean;
     skip?: number;
     limit?: number;
-  }
+  },
 ): Promise<AdminProject[]> {
   const queryString = getQueryString(options);
   const { data } = await authenticatedFetch<PaginatedData<AdminProject[]>>(
-    `${baseUrl}/admin/projects/?${queryString}`
+    `${baseUrl}/admin/projects/?${queryString}`,
   );
 
   return data;
@@ -1068,7 +1470,7 @@ async function getFutureBookings(
     max_start_utc?: string;
     skip?: string;
     limit?: string;
-  }
+  },
 ): Promise<Booking[]> {
   const min_start_utc = DateTime.utc().toISO();
   return await getBookingsOfBackend(baseUrl, backend, {
@@ -1099,11 +1501,11 @@ async function getBookingsOfBackend(
     skip?: string;
     limit?: string;
     sort?: string[];
-  }
+  },
 ): Promise<Booking[]> {
   const queryString = getQueryString(options);
   const { data } = await authenticatedFetch<PaginatedData<RawBooking[]>>(
-    `${baseUrl}/bookings/${backend}?${queryString}`
+    `${baseUrl}/bookings/${backend}?${queryString}`,
   );
 
   return data.map((v) => toClientSideBooking(v, { backend }));
@@ -1140,7 +1542,7 @@ function getQueryString(queryParams: { [key: string]: unknown }): string {
     .filter(([_, value]) => value != null)
     .map(([k, v]) =>
       // expand values that are lists into individual key-value pairs
-      Array.isArray(v) ? v.map((item) => [k, `${item}`]) : [[k, `${v}`]]
+      Array.isArray(v) ? v.map((item) => [k, `${item}`]) : [[k, `${v}`]],
     )
     .flat();
 
@@ -1160,7 +1562,7 @@ function getQueryString(queryParams: { [key: string]: unknown }): string {
 async function authenticatedFetch<T>(
   input: string | URL | globalThis.Request,
   init: RequestInit = {},
-  options: { isJsonOutput?: boolean } = {}
+  options: { isJsonOutput?: boolean } = {},
 ): Promise<T> {
   const response = await fetch(input, {
     ...init,
@@ -1169,6 +1571,7 @@ async function authenticatedFetch<T>(
 
   if (response.ok) {
     const { isJsonOutput = true } = options;
+    // @ts-ignore
     return isJsonOutput ? await response.json() : await response.text();
   }
 

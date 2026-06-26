@@ -2,7 +2,12 @@ import { TooltipProvider } from "../../ui/tooltip";
 import { Sidebar } from "./components/sidebar";
 import { Topbar } from "./components/topbar";
 import { TopBanner } from "./components/top-banner";
-import { Outlet, useLoaderData, useNavigate } from "react-router-dom";
+import {
+  Outlet,
+  useLoaderData,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import {
   logout,
   myActiveProjectsQuery,
@@ -10,7 +15,7 @@ import {
   allUserRequestsQuery,
 } from "@/lib/api-client";
 import { AppState, User, UserRequestStatus, UserRole } from "../../../../types";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 import { AppStateContext } from "@/lib/app-state";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn, loadOrRedirectIfAuthErr } from "@/lib/utils";
@@ -23,6 +28,11 @@ export function Dashboard() {
   const { data: projects = [] } = useQuery(myActiveProjectsQuery);
   const appState = useContext(AppStateContext);
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const isAdminScreen = useMemo(
+    () => location.pathname.startsWith("/admin-"),
+    [location.pathname],
+  );
   const [isExpanded, setIsExpanded] = useState(true);
   const navigate = useNavigate();
   const contentAreaPaddingCls = isExpanded ? "sm:pl-56" : "sm:pl-20";
@@ -66,7 +76,7 @@ export function Dashboard() {
             isUserAdmin={isUserAdmin}
           />
 
-          <TopBanner />
+          {!isAdminScreen && <TopBanner currentUser={currentUser} />}
           <Outlet />
           <Footer />
           <Toaster />

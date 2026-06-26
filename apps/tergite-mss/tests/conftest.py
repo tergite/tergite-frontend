@@ -471,6 +471,28 @@ def mock_bcc(respx_mock):
                 side_effect=mock_backend.delete_job
             )
 
+        # recalibration
+        respx_mock.post(f"{backend['url']}/recalibration/init").mock(
+            side_effect=mock_backend.init_recalibration
+        )
+
+        respx_mock.get(f"{backend['url']}/recalibration/info").mock(
+            side_effect=mock_backend.get_recalibration_info
+        )
+
+        respx_mock.post(f"{backend['url']}/recalibration/cancel").mock(
+            side_effect=mock_backend.cancel_recalibration
+        )
+
+        # switch off
+        respx_mock.post(f"{backend['url']}/switch/off").mock(
+            side_effect=mock_backend.switch_off
+        )
+
+        respx_mock.post(f"{backend['url']}/switch/on").mock(
+            side_effect=mock_backend.switch_on
+        )
+
     yield respx_mock
 
 

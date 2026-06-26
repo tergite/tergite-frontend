@@ -11,17 +11,16 @@ export enum JobStatus {
   EXECUTING = "executing",
 }
 
-export interface DbRecord
-  extends Record<
-    string,
-    | string
-    | number
-    | boolean
-    | undefined
-    | null
-    | { [k: string]: unknown }
-    | unknown
-  > {
+export interface DbRecord extends Record<
+  string,
+  | string
+  | number
+  | boolean
+  | undefined
+  | null
+  | { [k: string]: unknown }
+  | unknown
+> {
   id: string;
   created_at?: string;
   updated_at?: string;
@@ -224,8 +223,7 @@ export interface CreateProjectUserRequest extends UserRequest {
 
 // the HTTP response body got when a project is got from API
 export interface Project
-  extends Omit<CreateProjectPostBody, "user_emails">,
-    DbRecord {
+  extends Omit<CreateProjectPostBody, "user_emails">, DbRecord {
   user_ids: string[];
   admin_id: string;
   is_active: boolean;
@@ -240,8 +238,9 @@ export interface AdminProject extends Project {
 }
 
 // the HTTP request body when updating a project
-export interface UpdateProjectPutBody
-  extends Partial<Omit<CreateProjectPostBody, "ext_id">> {
+export interface UpdateProjectPutBody extends Partial<
+  Omit<CreateProjectPostBody, "ext_id">
+> {
   admin_email?: string;
   is_active?: boolean;
 }
@@ -374,4 +373,60 @@ export interface InputDuration {
   minutes?: number;
   seconds?: number;
   milliseconds?: number;
+}
+
+export enum RqJobStatus {
+  CREATED = "created",
+  QUEUED = "queued",
+  FINISHED = "finished",
+  FAILED = "failed",
+  STARTED = "started",
+  DEFERRED = "deferred",
+  SCHEDULED = "scheduled",
+  STOPPED = "stopped",
+  CANCELED = "canceled",
+}
+
+export interface RecalibrationInfo {
+  current_job_id?: string;
+  current_job_status?: RqJobStatus;
+  current_job_started_at?: string;
+
+  previous_job_id?: string;
+  previous_job_status?: RqJobStatus;
+  previous_job_started_at?: string;
+  previous_job_ended_at?: string;
+  previous_job_error?: string;
+
+  next_job_id?: string;
+  next_job_status?: RqJobStatus;
+  next_job_enqueued_at?: string;
+
+  interval?: number;
+}
+
+export enum NoticeSeverity {
+  INFO = "info",
+  WARNING = "warning",
+  CRITICAL = "critical",
+}
+
+export interface NoticePostRequest {
+  message: string;
+  severity: NoticeSeverity;
+  expires_at: string;
+  target_user_emails?: string[];
+  starts_at: string;
+}
+
+export interface Notice
+  extends DbRecord, Omit<NoticePostRequest, "target_user_emails"> {
+  created_by: string;
+  severity_number: number;
+  target_user_ids?: string[];
+  dismissed_by: string[];
+}
+
+export interface CountResponse {
+  count: number;
 }

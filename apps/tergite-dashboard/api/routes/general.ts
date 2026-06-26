@@ -15,6 +15,8 @@ import {
   respond401,
   use,
   randomUUID,
+  getUserNoticesFilter,
+  getSeverityNumber,
 } from "../utils";
 import {
   AuthProvider,
@@ -38,19 +40,40 @@ import {
   BccUserProfile,
   NewBCCUserInfo,
   NewBookingInfo,
+  RecalibrationInfo,
+  RqJobStatus,
+  Notice,
+  GeneralMessage,
+  CountResponse,
 } from "../../types";
 import { DateTime } from "luxon";
 
 const currentDateString = process.env.CURRENT_DATE;
 const apiBaseUrl = process.env.VITE_API_BASE_URL;
 const router = Router();
+const _apiStartTimestamp = DateTime.now();
+const _initialRecalibrationInfo: RecalibrationInfo = {
+  interval: 86_400,
+  current_job_id: "current_job_id",
+  current_job_status: RqJobStatus.FINISHED,
+  current_job_started_at: _apiStartTimestamp.toISO(),
+
+  previous_job_id: "previous_job_id",
+  previous_job_status: RqJobStatus.FINISHED,
+  previous_job_started_at: _apiStartTimestamp.minus({ days: 1 }).toISO(),
+  previous_job_ended_at: _apiStartTimestamp.minus({ hours: 22 }).toISO(),
+
+  next_job_id: "next_job_id",
+  next_job_status: RqJobStatus.SCHEDULED,
+};
+const recalibrationInfoDb: { [key: string]: RecalibrationInfo } = {};
 
 router.use(
   cors({
     origin: true,
     methods: ["GET", "PUT", "POST", "DELETE", "PATCH", "HEAD"],
     credentials: true,
-  })
+  }),
 );
 
 router.options("*", (req, res, next) => {
@@ -68,7 +91,7 @@ router.get(
     const data = mockDb.getOne<User>("users", (v) => v.id === currentUserId);
 
     res.json(data);
-  })
+  }),
 );
 
 router.get(
@@ -85,11 +108,11 @@ router.get(
 
     const data = mockDb.getMany<Project>(
       "projects",
-      (v) => v.user_ids.includes(currentUserId) && conformsToFilter(v, filters)
+      (v) => v.user_ids.includes(currentUserId) && conformsToFilter(v, filters),
     );
 
     res.json({ skip: 0, limit: null, data } as PaginatedData<Project[]>);
-  })
+  }),
 );
 
 router.delete(
@@ -102,7 +125,7 @@ router.delete(
 
     const { params } = req;
     const project = mockDb.getOne<Project>("projects", (v) =>
-      conformsToFilter(v, { admin_id: currentUserId, id: params.id })
+      conformsToFilter(v, { admin_id: currentUserId, id: params.id }),
     );
     if (project === undefined) {
       res.status(403).json({ detail: `Forbidden` });
@@ -118,7 +141,7 @@ router.delete(
 
     // no content
     res.status(204).send();
-  })
+  }),
 );
 
 router.get(
@@ -132,12 +155,12 @@ router.get(
     const { project_id } = req.query as { [k: string]: string };
     const data = mockDb
       .getMany<Job>("jobs", (v) =>
-        conformsToFilter(v, { user_id: currentUserId, project_id })
+        conformsToFilter(v, { user_id: currentUserId, project_id }),
       )
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 
     res.json({ skip: 0, limit: null, data } as PaginatedData<Job[]>);
-  })
+  }),
 );
 
 router.post(
@@ -153,7 +176,7 @@ router.post(
       "projects",
       (v) =>
         v.ext_id == (payload as AppToken).project_ext_id &&
-        v.user_ids.includes(user_id)
+        v.user_ids.includes(user_id),
     );
     if (!project) {
       return respond401(res);
@@ -168,7 +191,7 @@ router.post(
       access_token,
       token_type: "bearer",
     } as AppTokenCreationResponse);
-  })
+  }),
 );
 
 router.get(
@@ -181,11 +204,11 @@ router.get(
 
     const { project_ext_id } = req.query as { [k: string]: string };
     const data = mockDb.getMany<AppToken>("tokens", (v) =>
-      conformsToFilter(v, { user_id: currentUserId, project_ext_id })
+      conformsToFilter(v, { user_id: currentUserId, project_ext_id }),
     );
 
     res.json({ skip: 0, limit: null, data } as PaginatedData<AppToken[]>);
-  })
+  }),
 );
 
 router.delete(
@@ -198,7 +221,7 @@ router.delete(
 
     const { params } = req;
     const token = mockDb.getOne<AppToken>("tokens", (v) =>
-      conformsToFilter(v, { user_id: currentUserId, id: params.id })
+      conformsToFilter(v, { user_id: currentUserId, id: params.id }),
     );
     if (token === undefined) {
       res.status(403).json({ detail: `Forbidden` });
@@ -209,7 +232,7 @@ router.delete(
 
     // no content
     res.status(204).send();
-  })
+  }),
 );
 
 router.put(
@@ -231,7 +254,7 @@ router.put(
 
     const lifespan_seconds = DateTime.fromISO(body.expires_at).diff(
       DateTime.fromISO(oldToken.created_at),
-      "seconds"
+      "seconds",
     ).seconds;
 
     const token = mockDb.update<AppToken>("tokens", filterFn, {
@@ -239,7 +262,7 @@ router.put(
     });
 
     res.json(token);
-  })
+  }),
 );
 
 router.get(
@@ -253,7 +276,7 @@ router.get(
     const data = mockDb.getMany<Device>("devices");
 
     res.json({ skip: 0, limit: null, data } as PaginatedData<Device[]>);
-  })
+  }),
 );
 
 router.get(
@@ -267,13 +290,13 @@ router.get(
     const { params } = req;
     const data = mockDb.getOne<Device>(
       "devices",
-      (v) => v.name === params.name
+      (v) => v.name === params.name,
     );
 
     data
       ? res.json(data)
       : res.status(404).json({ detail: `device '${params.name}' not found` });
-  })
+  }),
 );
 
 router.get(
@@ -288,7 +311,7 @@ router.get(
     res.json({ skip: 0, limit: null, data } as PaginatedData<
       DeviceCalibration[]
     >);
-  })
+  }),
 );
 
 router.get(
@@ -302,7 +325,7 @@ router.get(
     const { params } = req;
     const data = mockDb.getOne<DeviceCalibration>(
       "calibrations",
-      (v) => v.name === params.name
+      (v) => v.name === params.name,
     );
 
     data
@@ -310,7 +333,7 @@ router.get(
       : res
           .status(404)
           .json({ detail: `calibrations for  '${params.name}' not found` });
-  })
+  }),
 );
 
 router.get(
@@ -320,7 +343,7 @@ router.get(
     // FIXME: This should return multiple ways in case the same email domain can login in many ways
     const filteredData = mockDb.getMany<AuthProvider>(
       "auth_providers",
-      (v) => v.email_domain === email_domain
+      (v) => v.email_domain === email_domain,
     );
 
     if (filteredData.length === 0) {
@@ -336,7 +359,7 @@ router.get(
     res.json({ skip: 0, limit: null, data } as PaginatedData<
       AuthProviderResponse[]
     >);
-  })
+  }),
 );
 
 router.get(
@@ -344,7 +367,7 @@ router.get(
   use(async (req, res) => {
     const queryString = getQueryString(req.query);
     return res.redirect(`${apiBaseUrl}/oauth/callback${queryString}`);
-  })
+  }),
 );
 
 router.post(
@@ -360,7 +383,7 @@ router.post(
     }
 
     res.json({ message: "logged out" });
-  })
+  }),
 );
 
 router.get(
@@ -383,12 +406,12 @@ router.get(
             // @ts-ignore
             projectIds.includes(v.request.project_id))
         );
-      }
+      },
     );
     res.json({ skip: 0, limit: null, data } as PaginatedData<
       QpuTimeExtensionUserRequest[]
     >);
-  })
+  }),
 );
 
 router.post(
@@ -401,11 +424,11 @@ router.post(
 
     const project = mockDb.getOne<Project>(
       "projects",
-      (v) => v.id === req.body.project_id
+      (v) => v.id === req.body.project_id,
     );
     const requester = mockDb.getOne<User>(
       "users",
-      (v) => v.id === requester_id
+      (v) => v.id === requester_id,
     );
     if (!project || !requester) {
       res.status(404).json({ detail: `Not Found` });
@@ -432,7 +455,7 @@ router.post(
     mockDb.create<QpuTimeExtensionUserRequest>("user_requests", userRequest);
     res.status(201);
     res.json(userRequest);
-  })
+  }),
 );
 
 router.get(
@@ -457,11 +480,11 @@ router.get(
       "user_requests",
       (v) => status === undefined || v.status === status,
       skip,
-      limit
+      limit,
     );
 
     res.json({ skip, limit, data } as PaginatedData<UserRequest[]>);
-  })
+  }),
 );
 
 router.put(
@@ -491,7 +514,7 @@ router.put(
     const userRequest = mockDb.update<UserRequest>(
       "user_requests",
       (v) => v.id === userReqId,
-      newUpdate
+      newUpdate,
     );
     if (!userRequest) {
       res.status(404).json({ detail: `Not Found` });
@@ -504,7 +527,7 @@ router.put(
         const record = userRequest as QpuTimeExtensionUserRequest;
         const original = mockDb.getOne<Project>(
           "projects",
-          (v) => v.id === record.request.project_id
+          (v) => v.id === record.request.project_id,
         );
         if (!original) {
           res.status(404).json({ detail: `Project not found` });
@@ -515,7 +538,7 @@ router.put(
         mockDb.update<Project>(
           "projects",
           (v) => v.id === record.request.project_id,
-          { qpu_seconds }
+          { qpu_seconds },
         );
       }
 
@@ -523,7 +546,7 @@ router.put(
     }
 
     res.json(userRequest);
-  })
+  }),
 );
 
 router.get(
@@ -553,12 +576,12 @@ router.get(
       "projects",
       (v) => is_active === undefined || v.is_active === is_active,
       skip,
-      limit
+      limit,
     );
 
     const users = mockDb.getMany<User>("users");
     const userIdEmailMap = Object.fromEntries(
-      users.map((v) => [v.id, v.email])
+      users.map((v) => [v.id, v.email]),
     );
 
     const data: AdminProject[] = projects.map((v) => ({
@@ -568,7 +591,7 @@ router.get(
     }));
 
     res.json({ skip, limit, data });
-  })
+  }),
 );
 
 router.post(
@@ -588,11 +611,11 @@ router.post(
     const body = req.body as AdminCreateProjectBody;
     const { user_emails = [], admin_email, ...restOfBody } = body;
     const allEmails = [...new Set(user_emails.concat([admin_email]))].filter(
-      (v) => v != undefined
+      (v) => v != undefined,
     );
     const users = mockDb.getMany<User>("users");
     const userEmailIdMap = Object.fromEntries(
-      users.map((v) => [v.email, v.id])
+      users.map((v) => [v.email, v.id]),
     );
 
     // Create the users if the emails don't exist
@@ -622,7 +645,7 @@ router.post(
     const project = mockDb.create<Project>("projects", newProject);
 
     res.json(project);
-  })
+  }),
 );
 
 router.put(
@@ -643,11 +666,11 @@ router.put(
     const body = req.body as UpdateProjectPutBody;
     const { user_emails = [undefined], admin_email, ...restOfBody } = body;
     const allEmails = [...new Set(user_emails.concat([admin_email]))].filter(
-      (v) => v != undefined
+      (v) => v != undefined,
     );
     const users = mockDb.getMany<User>("users");
     const userEmailIdMap = Object.fromEntries(
-      users.map((v) => [v.email, v.id])
+      users.map((v) => [v.email, v.id]),
     );
 
     // Create the users if the emails don't exist
@@ -678,7 +701,7 @@ router.put(
     const project = mockDb.update<Project>(
       "projects",
       (v) => v.id === projectId,
-      newUpdate
+      newUpdate,
     );
     if (!project) {
       res.status(404).json({ detail: `Not Found` });
@@ -686,7 +709,7 @@ router.put(
     }
 
     res.json(project);
-  })
+  }),
 );
 
 router.delete(
@@ -706,7 +729,7 @@ router.delete(
     const { params } = req;
     const project = mockDb.getOne<Project>(
       "projects",
-      (v) => v.id == params.id
+      (v) => v.id == params.id,
     );
     if (!project) {
       res.status(404).json({ detail: `Not Found` });
@@ -722,7 +745,7 @@ router.delete(
 
     // no content
     res.status(204).send();
-  })
+  }),
 );
 
 router.get(
@@ -748,16 +771,16 @@ router.get(
       "bcc_users",
       (v) => v.backend === backend,
       skip,
-      limit
+      limit,
     );
 
     const data: BccUserProfile[] = bccUsers.map(
       ({ password: _p, backend: _b, ...rest }) => ({
         ...rest,
-      })
+      }),
     );
     res.json({ skip, limit, data });
-  })
+  }),
 );
 
 router.post(
@@ -778,7 +801,7 @@ router.post(
     const { backend } = req.params;
     const bccUsersWithSameEmail = mockDb.getMany<BccUserInDb>(
       "bcc_users",
-      (v) => v.email === body.email && v.backend === backend
+      (v) => v.email === body.email && v.backend === backend,
     );
 
     if (bccUsersWithSameEmail.length > 0) {
@@ -792,7 +815,7 @@ router.post(
     });
 
     res.json(bccUser);
-  })
+  }),
 );
 
 router.delete(
@@ -812,7 +835,7 @@ router.delete(
     const { id: bccUserId, backend } = req.params;
 
     const bccUser = mockDb.getOne<BccUserInDb>("bcc_users", (v) =>
-      conformsToFilter(v, { backend, id: bccUserId })
+      conformsToFilter(v, { backend, id: bccUserId }),
     );
     if (!bccUser) {
       res.status(404).json({ detail: `NotFound` });
@@ -822,7 +845,7 @@ router.delete(
     mockDb.del("bcc_users", bccUserId);
 
     res.json({ status: "success", detail: "User deleted" });
-  })
+  }),
 );
 
 router.post(
@@ -845,14 +868,14 @@ router.post(
     const bookingStartUtc = DateTime.fromISO(body.start_utc);
     const bookingConfig = mockDb.getOne<BookingsConfigInDb>(
       "bookings_configs",
-      ({ id }) => id === backend
+      ({ id }) => id === backend,
     );
     const bookingsThatDay = mockDb.getMany<BookingInDb>(
       "bookings",
       (v) =>
         v.user_id === user_id &&
         v.backend === backend &&
-        DateTime.fromISO(v.start_utc).hasSame(bookingStartUtc, "day")
+        DateTime.fromISO(v.start_utc).hasSame(bookingStartUtc, "day"),
     );
 
     if (
@@ -874,7 +897,7 @@ router.post(
 
     const { backend: _, ...booking } = result;
     res.json(booking);
-  })
+  }),
 );
 
 router.post(
@@ -892,7 +915,7 @@ router.post(
       "bookings",
       (v) =>
         conformsToFilter(v, { backend, id: bookingId }) &&
-        (v.user_id == userId || isUserAdmin)
+        (v.user_id == userId || isUserAdmin),
     );
     if (!booking) {
       res
@@ -926,7 +949,7 @@ router.post(
       status: "success",
       detail: `Booking of id ${bookingId} cancelled`,
     });
-  })
+  }),
 );
 
 router.get(
@@ -942,7 +965,7 @@ router.get(
 
     const bookingsConfigsInDb = mockDb.getOne<BookingsConfigInDb>(
       "bookings_configs",
-      (v) => v.id === backend
+      (v) => v.id === backend,
     );
     if (!bookingsConfigsInDb) {
       res.status(404).json({ detail: `NotFound` });
@@ -951,7 +974,7 @@ router.get(
 
     const { id: _, ...data } = bookingsConfigsInDb;
     res.json(data);
-  })
+  }),
 );
 
 router.get(
@@ -991,11 +1014,306 @@ router.get(
         (userId ? v.user_id == userId : true),
       skip,
       limit,
-      sort
+      sort,
     );
 
     res.json({ skip, limit, data });
-  })
+  }),
+);
+
+router.post(
+  "/admin/recalibration/:backend/init",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const {
+      interval: intervalAsString,
+      start_timestamp: startTimestampAsString,
+    } = req.query;
+    const { backend } = req.params;
+    const recalibrationInfo = recalibrationInfoDb[backend] || {
+      ..._initialRecalibrationInfo,
+    };
+
+    if (intervalAsString) {
+      recalibrationInfo.interval = parseFloat(intervalAsString as string);
+    }
+
+    if (startTimestampAsString) {
+      recalibrationInfo.next_job_enqueued_at = startTimestampAsString as string;
+    }
+
+    recalibrationInfoDb[backend] = recalibrationInfo;
+
+    res.json({ status: "success" });
+  }),
+);
+
+router.get(
+  "/admin/recalibration/:backend/info",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { backend } = req.params;
+
+    // eslint-disable-next-line no-prototype-builtins
+    if (!recalibrationInfoDb.hasOwnProperty(backend)) {
+      recalibrationInfoDb[backend] = { ..._initialRecalibrationInfo };
+    }
+
+    res.json(recalibrationInfoDb[backend]);
+  }),
+);
+
+router.post(
+  "/admin/recalibration/:backend/cancel",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { ignore_errors: _ignoreErrorsAsString } = req.query;
+    const { backend } = req.params;
+
+    delete recalibrationInfoDb[backend];
+
+    res.json({ status: "success" });
+  }),
+);
+
+router.post(
+  "/admin/switch/:backend/on",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { backend } = req.params;
+    const device = mockDb.getOne<Device>("devices", (v) => v.name === backend);
+    if (!device) {
+      res.status(404).json({ detail: `device '${backend}' not found` });
+      return;
+    }
+
+    mockDb.update<Device>(
+      "devices",
+      (v) => v.name === backend,
+      { is_online: true },
+    );
+
+    res.json({ status: "success" } as GeneralMessage);
+  }),
+);
+
+router.post(
+  "/admin/switch/:backend/off",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { backend } = req.params;
+    const device = mockDb.getOne<Device>("devices", (v) => v.name === backend);
+    if (!device) {
+      res.status(404).json({ detail: `device '${backend}' not found` });
+      return;
+    }
+
+    mockDb.update<Device>(
+      "devices",
+      (v) => v.name === backend,
+      { is_online: false, last_online: new Date().toISOString() },
+    );
+
+    res.json({ status: "success" } as GeneralMessage);
+  }),
+);
+
+router.post(
+  "/admin/notices/",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const payload = { ...req.body, created_by: userId, dismissed_by: [] };
+    let target_user_ids = null;
+    const user_emails = payload.target_user_emails;
+
+    if (user_emails) {
+      const users = mockDb.getMany<User>("users", (user) =>
+        user_emails.includes(user.email),
+      );
+      target_user_ids = users.map((v) => v.id);
+    }
+
+    payload["target_user_ids"] = target_user_ids;
+    payload["id"] = randomUUID();
+    payload["severity_number"] = getSeverityNumber(payload.severity);
+
+    mockDb.create<Notice>("notices", payload);
+    res.status(201);
+    res.json(payload as Notice);
+  }),
+);
+
+router.post(
+  "/admin/notices/:id/dismiss",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const { id } = req.params;
+
+    const notice = mockDb.getOne<Notice>("notices", (v) =>
+      conformsToFilter(v, { id }),
+    );
+    if (!notice) {
+      res.status(404).json({ detail: `NotFound` });
+      return;
+    }
+
+    mockDb.update<Notice>("notices", (v) => v.id === id, {
+      dismissed_by: [...notice.dismissed_by, userId],
+    });
+
+    res.status(200);
+    res.json({ status: "success" } as GeneralMessage);
+  }),
+);
+
+router.get(
+  "/admin/notices",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const {
+      skip: skipAsString,
+      limit: limitAsString,
+      sort: sortQuery,
+      user_id,
+    } = req.query;
+    const skip = skipAsString ? parseInt(skipAsString as string, 10) : 0;
+    const limit = limitAsString
+      ? parseInt(limitAsString as string, 10)
+      : undefined;
+    const sort = sortQuery
+      ? Array.isArray(sortQuery)
+        ? (sortQuery as string[])
+        : [sortQuery as string]
+      : undefined;
+
+    const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
+    // ensure that ordinary users only query their own notices
+    const noticesUserId = isAdmin ? (user_id as string | undefined) : userId;
+
+    const filterFunc = getUserNoticesFilter(req, noticesUserId);
+    const data = mockDb.getMany<Notice>(
+      "notices",
+      filterFunc,
+      skip,
+      limit,
+      sort,
+    );
+
+    res.status(200);
+    res.json({ skip, limit, data } as PaginatedData<Notice[]>);
+    // prettier-ignore
+  }),
+);
+
+router.delete(
+  "/admin/notices/:id",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    // Only admins are permitted here
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    mockDb.del("notices", req.params.id);
+
+    res.status(200);
+    res.json({ status: "success" } as GeneralMessage);
+  }),
+);
+
+router.get(
+  "/counts/notices",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    const { user_id } = req.query;
+
+    const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
+    // ensure that ordinary users only query their own notices
+    const noticesUserId = isAdmin ? (user_id as string | undefined) : userId;
+
+    const filterFunc = getUserNoticesFilter(req, noticesUserId);
+    const data = mockDb.getMany<Notice>("notices", filterFunc);
+
+    res.status(200);
+    res.json({ count: data.length } as CountResponse);
+  }),
 );
 
 // NOTE: this mutates the database. I am using GET to avoid CORS issues

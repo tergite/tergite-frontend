@@ -10,6 +10,7 @@ import bccUsersFixture from "../cypress/fixtures/bcc-users.json";
 import bookingsFixture from "../cypress/fixtures/bookings.json";
 import bookingsConfigList from "../cypress/fixtures/bookings-configs.json";
 import userRequestList from "../cypress/fixtures/user-requests.json";
+import rawNoticeList from "../cypress/fixtures/notices.json";
 import { type ParsedQs } from "qs";
 import {
   type NextFunction,
@@ -32,8 +33,10 @@ import {
   User,
   UserRequest,
   UserRole,
+  Notice,
 } from "../types";
 import { v4 as uuidv4 } from "uuid";
+import { DateTime } from "luxon";
 
 const currentDateString = process.env.CURRENT_DATE;
 const jwtSecret = process.env.JWT_SECRET ?? "no-token-really-noooo";
@@ -63,6 +66,9 @@ const bookingList = deviceList
     )
   )
   .flat(1);
+const processedNoticeList = rawNoticeList.map((n) =>
+  toNoticeInDb(n as NoticeFixtureInfo, currentDateFromEnv)
+);
 
 /**
  * Generate a valid test JWT for the given user
@@ -135,6 +141,7 @@ class MockDb {
     user_requests: [...(userRequestList as UserRequest[])],
     auth_providers: [...(authProviderList as AuthProvider[])],
     bcc_users: [...(bccUserList as BccUserInDb[])],
+    notices: [...processedNoticeList],
   };
   deleted: { [k: string | ItemType]: DeletedIndex } = {
     projects: {},
@@ -148,6 +155,7 @@ class MockDb {
     user_requests: {},
     auth_providers: {},
     bcc_users: {},
+    notices: {},
   };
 
   constructor() {
@@ -180,6 +188,7 @@ class MockDb {
       user_requests: [...(userRequestList as UserRequest[])],
       auth_providers: [...(authProviderList as AuthProvider[])],
       bcc_users: [...(bccUserList as BccUserInDb[])],
+      notices: [...processedNoticeList],
     };
     this.deleted = {
       projects: {},
@@ -193,6 +202,7 @@ class MockDb {
       user_requests: {},
       auth_providers: {},
       bcc_users: {},
+      notices: {},
     };
   }
 
@@ -220,16 +230,17 @@ class MockDb {
     filterFn: FilterFunc<T> = () => true,
     skip: number = 0,
     limit: number | undefined = undefined,
-    sort: string[] | undefined = undefined
+    sort: string[] | undefined = undefined,
   ): T[] {
     let data = (this.cache[itemType] as T[]).filter(
-      (item) => filterFn(item) && !this.deleted[itemType][item.id]
+      (item) => filterFn(item) && !this.deleted[itemType][item.id],
     );
     if (sort) {
       data = data.sort(createFieldsSorter(sort));
     }
 
-    return data.slice(skip, limit);
+    const effectiveLimit = limit ? skip + limit : limit;
+    return data.slice(skip, effectiveLimit);
   }
 
   /**
@@ -242,10 +253,10 @@ class MockDb {
    */
   getOne<T extends DbRecord>(
     itemType: ItemType,
-    filterFn: FilterFunc<T>
+    filterFn: FilterFunc<T>,
   ): T | undefined {
     return (this.cache[itemType] as T[]).filter(
-      (item) => filterFn(item) && !this.deleted[itemType][item.id]
+      (item) => filterFn(item) && !this.deleted[itemType][item.id],
     )[0];
   }
 
@@ -260,11 +271,11 @@ class MockDb {
   create<T extends DbRecord>(
     itemType: ItemType,
     payload: UnknownObject | T,
-    unique_fields: string[] | undefined = undefined
+    unique_fields: string[] | undefined = undefined,
   ): T {
     const filters = unique_fields?.reduce(
       (prev, k) => ({ ...prev, k: payload[k] }),
-      {}
+      {},
     );
     const preExistingItems =
       filters &&
@@ -298,7 +309,7 @@ class MockDb {
   update<T extends DbRecord>(
     itemType: ItemType,
     filterFn: FilterFunc<T>,
-    payload: Partial<T>
+    payload: Partial<T>,
   ): T {
     const preExistingItem = this.getOne(itemType, filterFn);
     if (!preExistingItem) {
@@ -309,7 +320,7 @@ class MockDb {
 
     const newItem = { ...preExistingItem, ...payload };
     this.cache[itemType] = (this.cache[itemType] as T[]).map((item) =>
-      filterFn(item) ? newItem : item
+      filterFn(item) ? newItem : item,
     );
 
     return newItem;
@@ -529,6 +540,7 @@ type ItemType =
   | "bookings"
   | "bookings_configs"
   | "user_requests"
+  | "notices"
   | "auth_providers";
 
 type DeletedIndex = { [k: string]: boolean };
@@ -622,6 +634,32 @@ function toBccUserInDb(
 }
 
 /**
+ * Converts a notice fixture record (using relative time offsets) into a full Notice as saved in the database.
+ *
+ * @param record - the fixture record with offset fields
+ * @param currentDate - the reference "now" date
+ * @returns - the Notice object with absolute ISO timestamps
+ */
+function toNoticeInDb(record: NoticeFixtureInfo, currentDate: Date): Notice {
+  const now = currentDate.getTime();
+  const startsAt = new Date(now + record.starts_at_offset_hours * 3_600_000);
+  const expiresAt = new Date(now + record.expires_at_offset_hours * 3_600_000);
+  return {
+    id: record.id,
+    message: record.message,
+    severity: record.severity,
+    severity_number: record.severity_number,
+    starts_at: startsAt.toISOString(),
+    expires_at: expiresAt.toISOString(),
+    created_at: startsAt.toISOString(),
+    updated_at: startsAt.toISOString(),
+    created_by: record.created_by,
+    target_user_ids: record.target_user_ids,
+    dismissed_by: [...record.dismissed_by],
+  } as unknown as Notice;
+}
+
+/**
  * Creates a comparison function to sort by multiple fields where sort direction is descending if field name starts with "-".
  *
  * @param sortFields - e.g., ['lastName', '-age']
@@ -691,3 +729,102 @@ export interface BookingInDb extends Booking {}
  * Schema for Bookings
  */
 export interface BookingsConfigInDb extends BookingsConfig, DbRecord {}
+
+/**
+ * Basic info for a notice as stored in the fixture, using relative time offsets
+ * instead of absolute ISO timestamps so the data stays valid regardless of when
+ * the test suite runs.
+ */
+interface NoticeFixtureInfo {
+  id: string;
+  message: string;
+  severity: string;
+  severity_number: number;
+  starts_at_offset_hours: number;
+  expires_at_offset_hours: number;
+  created_by: string;
+  target_user_ids: string[] | null;
+  dismissed_by: string[];
+}
+
+/**
+ * Generates a notices filter for a given user request
+ * 
+ * @param req - the request object
+ * @param user_id - the ID of the user whose notices are to be retrieved
+ * @returns 
+ */
+export function getUserNoticesFilter(req: ExpressRequest, user_id?: string) {
+  const {
+    min_start_utc,
+    max_start_utc,
+    min_expires_utc,
+    max_expires_utc,
+    include_dismissed: includeDismissedAsStr,
+  } = req.query;
+
+  const include_dismissed =
+    `${includeDismissedAsStr}`?.toLowerCase() === "true";
+
+  return (v: Notice) => {
+    let isMatch = true;
+    if (user_id) {
+      // admins should always see all notices even if they dismissed
+      // them in the past
+      isMatch =
+        isMatch &&
+        (!v.target_user_ids ||
+          v.target_user_ids?.includes(user_id as string)) &&
+        (!v.dismissed_by.includes(user_id as string) || include_dismissed);
+    }
+
+    if (min_start_utc) {
+      isMatch =
+        isMatch &&
+        DateTime.fromISO(v.starts_at) >=
+          DateTime.fromISO(min_start_utc as string);
+    }
+
+    if (max_start_utc) {
+      isMatch =
+        isMatch &&
+        DateTime.fromISO(v.starts_at) <=
+          DateTime.fromISO(max_start_utc as string);
+    }
+
+    if (min_expires_utc) {
+      isMatch =
+        isMatch &&
+        DateTime.fromISO(v.expires_at) >=
+          DateTime.fromISO(min_expires_utc as string);
+    }
+
+    if (max_expires_utc) {
+      isMatch =
+        isMatch &&
+        DateTime.fromISO(v.expires_at) <=
+          DateTime.fromISO(max_expires_utc as string);
+    }
+
+    return isMatch;
+  };
+}
+
+/**
+ * Converts a severity string to its corresponding number
+ * 
+ * @param severity - the severity passed
+ * @returns the number that corresponds to the given severity
+ */
+export function getSeverityNumber(severity: string) {
+  switch (severity.toUpperCase()) {
+    case "CRITICAL":
+      return 1;
+    case "WARNING":
+      return 2;
+    case "INFO":
+      return 3;
+    default:
+      throw new Error(`Invalid severity: ${severity}`);
+  }
+}

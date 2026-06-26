@@ -23,6 +23,8 @@ from pymongo.collation import Collation
 
 from utils.config import UserRole
 
+USER_DB_COLLECTION = "auth_users"
+
 
 class UserRead(schemas.BaseUser[PydanticObjectId]):
     roles: Set[UserRole] = {}
@@ -54,7 +56,7 @@ class User(Document):
     roles: Set[UserRole] = {UserRole.USER}
 
     class Settings:
-        name = "auth_users"
+        name = USER_DB_COLLECTION
         email_collation = Collation("en", strength=2)
         indexes = [
             IndexModel("email", unique=True),

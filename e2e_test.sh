@@ -131,28 +131,39 @@ cp "$FIXTURES_PATH/private-qiskit-pulse-2q-key.pem" .
 cp "$FIXTURES_PATH/generic.seed.toml" .
 cp "$FIXTURES_PATH/loke.toml" .
 cp "$FIXTURES_PATH/loke.seed.toml" .
-cp "$FIXTURES_PATH/device_config.calib.toml" .
+cp "$FIXTURES_PATH/loke.spi_config.calib.toml" .
+cp "$FIXTURES_PATH/loke.device_config.calib.toml" .
 cp "$FIXTURES_PATH/node_config.calib.toml" .
-cp "$FIXTURES_PATH/spi_config.calib.toml" .
 cp "$FIXTURES_PATH/public-loke-key.pem" bcc_certs/
 cp "$FIXTURES_PATH/private-loke-key.pem" .
 cp "$FIXTURES_PATH/thor.toml" .
 cp "$FIXTURES_PATH/thor.seed.toml" .
+cp "$FIXTURES_PATH/thor.spi_config.calib.toml" .
+cp "$FIXTURES_PATH/thor.device_config.calib.toml" .
 cp "$FIXTURES_PATH/public-thor-key.pem" bcc_certs/
 cp "$FIXTURES_PATH/private-thor-key.pem" .
 cp "$FIXTURES_PATH/pingu.toml" .
 cp "$FIXTURES_PATH/pingu.seed.toml" .
+cp "$FIXTURES_PATH/pingu.spi_config.calib.toml" .
+cp "$FIXTURES_PATH/pingu.device_config.calib.toml" .
 cp "$FIXTURES_PATH/public-pingu-key.pem" bcc_certs/
 cp "$FIXTURES_PATH/private-pingu-key.pem" .
 cp "$FIXTURES_PATH/pegu.toml" .
+cp "$FIXTURES_PATH/pegu.seed.toml" .
+cp "$FIXTURES_PATH/pegu.spi_config.calib.toml" .
+cp "$FIXTURES_PATH/pegu.device_config.calib.toml" .
 cp "$FIXTURES_PATH/public-pegu-key.pem" bcc_certs/
 cp "$FIXTURES_PATH/private-pegu-key.pem" .
 cp "$FIXTURES_PATH/likee.toml" .
 cp "$FIXTURES_PATH/likee.seed.toml" .
+cp "$FIXTURES_PATH/likee.spi_config.calib.toml" .
+cp "$FIXTURES_PATH/likee.device_config.calib.toml" .
 cp "$FIXTURES_PATH/public-likee-key.pem" bcc_certs/
 cp "$FIXTURES_PATH/private-likee-key.pem" .
 cp "$FIXTURES_PATH/thea.toml" .
 cp "$FIXTURES_PATH/thea.seed.toml" .
+cp "$FIXTURES_PATH/thea.spi_config.calib.toml" .
+cp "$FIXTURES_PATH/thea.device_config.calib.toml" .
 cp "$FIXTURES_PATH/public-thea-key.pem" bcc_certs/
 cp "$FIXTURES_PATH/private-thea-key.pem" .
 cp "$FIXTURES_PATH/booking_db.db" qiskit_pulse_1q_booking_db.db
@@ -161,14 +172,22 @@ cp "$FIXTURES_PATH/backend_db.sql" .
 cp "$FIXTURES_PATH/private-mss-key.pem" .
 cp "$FIXTURES_PATH/public-mss-key.pem" .
 cp "$FIXTURES_PATH/quantify-config.json" .
+cp "$FIXTURES_PATH/loke-quantify-config.json" .
+cp "$FIXTURES_PATH/thea-quantify-config.json" .
+cp "$FIXTURES_PATH/thor-quantify-config.json" .
+cp "$FIXTURES_PATH/pegu-quantify-config.json" .
 cp "$FIXTURES_PATH/quantify-metadata.yml" .
 cp "$FIXTURES_PATH/e2e.env" .env
 cp "$FIXTURES_PATH/mss-config.toml" .
+
+# Update the process.env.CURRENT_DATE in mongo-init.js
+replace_str mongo-init.js "process.env.CURRENT_DATE" "\"2025-10-01T00:00:00.000Z\""
 
 # Update the mongo-init.js to include the JSON data from the fixtures
 replace_str mongo-init.js "rawCalibrations = \"\[\]\"" "rawCalibrations = $(read_json $FIXTURES_PATH/calibrations.json)"
 replace_str mongo-init.js "rawDevices = \"\[\]\"" "rawDevices = $(read_json $FIXTURES_PATH/device-list.json)"
 replace_str mongo-init.js "rawJobs = \"\[\]\"" "rawJobs = $(read_json $FIXTURES_PATH/jobs.json)"
+replace_str mongo-init.js "rawNotices = \"\[\]\"" "rawNotices = $(read_json $FIXTURES_PATH/notices.json)"
 replace_str mongo-init.js "rawProjects = \"\[\]\"" "rawProjects = $(read_json $FIXTURES_PATH/projects.json)"
 replace_str mongo-init.js "rawTokens = \"\[\]\"" "rawTokens = $(read_json $FIXTURES_PATH/tokens.json)"
 replace_str mongo-init.js "rawUserRequests = \"\[\]\"" "rawUserRequests = $(read_json $FIXTURES_PATH/user-requests.json)"

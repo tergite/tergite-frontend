@@ -7,6 +7,30 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+## [2026.06.0] - 2026-06-26
+
+This is part of the tergite release v2026.06.0.
+
+### Added
+
+- Added `/admin/recalibration/{backend}/init`, `/admin/recalibration/{backend}/cancel`
+  and `/admin/recalibration/{backend}/info` endpoints for recalibration control
+- Added `/admin/switch/{backend}/on` and `/admin/switch/{backend}/off` endpoints to
+  turn the backend on and off
+- Added POST/GET `/admin/notices`, DELETE `/admin/notices/{notice_id}`,
+  POST `/admin/notices/{notice_id}/dismiss` and GET `/counts/notices` for notices
+
+## [2026.06.0-rc.2] - 2026-05-28
+
+### Added
+
+- Added `/admin/recalibration/{backend}/init`, `/admin/recalibration/{backend}/cancel`
+  and `/admin/recalibration/{backend}/info` endpoints for recalibration control
+- Added `/admin/switch/{backend}/on` and `/admin/switch/{backend}/off` endpoints to
+  turn the backend on and off
+- Added POST/GET `/admin/notices`, DELETE `/admin/notices/{notice_id}`,
+  POST `/admin/notices/{notice_id}/dismiss` and GET `/counts/notices` for notices
+
 ## [2026.06.0-rc.1] - 2026-05-13
 
 No change
