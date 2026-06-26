@@ -14,6 +14,14 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+## [2026.06.0] - 2026-06-26
+
+This is part of the tergite release v2026.06.0.
+
+### Changed
+
+- Added notices fixtures to the e2e-test file
+
 ## [2026.06.0-rc.2] - 2026-05-28
 
 ### Changed
