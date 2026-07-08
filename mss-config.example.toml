@@ -125,32 +125,14 @@ email_domain = "example.com"
 roles = ["admin", "user"]
 
 [[auth.clients]]
-name = "puhuri"
-client_id = "some-puhuri-obtained-client-id"
-client_secret = "some-puhuri-obtained-client-secret"
-redirect_url = "http://127.0.0.1:8002/auth/puhuri/callback"
+name = "example"
+client_id = "some-example-obtained-client-id"
+client_secret = "some-example-obtained-client-secret"
+redirect_url = "http://127.0.0.1:8002/auth/example/callback"
 client_type = "openid"
 email_regex = "^(john\\.doe|jane)@example\\.com$"
 email_domain = "example.com"
 roles = ["user"]
-openid_configuration_endpoint = "https://proxy.acc.puhuri.eduteams.org/.well-known/openid-configuration"
+openid_configuration_endpoint = "https://example.org/.well-known/openid-configuration"
 
-# Puhuri synchronization
-# ======================
-# Puhuri is a resource management platform for HPC systems, that is also to be used for Quantum Computer's
-[puhuri]
-# turn puhuri synchronization OFF or ON, default=true
-is_enabled = true
-# the URI to the Puhuri WALDUR server instance
-# Please contact the Puhuri team to get this.
-waldur_api_uri = "<the URI to the Puhuri Waldur server>"
-# The access token to be used in the Waldur client [https://docs.waldur.com/user-guide/] to connect to Puhuri
-# Please contact the Puhuri team on how to get this from the UI
-waldur_client_token = "<API token for a puhuri user who has 'service provider manager' role for our offering on puhuri>"
 
-# The unique ID for the service provider associated with this app in the Waldur Puhuri server
-# Please contact the Puhuri team on how to get this from the UI
-provider_uuid = "<the unique ID for the service provider associated with this app in Puhuri>"
-
-# the interval in seconds at which puhuri is polled. default is 900 (15 minutes)
-poll_interval = 900

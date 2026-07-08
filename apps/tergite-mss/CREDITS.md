@@ -37,6 +37,7 @@ Added the Authentication/Authorization/Accounting features
 - Project-based authorization via app tokens saved in the database
 - Project-based tracking of QPU usage in terms of durations of experiments
 - Integration with [Puhuri HPC/cloud allocation service](https://puhuri.io/)
+- Secure connections between backend and frontend via websockets
 
 Added integration test suite plus CI/CD
 Implemented version v2 of the API

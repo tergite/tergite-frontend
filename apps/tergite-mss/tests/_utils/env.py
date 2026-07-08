@@ -21,23 +21,14 @@ import tomli
 from .fixtures import get_fixture_path
 
 TEST_MSS_CONFIG_FILE = get_fixture_path("config.test.toml")
-TEST_DISABLED_PUHURI_MSS_CONFIG_FILE = get_fixture_path(
-    "disabled_puhuri_config.test.toml"
-)
+
 with Path(TEST_MSS_CONFIG_FILE).open(mode="rb") as _oauth_conf_file:
     TEST_APP_CONFIG = tomli.load(_oauth_conf_file)
     TEST_MSS_CONFIG_JSON_STR = json.dumps(TEST_APP_CONFIG)
 
-with Path(TEST_DISABLED_PUHURI_MSS_CONFIG_FILE).open(mode="rb") as _oauth_conf_file:
-    TEST_DISABLED_PUHURI_MSS_CONFIG = tomli.load(_oauth_conf_file)
-    TEST_DISABLED_PUHURI_APP_CONFIG_JSON = json.dumps(TEST_DISABLED_PUHURI_MSS_CONFIG)
-
 TEST_MSS_PUBLIC_KEY_PATH = get_fixture_path("mss_public_key.pem")
 TEST_MSS_PRIVATE_KEY_PATH = get_fixture_path("mss_private_key.pem")
 
-TEST_PUHURI_CONFIG_ENDPOINT = TEST_APP_CONFIG["auth"]["clients"][2][
-    "openid_configuration_endpoint"
-]
 TEST_DB_NAME: str = TEST_APP_CONFIG["database"]["name"]
 TEST_MONGODB_URL: str = TEST_APP_CONFIG["database"]["url"]
 TEST_JWT_SECRET: str = TEST_APP_CONFIG["auth"]["jwt_secret"]
@@ -45,7 +36,6 @@ TEST_BACKENDS: List["BackendConfDict"] = TEST_APP_CONFIG["backends"]
 TEST_BACKENDS_MAP: Dict[str, "BackendConfDict"] = {
     item["name"]: item for item in TEST_BACKENDS
 }
-TEST_PUHURI_POLL_INTERVAL: int = TEST_APP_CONFIG["puhuri"]["poll_interval"]
 TEST_REDIS_URL = TEST_APP_CONFIG["database"]["redis_url"]
 
 

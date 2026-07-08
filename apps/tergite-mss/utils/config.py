@@ -96,28 +96,6 @@ class BccConfig(BaseModel):
         return get_ip_addr(self.url.host)
 
 
-class PuhuriConfig(BaseModel):
-    """Configuration for Puhuri, a resource management platform for HPC systems and Quantum Computers"""
-
-    # turn puhuri synchronization OFF or ON, default=true
-    is_enabled: bool = True
-
-    # the URI to the Puhuri WALDUR server instance
-    # Please contact the Puhuri team to get this.
-    waldur_api_uri: str = ""
-
-    # The access token to be used in the Waldur client [https://docs.waldur.com/user-guide/] to connect to Puhuri
-    # Please contact the Puhuri team on how to get this from the UI
-    waldur_client_token: str = ""
-
-    # The unique ID for the service provider associated with this app in the Waldur Puhuri server
-    # Please contact the Puhuri team on how to get this from the UI
-    provider_uuid: str = ""
-
-    # the interval in seconds at which puhuri is polled. default is 900 (15 minutes)
-    poll_interval: int = 900
-
-
 class UserRole(str, enum.Enum):
     """The possible roles a user can have"""
 
@@ -149,7 +127,6 @@ class Oauth2ClientConfig(BaseModel, extra="allow"):
     # a client_id, client_secret and optionally if using OpenID Connect, an openid_configuration_endpoint
     # For GitHub, see https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
     # For microsoft, see https://learn.microsoft.com/en-us/azure/active-directory/develop/quickstart-web-app-python-sign-in?tabs=windows
-    # For Puhuri (openID), register an application at https://webapp.prod.puhuri.eduteams.org/sp_request
     client_id: str
     client_secret: str
 
@@ -250,9 +227,6 @@ class AppConfig(BaseModel, extra="allow"):
 
     # configuration for authentication
     auth: AuthConfig
-
-    # configration for puhuri
-    puhuri: PuhuriConfig
 
     # cache for the backends dict
     _backends_dict: Dict[str, BccConfig] = None

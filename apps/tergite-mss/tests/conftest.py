@@ -4,10 +4,8 @@ from redis import Redis
 from tests._utils.env import (
     TEST_BACKENDS,
     TEST_DB_NAME,
-    TEST_DISABLED_PUHURI_APP_CONFIG_JSON,
     TEST_JWT_SECRET,
     TEST_MONGODB_URL,
-    TEST_PUHURI_CONFIG_ENDPOINT,
     TEST_REDIS_URL,
     setup_test_env,
 )
@@ -18,13 +16,10 @@ setup_test_env()
 # See: https://github.com/pydantic/pydantic/discussions/9343#discussioncomment-10723743
 stub_pydantic_match_type_for_freezegun()
 
-import importlib
 import multiprocessing
 import random
 from datetime import datetime, timezone
-from os import environ
 from typing import Any, Dict, Generator, List
-from unittest.mock import Mock
 
 import httpx
 import pymongo.database
@@ -32,17 +27,13 @@ import pytest
 from beanie import PydanticObjectId
 from fastapi.testclient import TestClient
 from fastapi_users.router.oauth import generate_state_token
-from filelock import FileLock
 from httpx_oauth.clients import github, microsoft
 
-import settings
 from services.auth.projects.dtos import ProjectSource
-from services.external import puhuri
 from tests._utils import mock_backend
 from tests._utils.auth import (
     INVALID_CHALMERS_PROFILE,
     INVALID_GITHUB_PROFILE,
-    INVALID_PUHURI_PROFILE,
     TEST_APP_TOKEN_STRING,
     TEST_CHALMERS_PROFILE,
     TEST_CHALMERS_TOKEN_RESP,
@@ -50,8 +41,6 @@ from tests._utils.auth import (
     TEST_GITHUB_TOKEN_RESP,
     TEST_NO_QPU_APP_TOKEN_STRING,
     TEST_PROJECT_EXT_ID,
-    TEST_PUHURI_PROFILE,
-    TEST_PUHURI_TOKEN_RESP,
     TEST_SUPERUSER_ID,
     TEST_SYSTEM_USER_APP_TOKEN_STRING,
     TEST_USER_DICT,
@@ -64,10 +53,8 @@ from tests._utils.auth import (
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mock_backend import CREATED_BOOKINGS
 from tests._utils.modules import remove_modules
-from tests._utils.waldur import MockWaldurClient
 
 BACKEND_SLUGS = ("Loke", "Pingu")
-_PUHURI_OPENID_CONFIG = load_json_fixture("puhuri_openid_config.json")
 PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
 JOB_LIST = load_json_fixture("job_list.json")
@@ -97,61 +84,7 @@ def mock_socket_gethostbyname(mocker):
 
 
 @pytest.fixture
-def mock_puhuri_synchronize(mocker) -> Mock:
-    """A mock of the internal puhuri synchronize"""
-    mocker.patch("services.external.puhuri.synchronize")
-    yield puhuri.synchronize
-
-
-@pytest.fixture
-def disabled_puhuri_sync():
-    """Disables PUHURI synchronization"""
-    original_env = {
-        "MSS_CONFIG_JSON_STR": environ.get("MSS_CONFIG_JSON_STR", ""),
-    }
-
-    environ["MSS_CONFIG_JSON_STR"] = TEST_DISABLED_PUHURI_APP_CONFIG_JSON
-    importlib.reload(settings)
-    yield
-
-    # reset
-    environ["MSS_CONFIG_JSON_STR"] = original_env["MSS_CONFIG_JSON_STR"]
-    importlib.reload(settings)
-
-
-@pytest.fixture
-def mock_puhuri(respx_mock):
-    """Mock of the puhuri openid config url"""
-    respx_mock.get(TEST_PUHURI_CONFIG_ENDPOINT).mock(
-        return_value=httpx.Response(status_code=200, json=_PUHURI_OPENID_CONFIG)
-    )
-    yield respx_mock
-
-
-@pytest.fixture
-def mock_puhuri_sync_calls():
-    """A mock puhuri client that initializes the puhuri sync process"""
-    # ensure that all processes in this case are 'spawn'ed regardless
-    #   of operating system type
-    with FileLock(".semaphore.lock"):
-        ctx = multiprocessing.get_context("spawn")
-        queue = ctx.Queue()
-        worker = ctx.Process(
-            target=setup_puhuri_sync,
-            args=([], queue),
-        )
-        worker.start()
-
-        yield queue
-
-        # clean up
-        worker.terminate()
-        worker.join()
-        worker.close()
-
-
-@pytest.fixture
-def db(mock_puhuri) -> pymongo.database.Database:
+def db() -> pymongo.database.Database:
     """The mongo db instance for testing"""
     mongo_client = pymongo.MongoClient(TEST_MONGODB_URL)
     database = mongo_client[TEST_DB_NAME]
@@ -242,24 +175,6 @@ def inserted_projects(db) -> Dict[str, Dict[str, Any]]:
 
 
 @pytest.fixture
-def existing_puhuri_projects(db) -> List[Dict[str, Any]]:
-    """A list of pre-existing puhuri projects"""
-    from services.auth import Project
-
-    projects = []
-    for item in PROJECT_LIST:
-        record = {
-            **item,
-            "source": ProjectSource.PUHURI.value,
-            "_id": PydanticObjectId(item["_id"]),
-        }
-        projects.append({**record})
-        insert_if_not_exist(db, Project, record)
-
-    yield projects
-
-
-@pytest.fixture
 def inserted_project_ids(inserted_projects) -> List[str]:
     """A list of inserted project ids for version 2"""
     yield list(inserted_projects.keys())
@@ -284,7 +199,7 @@ def unallocated_projects(db) -> Dict[str, Dict[str, Any]]:
 
 
 @pytest.fixture
-def app_tokens_with_timestamps(db) -> List[Dict[str, Any]]:
+def app_tokens_with_timestamps(db) -> Generator[List[Dict[str, Any]], Any, None]:
     """A list of inserted app tokens"""
     from services.auth import AppToken
 
@@ -306,7 +221,7 @@ def app_tokens_with_timestamps(db) -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def inserted_app_tokens(db) -> List[Dict[str, Any]]:
+def inserted_app_tokens(db) -> Generator[List[Dict[str, Any]], Any, None]:
     """A list of inserted app tokens"""
     from services.auth import AppToken
 
@@ -325,43 +240,15 @@ def inserted_app_tokens(db) -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def oauth_state() -> str:
+def oauth_state() -> Generator[str, Any, None]:
     """The state to use to make oauth2 requests"""
     yield generate_state_token({}, secret=TEST_JWT_SECRET)
 
 
 @pytest.fixture
-def cookie_oauth_state() -> str:
+def cookie_oauth_state() -> Generator[str, Any, None]:
     """The state to use to make oauth2 requests when using cookies"""
     yield generate_state_token({"next": TEST_NEXT_COOKIE_URL}, secret=TEST_JWT_SECRET)
-
-
-@pytest.fixture
-def puhuri_user(respx_mock):
-    """A valid puhuri user with right email format"""
-    respx_mock.get(_PUHURI_OPENID_CONFIG["userinfo_endpoint"]).mock(
-        return_value=httpx.Response(status_code=200, json=TEST_PUHURI_PROFILE)
-    )
-
-    respx_mock.post(_PUHURI_OPENID_CONFIG["token_endpoint"]).mock(
-        return_value=httpx.Response(status_code=200, json=TEST_PUHURI_TOKEN_RESP)
-    )
-
-    yield respx_mock
-
-
-@pytest.fixture
-def invalid_puhuri_user(respx_mock):
-    """An invalid puhuri user with wrong email format"""
-    respx_mock.get(_PUHURI_OPENID_CONFIG["userinfo_endpoint"]).mock(
-        return_value=httpx.Response(status_code=200, json=INVALID_PUHURI_PROFILE)
-    )
-
-    respx_mock.post(_PUHURI_OPENID_CONFIG["token_endpoint"]).mock(
-        return_value=httpx.Response(status_code=200, json=TEST_PUHURI_TOKEN_RESP)
-    )
-
-    yield respx_mock
 
 
 @pytest.fixture
@@ -590,28 +477,3 @@ def get_unauthorized_app_token_post_with_cookies():
     ]
 
     return admin_only_post_data + user_only_post_data
-
-
-def setup_puhuri_sync(
-    args,
-    queue: multiprocessing.Queue,
-    **kwargs,
-):
-    """Sets up the puhuri sync worker ready for a different thread/process
-
-    Args:
-        args: the args to pass to puhuri_sync.main
-        queue: a queue for sharing state across processes
-        kwargs: the key-word arguments to pass to puhuri_sync.main
-    """
-    setup_test_env()
-    remove_modules(["settings", "api", "utils", "tests", "waldur_client", "services"])
-    import waldur_client
-
-    waldur_client.WaldurClient = lambda api_url, access_token: MockWaldurClient(
-        api_url=api_url, access_token=access_token, queue=queue
-    )
-
-    from api.scripts import puhuri_sync
-
-    puhuri_sync.main(args, **kwargs)

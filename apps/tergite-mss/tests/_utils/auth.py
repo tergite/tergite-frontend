@@ -43,9 +43,6 @@ _password_helper = PasswordHelper()
 TEST_GITHUB_PROFILE = dict(id="test-github-user", email="paul.doe@example.com")
 INVALID_GITHUB_PROFILE = dict(id="invalid-github-user", email="julie.doe@example.com")
 
-TEST_PUHURI_PROFILE = dict(sub="test-puhuri-user", email="paul.doe@example.se")
-INVALID_PUHURI_PROFILE = dict(sub="invalid-puhuri-user", email="ruth.doe@example.com")
-
 TEST_CHALMERS_PROFILE = dict(
     id="test-chalmers-user", userPrincipalName="paul.doe@chalmers.com"
 )
