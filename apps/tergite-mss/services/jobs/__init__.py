@@ -15,11 +15,11 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 from uuid import UUID
 
+from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
@@ -97,12 +97,13 @@ async def create_job(
             ServiceUnavailableError: device is currently unavailable.
                 See :meth:`utils.http_clients.BccClient.save_credentials`
     """
-    logging.info(f"Creating new job with id: {job.job_id}")
+    logger.info(f"Creating new job with id: {job.job_id} for user: {user_id}")
     encrypted_token, token = await bcc_client.get_token(
         job_id=job.job_id, user_id=user_id, request_id=request_id
     )
     job.access_token = encrypted_token
     await mongodb_utils.insert_one(collection=db.jobs, document=job.model_dump())
+    logger.debug(f"Job {job.job_id} successfully saved to database")
 
     upload_url = _without_special_docker_host_domain(
         f"{bcc_client.public_base_url}/jobs"

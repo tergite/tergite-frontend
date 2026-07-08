@@ -13,11 +13,11 @@
 # that they have been altered from the originals.
 #
 # Refactored by Martin Ahindura - 2023-11-08, 2024-08-01
-import logging
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Query, WebSocketException
 from fastapi.websockets import WebSocket
+from loguru import logger
 from pydantic import ValidationError
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocketDisconnect
@@ -145,7 +145,7 @@ async def handle_device_events(
                     {"status": "error", "detail": f"forbidden: {exp}"}
                 )
             except Exception as exp:
-                logging.error(exp)
+                logger.exception("Unexpected exception in device websocket handler")
                 event_response.update(
                     {"status": "error", "detail": f"unexpected server error"}
                 )

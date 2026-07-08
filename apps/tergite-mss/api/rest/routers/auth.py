@@ -14,6 +14,7 @@
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, FastAPI, Query
+from loguru import logger
 
 import settings
 from services.auth import JWT_AUTH, JWT_COOKIE_BACKEND, providers
@@ -33,12 +34,14 @@ def include_auth_router(root_router: Union[APIRouter, FastAPI]):
 
     # Oauth clients for authentication
     for client in settings.CONFIG.auth.clients:
+        client_conf = Oauth2ClientConfig.model_validate(client)
+        logger.info(f"Registering OAuth2 client provider: {client_conf.name}")
         register_oauth2_client(
             router,
             controller=JWT_AUTH,
             auth_cookie_backend=JWT_COOKIE_BACKEND,
             jwt_secret=settings.CONFIG.auth.jwt_secret,
-            conf=Oauth2ClientConfig.model_validate(client),
+            conf=client_conf,
             tags=["auth"],
         )
 

@@ -10,21 +10,143 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Utilities for logging"""
+import json
 import logging
+import sys
+import traceback
 from typing import Any, Coroutine, TypeVar
 
-import settings
+from loguru import logger
 
 T = TypeVar("T")
 
-# error logger
-err_logger = logging.getLogger("uvicorn.error")
-# work around for testing to allow errors to be seen in terminal
-if settings.CONFIG.environment == "test":
-    err_logger.error = print
-    err_logger.info = print
-    err_logger.warning = print
-    err_logger.debug = print
+# error logger wrapper to preserve backward compatibility
+err_logger = logger
+
+
+class InterceptHandler(logging.Handler):
+    """Custom logging handler that intercepts standard Python logging logs
+    and redirects them to Loguru.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Get corresponding Loguru level if it exists
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Find caller from where originated the logged message
+        frame, depth = logging.currentframe(), 2
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
+
+
+def json_formatter(record):
+    """Serialize Loguru records to a single-line flat JSON object."""
+    # Handle exception if present
+    exception_data = None
+    exception = record["exception"]
+    if exception is not None:
+        exception_data = {
+            "type": exception.type.__name__,
+            "value": str(exception.value),
+            "traceback": "".join(
+                traceback.format_exception(
+                    exception.type, exception.value, exception.traceback
+                )
+            ),
+        }
+
+    # Construct the flat structured log object
+    log_object = {
+        "timestamp": record["time"].isoformat(),
+        "level": record["level"].name,
+        "message": record["message"],
+        "logger": record["name"],
+        "file": f"{record['file'].name}:{record['line']}",
+        "function": record["function"],
+        "process_id": record["process"].id,
+        "thread_id": record["thread"].id,
+    }
+
+    # Inject contextual variables from extra (e.g. request_id)
+    for key, val in record["extra"].items():
+        if key != "request_id_display":
+            log_object[key] = val
+
+    # If exception is present, add to json
+    if exception_data:
+        log_object["exception"] = exception_data
+
+    # Save serialized string to extra and return standard key
+    record["extra"]["serialized"] = json.dumps(log_object)
+    return "{extra[serialized]}\n"
+
+
+def patch_record(record):
+    """Patch record to ensure request_id exists and formats display correctly."""
+    request_id = record["extra"].get("request_id")
+    if request_id:
+        record["extra"]["request_id_display"] = f"[ID:{request_id}] | "
+    else:
+        record["extra"]["request_id_display"] = ""
+
+
+def setup_logging(environment: str):
+    """Configure Loguru to handle all logging in the application."""
+    # Remove default Loguru handlers
+    logger.remove()
+
+    # Determine log level
+    log_level = "DEBUG"
+    if environment == "production":
+        log_level = "INFO"
+    elif environment == "test":
+        log_level = "WARNING"
+
+    # Configure Loguru based on environment
+    if environment == "production":
+        # Production: structured JSON logging (single line per record)
+        logger.add(
+            sys.stdout,
+            level=log_level,
+            format=json_formatter,
+        )
+    else:
+        # Development / Test: colored, human-readable logging
+        log_format = (
+            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+            "{extra[request_id_display]}"
+            "<level>{message}</level>"
+        )
+        logger.configure(patcher=patch_record)
+        logger.add(sys.stderr, level=log_level, format=log_format)
+
+    # Intercept standard library logging records
+    std_level = logging.getLevelName(log_level)
+    logging.basicConfig(handlers=[InterceptHandler()], level=std_level, force=True)
+
+    # Attach InterceptHandler to key loggers and disable their custom handlers to avoid duplicates
+    intercept_loggers = [
+        "uvicorn",
+        "uvicorn.error",
+        "uvicorn.access",
+        "fastapi",
+        "beanie",
+        "motor",
+    ]
+    for logger_name in intercept_loggers:
+        std_logger = logging.getLogger(logger_name)
+        std_logger.handlers = []
+        std_logger.propagate = True
 
 
 async def log_if_err(
@@ -43,4 +165,4 @@ async def log_if_err(
     try:
         return await coro
     except Exception as exp:
-        err_logger.error(f"{err_msg_prefix}: {exp.__class__.__name__}: {exp}")
+        logger.exception(f"{err_msg_prefix}: {exp.__class__.__name__}: {exp}")

@@ -13,13 +13,13 @@
 
 """Miscellaneous utility functions for the routers"""
 
-import logging
 import uuid
 from datetime import datetime
 from typing import Dict
 
 from cryptography.exceptions import InvalidSignature
 from fastapi import Depends, WebSocketException
+from loguru import logger
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocket
@@ -110,7 +110,7 @@ def get_verified_device_name(websocket: WebSocket) -> str:
 
         return name
     except (KeyError, InvalidSignature, ValueError, AttributeError) as exp:
-        logging.error(exp)
+        logger.warning(f"WebSocket signature/nonce validation failed: {exp}")
         raise WebSocketException(code=WS_1008_POLICY_VIOLATION, reason="unauthorized")
 
 
