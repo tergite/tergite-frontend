@@ -118,10 +118,3 @@ email_regex = "^(.*)@example\\.com$"
 email_domain = "example.com"
 roles = ["admin", "user"]
 openid_configuration_endpoint = "OPENID_CONFIG_URL"
-
-
-# Puhuri synchronization
-# Puhuri is a resource management platform for HPC systems, that is also to be used for Quantum Computer's
-[puhuri]
-# turn puhuri synchronization OFF or ON, default=true
-is_enabled = false

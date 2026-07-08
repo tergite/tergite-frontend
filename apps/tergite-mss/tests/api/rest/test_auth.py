@@ -48,11 +48,6 @@ _AUTH_PROVIDERS = [
         email_domain="example.com",
     ),
     dict(
-        name="puhuri",
-        url="http://testserver/auth/puhuri/auto-authorize",
-        email_domain="example.se",
-    ),
-    dict(
         name="gitlab",
         url="http://testserver/auth/gitlab/auto-authorize",
         email_domain="example.com",
@@ -70,7 +65,6 @@ _SEARCH_PARAMS = [
     {"email_domain": "example.com"},
     {"email_domain": "example.com", "name": "github"},
     {"email_domain": "example.com", "name": "gitlab"},
-    {"email_domain": "example.se"},
     {"email_domain": "chalmers.com"},
     {},
 ]
@@ -150,35 +144,6 @@ def test_chalmers_cookie_auto_authorize(client):
         assert re.match(auth_url_pattern, got) is not None
 
 
-def test_puhuri_cookie_authorize(client):
-    """Puhuri users can authorize at /auth/puhuri/authorize using cookies"""
-    """Any random partner users can authorize at /auth/{partner}/authorize"""
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get(f"/auth/puhuri/authorize?next={TEST_NEXT_COOKIE_URL}")
-        auth_url_pattern = r"^https:\/\/proxy.acc.puhuri.eduteams.org\/OIDC\/authorization\?response_type\=code\&client_id\=test-puhuri-client-id\&redirect_uri\=http\%3A\%2F\%2Ftestserver\%2Fauth\%2Fpuhuri\%2Fcallback\&state=.*\&scope\=openid\+email$"
-
-        got = response.json()
-        assert response.status_code == 200
-        assert re.match(auth_url_pattern, got["authorization_url"]) is not None
-
-
-def test_puhuri_cookie_auto_authorize(client):
-    """Puhuri users can automatically be redirected at /auth/puhuri/auto-authorize using cookies"""
-    """Any random partner users can authorize at /auth/{partner}/authorize"""
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get(
-            f"/auth/puhuri/auto-authorize?next={TEST_NEXT_COOKIE_URL}",
-            follow_redirects=False,
-        )
-        auth_url_pattern = r"^https:\/\/proxy.acc.puhuri.eduteams.org\/OIDC\/authorization\?response_type\=code\&client_id\=test-puhuri-client-id\&redirect_uri\=http\%3A\%2F\%2Ftestserver\%2Fauth\%2Fpuhuri\%2Fcallback\&state=.*\&scope\=openid\+email$"
-
-        got = response.headers["location"]
-        assert response.status_code == 307
-        assert re.match(auth_url_pattern, got) is not None
-
-
 def test_github_cookie_callback(client, github_user, cookie_oauth_state):
     """Github users can be redirected to /auth/github/callback to get their JWT cookies"""
     # using context manager to ensure on_startup runs
@@ -233,38 +198,6 @@ def test_chalmers_cookie_callback_disallowed_email(
     with client as client:
         response = client.get(
             f"/auth/chalmers/callback?code=test&state={cookie_oauth_state}",
-            follow_redirects=False,
-        )
-
-        got = response.json()
-        assert response.status_code == 403
-        assert got == {"detail": "user not permitted"}
-
-
-def test_puhuri_cookie_callback(client, puhuri_user, cookie_oauth_state):
-    """Puhuri users can be redirected to /auth/puhuri/callback to get their cookies"""
-    """Any random partner users can authorize at /auth/{partner}/authorize"""
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get(
-            f"/auth/puhuri/callback?code=test&state={cookie_oauth_state}",
-            follow_redirects=False,
-        )
-
-        assert response.headers["location"] == TEST_NEXT_COOKIE_URL
-        assert response.status_code == 307
-        access_token = _get_token_from_cookie(response)
-        assert is_valid_jwt(access_token)
-
-
-def test_puhuri_cookie_callback_disallowed_email(
-    client, invalid_puhuri_user, cookie_oauth_state
-):
-    """Forbidden error raised when user email returned does not match Puhuri email regex even with cookies"""
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get(
-            f"/auth/puhuri/callback?code=test&state={cookie_oauth_state}",
             follow_redirects=False,
         )
 

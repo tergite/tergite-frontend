@@ -17,7 +17,7 @@
 # that they have been altered from the originals.
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 from uuid import UUID
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -136,7 +136,7 @@ async def get_latest_many(
         exclude: the fields to exclude
         sort: the fields to sort by, prefixing any with a '-' means descending; default = ()
     """
-    return await mongodb_utils.find(
+    results = await mongodb_utils.find(
         db.jobs,
         filters=filters,
         exclude=exclude,
@@ -146,6 +146,9 @@ async def get_latest_many(
         schema=Job,
         skip_validation=True,
     )
+    # just for the
+    results = cast(list[Job], results)
+    return results
 
 
 async def update_job(db: AsyncIOMotorDatabase, job_id: str, payload: JobUpdate) -> Job:

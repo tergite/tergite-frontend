@@ -33,25 +33,8 @@ CONFIG: AppConfig = AppConfig.from_json_str(_MSS_CONFIG_JSON_STR)
 PRIVATE_KEY_PASSWORD = CONFIG.private_key_password
 
 _is_production = CONFIG.environment == "production"
-_is_puhuri_enabled = CONFIG.puhuri.is_enabled
 
 # Logger
 _logger_level = logging.INFO if _is_production else logging.WARN
 root_logger = logging.getLogger()
 root_logger.setLevel(_logger_level)
-
-# PUHURI synchronization
-if _is_puhuri_enabled and not CONFIG.puhuri.waldur_api_uri:
-    raise ValueError(
-        "'puhuri.waldur_api_uri' config variable must be set if 'puhuri.is_enabled' is true."
-    )
-
-if _is_puhuri_enabled and not CONFIG.puhuri.waldur_client_token:
-    raise ValueError(
-        "'puhuri.waldur_client_token' environment variable must be set if 'puhuri.is_enabled' is true."
-    )
-
-if _is_puhuri_enabled and not CONFIG.puhuri.provider_uuid:
-    raise ValueError(
-        "'puhuri.provider_uuid' config variable must be set if 'puhuri.is_enabled' is true."
-    )

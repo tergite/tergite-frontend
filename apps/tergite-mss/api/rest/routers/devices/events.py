@@ -13,7 +13,6 @@
 """Module containing event handlers"""
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-import settings
 from services import calibration as calibration_service
 from services import devices as devices_service
 from services import jobs as jobs_service
@@ -21,7 +20,6 @@ from services.auth import ProjectDatabase
 from services.calibration import DeviceCalibration
 from services.devices import DeviceUpsert
 from services.devices.dtos import DeviceSwitchData
-from services.external import puhuri as puhuri_service
 from services.jobs import JobUpdate
 from utils.api import GeneralMessage
 
@@ -55,14 +53,10 @@ async def on_job_updated_event(
 
     qpu_usage = getattr(data.timestamps, "resource_usage", None)
     if old_job.duration_in_secs is None and qpu_usage is not None:
-        project = await jobs_service.update_qpu_usage(
+        await jobs_service.update_qpu_usage(
             db, project_db=project_db, job_id=job_id, qpu_usage=qpu_usage
         )
 
-        if settings.CONFIG.puhuri.is_enabled:
-            await puhuri_service.save_qpu_usage(
-                db, job_id=job_id, project=project, qpu_usage=qpu_usage
-            )
     updated_job = await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)
     return {
         "status": "success",

@@ -1,5 +1,0 @@
-python-waldur-client @ https://github.com/waldur/python-waldur-client/archive/master.zip
-requests>=2.31.0
-pydantic<=1.10.9
-pyjwt>=2.8.0
-motor>=3.3.2

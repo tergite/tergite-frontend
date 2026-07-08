@@ -38,7 +38,7 @@ email_regex = ".*"
 # roles can be: "admin", "user", "researcher", "partner". Default is "user".
 roles = ["partner", "user"]
 # openid_configuration_endpoint is necessary if Company B uses OpenID Connect, otherwise ignore.
-openid_configuration_endpoint = "https://proxy.acc.puhuri.eduteams.org/.well-known/openid-configuration"
+openid_configuration_endpoint = "https://example.com/.well-known/openid-configuration"
 ```
 
 - Start the frontend.
@@ -138,57 +138,3 @@ It also needs to be the same domain that your `MSS_URL` environment variable is 
   In future, we might limit each token to only one request.
 - A similar flow is used to download raw logfiles from BCC at `/logfiles/{job_id}` endpoint.
 - For all other BCC endpoints, they must be accessed via MSS on behalf of the user.
-
-## Puhuri
-
-[Puhuri](https://puhuri.neic.no/) is an HPC resource management platform that could also be used to manage Quantumm Computer systems.
-
-We need to synchronize MSS's resource management with that in Puhuri
-
-The Puhuri Entity Layout
-![Puhuri Layout](./assets/puhuri-entity-layout.png)
-
-### Flows
-
-More information about flows can be found in the [puhuri docs folder](puhuri)
-
-![Selecting resource to report on](./assets/puhuri-resource-usage-reporting-flow.png)
-
-### Assumptions
-
-- When creating components in the puhuri UI, the 'measurement unit's
-  set on the component are of the following possible values:
-  'second', 'hour', 'minute', 'day', 'week', 'half_month', and 'month'.
-
-### How to Start the Puhuri Sync
-
-- Ensure that the `is_enabled = true` in the `[puhuri]` table in your `mss-config.toml` file
-- Ensure all other variables in the `[puhuri]` table in your `mss-config.toml` file are appropriately set e.g.
-
-```toml
-[puhuri]
-# the URI to the Puhuri WALDUR server instance
-# Please contact the Puhuri team to get this.
-waldur_api_uri = "<the URI to the Puhuri Waldur server>"
-# The access token to be used in the Waldur client [https://docs.waldur.com/user-guide/] to connect to Puhuri
-# Please contact the Puhuri team on how to get this from the UI
-waldur_client_token = "<API token for a puhuri user who has 'service provider manager' role for our offering on puhuri>"
-# The unique ID for the service provider associated with this app in the Waldur Puhuri server
-# Please contact the Puhuri team on how to get this from the UI
-provider_uuid = "<the unique ID for the service provider associated with this app in Puhuri>"
-# the interval in seconds at which puhuri is polled. default is 900 (15 minutes)
-poll_interval = "<some value>"
-```
-
-- If you wish to start only the puhuri synchronization script without the REST API, run in your virtual environment:
-
-```shell
-python -m api.scripts.puhuri_sync --ignore-if-disabled
-```
-
-- In order to run both the REST API and this puhuri synchronization script, run in your virtual environment:
-
-```shell
-python -m api.scripts.puhuri_sync --ignore-if-disabled & \
-  uvicorn --host 0.0.0.0 --port 8000 api.rest:app  --proxy-headers
-```
