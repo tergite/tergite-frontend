@@ -35,6 +35,12 @@ PRIVATE_KEY_PASSWORD = CONFIG.private_key_password
 _is_production = CONFIG.environment == "production"
 
 # Logger
-_logger_level = logging.INFO if _is_production else logging.WARN
+if _is_production:
+    _logger_level = logging.INFO
+elif CONFIG.environment == "test":
+    _logger_level = logging.WARNING
+else:
+    _logger_level = logging.DEBUG
+
 root_logger = logging.getLogger()
 root_logger.setLevel(_logger_level)

@@ -11,6 +11,16 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 - Removed puhuri support as this is not in the long term plans for maintenance
 
+### Added
+
+- Integrated `loguru` for clean, structured, and environment-dependent logging.
+- Added flat JSON log formatter in production for seamless Docker and `journalctl` ingestion.
+- Added standard logging `InterceptHandler` to capture and route logs from Uvicorn, FastAPI, and Beanie/Motor to Loguru.
+- Added request correlation tracking via `logger.contextualize` in a unified request-response logging middleware.
+- Added smart traceback capture in exception handlers (logs full tracebacks for `500+` server errors, logs `4xx` client errors as warnings without tracebacks).
+- Added lifecycle process start/shutdown messages and OAuth2 client provider registration logs.
+- Added Loguru configuration support to the background Puhuri synchronization worker script.
+
 ## [2026.06.0] - 2026-06-26
 
 This is part of the tergite release v2026.06.0.

@@ -10,7 +10,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Clients for accessing certain HTTP services"""
-import logging
 import time
 from datetime import datetime
 from json import JSONDecodeError
@@ -35,6 +34,7 @@ from beanie import PydanticObjectId
 from fastapi.exceptions import HTTPException
 from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
 from httpx._client import UseClientDefault
+from loguru import logger
 
 from services.auth import User
 from services.auth.users import UserDatabase
@@ -757,6 +757,7 @@ class BccClient:
                 is_admin=is_admin,
                 key_password=key_password,
             )
+            logger.debug(f"Sending request to BCC: {method} {url}")
             response = await self._client.request(
                 method,
                 url,
@@ -770,11 +771,14 @@ class BccClient:
 
             if response.is_error:
                 message = _extract_error_message(response)
+                logger.warning(
+                    f"BCC returned HTTP error {response.status_code}: {message}"
+                )
                 raise HTTPException(status_code=response.status_code, detail=message)
 
             return response.json()
         except (httpx.ConnectError, httpx.TimeoutException) as exp:
-            logging.error(exp)
+            logger.exception("BCC connection failed")
             raise ServiceUnavailableError("device is currently unavailable")
 
     async def close(self):

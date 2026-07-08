@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict
 
 from fastapi import FastAPI
+from loguru import logger
 
 import settings
 from services import calibration as calib_service
@@ -52,14 +53,20 @@ def get_app_kwargs() -> Dict[str, Any]:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # on startup
+    logger.info("Initializing Tergite MSS database connections and client services...")
     await bcc.create_clients(configs=settings.CONFIG.backends)
     db = await get_default_mongodb()
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)
     await notices_service.on_startup(db)
+    logger.info("Tergite MSS startup sequence completed successfully.")
 
     yield
     # on shutdown
+    logger.info(
+        "Tergite MSS shutting down. Closing active connections and cleaning up..."
+    )
     await bcc.close_clients()
     await devices_ws_manager.close_all(reason="server shutting down")
     await devices_service.disconnect_all(db)
+    logger.info("Tergite MSS shutdown sequence completed.")

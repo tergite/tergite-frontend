@@ -17,7 +17,9 @@
 
 from fastapi import FastAPI
 from fastapi.requests import Request
+from loguru import logger
 
+import settings
 from api.rest.middleware import TergiteCORSMiddleware
 from services.auth.utils import TooManyListQueryParams
 from utils.api import WebsocketRequestLog, get_request_logs_store, to_http_error
@@ -29,6 +31,7 @@ from utils.exc import (
     ServiceUnavailableError,
     UnknownBccError,
 )
+from utils.logging import setup_logging
 
 from . import app_kwargs
 from .app_kwargs import get_app_kwargs
@@ -46,6 +49,9 @@ from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
 from .utils import get_default_mongodb
 
+# Initialize logging
+setup_logging(settings.CONFIG.environment)
+
 # application
 app = FastAPI(**get_app_kwargs())
 
@@ -61,43 +67,55 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def add_request_id_header(request: Request, call_next):
-    """Adds an `x-request-id` header
+async def request_logging_middleware(request: Request, call_next):
+    """Generates request ID, contextualizes logging, logs requests, and records them in requests_store."""
+    import time
 
-    Args:
-        request: the current FastAPI request object
-        call_next: the callback that calls the next middleware or route handler
-    """
-    request_id = get_uuid4_str()
+    # Resolve request ID (reuse x-request-id header if sent, or generate new)
+    request_id = (
+        request.headers.get("x-request-id")
+        or request.headers.get("X-Request-ID")
+        or get_uuid4_str()
+    )
     request.state.request_id = request_id
-    response = await call_next(request)
-    response.headers["x-request-id"] = request_id
-    return response
 
+    # Wrap request processing in Loguru context
+    with logger.contextualize(request_id=request_id):
+        logger.debug(
+            f"Incoming request: {request.method} {request.url.path} "
+            f"from {request.client.host if request.client else 'unknown'}"
+        )
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Logs requests received
+        start_time = time.time()
+        try:
+            response = await call_next(request)
+            duration = (time.time() - start_time) * 1000
 
-    It will get it from `x-request-id` if that is present or generate a new one
+            # Log response based on status code
+            log_msg = f"Completed request: {request.method} {request.url.path} - Status: {response.status_code} - Duration: {duration:.2f}ms"
+            if response.status_code >= 500:
+                logger.error(log_msg)
+            elif response.status_code >= 400:
+                logger.warning(log_msg)
+            else:
+                logger.info(log_msg)
 
-    Args:
-        request: the current FastAPI request object
-        call_next: the callback that calls the next middleware or route handler
-    """
-    request_id = request.headers.get("x-request-id")
-    if request_id is None:
-        request_id = get_uuid4_str()
-        request.state.request_id = request_id
+        except Exception as exc:
+            duration = (time.time() - start_time) * 1000
+            logger.exception(
+                f"Request crashed: {request.method} {request.url.path} - Duration: {duration:.2f}ms"
+            )
+            raise exc
 
-    response = await call_next(request)
+        # Handle requests store recording
+        requests_store = get_request_logs_store()
+        if not requests_store.exists(request_id):
+            requests_store.insert(WebsocketRequestLog.from_request(request))
 
-    requests_store = get_request_logs_store()
-    if not requests_store.exists(request_id):
-        requests_store.insert(WebsocketRequestLog.from_request(request))
-
-    response.headers["X-Request-ID"] = request_id
-    return response
+        # Attach request ID to response headers
+        response.headers["x-request-id"] = request_id
+        response.headers["X-Request-ID"] = request_id
+        return response
 
 
 # exception handlers
@@ -112,6 +130,7 @@ app.add_exception_handler(ServiceUnavailableError, to_http_error(503))
 app.add_exception_handler(UnknownBccError, to_http_error(400))
 app.add_exception_handler(TooManyListQueryParams, to_http_error(400))
 app.add_exception_handler(ForbiddenError, to_http_error(403))
+app.add_exception_handler(Exception, to_http_error(500, "Unexpected server error"))
 
 # routes
 include_auth_router(app)

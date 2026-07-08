@@ -54,6 +54,7 @@ dependencies = [
     "websockets~=15.0.1",
     "hiredis~=3.2.1",
     "redis[hiredis]~=7.1.0",
+    "loguru~=0.7.2",
 ]
 
 [project.optional-dependencies]

@@ -11,7 +11,6 @@
 # that they have been altered from the originals.
 """Utility functions for API related code"""
 import base64
-import logging
 from pathlib import Path
 from typing import (
     Any,
@@ -35,6 +34,7 @@ from fastapi import HTTPException, Response, WebSocketException, status
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.requests import Request
 from fastapi.websockets import WebSocket
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.main import IncEx
 from redis import Redis
@@ -241,7 +241,10 @@ def to_http_error(
     """
 
     async def handler(request: Request, exp: Exception) -> Response:
-        logging.error(exp)
+        if status_code >= 500:
+            logger.exception(f"HTTP Server Error {status_code}: {exp}")
+        else:
+            logger.warning(f"HTTP Client Error {status_code}: {exp}")
         message = custom_message
         if message is None:
             message = f"{exp}"

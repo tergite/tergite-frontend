@@ -9,11 +9,10 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-import logging
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Type
 
 import pymongo
+from loguru import logger
 from motor.motor_asyncio import (
     AsyncIOMotorClient,
     AsyncIOMotorCollection,
@@ -45,14 +44,10 @@ def get_mongodb(url: str, name: str) -> AsyncIOMotorDatabase:
         client = _CONNECTIONS[url]
         if client.io_loop.is_closed():
             client.close()
-            logging.debug(
-                f"New mongo db connection at {datetime.now(timezone.utc).isoformat()}"
-            )
+            logger.debug("Re-opened mongo db connection")
             client = AsyncIOMotorClient(url, tz_aware=True)
     except KeyError:
-        logging.debug(
-            f"New mongo db connection at {datetime.now(timezone.utc).isoformat()}"
-        )
+        logger.debug("New mongo db connection initialized")
         client = AsyncIOMotorClient(url, tz_aware=True)
 
     _CONNECTIONS[url] = client
