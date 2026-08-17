@@ -160,6 +160,15 @@ class Oauth2ClientConfig(BaseModel, extra="allow"):
     # Possible roles include: "admin", "user", "researcher", "partner". Default is 'user'
     roles: List[UserRole] = [UserRole.USER]
 
+    # Whether the user should be associated with an existing user of the same email if
+    # that user exists.
+    # If False, a user who already signed in with a different Oauth provider will
+    # not be allowed to sign in
+    associate_by_email: bool = False
+
+    # Whether when a user signs in, they are considered verified
+    is_verified_by_default: bool = True
+
     # config fields that are not used to create the client
     _non_client_fields = {
         "client_type",
@@ -167,6 +176,8 @@ class Oauth2ClientConfig(BaseModel, extra="allow"):
         "email_regex",
         "roles",
         "email_domain",
+        "associate_by_email",
+        "is_verified_by_default",
     }
 
 

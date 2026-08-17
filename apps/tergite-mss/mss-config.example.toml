@@ -115,6 +115,17 @@ roles = ["user"]
 # e.g. Github may have scopes
 # scopes = ["user:email"]
 
+# Whether the user should be associated with an existing user of the same email if
+# that user exists.
+# If False, a user who already signed in with a different Oauth provider will
+# not be allowed to sign in
+# default = false
+associate_by_email = false
+
+# Whether when a user signs in, they are considered verified
+# default = true
+is_verified_by_default = true
+
 # Add as many clients as you wish to have
 [[auth.clients]]
 name = "github"

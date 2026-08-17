@@ -17,9 +17,13 @@ import httpx
 import pytest
 from pytest_lazyfixture import lazy_fixture
 
+from services.auth import User
 from tests._utils.auth import (
+    TEST_CHALMERS_PROFILE,
+    TEST_GITHUB_PROFILE,
     TEST_SUPERUSER_EMAIL,
     TEST_USER_EMAIL,
+    insert_if_not_exist,
     is_valid_jwt,
 )
 from tests._utils.records import (
@@ -204,6 +208,41 @@ def test_chalmers_cookie_callback_disallowed_email(
         got = response.json()
         assert response.status_code == 403
         assert got == {"detail": "user not permitted"}
+
+
+def test_already_existing_user_github(client, github_user, db, cookie_oauth_state):
+    """GitHub users who already exist under other providers raise OAUTH_USER_ALREADY_EXISTS error"""
+    # using context manager to ensure on_startup runs
+    with client as client:
+        user = {**TEST_GITHUB_PROFILE, "hashed_password": "password"}
+        insert_if_not_exist(db, schema=User, data=user)
+
+        github_resp = client.get(
+            f"/auth/github/callback?code=test&state={cookie_oauth_state}",
+            follow_redirects=False,
+        )
+
+        got = github_resp.json()
+        assert github_resp.status_code == 400
+        assert got == {"detail": "OAUTH_USER_ALREADY_EXISTS"}
+
+
+def test_already_existing_user_chalmers(client, db, chalmers_user, cookie_oauth_state):
+    """Chalmers' users who already exist under other providers can be associated with old records"""
+    # using context manager to ensure on_startup runs
+    with client as client:
+        user = {**TEST_CHALMERS_PROFILE, "hashed_password": "password"}
+        insert_if_not_exist(db, schema=User, data=user)
+
+        chalmers_resp = client.get(
+            f"/auth/chalmers/callback?code=test&state={cookie_oauth_state}",
+            follow_redirects=False,
+        )
+
+        assert chalmers_resp.headers["location"] == TEST_NEXT_COOKIE_URL
+        assert chalmers_resp.status_code == 307
+        access_token = _get_token_from_cookie(chalmers_resp)
+        assert is_valid_jwt(access_token)
 
 
 def test_login(client):

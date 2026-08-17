@@ -52,7 +52,6 @@ from tests._utils.auth import (
 )
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mock_backend import CREATED_BOOKINGS
-from tests._utils.modules import remove_modules
 
 BACKEND_SLUGS = ("Loke", "Pingu")
 PROJECT_LIST = load_json_fixture("project_list.json")
