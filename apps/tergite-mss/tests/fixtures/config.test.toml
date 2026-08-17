@@ -61,6 +61,7 @@ client_type = "microsoft"
 email_regex = "^.*@chalmers\\.com$"
 email_domain = "chalmers.com"
 roles = ["user"]
+associate_by_email = true
 
 [[auth.clients]]
 name = "github"
