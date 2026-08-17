@@ -19,7 +19,6 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added request correlation tracking via `logger.contextualize` in a unified request-response logging middleware.
 - Added smart traceback capture in exception handlers (logs full tracebacks for `500+` server errors, logs `4xx` client errors as warnings without tracebacks).
 - Added lifecycle process start/shutdown messages and OAuth2 client provider registration logs.
-- Added Loguru configuration support to the background Puhuri synchronization worker script.
 
 ## [2026.06.0] - 2026-06-26
 
