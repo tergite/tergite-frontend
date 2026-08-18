@@ -21,6 +21,7 @@ from utils.exc import ConflictError, ForbiddenError, NotFoundError, TooManyReque
 
 from utils.config import UserRole
 
+from ..projects.database import ProjectDatabase
 from ..projects.dtos import Project
 from ..users.dtos import User
 from .dtos import (
@@ -397,14 +398,8 @@ async def _apply_approval(request: UserRequest):
         NotFoundError: project {id} not found
     """
     if request.type == UserRequestType.PROJECT_QPU_SECONDS:
-        project = await Project.find_one(
-            {"_id": PydanticObjectId(request.request.project_id)}
-        ).update(
-            {
-                "$inc": {"qpu_seconds": request.request.seconds},
-                "$set": {"low_qpu_notified_at": None},
-            },
-            response_type=UpdateResponse.NEW_DOCUMENT,
+        project = await ProjectDatabase.increment_qpu_seconds(
+            request.request.project_id, request.request.seconds
         )
         if project is None:
             raise NotFoundError(f"project {request.request.project_id} not found")

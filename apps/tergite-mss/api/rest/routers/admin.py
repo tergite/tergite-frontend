@@ -15,10 +15,12 @@ from datetime import datetime
 from typing import List, Optional
 
 from beanie import PydanticObjectId
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi import status as http_status
 
 from services import notices as notices_service
+from services import qpu_grants
+from services.qpu_grants import QpuSecondsGrantCreate, QpuSecondsGrantReport
 from services.auth import (
     APP_TOKEN_AUTH,
     Project,
@@ -228,6 +230,49 @@ async def update_user_request(
     """
     result = await user_requests.update(_id, payload=body, admin_user=user)
     return result.model_dump(mode="json")
+
+
+@router.post("/qpu-seconds-grants/", status_code=http_status.HTTP_201_CREATED)
+async def create_qpu_seconds_grant(
+    body: QpuSecondsGrantCreate,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    granted_by: User = CurrentSuperuserDep,
+) -> QpuSecondsGrantReport:
+    """Grants QPU seconds to many personal projects at once
+
+    Args:
+        body: how many seconds, to whom, and why
+        idempotency_key: makes a replayed request a no-op rather than a second grant
+        granted_by: the superuser performing the grant
+
+    Returns:
+        a report of how many projects were granted and which targets were skipped
+
+    Raises:
+        403: a single grant may not exceed {max} seconds
+    """
+    return await qpu_grants.grant(
+        body, granted_by=granted_by, idempotency_key=idempotency_key
+    )
+
+
+@router.get("/qpu-seconds-grants/")
+async def get_qpu_seconds_grants(
+    skip: int = Query(0),
+    limit: Optional[int] = Query(None),
+    _admin: User = CurrentSuperuserDep,
+):
+    """Gets the history of bulk QPU-second grants, newest first
+
+    Args:
+        skip: the number of records to skip
+        limit: the maximum number of records to return
+        _admin: the superuser making the request
+    """
+    data = await qpu_grants.get_many(skip=skip, limit=limit)
+    return PaginatedListResponse(data=data, skip=skip, limit=limit).model_dump(
+        mode="json"
+    )
 
 
 @router.post("/recalibration/{backend}/init")

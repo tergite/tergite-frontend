@@ -197,6 +197,10 @@ class ProjectsConfig(BaseModel):
     # maximum failed project lookups per user per hour before 429
     max_failed_lookups_per_hour: int = 20
 
+    # upper bound on a single bulk QPU-seconds grant, so a mistyped figure cannot hand
+    # out a decade of machine time; 30 days
+    max_grant_seconds: float = 2592000
+
 
 class NotificationsConfig(BaseModel):
     """Configuration for the notifications service"""

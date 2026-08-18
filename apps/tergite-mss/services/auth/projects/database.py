@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from beanie import PydanticObjectId, UpdateResponse
 from beanie.odm.operators.find.logical import Or
-from beanie.odm.operators.update.general import Inc
+from beanie.odm.operators.update.general import Inc, Set
 from fastapi_users.models import ID
 
 from .dtos import Project
@@ -97,6 +97,9 @@ class ProjectDatabase:
     async def increment_qpu_seconds(project_id: str, qpu_seconds: float):
         """Increments the QPU seconds of the given project
 
+        Also clears the low-QPU latch, so a project that had gone quiet warns again once
+        it next runs low. Every top-up path goes through here for that reason.
+
         Args:
             project_id: the ID of the project
             qpu_seconds: the seconds to increment by
@@ -108,5 +111,6 @@ class ProjectDatabase:
             Project.id == PydanticObjectId(project_id)
         ).update(
             Inc({Project.qpu_seconds: qpu_seconds}),
+            Set({Project.low_qpu_notified_at: None}),
             response_type=UpdateResponse.NEW_DOCUMENT,
         )

@@ -16,6 +16,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Added POST and GET `/admin/qpu-seconds-grants/` so a superuser can add QPU seconds to many
+  personal projects at once, by email list or to all of them. Requires an `Idempotency-Key`
+  header, since `$inc` is not idempotent and a retried bulk grant would otherwise apply twice.
 - Personal projects are now named after the owner's email local part, e.g.
   `paul.doe (personal)`, so an admin listing projects no longer sees a column of
   identically named rows. The `ext_id` is unchanged.

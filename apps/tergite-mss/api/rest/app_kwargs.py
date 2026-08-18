@@ -28,6 +28,7 @@ from services.devices import service as devices_service
 from services.external import bcc
 from services.notices import service as notices_service
 from services.notifications import on_startup as notifications_on_startup
+from services import qpu_grants
 
 from .routers.devices import ws_manager as devices_ws_manager
 from .utils import get_default_mongodb
@@ -61,6 +62,7 @@ async def lifespan(_app: FastAPI):
     await calib_service.on_startup(db)
     await notices_service.on_startup(db)
     await notifications_on_startup(db)
+    await qpu_grants.on_startup(db)
     logger.info("Tergite MSS startup sequence completed successfully.")
 
     yield

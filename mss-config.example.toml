@@ -75,6 +75,9 @@ personal_projects_enabled = true
 max_pending_requests_per_user = 5
 # maximum failed project lookups per user per hour before 429; default = 20
 max_failed_lookups_per_hour = 20
+# upper bound on a single bulk QPU-seconds grant, so a mistyped figure cannot hand out
+# a decade of machine time; default = 2592000 (30 days)
+max_grant_seconds = 2592000
 
 [notifications]
 # days a notification is kept before the TTL index removes it; default = 90
