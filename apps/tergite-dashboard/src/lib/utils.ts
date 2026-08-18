@@ -268,6 +268,8 @@ export function getUserRequestTitle(request: UserRequest): string {
       return `Create new project '${requestBody.name}'`;
     case "project-qpu-seconds":
       return `Add QPU time on project: '${requestBody.project_name}'`;
+    case "project-access":
+      return `Join project '${requestBody.project_name ?? requestBody.project_ext_id}'`;
     case "transfer-project":
       return `Transfer project '${requestBody.project_name}'`;
     default:

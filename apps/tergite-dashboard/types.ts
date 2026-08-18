@@ -181,10 +181,18 @@ export enum UserRequestStatus {
 }
 
 export enum UserRequestType {
+  // reserved for RFC 0002; declared on the API but not yet creatable
   CREATE_PROJECT = "create-project",
   CLOSE_PROJECT = "close-project",
   TRANSFER_PROJECT = "transfer-project",
   PROJECT_QPU_SECONDS = "project-qpu-seconds",
+  PROJECT_ACCESS = "project-access",
+}
+
+// who is entitled to react to a request
+export enum ApproverScope {
+  SYSTEM_ADMIN = "system-admin",
+  PROJECT_ADMIN = "project-admin",
 }
 
 // the type for all requests made by users to be approved by an admin
@@ -198,7 +206,26 @@ export interface UserRequest extends DbRecord {
   approver_id?: string; // id of admin who has handled it
   approver_name?: string;
   rejection_reason?: string;
+  approver_scope: ApproverScope;
+  project_id?: string;
   request: unknown;
+}
+
+// the POST body sent when asking for access to an existing shared project
+export interface ProjectAccessPostBody {
+  type: UserRequestType.PROJECT_ACCESS;
+  project_ext_id: string;
+  reason: string;
+}
+
+// a request for access to a shared project, as returned by the API
+export interface ProjectAccessUserRequest extends UserRequest {
+  type: UserRequestType.PROJECT_ACCESS;
+  request: {
+    project_ext_id: string;
+    reason: string;
+    project_name?: string;
+  };
 }
 
 // the HTTP request body sent when creating a project.
@@ -227,6 +254,8 @@ export interface Project
   user_ids: string[];
   admin_id: string;
   is_active: boolean;
+  // auto-created, undeletable, one per user
+  is_personal: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -426,6 +455,43 @@ export interface Notice
   target_user_ids?: string[];
   dismissed_by: string[];
 }
+
+export enum NotificationType {
+  PROJECT_ACCESS_REQUESTED = "project-access-requested",
+  PROJECT_ACCESS_APPROVED = "project-access-approved",
+  PROJECT_ACCESS_REJECTED = "project-access-rejected",
+  QPU_SECONDS_REQUESTED = "qpu-seconds-requested",
+  QPU_SECONDS_GRANTED = "qpu-seconds-granted",
+  QPU_SECONDS_DENIED = "qpu-seconds-denied",
+  PROJECT_MEMBERSHIP_REVOKED = "project-membership-revoked",
+}
+
+// what the recipient can do about a notification, rendered as buttons
+export interface NotificationAction {
+  kind: "user-request";
+  request_id: string;
+}
+
+// a per-recipient, event-driven message. Distinct from a Notice, which is an
+// admin-authored broadcast with its own expiry and shared dismissal state.
+export interface Notification extends DbRecord {
+  type: NotificationType;
+  title: string;
+  body: string;
+  severity: NoticeSeverity;
+  action?: NotificationAction;
+  context: Record<string, string | number | null>;
+  read_at?: string | null;
+  created_at: string;
+}
+
+// per-type delivery preferences for one user
+export interface ChannelPrefs {
+  in_app: boolean;
+  email: boolean;
+}
+
+export type NotificationPreferences = Record<NotificationType, ChannelPrefs>;
 
 export interface CountResponse {
   count: number;

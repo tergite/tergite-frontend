@@ -34,6 +34,7 @@ import {
   AdminControl,
   loader as adminControlLoader,
 } from "./pages/admin-control";
+import { Approvals, loader as approvalsLoader } from "./pages/approvals";
 
 export function AppRouter({ routerConstructor }: Props) {
   const appState = useContext(AppStateContext);
@@ -111,6 +112,15 @@ function getRoutes(appState: AppState, queryClient: QueryClient) {
               </ErrorBound>
             }
             loader={projectsLoader(appState, queryClient)}
+          />
+          <Route
+            path="approvals"
+            element={
+              <ErrorBound>
+                <Approvals />
+              </ErrorBound>
+            }
+            loader={approvalsLoader(appState, queryClient)}
           />
           <Route
             path="admin-projects"

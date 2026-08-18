@@ -1,0 +1,35 @@
+[
+  {
+    "id": "n0000000000000000000001",
+    "user_id": "5ddc8d9fb69602723cd3c38f",
+    "type": "qpu-seconds-requested",
+    "title": "QPU time request for Test 1",
+    "body": "paul.doe is asking for 3600s on Test 1: ran out",
+    "severity": "info",
+    "action": {
+      "kind": "user-request",
+      "request_id": "67c5a85529fa218e5fb635d7"
+    },
+    "context": {
+      "project_name": "Test 1"
+    },
+    "read_at": null,
+    "created_at": "2025-09-30T10:00:00.000Z",
+    "updated_at": "2025-09-30T10:00:00.000Z"
+  },
+  {
+    "id": "n0000000000000000000002",
+    "user_id": "40fbb5de7422a04fabd8d22a",
+    "type": "qpu-seconds-granted",
+    "title": "3600s of QPU time added to Test 1",
+    "body": "jane.doe granted 3600s of QPU time on Test 1.",
+    "severity": "info",
+    "action": null,
+    "context": {
+      "project_name": "Test 1"
+    },
+    "read_at": "2025-09-30T11:00:00.000Z",
+    "created_at": "2025-09-30T10:30:00.000Z",
+    "updated_at": "2025-09-30T11:00:00.000Z"
+  }
+]

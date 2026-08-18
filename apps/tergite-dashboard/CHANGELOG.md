@@ -7,6 +7,23 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+### Added
+
+- Added a notifications bell reporting the outcome of project-access and QPU-time requests,
+  with approve and reject inline on the ones awaiting the reader. Previously neither
+  requester nor approver learned anything without hunting for it.
+- Added a "Request project access" dialog on the projects page. It takes a project ID and
+  reports an unknown one on the field, so a mistyped ID is self-correcting.
+- Added an `/approvals` page where a project admin decides requests for projects they
+  administer, reached from a notification or the projects page rather than the nav.
+- Added the remaining QPU time of the user's personal project at the foot of the sidebar,
+  pointing at the request flow when it is empty.
+
+### Changed
+
+- Personal projects can no longer be deleted from the projects or admin projects page,
+  matching the API, which refuses it.
+
 ## [2026.06.0] - 2026-06-26
 
 This is part of the tergite release v2026.06.0.

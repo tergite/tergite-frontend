@@ -50,6 +50,9 @@ export const filterFormProps: DataTableFormConfig = {
           <SelectItem value={UserRequestType.CREATE_PROJECT}>
             {UserRequestType.CREATE_PROJECT}
           </SelectItem>
+          <SelectItem value={UserRequestType.PROJECT_ACCESS}>
+            {UserRequestType.PROJECT_ACCESS}
+          </SelectItem>
           <SelectItem value={UserRequestType.PROJECT_QPU_SECONDS}>
             {UserRequestType.PROJECT_QPU_SECONDS}
           </SelectItem>

@@ -20,6 +20,7 @@ import {
   QpuTimeExtensionUserRequest,
   User,
   UserRequestStatus,
+  UserRequestType,
   UserRequest,
   UserRole,
   AdminProject,
@@ -34,6 +35,12 @@ import {
   Notice,
   NoticePostRequest,
   CountResponse,
+  Notification,
+  NotificationPreferences,
+  NotificationType,
+  ChannelPrefs,
+  ProjectAccessPostBody,
+  ProjectAccessUserRequest,
 } from "../../types";
 import {
   normalizeCalibrationData,
@@ -1509,6 +1516,335 @@ async function getBookingsOfBackend(
   );
 
   return data.map((v) => toClientSideBooking(v, { backend }));
+}
+
+
+/**
+ * the query for the current user's notifications
+ *
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ *          - types - the notification types to include
+ *          - is_read - filter on read state; omit for either
+ *          - skip - the number of records to skip
+ *          - limit - the maximum number of records to return
+ */
+export function myNotificationsQuery(
+  options: {
+    baseUrl?: string;
+    types?: NotificationType[];
+    is_read?: boolean;
+    skip?: number;
+    limit?: number;
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const { types, is_read, skip, limit } = rest;
+  return queryOptions({
+    queryKey: [baseUrl, "me", "notifications", types, is_read, skip, limit],
+    queryFn: async () => await getMyNotifications(baseUrl, rest),
+    // no polling: the count badge below is what needs to stay fresh, and the list
+    // refetches when the panel opens and after any reaction
+    throwOnError: true,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * the query for the number of the current user's notifications
+ *
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ *          - types - the notification types to include
+ *          - is_read - filter on read state; omit for either
+ */
+export function notificationCountQuery(
+  options: {
+    baseUrl?: string;
+    types?: NotificationType[];
+    is_read?: boolean;
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  return queryOptions({
+    queryKey: [baseUrl, "counts", "notifications", rest.types, rest.is_read],
+    queryFn: async () => await getNotificationCount(baseUrl, rest),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
+ * the query for the current user's notification delivery preferences
+ *
+ * @param options - extra options e.g. baseUrl
+ */
+export function notificationPreferencesQuery(
+  options: { baseUrl?: string } = {},
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  return queryOptions({
+    queryKey: [baseUrl, "me", "notification-preferences"],
+    queryFn: async () => await getNotificationPreferences(baseUrl),
+    throwOnError: true,
+  });
+}
+
+/**
+ * the query for the requests the current user made, or those awaiting their approval
+ *
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ *          - role - whether to return the user's own requests or ones they may react to
+ *          - status - the status to filter by
+ *          - types - the request types to filter by
+ */
+export function myRequestsQuery(
+  options: {
+    baseUrl?: string;
+    role?: "requester" | "approver";
+    status?: UserRequestStatus;
+    types?: UserRequestType[];
+  } = {},
+) {
+  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const { role = "requester", status, types } = rest;
+  return queryOptions({
+    queryKey: [baseUrl, "me", "requests", role, status, types],
+    queryFn: async () => await getMyRequests(baseUrl, { ...rest, role }),
+    refetchInterval,
+    throwOnError: true,
+  });
+}
+
+/**
+ * Refreshes the queries for the current user's notifications and their count
+ *
+ * @param queryClient - the query client for making queries
+ * @param options - the options including baseUrl
+ */
+export async function refreshMyNotifications(
+  queryClient: QueryClient,
+  options: { baseUrl?: string } = {},
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  await queryClient.invalidateQueries({
+    queryKey: [baseUrl, "me", "notifications"],
+  });
+  await queryClient.invalidateQueries({
+    queryKey: [baseUrl, "counts", "notifications"],
+  });
+}
+
+/**
+ * Refreshes the queries for the current user's requests, either role
+ *
+ * @param queryClient - the query client for making queries
+ * @param options - the options including baseUrl
+ */
+export async function refreshMyRequests(
+  queryClient: QueryClient,
+  options: { baseUrl?: string } = {},
+) {
+  const { baseUrl = apiBaseUrl } = options;
+  await queryClient.invalidateQueries({ queryKey: [baseUrl, "me", "requests"] });
+}
+
+/**
+ * Requests access to an existing shared project, by its external ID
+ *
+ * @param payload - the project external ID and the reason for asking
+ * @param options - extra options e.g. baseUrl
+ */
+export async function requestProjectAccess(
+  payload: Omit<ProjectAccessPostBody, "type">,
+  options: { baseUrl?: string } = {},
+): Promise<ProjectAccessUserRequest> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/me/requests/`, {
+    method: "POST",
+    body: JSON.stringify({ ...payload, type: UserRequestType.PROJECT_ACCESS }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Approves a request the current user is entitled to react to
+ *
+ * @param id - the unique identifier of the request
+ * @param options - extra options e.g. baseUrl
+ */
+export async function approveMyRequest(
+  id: string,
+  options: { baseUrl?: string } = {},
+): Promise<UserRequest> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/me/requests/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ status: UserRequestStatus.APPROVED }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Rejects a request the current user is entitled to react to
+ *
+ * @param args - the request id and the optional reason for rejecting
+ * @param options - extra options e.g. baseUrl
+ */
+export async function rejectMyRequest(
+  args: { id: string; reason?: string },
+  options: { baseUrl?: string } = {},
+): Promise<UserRequest> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/me/requests/${args.id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      status: UserRequestStatus.REJECTED,
+      rejection_reason: args.reason,
+    }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Marks one of the current user's notifications read or unread
+ *
+ * @param args - the notification id and the wanted read state
+ * @param options - extra options e.g. baseUrl
+ */
+export async function setNotificationRead(
+  args: { id: string; isRead: boolean },
+  options: { baseUrl?: string } = {},
+): Promise<Notification> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/me/notifications/${args.id}`, {
+    method: "PUT",
+    body: JSON.stringify({ is_read: args.isRead }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Marks every one of the current user's notifications read
+ *
+ * @param options - extra options e.g. baseUrl
+ */
+export async function markAllNotificationsRead(
+  options: { baseUrl?: string } = {},
+): Promise<GeneralMessage> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/me/notifications/`, {
+    method: "PUT",
+    body: JSON.stringify({ is_read: true }),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Updates the named notification delivery preferences, leaving the rest untouched
+ *
+ * @param payload - the types to change and their wanted preferences
+ * @param options - extra options e.g. baseUrl
+ */
+export async function updateNotificationPreferences(
+  payload: Partial<Record<NotificationType, ChannelPrefs>>,
+  options: { baseUrl?: string } = {},
+): Promise<NotificationPreferences> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/me/notification-preferences/`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Removes a member from a project the current user administers
+ *
+ * @param args - the project id and the member's user id
+ * @param options - extra options e.g. baseUrl
+ */
+export async function removeProjectMember(
+  args: { projectId: string; userId: string },
+  options: { baseUrl?: string } = {},
+): Promise<void> {
+  const { baseUrl = apiBaseUrl } = options;
+  await authenticatedFetch(
+    `${baseUrl}/me/projects/${args.projectId}/members/${args.userId}`,
+    { method: "DELETE" },
+    { isJsonOutput: false },
+  );
+}
+
+/**
+ * Retrieves the current user's notifications
+ * @param baseUrl - the API base URL
+ * @param options - extra options for filtering
+ */
+async function getMyNotifications(
+  baseUrl: string = apiBaseUrl,
+  options: {
+    types?: NotificationType[];
+    is_read?: boolean;
+    skip?: number;
+    limit?: number;
+  } = {},
+): Promise<Notification[]> {
+  const { types, ...rest } = options;
+  const queryString = getQueryString({ ...rest, type: types });
+  const { data } = await authenticatedFetch<PaginatedData<Notification[]>>(
+    `${baseUrl}/me/notifications/?${queryString}`,
+  );
+  return data;
+}
+
+/**
+ * Retrieves the number of the current user's notifications
+ * @param baseUrl - the API base URL
+ * @param options - extra options for filtering
+ */
+async function getNotificationCount(
+  baseUrl: string = apiBaseUrl,
+  options: { types?: NotificationType[]; is_read?: boolean } = {},
+): Promise<number> {
+  const { types, ...rest } = options;
+  const queryString = getQueryString({ ...rest, type: types });
+  const { count } = await authenticatedFetch<CountResponse>(
+    `${baseUrl}/counts/notifications?${queryString}`,
+  );
+  return count;
+}
+
+/**
+ * Retrieves the current user's notification delivery preferences
+ * @param baseUrl - the API base URL
+ */
+async function getNotificationPreferences(
+  baseUrl: string = apiBaseUrl,
+): Promise<NotificationPreferences> {
+  return await authenticatedFetch(`${baseUrl}/me/notification-preferences/`);
+}
+
+/**
+ * Retrieves the requests the current user made, or those awaiting their approval
+ * @param baseUrl - the API base URL
+ * @param options - extra options for filtering
+ */
+async function getMyRequests(
+  baseUrl: string = apiBaseUrl,
+  options: {
+    role?: "requester" | "approver";
+    status?: UserRequestStatus;
+    types?: UserRequestType[];
+  } = {},
+): Promise<UserRequest[]> {
+  const { types, ...rest } = options;
+  const queryString = getQueryString({ ...rest, type: types });
+  const { data } = await authenticatedFetch<PaginatedData<UserRequest[]>>(
+    `${baseUrl}/me/requests/?${queryString}`,
+  );
+  return data;
 }
 
 /**

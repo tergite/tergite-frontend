@@ -17,12 +17,15 @@ import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CollapsibleContent } from "@radix-ui/react-collapsible";
 import { NavItem } from "@/components/ui/nav-item";
 import { Badge } from "@/components/ui/badge";
+import { Project } from "types";
+import { QpuMeter } from "./qpu-meter";
 
 export function Sidebar({
   isExpanded,
   onIsExpandedChange,
   isUserAdmin,
   pendingRequestsCount,
+  personalProject,
 }: Props) {
   const widthClass = isExpanded ? "w-56" : "w-18";
   const adminNavClass = isExpanded ? "ml-4" : "";
@@ -99,21 +102,25 @@ export function Sidebar({
         )}
       </nav>
 
-      <div className="mx-auto mt-auto py-4">
-        {isExpanded && (
-          <IconButton
-            variant="outline"
-            Icon={PanelLeftClose}
-            onClick={() => onIsExpandedChange()}
-          />
-        )}
-        {!isExpanded && (
-          <IconButton
-            variant="outline"
-            Icon={PanelRightClose}
-            onClick={() => onIsExpandedChange()}
-          />
-        )}
+      <div className="mt-auto grid gap-3 justify-items-center py-4">
+        <QpuMeter project={personalProject} isExpanded={isExpanded} />
+        {/* the toggle keeps its own wrapper: tests click the button's parent */}
+        <div className="mx-auto">
+          {isExpanded && (
+            <IconButton
+              variant="outline"
+              Icon={PanelLeftClose}
+              onClick={() => onIsExpandedChange()}
+            />
+          )}
+          {!isExpanded && (
+            <IconButton
+              variant="outline"
+              Icon={PanelRightClose}
+              onClick={() => onIsExpandedChange()}
+            />
+          )}
+        </div>
       </div>
     </aside>
   );
@@ -124,4 +131,5 @@ interface Props {
   onIsExpandedChange: () => void;
   pendingRequestsCount: number;
   isUserAdmin: boolean;
+  personalProject?: Project;
 }

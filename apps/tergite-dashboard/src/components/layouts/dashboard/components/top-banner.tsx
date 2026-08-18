@@ -1,4 +1,4 @@
-import { BellIcon, Copy, RefreshCcw } from "lucide-react";
+import { Copy, MegaphoneIcon, RefreshCcw } from "lucide-react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -17,6 +17,7 @@ import { DateTime } from "luxon";
 import { User } from "types";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Badge } from "@/components/ui/badge";
+import { NotificationsBell } from "./notifications";
 
 export function TopBanner({ currentUser }: Props) {
   const { apiToken, setApiToken, currentProjectExtId } =
@@ -85,10 +86,15 @@ export function TopBanner({ currentUser }: Props) {
           {notices?.slice(0, 1).map((notice) => (
             <NoticeBanner key={notice.id} notice={notice} />
           ))}
-          <Badge variant="outline">
-            {noticeCount}
-            <BellIcon data-icon="inline-end" size={12} />
-          </Badge>
+          <div className="flex items-center gap-2">
+            <NotificationsBell />
+            {!!noticeCount && (
+              <Badge variant="outline" data-cy-notice-count>
+                {noticeCount}
+                <MegaphoneIcon data-icon="inline-end" size={12} />
+              </Badge>
+            )}
+          </div>
         </div>
 
         <ButtonGroup>

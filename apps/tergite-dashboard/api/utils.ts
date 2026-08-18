@@ -11,6 +11,7 @@ import bookingsFixture from "../cypress/fixtures/bookings.json";
 import bookingsConfigList from "../cypress/fixtures/bookings-configs.json";
 import userRequestList from "../cypress/fixtures/user-requests.json";
 import rawNoticeList from "../cypress/fixtures/notices.json";
+import notificationList from "../cypress/fixtures/notifications.json";
 import { type ParsedQs } from "qs";
 import {
   type NextFunction,
@@ -34,6 +35,7 @@ import {
   UserRequest,
   UserRole,
   Notice,
+  Notification,
 } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DateTime } from "luxon";
@@ -142,6 +144,8 @@ class MockDb {
     auth_providers: [...(authProviderList as AuthProvider[])],
     bcc_users: [...(bccUserList as BccUserInDb[])],
     notices: [...processedNoticeList],
+    notifications: [...(notificationList as unknown as Notification[])],
+    notification_prefs: [],
   };
   deleted: { [k: string | ItemType]: DeletedIndex } = {
     projects: {},
@@ -156,6 +160,8 @@ class MockDb {
     auth_providers: {},
     bcc_users: {},
     notices: {},
+    notifications: {},
+    notification_prefs: {},
   };
 
   constructor() {
@@ -189,6 +195,8 @@ class MockDb {
       auth_providers: [...(authProviderList as AuthProvider[])],
       bcc_users: [...(bccUserList as BccUserInDb[])],
       notices: [...processedNoticeList],
+      notifications: [...(notificationList as unknown as Notification[])],
+      notification_prefs: [],
     };
     this.deleted = {
       projects: {},
@@ -203,6 +211,8 @@ class MockDb {
       auth_providers: {},
       bcc_users: {},
       notices: {},
+      notifications: {},
+      notification_prefs: {},
     };
   }
 
@@ -541,6 +551,8 @@ type ItemType =
   | "bookings_configs"
   | "user_requests"
   | "notices"
+  | "notifications"
+  | "notification_prefs"
   | "auth_providers";
 
 type DeletedIndex = { [k: string]: boolean };
