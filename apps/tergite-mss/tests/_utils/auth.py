@@ -31,7 +31,9 @@ TEST_NO_QPU_PROJECT_EXT_ID = "no-qpu-project-1"
 TEST_USER_ID = "8154077d9cb952b92453d575"
 TEST_SUPERUSER_ID = "de7ddbd2500951be940356a2"
 TEST_SYSTEM_USER_ID = "6431c4a4508205d9d43015fe"
+TEST_OUTSIDER_ID = "9264188e0dc063ea3564e686"
 TEST_USER_EMAIL = "john.doe@example.com"
+TEST_OUTSIDER_EMAIL = "outsider.doe@example.com"
 TEST_SUPERUSER_EMAIL = "jane.doe@example.com"
 TEST_SYSTEM_USER_EMAIL = "system.doe@example.com"
 TEST_APP_TOKEN_STRING = "46-0Jhgb1_thq8MqIF0SlVHoS8rFPiLBFL33XO_eJ7I"
@@ -83,6 +85,14 @@ TEST_USER_DICT = dict(
     hashed_password=_password_helper.hash(_password_helper.generate()),
     is_verified=True,
 )
+# a plain user who administers nothing and belongs to no project
+TEST_OUTSIDER_DICT = dict(
+    _id=PydanticObjectId(TEST_OUTSIDER_ID),
+    email=TEST_OUTSIDER_EMAIL,
+    roles=[UserRole.USER],
+    hashed_password=_password_helper.hash(_password_helper.generate()),
+    is_verified=True,
+)
 TEST_SYSTEM_USER_DICT = dict(
     _id=PydanticObjectId(TEST_SYSTEM_USER_ID),
     email=TEST_SYSTEM_USER_EMAIL,
@@ -92,6 +102,7 @@ TEST_SYSTEM_USER_DICT = dict(
 )
 USER_ID_EMAIL_MAP = {
     TEST_USER_ID: TEST_USER_EMAIL,
+    TEST_OUTSIDER_ID: TEST_OUTSIDER_EMAIL,
     TEST_SUPERUSER_ID: TEST_SUPERUSER_EMAIL,
     TEST_SYSTEM_USER_ID: TEST_SYSTEM_USER_EMAIL,
 }
@@ -150,6 +161,7 @@ def init_test_auth(db: database.Database):
     insert_if_not_exist(db, User, TEST_USER_DICT)
     insert_if_not_exist(db, User, TEST_SUPERUSER_DICT)
     insert_if_not_exist(db, User, TEST_SYSTEM_USER_DICT)
+    insert_if_not_exist(db, User, TEST_OUTSIDER_DICT)
     insert_if_not_exist(db, Project, TEST_PROJECT_DICT)
     insert_if_not_exist(db, Project, TEST_NO_QPU_PROJECT_DICT)
     insert_if_not_exist(db, AppToken, TEST_APP_TOKEN_DICT)

@@ -94,6 +94,8 @@ _EXTRA_PROJECT_DEFAULTS = {
     "source": "internal",
     "user_emails": None,
     "admin_email": None,
+    "is_personal": False,
+    "low_qpu_notified_at": None,
 }
 _SKIP_LIMIT_SORT_PARAMS = [
     (0, 1, ["-job_id", "created_at"]),
@@ -141,6 +143,7 @@ def test_view_own_projects_in_less_detail(
                 "user_ids": item.get("user_ids", None),
                 "admin_id": item.get("admin_id", None),
                 "is_active": item.get("is_active", True),
+                "is_personal": item.get("is_personal", False),
                 "created_at": item.get("created_at", None),
                 "updated_at": item.get("updated_at", None),
             }
@@ -174,6 +177,7 @@ def test_view_my_project_in_less_detail(
             "user_ids": project["user_ids"],
             "admin_id": project["admin_id"],
             "is_active": project.get("is_active", True),
+            "is_personal": project.get("is_personal", False),
             "created_at": project["created_at"],
             "updated_at": project["updated_at"],
         }

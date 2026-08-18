@@ -19,6 +19,8 @@ from fastapi_users.models import ID
 from fastapi_users.types import DependencyCallable
 from fastapi_users_db_beanie import ObjectIDIDMixin
 
+from utils.exc import ForbiddenError
+
 from ..app_tokens.database import AppTokenDatabase
 from ..app_tokens.dtos import AppToken, AppTokenCreate
 from ..users.database import UserDatabase
@@ -258,7 +260,13 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         Args:
             project: the project to be deleted
             request: Optional FastAPI request that triggered the operation
+
+        Raises:
+            ForbiddenError: personal projects cannot be deleted
         """
+        if project.is_personal:
+            raise ForbiddenError("personal projects cannot be deleted")
+
         await self.app_token_db.delete_many({"project_ext_id": project.ext_id})
 
     async def authenticate(

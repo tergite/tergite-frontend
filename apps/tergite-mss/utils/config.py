@@ -181,6 +181,23 @@ class Oauth2ClientConfig(BaseModel, extra="allow"):
     }
 
 
+class ProjectsConfig(BaseModel):
+    """Configuration for projects, including auto-created personal projects"""
+
+    # QPU seconds a personal project is created with. Default 0 keeps an unconfigured
+    # deployment behaving as it did before personal projects existed.
+    personal_qpu_seconds: float = 0
+
+    # whether personal projects are auto-created on login at all
+    personal_projects_enabled: bool = True
+
+    # maximum pending user requests one user may have at a time
+    max_pending_requests_per_user: int = 5
+
+    # maximum failed project lookups per user per hour before 429
+    max_failed_lookups_per_hour: int = 20
+
+
 class AuthConfig(BaseModel):
     """Configration for auth"""
 
@@ -238,6 +255,9 @@ class AppConfig(BaseModel, extra="allow"):
 
     # configuration for authentication
     auth: AuthConfig
+
+    # configuration for projects and personal projects
+    projects: ProjectsConfig = ProjectsConfig()
 
     # cache for the backends dict
     _backends_dict: Dict[str, BccConfig] = None

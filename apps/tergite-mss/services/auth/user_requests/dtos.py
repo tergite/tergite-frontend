@@ -17,6 +17,7 @@ from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, Field, field_serializer, field_validator, validator
 from pydantic.main import IncEx
 from pydantic_core.core_schema import ValidationInfo
+from pymongo import IndexModel
 
 from utils.date_time import get_current_timestamp
 
@@ -34,10 +35,19 @@ class UserRequestStatus(str, enum.Enum):
 class UserRequestType(str, enum.Enum):
     """The types of user requests"""
 
+    # reserved for RFC 0002; declared but not yet wired up
     CREATE_PROJECT = "create-project"
     CLOSE_PROJECT = "close-project"
     TRANSFER_PROJECT = "transfer-project"
     PROJECT_QPU_SECONDS = "project-qpu-seconds"
+    PROJECT_ACCESS = "project-access"
+
+
+class ApproverScope(str, enum.Enum):
+    """Who is entitled to react to a request"""
+
+    SYSTEM_ADMIN = "system-admin"
+    PROJECT_ADMIN = "project-admin"
 
 
 class QpuTimeExtensionPostBody(BaseModel):
@@ -45,6 +55,15 @@ class QpuTimeExtensionPostBody(BaseModel):
 
     project_id: str
     seconds: float
+    reason: str
+    project_name: Optional[str] = None
+
+
+class ProjectAccessPostBody(BaseModel):
+    """The POST body sent when requesting access to a shared project"""
+
+    type: Literal[UserRequestType.PROJECT_ACCESS] = UserRequestType.PROJECT_ACCESS
+    project_ext_id: str
     reason: str
     project_name: Optional[str] = None
 
@@ -59,14 +78,22 @@ class UserRequest(Document):
     approver_id: Optional[str] = None
     approver_name: Optional[str] = None
     rejection_reason: Optional[str] = None
-    request: Union[QpuTimeExtensionPostBody, Dict[str, Any]] = Field(
-        default_factory=dict
-    )
+    # defaults to SYSTEM_ADMIN so requests predating this field keep their old behaviour
+    approver_scope: ApproverScope = ApproverScope.SYSTEM_ADMIN
+    # promoted out of `request` so the project-admin inbox is a single indexed query
+    project_id: Optional[str] = None
+    request: Union[
+        QpuTimeExtensionPostBody, ProjectAccessPostBody, Dict[str, Any]
+    ] = Field(default_factory=dict)
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
     class Settings:
         name = USER_REQUEST_DB_COLLECTION
+        indexes = [
+            IndexModel([("project_id", 1), ("status", 1)], sparse=True),
+            IndexModel([("requester_id", 1), ("created_at", -1)]),
+        ]
 
     @field_serializer("id", when_used="json")
     def serialize_id(self, _id: PydanticObjectId):
@@ -114,7 +141,11 @@ class UserRequestUpdate(UserRequest):
     approver_id: Optional[str] = None
     approver_name: Optional[str] = None
     rejection_reason: Optional[str] = None
-    request: Optional[Union[QpuTimeExtensionPostBody, Dict[str, Any]]] = None
+    approver_scope: Optional[ApproverScope] = None
+    project_id: Optional[str] = None
+    request: Optional[
+        Union[QpuTimeExtensionPostBody, ProjectAccessPostBody, Dict[str, Any]]
+    ] = None
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
     def model_dump(

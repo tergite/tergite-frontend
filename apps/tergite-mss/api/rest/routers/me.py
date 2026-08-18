@@ -16,6 +16,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
+from api.rest.routers.requests import router as requests_router
 from services.auth import APP_TOKEN_AUTH, APP_TOKEN_BACKEND, User, UserRead
 from services.jobs import get_latest_many
 from services.jobs.dtos import JobQuery
@@ -34,6 +35,8 @@ router.include_router(
     prefix="/tokens",
     tags=["auth"],
 )
+
+router.include_router(requests_router)
 
 
 @router.get("/jobs/", tags=["jobs"])

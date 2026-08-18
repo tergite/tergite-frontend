@@ -9,10 +9,19 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Changed
 
+- Project responses now include `is_personal`, and user request responses include
+  `approver_scope` and `project_id`. Clients asserting on exact response bodies will see the
+  new fields.
 - Removed puhuri support as this is not in the long term plans for maintenance
 
 ### Added
 
+- Added an auto-created personal project for every user, granted on login with
+  `projects.personal_qpu_seconds` (default 0). Previously a new user had no project and so
+  could not create an app token or submit a job without an admin adding them to one.
+- Added POST `/me/requests/`, GET `/me/requests/` and PUT `/me/requests/{_id}` so users can ask
+  for access to a shared project and its admin can approve or reject. Previously only a superuser
+  could change project membership.
 - Integrated `loguru` for clean, structured, and environment-dependent logging.
 - Added flat JSON log formatter in production for seamless Docker and `journalctl` ingestion.
 - Added standard logging `InterceptHandler` to capture and route logs from Uvicorn, FastAPI, and Beanie/Motor to Loguru.

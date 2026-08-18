@@ -11,15 +11,10 @@
 # that they have been altered from the originals.
 """Data Transfer Objects for the projects submodule in the auth service"""
 import enum
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from beanie import Document, PydanticObjectId
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_serializer,
-)
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from pymongo import IndexModel
 
 from utils.date_time import get_current_timestamp
@@ -27,6 +22,16 @@ from utils.models import create_partial_model
 
 PROJECT_DB_COLLECTION = "auth_projects"
 DELETED_PROJECT_DB_COLLECTION = "deleted_auth_projects"
+PERSONAL_PROJECT_NAME = "Personal project"
+
+
+def personal_project_ext_id(user_id: Union[str, PydanticObjectId]) -> str:
+    """The ext_id of a user's personal project.
+
+    Derived from the user ID so the unique index on ext_id enforces one per user,
+    and so no email lands in token records, query strings or logs.
+    """
+    return f"personal-{user_id}"
 
 
 class ProjectSource(str, enum.Enum):
@@ -66,6 +71,7 @@ class ProjectRead(BaseModel):
     description: Optional[str] = None
     user_ids: List[str]
     admin_id: str
+    is_personal: bool = False
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -104,6 +110,10 @@ class Project(ProjectCreate, Document):
     is_active: bool = True
     admin_id: Optional[str] = None
     user_ids: Optional[List[str]] = None
+    # set only by ensure_personal_project, never from a request body
+    is_personal: bool = False
+    # set when a low-QPU notice has been sent; cleared on a grant so the notice re-arms
+    low_qpu_notified_at: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 

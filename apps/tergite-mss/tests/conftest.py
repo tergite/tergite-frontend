@@ -40,6 +40,7 @@ from tests._utils.auth import (
     TEST_GITHUB_PROFILE,
     TEST_GITHUB_TOKEN_RESP,
     TEST_NO_QPU_APP_TOKEN_STRING,
+    TEST_OUTSIDER_ID,
     TEST_PROJECT_EXT_ID,
     TEST_SUPERUSER_ID,
     TEST_SYSTEM_USER_APP_TOKEN_STRING,
@@ -140,6 +141,12 @@ def user_jwt_cookie() -> Dict[str, str]:
 def admin_jwt_cookie() -> Dict[str, str]:
     """the auth cookie for the client when JWT of an admin is used"""
     yield get_auth_cookie(TEST_SUPERUSER_ID)
+
+
+@pytest.fixture
+def outsider_jwt_cookie() -> Dict[str, str]:
+    """the auth cookie of a plain user who belongs to no project"""
+    yield get_auth_cookie(TEST_OUTSIDER_ID)
 
 
 @pytest.fixture
@@ -248,6 +255,18 @@ def oauth_state() -> Generator[str, Any, None]:
 def cookie_oauth_state() -> Generator[str, Any, None]:
     """The state to use to make oauth2 requests when using cookies"""
     yield generate_state_token({"next": TEST_NEXT_COOKIE_URL}, secret=TEST_JWT_SECRET)
+
+
+@pytest.fixture
+def insert_chalmers_user(db):
+    """A user record for the chalmers profile, as if they predated personal projects"""
+    from services.auth import User
+
+    email = TEST_CHALMERS_PROFILE["userPrincipalName"]
+    insert_if_not_exist(
+        db, schema=User, data={"email": email, "hashed_password": "password"}
+    )
+    yield db["auth_users"].find_one({"email": email})
 
 
 @pytest.fixture

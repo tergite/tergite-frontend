@@ -67,6 +67,18 @@ public_key_path = "data/simulator-kampala-pub-key.pem"
 # the public url for the backend; defaults to the 'url' if not set but can be set to say a reverse proxy
 public_url = ""
 
+[projects]
+# QPU seconds a personal project is created with. Default 0 keeps an unconfigured
+# deployment behaving as it did before personal projects existed; set a non-zero
+# value to let every new user start with usable time.
+personal_qpu_seconds = 0
+# whether personal projects are auto-created when a user logs in; default = true
+personal_projects_enabled = true
+# maximum pending user requests one user may hold at a time; default = 5
+max_pending_requests_per_user = 5
+# maximum failed project lookups per user per hour before 429; default = 20
+max_failed_lookups_per_hour = 20
+
 [auth]
 # Secret for signing JWT tokens. https://jwt.io/introduction
 jwt_secret = "some hidden secret"

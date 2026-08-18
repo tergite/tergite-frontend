@@ -66,6 +66,7 @@ dev = [
     "pytest-freezegun>=0.4.2",
     "pytest-asyncio>=0.21.1,<0.23.0",
     "pytest-mock>=3.11.1",
+    "pytest-cov>=4.1.0",
     "respx>=0.20.2",
     "filelock>=3.12.2",
     "setuptools",

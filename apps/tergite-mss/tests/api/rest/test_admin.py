@@ -117,6 +117,8 @@ _EXTRA_PROJECT_DEFAULTS = {
     "source": "internal",
     "user_emails": None,
     "admin_email": None,
+    "is_personal": False,
+    "low_qpu_notified_at": None,
 }
 _PAGINATION: List["PaginationInfo"] = load_json_fixture("pagination.json")
 
@@ -335,6 +337,8 @@ def test_create_qpu_time_user_request(
             "rejection_reason": None,
             "approver_id": None,
             "approver_name": None,
+            "approver_scope": "system-admin",
+            "project_id": request_body["project_id"],
         }
         assert isinstance(got.pop("id"), str)
         assert response.status_code == 201
@@ -483,6 +487,7 @@ def test_approve_qpu_seconds_user_requests(
         assert updated_project == {
             **original_project,
             "qpu_seconds": original_project["qpu_seconds"] + additional_seconds,
+            "low_qpu_notified_at": None,
         }
 
 
@@ -614,6 +619,7 @@ def test_admin_create_project(db, project, client, admin_jwt_cookie, freezer):
             "admin_id": admin_id,
             "admin_email": project["admin_email"],
             "user_emails": user_emails,
+            "is_personal": False,
             "created_at": now,
             "updated_at": now,
         }
@@ -696,6 +702,7 @@ def test_admin_update_project(db, payload, client, admin_jwt_cookie, freezer):
             "admin_id": admin_id,
             "admin_email": payload.get("admin_email", project["admin_email"]),
             "user_emails": [user_id_email_map[v] for v in user_ids],
+            "is_personal": False,
             "created_at": created_at,
             "updated_at": updated_at,
         }
@@ -743,6 +750,7 @@ def test_admin_view_all_projects_in_detail(
                 ],
                 "name": item.get("name"),
                 "description": item.get("description"),
+                "is_personal": item.get("is_personal", False),
                 "created_at": item.get("created_at"),
                 "updated_at": item.get("updated_at"),
             }
@@ -793,6 +801,7 @@ def test_admin_view_single_project_in_detail(
             ],
             "name": project.get("name"),
             "description": project.get("description"),
+            "is_personal": project.get("is_personal", False),
             "created_at": project.get("created_at"),
             "updated_at": project.get("updated_at"),
         }
@@ -1368,6 +1377,9 @@ def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
     """
     item = copy.deepcopy(db_item)
     item["id"] = str(item.pop("_id"))
+    # fields the server fills in from model defaults
+    item.setdefault("approver_scope", "system-admin")
+    item.setdefault("project_id", None)
     return item
 
 

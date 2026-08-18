@@ -25,20 +25,19 @@ from services.auth.utils import TooManyListQueryParams
 from utils.api import WebsocketRequestLog, get_request_logs_store, to_http_error
 from utils.crypto import get_uuid4_str
 from utils.exc import (
+    ConflictError,
     DbValidationError,
     ForbiddenError,
     NotFoundError,
     ServiceUnavailableError,
+    TooManyRequestsError,
     UnknownBccError,
 )
 from utils.logging import setup_logging
 
 from . import app_kwargs
 from .app_kwargs import get_app_kwargs
-from .dependencies import (
-    CurrentProjectDep,
-    CurrentStrictProjectDep,
-)
+from .dependencies import CurrentProjectDep, CurrentStrictProjectDep
 from .routers.admin import router as admin_router
 from .routers.auth import include_auth_router
 from .routers.booking import router as booking_router
@@ -130,6 +129,8 @@ app.add_exception_handler(ServiceUnavailableError, to_http_error(503))
 app.add_exception_handler(UnknownBccError, to_http_error(400))
 app.add_exception_handler(TooManyListQueryParams, to_http_error(400))
 app.add_exception_handler(ForbiddenError, to_http_error(403))
+app.add_exception_handler(ConflictError, to_http_error(409))
+app.add_exception_handler(TooManyRequestsError, to_http_error(429))
 app.add_exception_handler(Exception, to_http_error(500, "Unexpected server error"))
 
 # routes
