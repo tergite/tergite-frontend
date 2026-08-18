@@ -76,6 +76,10 @@ max_pending_requests_per_user = 5
 # maximum failed project lookups per user per hour before 429; default = 20
 max_failed_lookups_per_hour = 20
 
+[notifications]
+# days a notification is kept before the TTL index removes it; default = 90
+retention_days = 90
+
 [auth]
 # Secret for signing JWT tokens. https://jwt.io/introduction
 jwt_secret = "some hidden secret"

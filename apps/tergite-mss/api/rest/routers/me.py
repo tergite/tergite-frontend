@@ -16,6 +16,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
+from api.rest.routers.notifications import prefs_router as notification_prefs_router
+from api.rest.routers.notifications import router as notifications_router
 from api.rest.routers.requests import router as requests_router
 from services.auth import APP_TOKEN_AUTH, APP_TOKEN_BACKEND, User, UserRead
 from services.jobs import get_latest_many
@@ -37,6 +39,8 @@ router.include_router(
 )
 
 router.include_router(requests_router)
+router.include_router(notifications_router)
+router.include_router(notification_prefs_router)
 
 
 @router.get("/jobs/", tags=["jobs"])

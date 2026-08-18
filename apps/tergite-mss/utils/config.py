@@ -198,6 +198,13 @@ class ProjectsConfig(BaseModel):
     max_failed_lookups_per_hour: int = 20
 
 
+class NotificationsConfig(BaseModel):
+    """Configuration for the notifications service"""
+
+    # days a notification is kept before the TTL index removes it
+    retention_days: int = 90
+
+
 class AuthConfig(BaseModel):
     """Configration for auth"""
 
@@ -258,6 +265,9 @@ class AppConfig(BaseModel, extra="allow"):
 
     # configuration for projects and personal projects
     projects: ProjectsConfig = ProjectsConfig()
+
+    # configuration for notifications
+    notifications: NotificationsConfig = NotificationsConfig()
 
     # cache for the backends dict
     _backends_dict: Dict[str, BccConfig] = None

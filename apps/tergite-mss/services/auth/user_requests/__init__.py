@@ -14,8 +14,12 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 from beanie import PydanticObjectId, UpdateResponse
 
 import settings
+from services import notifications
+from services.notifications import NotificationAction, NotificationType
 from utils import rate_limit
 from utils.exc import ConflictError, ForbiddenError, NotFoundError, TooManyRequestsError
+
+from utils.config import UserRole
 
 from ..projects.dtos import Project
 from ..users.dtos import User
@@ -84,7 +88,7 @@ async def create_qpu_time_request(
     Returns:
         the created UserRequest object
     """
-    return await create(
+    record = await create(
         request_body=request_body,
         requester=requester,
         request_type=UserRequestType.PROJECT_QPU_SECONDS,
@@ -93,6 +97,18 @@ async def create_qpu_time_request(
         approver_scope=ApproverScope.SYSTEM_ADMIN,
         project_id=request_body.project_id,
     )
+    await notifications.notify(
+        await _approver_ids(record),
+        NotificationType.QPU_SECONDS_REQUESTED,
+        context={
+            "project_name": request_body.project_name,
+            "requester_name": requester.username,
+            "reason": request_body.reason,
+            "seconds": f"{request_body.seconds:.0f}",
+        },
+        action=NotificationAction(kind="user-request", request_id=str(record.id)),
+    )
+    return record
 
 
 async def get_many(
@@ -195,13 +211,25 @@ async def create_project_access_request(
         raise ConflictError(f"a request for '{body.project_ext_id}' is already pending")
 
     body.project_name = project.name
-    return await create(
+    record = await create(
         request_body=body,
         requester=requester,
         request_type=UserRequestType.PROJECT_ACCESS,
         approver_scope=ApproverScope.PROJECT_ADMIN,
         project_id=str(project.id),
     )
+    await notifications.notify(
+        await _approver_ids(record, project=project),
+        NotificationType.PROJECT_ACCESS_REQUESTED,
+        context={
+            "project_name": project.name,
+            "project_ext_id": project.ext_id,
+            "requester_name": requester.username,
+            "reason": body.reason,
+        },
+        action=NotificationAction(kind="user-request", request_id=str(record.id)),
+    )
+    return record
 
 
 async def get_many_as_requester(
@@ -353,6 +381,9 @@ async def update(
     if result is None:
         raise NotFoundError(f"{_id} not found")
 
+    if payload.status in _DECIDED_STATUSES:
+        await _notify_requester(result, admin_user)
+
     return result
 
 
@@ -415,6 +446,69 @@ async def _assert_pending_quota(requester_id: str):
         raise TooManyRequestsError(
             f"too many pending requests; at most {maximum} allowed"
         )
+
+
+async def _approver_ids(
+    request: UserRequest, project: Optional[Project] = None
+) -> List[PydanticObjectId]:
+    """The users entitled to react to the given request
+
+    Args:
+        request: the request awaiting a decision
+        project: the request's project, when the caller already has it
+
+    Returns:
+        the recipient IDs, excluding the requester
+    """
+    if request.approver_scope == ApproverScope.PROJECT_ADMIN:
+        if project is None and request.project_id is not None:
+            project = await Project.find_one(
+                {"_id": PydanticObjectId(request.project_id)}
+            )
+        admin_id = getattr(project, "admin_id", None)
+        ids = [PydanticObjectId(admin_id)] if admin_id else []
+    else:
+        superusers = await User.find({"roles": UserRole.ADMIN}).to_list()
+        ids = [user.id for user in superusers]
+
+    return [item for item in ids if str(item) != request.requester_id]
+
+
+async def _notify_requester(request: UserRequest, approver: User):
+    """Tells the requester what was decided about their request
+
+    Args:
+        request: the decided request
+        approver: the user who decided it
+    """
+    is_approved = request.status == UserRequestStatus.APPROVED
+    decision_types = {
+        UserRequestType.PROJECT_ACCESS: (
+            NotificationType.PROJECT_ACCESS_APPROVED
+            if is_approved
+            else NotificationType.PROJECT_ACCESS_REJECTED
+        ),
+        UserRequestType.PROJECT_QPU_SECONDS: (
+            NotificationType.QPU_SECONDS_GRANTED
+            if is_approved
+            else NotificationType.QPU_SECONDS_DENIED
+        ),
+    }
+    type_ = decision_types.get(request.type)
+    if type_ is None:
+        return
+
+    body = request.request
+    await notifications.notify(
+        [PydanticObjectId(request.requester_id)],
+        type_,
+        context={
+            "project_name": getattr(body, "project_name", None) or "your project",
+            "approver_name": approver.username,
+            "reason": request.rejection_reason or "",
+            "seconds": f"{getattr(body, 'seconds', 0):.0f}",
+        },
+    )
 
 
 def _apply_common_filters(

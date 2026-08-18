@@ -19,6 +19,10 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added an auto-created personal project for every user, granted on login with
   `projects.personal_qpu_seconds` (default 0). Previously a new user had no project and so
   could not create an app token or submit a job without an admin adding them to one.
+- Added in-app notifications: GET/PUT `/me/notifications/`, PUT `/me/notifications/{pk}`,
+  GET/PUT `/me/notification-preferences/` and GET `/counts/notifications`. Requesters are now
+  told when a request of theirs is decided, and approvers when one needs them; previously
+  neither side learned anything without checking the dashboard.
 - Added POST `/me/requests/`, GET `/me/requests/` and PUT `/me/requests/{_id}` so users can ask
   for access to a shared project and its admin can approve or reject. Previously only a superuser
   could change project membership.

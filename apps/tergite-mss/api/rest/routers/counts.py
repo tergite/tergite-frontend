@@ -12,13 +12,16 @@
 
 """Routes for getting counts of different records"""
 from datetime import datetime
+from typing import List, Optional
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
 from services import notices as notice_service
+from services import notifications
 from services.auth.users.dtos import User
+from services.notifications import NotificationType
 from utils.api import CountsResponse
 
 router = APIRouter(prefix="/counts", tags=["counts"])
@@ -60,6 +63,25 @@ async def get_notice_count(
         min_expires_utc=min_expires_utc,
         max_expires_utc=max_expires_utc,
         include_dismissed=include_dismissed,
+    )
+    return {"count": count}
+
+
+@router.get("/notifications")
+async def get_notification_count(
+    types: List[NotificationType] = Query((), alias="type"),
+    is_read: Optional[bool] = Query(None),
+    current_user: User = CurrentUserDep,
+) -> CountsResponse:
+    """Gets the number of the current user's notifications matching the filter
+
+    Args:
+        types: the types to filter by; repeat the param for many
+        is_read: filter on read state; default = None i.e. either
+        current_user: the current signed-in user
+    """
+    count = await notifications.count_many(
+        current_user.id, types=types, is_read=is_read
     )
     return {"count": count}
 
