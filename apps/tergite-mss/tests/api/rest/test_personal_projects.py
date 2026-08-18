@@ -15,7 +15,10 @@ import pytest
 
 import settings
 from services.auth import Project
-from services.auth.projects.dtos import PERSONAL_PROJECT_NAME, personal_project_ext_id
+from services.auth.projects.dtos import (
+    personal_project_ext_id,
+    personal_project_name,
+)
 from tests._utils.auth import TEST_GITHUB_PROFILE, get_db_record
 
 _GITHUB_CALLBACK = "/auth/github/callback"
@@ -63,7 +66,7 @@ def test_login_creates_personal_project(
         project = _personal_project(db, user["_id"])
 
         assert project is not None
-        assert project["name"] == PERSONAL_PROJECT_NAME
+        assert project["name"] == personal_project_name(TEST_GITHUB_PROFILE["email"])
         assert project["is_personal"] is True
         assert project["qpu_seconds"] == personal_qpu_seconds
         assert project["admin_id"] == str(user["_id"])

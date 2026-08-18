@@ -16,6 +16,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Personal projects are now named after the owner's email local part, e.g.
+  `paul.doe (personal)`, so an admin listing projects no longer sees a column of
+  identically named rows. The `ext_id` is unchanged.
 - Added an auto-created personal project for every user, granted on login with
   `projects.personal_qpu_seconds` (default 0). Previously a new user had no project and so
   could not create an app token or submit a job without an admin adding them to one.

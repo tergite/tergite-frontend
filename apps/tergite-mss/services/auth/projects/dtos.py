@@ -22,7 +22,6 @@ from utils.models import create_partial_model
 
 PROJECT_DB_COLLECTION = "auth_projects"
 DELETED_PROJECT_DB_COLLECTION = "deleted_auth_projects"
-PERSONAL_PROJECT_NAME = "Personal project"
 
 
 def personal_project_ext_id(user_id: Union[str, PydanticObjectId]) -> str:
@@ -32,6 +31,16 @@ def personal_project_ext_id(user_id: Union[str, PydanticObjectId]) -> str:
     and so no email lands in token records, query strings or logs.
     """
     return f"personal-{user_id}"
+
+
+def personal_project_name(email: str) -> str:
+    """The display name of a user's personal project.
+
+    Carries the email local part, unlike the ext_id: a name is only ever displayed,
+    never propagated into token titles, query strings or logs, and without it an
+    admin sees a column of identically named rows.
+    """
+    return f"{email.split('@')[0]} (personal)"
 
 
 class ProjectSource(str, enum.Enum):

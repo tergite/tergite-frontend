@@ -15,7 +15,7 @@ import pytest
 from beanie import PydanticObjectId
 
 from services.auth import Project
-from services.auth.projects.dtos import PERSONAL_PROJECT_NAME, personal_project_ext_id
+from services.auth.projects.dtos import personal_project_ext_id
 from services.auth.user_requests import UserRequest
 from tests._utils.auth import (
     TEST_NO_QPU_PROJECT_EXT_ID,
@@ -83,7 +83,7 @@ def test_request_access_to_personal_project_is_not_found(
     db["auth_projects"].insert_one(
         {
             "ext_id": ext_id,
-            "name": PERSONAL_PROJECT_NAME,
+            "name": "someone (personal)",
             "admin_id": TEST_USER_ID,
             "user_ids": [TEST_USER_ID],
             "qpu_seconds": 0,
@@ -407,7 +407,7 @@ def test_non_superuser_cannot_grant_qpu_seconds_on_own_personal_project(
         {
             "_id": project_id,
             "ext_id": ext_id,
-            "name": PERSONAL_PROJECT_NAME,
+            "name": "someone (personal)",
             "admin_id": TEST_OUTSIDER_ID,
             "user_ids": [TEST_OUTSIDER_ID],
             "qpu_seconds": 0,

@@ -29,7 +29,6 @@ from ..users.manager import UserManagerDependency
 from . import routers
 from .database import ProjectDatabase
 from .dtos import (
-    PERSONAL_PROJECT_NAME,
     Project,
     ProjectAdminView,
     ProjectCreate,
@@ -37,6 +36,7 @@ from .dtos import (
     ProjectSource,
     ProjectUpdate,
     personal_project_ext_id,
+    personal_project_name,
 )
 from .manager import ProjectAppTokenManager, ProjectManagerDependency
 from .routers import CurrentSuperUserDependency, CurrentUserIdDependency
@@ -69,7 +69,7 @@ async def ensure_personal_project(user: User) -> Optional[Project]:
 
     project = Project(
         ext_id=ext_id,
-        name=PERSONAL_PROJECT_NAME,
+        name=personal_project_name(user.email),
         qpu_seconds=settings.CONFIG.projects.personal_qpu_seconds,
         admin_id=str(user.id),
         user_ids=[str(user.id)],
