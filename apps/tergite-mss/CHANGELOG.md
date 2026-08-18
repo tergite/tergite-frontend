@@ -19,6 +19,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added an auto-created personal project for every user, granted on login with
   `projects.personal_qpu_seconds` (default 0). Previously a new user had no project and so
   could not create an app token or submit a job without an admin adding them to one.
+- Added DELETE `/me/projects/{_id}/members/{member_id}` so a project admin can remove a member,
+  which also revokes that member's app tokens for the project. Previously only a superuser could
+  change membership, so a mistaken approval needed an email to an operator.
 - Added in-app notifications: GET/PUT `/me/notifications/`, PUT `/me/notifications/{pk}`,
   GET/PUT `/me/notification-preferences/` and GET `/counts/notifications`. Requesters are now
   told when a request of theirs is decided, and approvers when one needs them; previously

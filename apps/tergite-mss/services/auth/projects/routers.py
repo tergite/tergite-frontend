@@ -21,6 +21,8 @@ from fastapi_users import exceptions, schemas
 from fastapi_users.password import PasswordHelper
 from pydantic import BaseModel, Field
 
+from services import notifications
+from services.notifications import NotificationType
 from utils.api import PaginatedListResponse
 
 from ..users.dtos import CurrentSuperUserDependency, CurrentUserIdDependency, User
@@ -104,6 +106,63 @@ def get_my_projects_router(
             )
 
         return schemas.model_validate(project_schema, project).model_dump(mode="json")
+
+    @router.delete(
+        "/{_id}/members/{member_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        name="projects:remove_project_member",
+    )
+    async def remove_member(
+        _id: PydanticObjectId,
+        member_id: str,
+        user_id: str = Depends(get_current_user_id),
+        user_manager: UserManager = Depends(get_user_manager),
+        project_manager: ProjectAppTokenManager = Depends(get_project_manager),
+    ):
+        """Removes a member from a project the caller administers.
+
+        Goes through the project manager rather than a raw $pull, so that
+        on_before_update revokes the removed member's app tokens for this project.
+        """
+        try:
+            project = await project_manager.get(project_manager.parse_id(_id))
+        except (exc.ProjectNotExists, exceptions.InvalidID) as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
+
+        actor = await user_manager.get(PydanticObjectId(user_id))
+        if actor is None or not (
+            actor.is_superuser or project.admin_id == str(actor.id)
+        ):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
+        if member_id == project.admin_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="the project admin cannot be removed",
+            )
+
+        member = await user_manager.get(PydanticObjectId(member_id))
+        current_ids = project.user_ids or []
+        current_emails = project.user_emails or []
+        if member is None or member_id not in current_ids:
+            # idempotent: nothing to do for someone who is not a member
+            return None
+
+        partial = ProjectPartial(
+            user_ids=[item for item in current_ids if item != member_id],
+            user_emails=[item for item in current_emails if item != member.email],
+        )
+        await project_manager.update(partial, project, safe=False)
+        await notifications.notify(
+            [member.id],
+            NotificationType.PROJECT_MEMBERSHIP_REVOKED,
+            context={
+                "project_name": project.name,
+                "project_ext_id": project.ext_id,
+                "approver_name": actor.username,
+            },
+        )
+        return None
 
     # route to destroy tokens
     @router.delete(

@@ -47,6 +47,7 @@ CHANNEL_POLICY: Dict[NotificationType, ChannelPolicy] = {
     NotificationType.QPU_SECONDS_REQUESTED: ChannelPolicy(True, True),
     NotificationType.QPU_SECONDS_GRANTED: ChannelPolicy(True, True),
     NotificationType.QPU_SECONDS_DENIED: ChannelPolicy(True, True),
+    NotificationType.PROJECT_MEMBERSHIP_REVOKED: ChannelPolicy(True, True),
 }
 
 TEMPLATES: Dict[NotificationType, Template] = {
@@ -78,6 +79,11 @@ TEMPLATES: Dict[NotificationType, Template] = {
     NotificationType.QPU_SECONDS_DENIED: Template(
         title="QPU time for {project_name} was declined",
         body="{approver_name} declined the QPU time request for {project_name}. {reason}",
+        severity=NoticeSeverity.WARNING,
+    ),
+    NotificationType.PROJECT_MEMBERSHIP_REVOKED: Template(
+        title="You were removed from {project_name}",
+        body="{approver_name} removed you from {project_name}. Any API tokens you held for it no longer work.",
         severity=NoticeSeverity.WARNING,
     ),
 }
