@@ -52,6 +52,10 @@ import {
   ChannelPrefs,
   ApproverScope,
   NoticeSeverity,
+  GrantTarget,
+  QpuSecondsGrantPostBody,
+  QpuSecondsGrantReport,
+  SkippedTarget,
 } from "../../types";
 import { DateTime } from "luxon";
 
@@ -1807,6 +1811,141 @@ function isEligibleApprover(actor: User, request: UserRequest): boolean {
 interface NotificationPrefsInDb extends DbRecord {
   user_id: string;
   prefs: NotificationPreferences;
+}
+
+router.post(
+  "/admin/qpu-seconds-grants/",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const key = req.headers["idempotency-key"] as string | undefined;
+    if (!key) {
+      res.status(422).json({ detail: "Idempotency-Key header is required" });
+      return;
+    }
+
+    const body = req.body as QpuSecondsGrantPostBody;
+    if (!body.seconds || body.seconds <= 0) {
+      res.status(422).json({ detail: "seconds must be more than zero" });
+      return;
+    }
+    if (body.target === GrantTarget.EMAILS && !body.target_emails?.length) {
+      res
+        .status(422)
+        .json({ detail: "target_emails is required when target is 'emails'" });
+      return;
+    }
+
+    const replay = mockDb.getOne<GrantInDb>(
+      "qpu_grants",
+      (v) => v.idempotency_key === key,
+    );
+    if (replay) {
+      res.status(201).json(replay.report);
+      return;
+    }
+
+    const personal = mockDb.getMany<Project>("projects", (v) => !!v.is_personal);
+    const skipped: SkippedTarget[] = [];
+    let targets: Project[] = [];
+
+    if (body.target === GrantTarget.ALL_PERSONAL) {
+      targets = personal;
+    } else {
+      for (const email of [...new Set(body.target_emails ?? [])]) {
+        const user = mockDb.getOne<User>("users", (v) => v.email === email);
+        if (!user) {
+          skipped.push({ email, why: "no such user" });
+          continue;
+        }
+        const project = personal.find((v) => v.admin_id === user.id);
+        if (!project) {
+          skipped.push({
+            email,
+            why: "no personal project yet — user has never logged in",
+          });
+          continue;
+        }
+        targets.push(project);
+      }
+    }
+
+    for (const project of targets) {
+      mockDb.update<Project>("projects", (v) => v.id === project.id, {
+        qpu_seconds: project.qpu_seconds + body.seconds,
+        // every top-up clears the latch, matching the API
+        low_qpu_notified_at: null,
+      } as Partial<Project>);
+
+      mockDb.create<Notification>("notifications", {
+        user_id: project.admin_id,
+        type: NotificationType.QPU_SECONDS_GRANTED,
+        title: `${body.seconds}s of QPU time added to ${project.name}`,
+        body: `An admin granted ${body.seconds}s of QPU time on ${project.name}.`,
+        severity: NoticeSeverity.INFO,
+        action: null,
+        context: { project_name: project.name, reason: "admin-grant" },
+        read_at: null,
+      });
+    }
+
+    const report: QpuSecondsGrantReport = {
+      seconds: body.seconds,
+      granted: targets.length,
+      skipped,
+    };
+    mockDb.create<GrantInDb>("qpu_grants", {
+      idempotency_key: key,
+      granted_by: userId,
+      reason: body.reason,
+      seconds: body.seconds,
+      target: body.target,
+      report,
+    });
+
+    res.status(201).json(report);
+  }),
+);
+
+router.get(
+  "/admin/qpu-seconds-grants/",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const data = mockDb.getMany<GrantInDb>(
+      "qpu_grants",
+      () => true,
+      0,
+      undefined,
+      ["-created_at"],
+    );
+    res.json({ skip: 0, limit: null, data });
+  }),
+);
+
+interface GrantInDb extends DbRecord {
+  idempotency_key: string;
+  granted_by: string;
+  reason: string;
+  seconds: number;
+  target: GrantTarget;
+  report: QpuSecondsGrantReport;
 }
 
 // NOTE: this mutates the database. I am using GET to avoid CORS issues

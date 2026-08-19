@@ -9,6 +9,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Added
 
+- Added a "Grant QPU time" form on the admin projects page, targeting either a list of
+  users or every personal project, and reporting which targets were skipped and why.
 - Added a notifications bell reporting the outcome of project-access and QPU-time requests,
   with approve and reject inline on the ones awaiting the reader. Previously neither
   requester nor approver learned anything without hunting for it.

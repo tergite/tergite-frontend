@@ -26,10 +26,12 @@ import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useLoaderData } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreateProjectForm } from "./components/create-project-form";
+import { GrantQpuSecondsForm } from "./components/grant-qpu-seconds-form";
 
 export function AdminProjects() {
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
+  const [isGranting, setIsGranting] = useState(false);
   const { currentUser } = useLoaderData() as AdminProjectsData;
   const { data: projects = [] } = useQuery(
     allAdminProjectsQuery({
@@ -88,9 +90,27 @@ export function AdminProjects() {
         <CardHeader>
           <div className="flex justify-between">
             <CardDescription>Projects</CardDescription>
-            <Button variant="default" onClick={() => setIsCreating(true)}>
-              New
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                data-cy-grant-qpu-time
+                onClick={() => {
+                  setIsCreating(false);
+                  setIsGranting(true);
+                }}
+              >
+                Grant QPU time
+              </Button>
+              <Button
+                variant="default"
+                onClick={() => {
+                  setIsGranting(false);
+                  setIsCreating(true);
+                }}
+              >
+                New
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -104,7 +124,14 @@ export function AdminProjects() {
         </CardContent>
       </Card>
 
-      {!isCreating && (
+      {isGranting && (
+        <GrantQpuSecondsForm
+          className="order-first xl:order-none col-span-1"
+          onClose={() => setIsGranting(false)}
+        />
+      )}
+
+      {!isCreating && !isGranting && (
         <AdminProjectsSidebar
           project={projects[selectedProjectIdx]}
           className="order-first xl:order-none col-span-1"
@@ -114,7 +141,7 @@ export function AdminProjects() {
         />
       )}
 
-      {isCreating && (
+      {isCreating && !isGranting && (
         <CreateProjectForm
           className="order-first xl:order-none col-span-1"
           onCreate={handleProjectCreate}

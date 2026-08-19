@@ -146,6 +146,7 @@ class MockDb {
     notices: [...processedNoticeList],
     notifications: [...(notificationList as unknown as Notification[])],
     notification_prefs: [],
+    qpu_grants: [],
   };
   deleted: { [k: string | ItemType]: DeletedIndex } = {
     projects: {},
@@ -162,6 +163,7 @@ class MockDb {
     notices: {},
     notifications: {},
     notification_prefs: {},
+    qpu_grants: {},
   };
 
   constructor() {
@@ -197,6 +199,8 @@ class MockDb {
       notices: [...processedNoticeList],
       notifications: [...(notificationList as unknown as Notification[])],
       notification_prefs: [],
+      qpu_grants: [],
+    qpu_grants: [],
     };
     this.deleted = {
       projects: {},
@@ -213,6 +217,8 @@ class MockDb {
       notices: {},
       notifications: {},
       notification_prefs: {},
+      qpu_grants: {},
+    qpu_grants: {},
     };
   }
 
@@ -553,6 +559,7 @@ type ItemType =
   | "notices"
   | "notifications"
   | "notification_prefs"
+  | "qpu_grants"
   | "auth_providers";
 
 type DeletedIndex = { [k: string]: boolean };

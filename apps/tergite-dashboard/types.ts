@@ -493,6 +493,33 @@ export interface ChannelPrefs {
 
 export type NotificationPreferences = Record<NotificationType, ChannelPrefs>;
 
+// who a bulk QPU-seconds grant applies to
+export enum GrantTarget {
+  EMAILS = "emails",
+  ALL_PERSONAL = "all-personal",
+}
+
+// a target the grant could not be applied to, and why
+export interface SkippedTarget {
+  email: string;
+  why: string;
+}
+
+// the POST body for granting QPU seconds to many personal projects at once
+export interface QpuSecondsGrantPostBody {
+  seconds: number;
+  target: GrantTarget;
+  target_emails?: string[];
+  reason: string;
+}
+
+// what a grant applied and what it did not; partial application is normal
+export interface QpuSecondsGrantReport {
+  seconds: number;
+  granted: number;
+  skipped: SkippedTarget[];
+}
+
 export interface CountResponse {
   count: number;
 }

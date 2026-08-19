@@ -41,6 +41,8 @@ import {
   ChannelPrefs,
   ProjectAccessPostBody,
   ProjectAccessUserRequest,
+  QpuSecondsGrantPostBody,
+  QpuSecondsGrantReport,
 } from "../../types";
 import {
   normalizeCalibrationData,
@@ -1775,6 +1777,29 @@ export async function removeProjectMember(
     { method: "DELETE" },
     { isJsonOutput: false },
   );
+}
+
+/**
+ * Grants QPU seconds to many personal projects at once
+ *
+ * @param payload - how many seconds, to whom, and why
+ * @param idempotencyKey - makes a retried grant a no-op rather than a second grant
+ * @param options - extra options e.g. baseUrl
+ */
+export async function grantQpuSeconds(
+  payload: QpuSecondsGrantPostBody,
+  idempotencyKey: string,
+  options: { baseUrl?: string } = {},
+): Promise<QpuSecondsGrantReport> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/admin/qpu-seconds-grants/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+  });
 }
 
 /**
