@@ -205,6 +205,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         self,
         project: Project,
         request: Optional[Request] = None,
+        is_superuser: bool = False,
     ) -> None:
         """Delete a project.
 
@@ -212,7 +213,18 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             project: The user to delete.
             request: Optional FastAPI request that
                 triggered the operation, defaults to None.
+            is_superuser: whether the caller is acting as a superuser; defaults to False
+                so a caller that does not say is treated as not.
+
+        Raises:
+            ForbiddenError: you cannot delete your own personal project
         """
+        if project.is_personal and not is_superuser:
+            # a personal project is recreated on next login with a fresh allowance, so
+            # its owner deleting it would be an allowance farm. Superusers may, for
+            # offboarding and erasure.
+            raise ForbiddenError("you cannot delete your own personal project")
+
         await self.on_before_delete(project, request)
         await self.project_db.delete(project)
         deleted_project = DeletedProject(
@@ -260,13 +272,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         Args:
             project: the project to be deleted
             request: Optional FastAPI request that triggered the operation
-
-        Raises:
-            ForbiddenError: personal projects cannot be deleted
         """
-        if project.is_personal:
-            raise ForbiddenError("personal projects cannot be deleted")
-
         await self.app_token_db.delete_many({"project_ext_id": project.ext_id})
 
     async def authenticate(

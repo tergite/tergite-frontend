@@ -53,7 +53,8 @@ membership decision escalates to a superuser who has to ask the project admin an
 4. Personal project identity derives from the user's **ID**, not their email — `personal-{user_id}`.
    This makes uniqueness intrinsic and keeps personal data out of token records, query strings and
    logs (§7.3).
-5. A personal project cannot be deleted (§5.4).
+5. A user cannot delete their own personal project, since it would be recreated with a fresh
+   allowance; a superuser can, for offboarding and erasure (§5.4).
 
 **Shared project access**
 
@@ -183,7 +184,7 @@ request to duplicate, and §5.5 is idempotent.
 
 | Field | Type | Why |
 | --- | --- | --- |
-| `is_personal` | `bool = False` | Personal projects are excluded from project-access lookups (§7.4), are undeletable (§5.4), and are shown differently in the UI. Kept separate from `source`, which means *where the allocation came from* (`puhuri` / `internal`) and is orthogonal. |
+| `is_personal` | `bool = False` | Personal projects are excluded from project-access lookups (§7.4), cannot be deleted by their owner though a superuser may (§5.4), and are shown differently in the UI. Kept separate from `source`, which means *where the allocation came from* (`puhuri` / `internal`) and is orthogonal. |
 | `low_qpu_notified_at` | `Optional[str] = None` | Edge-trigger latch so the "QPU seconds low" notification fires once per depletion cycle instead of once per job (§9). |
 
 ### 5.3 `UserRead`
@@ -191,39 +192,49 @@ request to duplicate, and §5.5 is idempotent.
 Unchanged. The earlier draft added a `personal_project_status` field so the UI could grey out the
 "request a personal project" option; with no such option there is nothing to gate.
 
-### 5.4 Personal projects are permanent
+### 5.4 Who may delete a personal project
 
-A personal project cannot be deleted, by anyone, including superusers. It is a **durable per-user
-allocation anchor**: every user who has ever logged in has exactly one, and it never goes away, so
-the system can report per-user consumption across all time and can act on the whole population at
-once without worrying that someone's allocation was destroyed and re-created behind its back.
+A user may **not** delete their own. A superuser **may**.
 
-The invariant is "one per user who has used the system", not "one per row in `auth_users`" — see
-§5.5 for why that is the right line. A grant campaign such as gifting QPU seconds when a new QPU
-comes online is a real operation, not a hypothetical — §7.6 specifies it — and it has **two**
-halves, not one:
+The asymmetry is the whole rule, and it has one reason: `DELETE /me/projects/{_id}` is open to
+the project's admin, and the admin of a personal project is its owner. Since
+`ensure_personal_project` recreates one on next login with `projects.personal_qpu_seconds`,
+self-deletion is an allowance farm wherever that figure is non-zero — delete, log in, collect,
+repeat.
 
-1. `$inc` every existing personal project.
-2. Raise `projects.personal_qpu_seconds` so projects created *after* the campaign start at the new
-   figure.
+Nothing about that argues for disarming operators, and an earlier draft of this RFC did exactly
+that, making personal projects permanent against everyone including superusers. That was wrong.
+An operator offboarding someone who has left, or honouring an erasure request over a project
+carrying the person's email in `user_emails`, `admin_email` and its name, would have had no
+route but editing MongoDB by hand. "Go to the database" is not an answer, and for an EU-funded
+stack the erasure case is not optional.
 
-Half 2 is not a workaround for anything — it is required regardless, because a user who registers
-the day after the campaign should not be worse off than one who registered the day before. And
-once it is there, a dormant user who returns is covered by exactly the same mechanism as a brand
-new one.
+- `DELETE /me/projects/{_id}` refuses when `project.is_personal`, with "you cannot delete your
+  own personal project".
+- `DELETE /admin/projects/{id}` allows it, as for any other project.
+- The rule cannot live in `ProjectAppTokenManager.on_before_delete`, which cannot see who is
+  deleting. It belongs at the user-facing route.
+- The dashboard mirrors this: no Delete on `pages/projects/` for a personal project, Delete
+  present on `admin-projects/`.
 
-- `ProjectAppTokenManager.on_before_delete` raises `ForbiddenError` when `project.is_personal`
-  → 403 through the central handler. Putting it in the existing hook covers every delete path at
-  once, including `DELETE /admin/projects/{id}` and `DELETE /me/projects/{_id}`.
-- Personal projects **can** still be deactivated (`is_active = false`) by a superuser. An operator
-  needs a way to cut off abuse without destroying the anchor, and deactivation already blocks
-  token use.
-- The dashboard hides the delete affordance: `DeleteProjectDialog` already accepts `isDisabled`,
-  so this is `isDisabled={project.is_personal}` plus an explanatory tooltip.
+Deleting one is less destructive than it first appears: the next login recreates it. What it
+resets is the balance, which is exactly why the owner must not be able to trigger it.
 
-There is no user-deletion endpoint today — `get_users_router` is never mounted — so permanence
-creates no orphan problem yet. Whoever adds user deletion must handle the personal project
-explicitly rather than letting `on_before_delete` block the cascade.
+**On the allocation anchor.** An earlier draft justified permanence by wanting every user to
+reliably have exactly one personal project, so population-wide operations such as gifting QPU
+seconds (§7.6) could rely on it. Auto-creation on login provides that on its own, regardless of
+deletion history — a deleted project comes back, and a grant campaign covers returning users by
+raising `personal_qpu_seconds` anyway. The anchor never needed permanence.
+
+Personal projects can also still be deactivated (`is_active = false`) by a superuser, blocking
+token use without removing the record. For a troublesome *user*, the sharper lever is
+`User.is_active`: an inactive user cannot authenticate at all, which makes the state of their
+personal project moot.
+
+There is no user-deletion endpoint today — `get_users_router` is never mounted — so removing a
+user remains a database operation. That predates this RFC and is unchanged by it, but it is
+worth a follow-up: with personal projects now deletable by a superuser, a user-deletion route
+could cascade cleanly.
 
 ### 5.5 Auto-creation, and the existing users
 
@@ -902,8 +913,8 @@ cypress fixture together.
 
 - `Project.is_personal`, `Project.low_qpu_notified_at`.
 - `ensure_personal_project` + the `on_after_login` hook (§5.5), and the `on_before_delete` guard
-  making personal projects undeletable (§5.4) — same phase, so no personal project ever exists
-  without the invariant.
+  refusing owner self-deletion (§5.4) — same phase, so no personal project ever exists without
+  the guard.
 - The duplicate-key retry in `ensure_personal_project` (§5.5). No extra index — `ext_id` is
   `personal-{user_id}` and the existing unique index on `ext_id` already enforces one per user. No
   backfill and no migration either: existing users converge on next login.
@@ -955,7 +966,7 @@ Dashboard:
 - `admin-requests` type/status filters and the `project-access` title case.
 - `isDisabled={project.is_personal}` on `DeleteProjectDialog`.
 - Cypress: `approvals.cy.ts`, `notifications.cy.ts`, request-dialog and sidebar-meter cases in
-  `projects.cy.ts` / `dashboard.cy.ts`, and an undeletable-personal-project case. New fixtures
+  `projects.cy.ts` / `dashboard.cy.ts`, and a self-deletion-refused case. New fixtures
   `notifications.json`, `notification-preferences.json`, and new entries in `user-requests.json`
   and `projects.json` — including a personal project **per fixture user**, since auto-creation
   means every user has one and the fixtures should reflect the real shape.
@@ -1028,9 +1039,10 @@ Recorded so the reasoning is not re-litigated later.
 6. **Should `QPU_SECONDS_LOW` escalate to a system admin when the project admin is inactive?**
    **No** — §9. At any real project count it becomes noise, and muted notifications cost more than
    the rare unresponsive admin.
-7. **Are personal projects deletable?** **No** — §5.4. Permanence makes each one a durable
-   per-user allocation anchor, which is what enables later system-wide grants such as gift QPU
-   seconds when a new QPU comes online. They stay deactivatable so abuse can still be stopped.
+7. **Are personal projects deletable?** **By a superuser, yes; by their owner, no** — §5.4. An
+   earlier draft made them permanent against everyone, leaving an operator no way to offboard a
+   departing user or honour an erasure request short of editing MongoDB. The only case needing a
+   block is self-deletion, which would hand out a fresh allowance on next login.
 8. **Are the abuse caps configurable?** **Yes**, under `[projects]`, with working defaults (5
    pending requests, 20 failed lookups per hour) — §10.
 9. **Does this RFC let project admins grant QPU seconds?** **No** — §7.2. An earlier draft

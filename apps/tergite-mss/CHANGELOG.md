@@ -9,6 +9,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Changed
 
+- A superuser can delete a personal project, for offboarding or an erasure request; only the
+  owner is refused, since deleting their own would hand them a fresh allowance on next login.
+  An earlier iteration refused everyone, leaving no route but editing the database by hand.
 - Project responses now include `is_personal`, and user request responses include
   `approver_scope` and `project_id`. Clients asserting on exact response bodies will see the
   new fields.

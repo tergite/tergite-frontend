@@ -144,7 +144,11 @@ router.delete(
     }
 
     if (project.is_personal) {
-      res.status(403).json({ detail: "personal projects cannot be deleted" });
+      // recreated on next login with a fresh allowance, so the owner may not do it;
+      // a superuser can, through /admin/projects
+      res
+        .status(403)
+        .json({ detail: "you cannot delete your own personal project" });
       return;
     }
 
@@ -749,11 +753,6 @@ router.delete(
     );
     if (!project) {
       res.status(404).json({ detail: `Not Found` });
-      return;
-    }
-
-    if (project.is_personal) {
-      res.status(403).json({ detail: "personal projects cannot be deleted" });
       return;
     }
 

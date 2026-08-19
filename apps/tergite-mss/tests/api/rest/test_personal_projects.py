@@ -20,6 +20,7 @@ from services.auth.projects.dtos import (
     personal_project_name,
 )
 from tests._utils.auth import TEST_GITHUB_PROFILE, get_db_record
+from tests.conftest import get_auth_cookie
 
 _GITHUB_CALLBACK = "/auth/github/callback"
 
@@ -160,10 +161,10 @@ def test_concurrent_creation_yields_one_project(
         )
 
 
-def test_personal_project_cannot_be_deleted_by_superuser(
+def test_superuser_can_delete_a_personal_project(
     client, admin_jwt_cookie, db, github_user, cookie_oauth_state
 ):
-    """Permanence holds even against a superuser, so the allocation anchor survives"""
+    """An operator must be able to offboard a user without touching the database"""
     with client as client:
         _login(client, cookie_oauth_state)
         user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
@@ -173,8 +174,28 @@ def test_personal_project_cannot_be_deleted_by_superuser(
             f"/admin/projects/{project['_id']}", cookies=admin_jwt_cookie
         )
 
+        assert response.status_code == 204
+        assert _personal_project(db, user["_id"]) is None
+
+
+def test_owner_cannot_delete_their_own_personal_project(
+    client, db, github_user, cookie_oauth_state
+):
+    """Self-deletion would hand out a fresh allowance on the next login"""
+    with client as client:
+        _login(client, cookie_oauth_state)
+        user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
+        project = _personal_project(db, user["_id"])
+
+        response = client.delete(
+            f"/me/projects/{project['_id']}",
+            cookies=get_auth_cookie(str(user["_id"])),
+        )
+
         assert response.status_code == 403
-        assert response.json() == {"detail": "personal projects cannot be deleted"}
+        assert response.json() == {
+            "detail": "you cannot delete your own personal project"
+        }
         assert _personal_project(db, user["_id"]) is not None
 
 

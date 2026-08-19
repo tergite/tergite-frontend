@@ -187,6 +187,7 @@ def get_my_projects_router(
         if user is None or str(user.id) != project.admin_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
+        # the manager refuses a personal project unless the caller is a superuser
         await project_manager.delete(project)
         return None
 
@@ -348,7 +349,7 @@ def get_projects_router(
         project=Depends(get_project_or_404),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
     ):
-        await project_manager.delete(project, request=request)
+        await project_manager.delete(project, request=request, is_superuser=True)
         return None
 
     return router

@@ -292,24 +292,21 @@ function AdminProjectSummary({
               Update
             </Button>
 
-            {/* personal projects are permanent, so the API refuses this anyway */}
-            {!project.is_personal && (
-              <ConfirmDialog
-                title={`Delete project ${project.name}?`}
-                description="This action cannot be undone."
-                onConfirm={() => projectDeletion.mutate(project.id)}
-                trigger={
-                  <Button
-                    type="button"
-                    disabled={projectDeletion.isPending}
-                    variant="outline"
-                    className="text-destructive border-destructive"
-                  >
-                    Delete
-                  </Button>
-                }
-              />
-            )}
+            <ConfirmDialog
+              title={`Delete project ${project.name}?`}
+              description="This action cannot be undone."
+              onConfirm={() => projectDeletion.mutate(project.id)}
+              trigger={
+                <Button
+                  type="button"
+                  disabled={projectDeletion.isPending}
+                  variant="outline"
+                  className="text-destructive border-destructive"
+                >
+                  Delete
+                </Button>
+              }
+            />
           </CardFooter>
         </Card>
       </form>
