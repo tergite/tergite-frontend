@@ -104,7 +104,7 @@ export function Projects() {
         onDelete={handleProjectDelete}
         canDelete={
           projects[selectedProjectIdx]?.admin_id === currentUser.id &&
-          // personal projects are permanent, so the API refuses this anyway
+          // the API refuses the owner deleting their own, superusers aside
           !projects[selectedProjectIdx]?.is_personal
         }
       />

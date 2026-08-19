@@ -23,8 +23,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Changed
 
-- Personal projects can no longer be deleted from the projects or admin projects page,
-  matching the API, which refuses it.
+- The projects page no longer offers Delete on the reader's own personal project, matching
+  the API, which refuses it. The admin projects page still offers it, for offboarding.
 
 ## [2026.06.0] - 2026-06-26
 
