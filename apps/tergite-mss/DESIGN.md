@@ -280,8 +280,10 @@ CI runs `black --check .` then `pytest` on Python 3.12 and 3.13.
 
 On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
 
-- **`black` is authoritative** for formatting (pinned `black==23.11.0`); `isort` with
-  `skip_gitignore` for imports. Run both before committing.
+- **`black` is authoritative** for formatting (pinned `black==23.11.0`, and the only CI
+  gate); `isort` for imports, configured with `profile = "black"` so the two agree —
+  without it isort emits a style black then reformats, churning unrelated files. Run both
+  before committing; neither needs flags.
 - **Constants go at the top of the file**, after imports — not buried between functions. The
   exception is a constant built from a function or class defined in the same file, which
   stays after it (e.g. `_EVENT_HANDLER_MAP` after the handler imports, `ProjectPartial`

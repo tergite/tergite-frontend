@@ -85,6 +85,8 @@ exclude = ["docs*", "tests*"]
 
 [tool.isort]
 skip_gitignore = true
+# keeps isort from fighting the pinned black, which reformats its default style
+profile = "black"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
