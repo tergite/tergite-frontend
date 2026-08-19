@@ -97,6 +97,11 @@ export function Topbar({
           <DropdownMenuItem asChild>
             <Link to="/tokens">Tokens</Link>
           </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/settings" data-cy-settings-link>
+              Settings
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
 
           <DropdownMenuItem onClick={onLogout}>Logout</DropdownMenuItem>
