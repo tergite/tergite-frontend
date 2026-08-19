@@ -20,7 +20,6 @@ from fastapi import status as http_status
 
 from services import notices as notices_service
 from services import qpu_grants
-from services.qpu_grants import QpuSecondsGrantCreate, QpuSecondsGrantReport
 from services.auth import (
     APP_TOKEN_AUTH,
     Project,
@@ -29,6 +28,7 @@ from services.auth import (
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
 from services.notices.dtos import Notice, NoticeCreate
+from services.qpu_grants import QpuSecondsGrantCreate, QpuSecondsGrantReport
 from utils.api import GeneralMessage, PaginatedListResponse
 
 from ..dependencies import (
