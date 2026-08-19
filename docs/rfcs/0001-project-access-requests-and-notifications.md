@@ -1000,14 +1000,17 @@ Small, and independent of everything except phase 2's notifications.
 - Tests mock the `aiosmtplib` boundary rather than running a real SMTP server, matching how
   `respx` is used for BCC.
 
-### Phase 6 — QPU-second warnings and endpoint consolidation
+### Phase 6 — QPU-second warnings
 
 - The `update_qpu_usage` hook and the `low_qpu_notified_at` latch, emitting `QPU_SECONDS_LOW` and
   `QPU_SECONDS_DEPLETED` (§9). The field lands in phase 1; the notifications need phase 2.
-- Retire `POST /admin/qpu-time-requests/` in favour of `POST /me/requests/` with
-  `type = project-qpu-seconds`, behind a deprecation window. Purely an endpoint tidy-up — the
-  `/admin`-prefixed route was never superuser-gated for creation, which misleads. **Approval stays
-  system-admin only**; nothing about the allocation model changes.
+
+**Dropped: retiring `POST /admin/qpu-time-requests/`.** An earlier draft proposed replacing it with
+`POST /me/requests/` behind a deprecation window, on the grounds that the `/admin` prefix misleads
+for a route any project member may call. The prefix does mislead, but the RFC also called the change
+"purely an endpoint tidy-up", and that is not worth breaking the dashboard's four call sites, the
+mock API and any SDK client. It is also not a duplicate: `create_qpu_time_request` already notifies
+approvers. The naming stays as it is.
 
 ## 13. Resolved questions
 

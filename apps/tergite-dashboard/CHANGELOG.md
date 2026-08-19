@@ -9,6 +9,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Added
 
+- Added the low and exhausted QPU-time notifications to the bell and the settings page, so a project
+  running out of time is visible before a job is rejected for it.
 - Added a `/settings` page, reached from the user menu, with a switch per notification type
   for the email copy. In-app delivery of anything awaiting the reader stays on regardless.
 - Added a "Grant QPU time" form on the admin projects page, targeting either a list of

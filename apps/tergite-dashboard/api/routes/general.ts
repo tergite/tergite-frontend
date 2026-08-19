@@ -78,6 +78,12 @@ const _initialRecalibrationInfo: RecalibrationInfo = {
   next_job_status: RqJobStatus.SCHEDULED,
 };
 const recalibrationInfoDb: { [key: string]: RecalibrationInfo } = {};
+// the types MSS's channel policy does not mark in_app_mandatory: informational alerts
+// that await no action from the reader
+const IN_APP_SILENCEABLE_TYPES = new Set<NotificationType>([
+  NotificationType.QPU_SECONDS_LOW,
+  NotificationType.QPU_SECONDS_DEPLETED,
+]);
 
 router.use(
   cors({
@@ -1147,11 +1153,9 @@ router.post(
       return;
     }
 
-    mockDb.update<Device>(
-      "devices",
-      (v) => v.name === backend,
-      { is_online: true },
-    );
+    mockDb.update<Device>("devices", (v) => v.name === backend, {
+      is_online: true,
+    });
 
     res.json({ status: "success" } as GeneralMessage);
   }),
@@ -1178,11 +1182,10 @@ router.post(
       return;
     }
 
-    mockDb.update<Device>(
-      "devices",
-      (v) => v.name === backend,
-      { is_online: false, last_online: new Date().toISOString() },
-    );
+    mockDb.update<Device>("devices", (v) => v.name === backend, {
+      is_online: false,
+      last_online: new Date().toISOString(),
+    });
 
     res.json({ status: "success" } as GeneralMessage);
   }),
@@ -1336,7 +1339,6 @@ router.get(
   }),
 );
 
-
 router.get(
   "/me/notifications/",
   use(async (req, res) => {
@@ -1345,7 +1347,12 @@ router.get(
       return respond401(res);
     }
 
-    const { type, is_read, skip = "0", limit } = req.query as ParsedQs & {
+    const {
+      type,
+      is_read,
+      skip = "0",
+      limit,
+    } = req.query as ParsedQs & {
       type?: string | string[];
       is_read?: string;
       skip?: string;
@@ -1363,7 +1370,11 @@ router.get(
       ["-created_at"],
     );
 
-    res.json({ skip: parseInt(skip), limit: limit ? parseInt(limit) : null, data });
+    res.json({
+      skip: parseInt(skip),
+      limit: limit ? parseInt(limit) : null,
+      data,
+    });
   }),
 );
 
@@ -1382,14 +1393,15 @@ router.put(
       (v) => v.user_id === userId && !!v.read_at !== isRead,
     );
     for (const item of mine) {
-      mockDb.update<Notification>(
-        "notifications",
-        (v) => v.id === item.id,
-        { read_at: readAt },
-      );
+      mockDb.update<Notification>("notifications", (v) => v.id === item.id, {
+        read_at: readAt,
+      });
     }
 
-    res.json({ status: "success", detail: `${mine.length} notifications updated` });
+    res.json({
+      status: "success",
+      detail: `${mine.length} notifications updated`,
+    });
   }),
 );
 
@@ -1464,8 +1476,9 @@ router.put(
     for (const [key, value] of Object.entries(wanted)) {
       const type = key as NotificationType;
       current[type] = {
-        // in-app is mandatory for every type this build emits
-        in_app: true,
+        // mirrors the server, which silently forces in-app back on for the types its
+        // channel policy marks mandatory instead of rejecting the update
+        in_app: IN_APP_SILENCEABLE_TYPES.has(type) ? value.in_app : true,
         email: value.email,
       };
     }
@@ -1499,7 +1512,9 @@ router.post(
     if (project.user_ids.includes(userId)) {
       res
         .status(409)
-        .json({ detail: `you are already a member of '${body.project_ext_id}'` });
+        .json({
+          detail: `you are already a member of '${body.project_ext_id}'`,
+        });
       return;
     }
 
@@ -1554,7 +1569,11 @@ router.get(
     }
 
     const user = mockDb.getOne<User>("users", (v) => v.id === userId);
-    const { role = "requester", status, type } = req.query as ParsedQs & {
+    const {
+      role = "requester",
+      status,
+      type,
+    } = req.query as ParsedQs & {
       role?: string;
       status?: string;
       type?: string | string[];
@@ -1562,7 +1581,10 @@ router.get(
     const types = type ? ([] as string[]).concat(type) : [];
     const isAdmin = !!user?.roles.includes(UserRole.ADMIN);
     const administered = mockDb
-      .getMany<Project>("projects", (v) => v.admin_id === userId && !v.is_personal)
+      .getMany<Project>(
+        "projects",
+        (v) => v.admin_id === userId && !v.is_personal,
+      )
       .map((v) => v.id);
 
     const data = mockDb.getMany<UserRequest>(
@@ -1640,7 +1662,9 @@ router.put(
       if (project && member) {
         mockDb.update<Project>("projects", (v) => v.id === project.id, {
           user_ids: [...new Set([...project.user_ids, member.id])],
-          user_emails: [...new Set([...(project.user_emails ?? []), member.email])],
+          user_emails: [
+            ...new Set([...(project.user_emails ?? []), member.email]),
+          ],
         } as Partial<Project>);
       }
     }
@@ -1652,7 +1676,9 @@ router.put(
         ...body,
         approver_id: body.status !== undefined ? userId : request.approver_id,
         approver_name:
-          body.status !== undefined ? getUsername(actor) : request.approver_name,
+          body.status !== undefined
+            ? getUsername(actor)
+            : request.approver_name,
       },
     );
 
@@ -1721,7 +1747,9 @@ router.delete(
 
     mockDb.update<Project>("projects", (v) => v.id === project.id, {
       user_ids: project.user_ids.filter((v) => v !== member.id),
-      user_emails: (project.user_emails ?? []).filter((v) => v !== member.email),
+      user_emails: (project.user_emails ?? []).filter(
+        (v) => v !== member.email,
+      ),
     } as Partial<Project>);
 
     mockDb.create<Notification>("notifications", {
@@ -1852,7 +1880,10 @@ router.post(
       return;
     }
 
-    const personal = mockDb.getMany<Project>("projects", (v) => !!v.is_personal);
+    const personal = mockDb.getMany<Project>(
+      "projects",
+      (v) => !!v.is_personal,
+    );
     const skipped: SkippedTarget[] = [];
     let targets: Project[] = [];
 

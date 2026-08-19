@@ -17,6 +17,8 @@ const ORDERED_TYPES: NotificationType[] = [
   NotificationType.PROJECT_ACCESS_REJECTED,
   NotificationType.QPU_SECONDS_GRANTED,
   NotificationType.QPU_SECONDS_DENIED,
+  NotificationType.QPU_SECONDS_LOW,
+  NotificationType.QPU_SECONDS_DEPLETED,
   NotificationType.PROJECT_MEMBERSHIP_REVOKED,
 ];
 

@@ -9,6 +9,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Changed
 
+- Spending QPU seconds no longer clears a project's low-QPU latch; only adding time does. The latch
+  was cleared on every write, so once the new low-QPU warning existed the admin would have been
+  notified once per job for the same depletion rather than once.
 - A superuser can delete a personal project, for offboarding or an erasure request; only the
   owner is refused, since deleting their own would hand them a fresh allowance on next login.
   An earlier iteration refused everyone, leaving no route but editing the database by hand.
@@ -19,6 +22,10 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Added `qpu-seconds-low` and `qpu-seconds-depleted` notifications, raised as a job's usage takes a
+  project below `projects.qpu_seconds_low_threshold` (default 600) or to zero. The admin hears about
+  running low, admin and members both hear about running out; previously the first sign was a
+  rejected job. Unlike the other types these two can be silenced in-app, since neither awaits action.
 - Added an optional email copy of every notification, configured under `[email]` with
   `notifications.dashboard_url`. Omit `[email]` and nothing changes. Sending is done by a
   background sweeper reading the notification rows themselves, so an approval is never as slow

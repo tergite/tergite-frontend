@@ -1,4 +1,6 @@
 import {
+  BatteryLow,
+  BatteryWarning,
   BellRing,
   CheckCircle2,
   Clock,
@@ -61,6 +63,18 @@ export const NOTIFICATION_TYPE_META: Record<
   [NotificationType.QPU_SECONDS_DENIED]: {
     Icon: XCircle,
     label: "QPU time declined",
+    iconClassName: "text-destructive",
+    isActionable: false,
+  },
+  [NotificationType.QPU_SECONDS_LOW]: {
+    Icon: BatteryLow,
+    label: "QPU time low",
+    iconClassName: "text-amber-600",
+    isActionable: false,
+  },
+  [NotificationType.QPU_SECONDS_DEPLETED]: {
+    Icon: BatteryWarning,
+    label: "QPU time exhausted",
     iconClassName: "text-destructive",
     isActionable: false,
   },

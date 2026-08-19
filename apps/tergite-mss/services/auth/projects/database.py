@@ -97,20 +97,25 @@ class ProjectDatabase:
     async def increment_qpu_seconds(project_id: str, qpu_seconds: float):
         """Increments the QPU seconds of the given project
 
-        Also clears the low-QPU latch, so a project that had gone quiet warns again once
-        it next runs low. Every top-up path goes through here for that reason.
+        Adding time also clears the low-QPU latch, so a project that had gone quiet warns
+        again once it next runs low; every top-up path goes through here for that reason.
+        Spending time must leave the latch alone, or each job would rearm the warning and
+        the admin would hear about the same depletion once per job.
 
         Args:
             project_id: the ID of the project
-            qpu_seconds: the seconds to increment by
+            qpu_seconds: the seconds to increment by; negative to spend
 
         Returns:
             the updated document
         """
+        updates = [Inc({Project.qpu_seconds: qpu_seconds})]
+        if qpu_seconds > 0:
+            updates.append(Set({Project.low_qpu_notified_at: None}))
+
         return await Project.find_one(
             Project.id == PydanticObjectId(project_id)
         ).update(
-            Inc({Project.qpu_seconds: qpu_seconds}),
-            Set({Project.low_qpu_notified_at: None}),
+            *updates,
             response_type=UpdateResponse.NEW_DOCUMENT,
         )

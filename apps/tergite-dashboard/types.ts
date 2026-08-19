@@ -463,6 +463,8 @@ export enum NotificationType {
   QPU_SECONDS_REQUESTED = "qpu-seconds-requested",
   QPU_SECONDS_GRANTED = "qpu-seconds-granted",
   QPU_SECONDS_DENIED = "qpu-seconds-denied",
+  QPU_SECONDS_LOW = "qpu-seconds-low",
+  QPU_SECONDS_DEPLETED = "qpu-seconds-depleted",
   PROJECT_MEMBERSHIP_REVOKED = "project-membership-revoked",
 }
 

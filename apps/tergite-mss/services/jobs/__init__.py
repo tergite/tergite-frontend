@@ -19,14 +19,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 from uuid import UUID
 
+from beanie import PydanticObjectId
+from beanie.odm.operators.update.general import Set
 from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+import settings
+from services import notifications
 from services.external.bcc import BccClient
+from services.notifications import NotificationType
 from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils import mongodb as mongodb_utils
 from utils.crypto import decrypt_message
+from utils.date_time import get_current_timestamp
 from utils.exc import NotFoundError
 
 from ..auth import Project
@@ -204,6 +210,10 @@ async def update_qpu_usage(
     )
     if project is None and project_id is not None:
         raise NotFoundError(f"project '{project_id}' for job '{job_id}' not found")
+
+    if project is not None:
+        await _warn_on_qpu_thresholds(project, spent=qpu_usage)
+
     return project
 
 
@@ -219,6 +229,46 @@ async def remove_job(db: AsyncIOMotorDatabase, job_id: UUID):
         NotFoundError: no matches for {filter}
     """
     return await mongodb_utils.delete_many(db.jobs, _filter={"job_id": str(job_id)})
+
+
+async def _warn_on_qpu_thresholds(project: Project, spent: float) -> None:
+    """Tells the project admin when this job's usage took it low, or to zero.
+
+    Depletion is judged on the crossing rather than the latch, so a project that already
+    warned at the low threshold still reports running out. Members are told only about
+    depletion: they cannot request more for a project they do not administer, but they do
+    need to know why their jobs stopped.
+
+    Args:
+        project: the project as it stands after the decrement
+        spent: the seconds this job used, to recover the value before it
+    """
+    threshold = settings.CONFIG.projects.qpu_seconds_low_threshold
+    previous = project.qpu_seconds + spent
+
+    if project.qpu_seconds <= 0 < previous:
+        recipients = {project.admin_id, *(project.user_ids or [])}
+        await notifications.notify(
+            [PydanticObjectId(item) for item in recipients],
+            NotificationType.QPU_SECONDS_DEPLETED,
+            context={"project_name": project.name},
+        )
+    elif 0 < project.qpu_seconds < threshold and project.low_qpu_notified_at is None:
+        await notifications.notify(
+            [PydanticObjectId(project.admin_id)],
+            NotificationType.QPU_SECONDS_LOW,
+            context={
+                "project_name": project.name,
+                "seconds": f"{project.qpu_seconds:.0f}",
+            },
+        )
+    else:
+        return
+
+    # the latch is what makes this once per depletion rather than once per job
+    await Project.find_one(Project.id == project.id).update(
+        Set({Project.low_qpu_notified_at: get_current_timestamp()})
+    )
 
 
 def _without_special_docker_host_domain(url: str) -> str:

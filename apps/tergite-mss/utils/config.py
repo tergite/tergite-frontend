@@ -191,6 +191,9 @@ class ProjectsConfig(BaseModel):
     # whether personal projects are auto-created on login at all
     personal_projects_enabled: bool = True
 
+    # notify the project admin when remaining QPU seconds fall below this
+    qpu_seconds_low_threshold: float = 600
+
     # maximum pending user requests one user may have at a time
     max_pending_requests_per_user: int = 5
 

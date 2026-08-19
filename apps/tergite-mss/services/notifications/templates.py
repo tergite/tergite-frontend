@@ -46,6 +46,10 @@ CHANNEL_POLICY: Dict[NotificationType, ChannelPolicy] = {
     NotificationType.QPU_SECONDS_GRANTED: ChannelPolicy(True, True),
     NotificationType.QPU_SECONDS_DENIED: ChannelPolicy(True, True),
     NotificationType.PROJECT_MEMBERSHIP_REVOKED: ChannelPolicy(True, True),
+    # not awaiting anyone's action, so silenceable; on by default because a depleted
+    # project stops accepting jobs and the owner would otherwise find out from a failure
+    NotificationType.QPU_SECONDS_LOW: ChannelPolicy(False, True),
+    NotificationType.QPU_SECONDS_DEPLETED: ChannelPolicy(False, True),
 }
 
 TEMPLATES: Dict[NotificationType, Template] = {
@@ -78,6 +82,16 @@ TEMPLATES: Dict[NotificationType, Template] = {
         title="QPU time for {project_name} was declined",
         body="{approver_name} declined the QPU time request for {project_name}. {reason}",
         severity=NotificationSeverity.WARNING,
+    ),
+    NotificationType.QPU_SECONDS_LOW: Template(
+        title="{project_name} is running low on QPU time",
+        body="{project_name} has {seconds}s of QPU time left. Request more before it runs out.",
+        severity=NotificationSeverity.WARNING,
+    ),
+    NotificationType.QPU_SECONDS_DEPLETED: Template(
+        title="{project_name} is out of QPU time",
+        body="{project_name} has no QPU time left, so its jobs will be rejected until more is granted.",
+        severity=NotificationSeverity.CRITICAL,
     ),
     NotificationType.PROJECT_MEMBERSHIP_REVOKED: Template(
         title="You were removed from {project_name}",
