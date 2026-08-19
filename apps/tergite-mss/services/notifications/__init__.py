@@ -21,9 +21,11 @@ from .dtos import (
     NotificationAction,
     NotificationPreferences,
     NotificationRead,
+    NotificationSeverity,
     NotificationType,
     NotificationUpdate,
 )
+from .outbox import send_pending, start_sweeper, stop_sweeper
 from .service import (
     count_many,
     find_many,
@@ -44,6 +46,7 @@ __all__ = [
     "NotificationAction",
     "NotificationPreferences",
     "NotificationRead",
+    "NotificationSeverity",
     "NotificationType",
     "NotificationUpdate",
     "count_many",
@@ -51,7 +54,10 @@ __all__ = [
     "get_preferences",
     "notify",
     "on_startup",
+    "send_pending",
     "set_all_read",
     "set_preferences",
     "set_read",
+    "start_sweeper",
+    "stop_sweeper",
 ]

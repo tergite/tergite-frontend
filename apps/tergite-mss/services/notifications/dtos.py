@@ -18,11 +18,23 @@ from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from pymongo import IndexModel
 
-from services.notices.dtos import NoticeSeverity
 from utils.date_time import get_current_timestamp
 
 NOTIFICATION_DB_COLLECTION = "notifications"
 NOTIFICATION_PREFS_DB_COLLECTION = "notification_preferences"
+
+
+class NotificationSeverity(str, Enum):
+    """How much attention a notification deserves.
+
+    Deliberately its own enum rather than reusing NoticeSeverity: the two channels are
+    separate by design, and importing notices here makes notifications depend on the auth
+    service transitively.
+    """
+
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
 
 
 class NotificationType(str, Enum):
@@ -75,7 +87,7 @@ class NotificationRead(BaseModel):
     type: NotificationType
     title: str
     body: str
-    severity: NoticeSeverity
+    severity: NotificationSeverity
     action: Optional[NotificationAction] = None
     context: Dict[str, Any] = {}
     read_at: Optional[str] = None
@@ -104,7 +116,7 @@ class Notification(Document):
     type: NotificationType
     title: str
     body: str
-    severity: NoticeSeverity = NoticeSeverity.INFO
+    severity: NotificationSeverity = NotificationSeverity.INFO
     action: Optional[NotificationAction] = None
     context: Dict[str, Any] = Field(default_factory=dict)
     read_at: Optional[str] = None

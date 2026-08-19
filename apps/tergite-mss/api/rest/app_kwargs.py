@@ -23,12 +23,11 @@ from loguru import logger
 
 import settings
 from services import calibration as calib_service
+from services import notifications, qpu_grants
 from services.auth import service as auth_service
 from services.devices import service as devices_service
 from services.external import bcc
 from services.notices import service as notices_service
-from services.notifications import on_startup as notifications_on_startup
-from services import qpu_grants
 
 from .routers.devices import ws_manager as devices_ws_manager
 from .utils import get_default_mongodb
@@ -61,7 +60,8 @@ async def lifespan(_app: FastAPI):
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)
     await notices_service.on_startup(db)
-    await notifications_on_startup(db)
+    await notifications.on_startup(db)
+    notifications.start_sweeper()
     await qpu_grants.on_startup(db)
     logger.info("Tergite MSS startup sequence completed successfully.")
 
@@ -70,6 +70,7 @@ async def lifespan(_app: FastAPI):
     logger.info(
         "Tergite MSS shutting down. Closing active connections and cleaning up..."
     )
+    await notifications.stop_sweeper()
     await bcc.close_clients()
     await devices_ws_manager.close_all(reason="server shutting down")
     await devices_service.disconnect_all(db)

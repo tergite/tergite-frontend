@@ -17,9 +17,8 @@ import settings
 from services import notifications
 from services.notifications import NotificationAction, NotificationType
 from utils import rate_limit
-from utils.exc import ConflictError, ForbiddenError, NotFoundError, TooManyRequestsError
-
 from utils.config import UserRole
+from utils.exc import ConflictError, ForbiddenError, NotFoundError, TooManyRequestsError
 
 from ..projects.database import ProjectDatabase
 from ..projects.dtos import Project

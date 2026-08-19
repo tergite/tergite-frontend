@@ -202,11 +202,35 @@ class ProjectsConfig(BaseModel):
     max_grant_seconds: float = 2592000
 
 
+class EmailConfig(BaseModel):
+    """SMTP settings. Omit the whole table to disable the email channel."""
+
+    host: str
+    port: int = 587
+    username: Optional[str] = None
+    password: Optional[str] = None
+    use_tls: bool = True
+    from_address: str
+    from_name: str = "Tergite"
+    # request timeout in seconds
+    timeout: int = 10
+
+
 class NotificationsConfig(BaseModel):
     """Configuration for the notifications service"""
 
     # days a notification is kept before the TTL index removes it
     retention_days: int = 90
+
+    # base URL of the dashboard, used for deep links in emails.
+    # required when [email] is set, since a mail with dead links is worse than no mail
+    dashboard_url: Optional[str] = None
+
+    # seconds between outbox sweeps
+    email_sweep_interval: float = 60
+
+    # attempts before an email is marked failed
+    email_retry_limit: int = 3
 
 
 class AuthConfig(BaseModel):
@@ -273,6 +297,9 @@ class AppConfig(BaseModel, extra="allow"):
     # configuration for notifications
     notifications: NotificationsConfig = NotificationsConfig()
 
+    # SMTP settings; None disables the email channel entirely
+    email: Optional[EmailConfig] = None
+
     # cache for the backends dict
     _backends_dict: Dict[str, BccConfig] = None
 
@@ -285,6 +312,15 @@ class AppConfig(BaseModel, extra="allow"):
         if self._backends_dict is None:
             self._backends_dict = {item.name: item for item in self.backends}
         return self._backends_dict
+
+    @model_validator(mode="after")
+    def dashboard_url_required_for_email(self) -> "AppConfig":
+        """Silently sending mail with dead links is worse than failing at startup"""
+        if self.email is not None and not self.notifications.dashboard_url:
+            raise ValueError(
+                "notifications.dashboard_url is required when [email] is configured"
+            )
+        return self
 
     @classmethod
     def from_json_str(cls, data_str: str) -> "AppConfig":

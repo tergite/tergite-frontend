@@ -94,9 +94,11 @@ production, and `--forwarded-allow-ips` when it detects `/.dockerenv`).
 exists. Any config error is a startup crash, not a runtime surprise.
 
 The FastAPI `lifespan` in `app_kwargs.py` creates the BCC httpx clients, then runs each
-service's `on_startup(db)`: Beanie document registration for `auth` and `notices`, index
-creation for `calibration` and `notices`. On shutdown it closes the BCC clients, closes all
-device websockets, and marks every device disconnected.
+service's `on_startup(db)`: Beanie document registration for `auth`, `notices`, `notifications`
+and `qpu_grants`, index creation for `calibration` and `notices`. It then starts the only
+background loop in the app, `notifications.start_sweeper()`, which is a no-op unless `[email]`
+is configured. On shutdown it stops the sweeper, closes the BCC clients, closes all device
+websockets, and marks every device disconnected.
 
 `docs_url` / `redoc_url` / `openapi_url` are set to `None` unless
 `general.environment == "development"` — there are no interactive docs in production.
@@ -173,6 +175,10 @@ turns connection/timeout failures into `ServiceUnavailableError` → 503. Client
 `create_booking`, `cancel_booking`, `view_bookings`, `view_bookings_configs`,
 `init_recalibration`, `get_recalibration_info`, `stop_recalibration`, `switch_off`,
 `switch_on`.
+
+`services/external/email/` is the other outbound client: a thin `aiosmtplib` wrapper whose
+only caller is the notification outbox sweeper (`services/notifications/outbox.py`). Nothing on
+a request path sends mail, so a dead mail server cannot fail a request.
 
 **Bookings and BCC users are not persisted by MSS.** The `/bookings` and
 `/admin/bcc-users` routes proxy to the owning backend on the user's behalf. Only jobs,

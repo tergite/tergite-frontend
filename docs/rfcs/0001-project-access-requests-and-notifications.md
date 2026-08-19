@@ -423,8 +423,13 @@ live. `email_status` also gives us the "did they get the mail" answer during sup
 
 The SMTP client goes in `services/external/email/` — outbound third-party clients belong under
 `services/external/`, alongside `bcc`. New dependency: `aiosmtplib`. Templates are plain
-Python format strings (a plaintext body plus a minimal HTML wrapper) held as module-level
-constants; six to eight messages do not justify pulling in a template engine.
+Python format strings held as module-level constants; six to eight messages do not justify
+pulling in a template engine. Bodies are plaintext only — the HTML wrapper this section
+originally called for buys nothing for messages this short, and plaintext renders everywhere.
+
+The sweeper does not claim a row before sending, so two MSS processes against one database
+would send some notifications twice. One process per deployment is the assumption, which is
+what `start_mss.sh` runs.
 
 Emails carry a deep link built from `notifications.dashboard_url`, which MSS does not
 currently know about. Without it, emails are far less useful, so treat it as required whenever

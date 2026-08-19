@@ -18,6 +18,7 @@ from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 import settings
+from services.external import email
 from utils.date_time import get_current_timestamp, get_utc_now
 from utils.exc import NotFoundError
 
@@ -62,6 +63,7 @@ async def notify(
         if len(wanted) == 0:
             return []
 
+        email_status = await _initial_email_status(wanted, type_)
         records = [
             Notification(
                 user_id=user_id,
@@ -71,8 +73,7 @@ async def notify(
                 severity=template.severity,
                 action=action,
                 context=context,
-                # the email channel sets this to PENDING once SMTP is configured
-                email_status=EmailStatus.NOT_APPLICABLE,
+                email_status=email_status[user_id],
                 expires_at=get_utc_now()
                 + timedelta(days=settings.CONFIG.notifications.retention_days),
             )
@@ -229,6 +230,39 @@ async def on_startup(db: AsyncIOMotorDatabase):
     await init_beanie(
         database=db, document_models=[Notification, NotificationPreferences]
     )
+
+
+async def _initial_email_status(
+    user_ids: Sequence[PydanticObjectId], type_: NotificationType
+) -> Dict[PydanticObjectId, EmailStatus]:
+    """The email state each notification starts in.
+
+    PENDING makes the notification row its own outbox entry for the sweeper to pick up;
+    NOT_APPLICABLE means nothing will ever try to send it.
+
+    Args:
+        user_ids: the recipients
+        type_: the notification type, whose policy supplies the default
+
+    Returns:
+        the starting email status per recipient
+    """
+    if not email.is_configured():
+        return {user_id: EmailStatus.NOT_APPLICABLE for user_id in user_ids}
+
+    records = await NotificationPreferences.find(
+        {"user_id": {"$in": list(user_ids)}}
+    ).to_list()
+    stored = {record.user_id: record.prefs for record in records}
+    default = CHANNEL_POLICY[type_].email_default
+    return {
+        user_id: (
+            EmailStatus.PENDING
+            if stored.get(user_id, {}).get(type_, ChannelPrefs(email=default)).email
+            else EmailStatus.NOT_APPLICABLE
+        )
+        for user_id in user_ids
+    }
 
 
 def _filters(

@@ -14,11 +14,9 @@
 Plain format strings rather than a template engine: a handful of short messages does not
 justify the dependency.
 """
-from typing import Dict, NamedTuple
+from typing import Dict, NamedTuple, Optional
 
-from services.notices.dtos import NoticeSeverity
-
-from .dtos import NotificationType
+from .dtos import NotificationSeverity, NotificationType
 
 
 class ChannelPolicy(NamedTuple):
@@ -37,7 +35,7 @@ class Template(NamedTuple):
 
     title: str
     body: str
-    severity: NoticeSeverity
+    severity: NotificationSeverity
 
 
 CHANNEL_POLICY: Dict[NotificationType, ChannelPolicy] = {
@@ -54,39 +52,64 @@ TEMPLATES: Dict[NotificationType, Template] = {
     NotificationType.PROJECT_ACCESS_REQUESTED: Template(
         title="Access request for {project_name}",
         body="{requester_name} is asking to join {project_name}: {reason}",
-        severity=NoticeSeverity.INFO,
+        severity=NotificationSeverity.INFO,
     ),
     NotificationType.PROJECT_ACCESS_APPROVED: Template(
         title="You were added to {project_name}",
         body="{approver_name} approved your request to join {project_name}.",
-        severity=NoticeSeverity.INFO,
+        severity=NotificationSeverity.INFO,
     ),
     NotificationType.PROJECT_ACCESS_REJECTED: Template(
         title="Access to {project_name} was declined",
         body="{approver_name} declined your request to join {project_name}. {reason}",
-        severity=NoticeSeverity.WARNING,
+        severity=NotificationSeverity.WARNING,
     ),
     NotificationType.QPU_SECONDS_REQUESTED: Template(
         title="QPU time request for {project_name}",
         body="{requester_name} is asking for {seconds}s on {project_name}: {reason}",
-        severity=NoticeSeverity.INFO,
+        severity=NotificationSeverity.INFO,
     ),
     NotificationType.QPU_SECONDS_GRANTED: Template(
         title="{seconds}s of QPU time added to {project_name}",
         body="{approver_name} granted {seconds}s of QPU time on {project_name}.",
-        severity=NoticeSeverity.INFO,
+        severity=NotificationSeverity.INFO,
     ),
     NotificationType.QPU_SECONDS_DENIED: Template(
         title="QPU time for {project_name} was declined",
         body="{approver_name} declined the QPU time request for {project_name}. {reason}",
-        severity=NoticeSeverity.WARNING,
+        severity=NotificationSeverity.WARNING,
     ),
     NotificationType.PROJECT_MEMBERSHIP_REVOKED: Template(
         title="You were removed from {project_name}",
         body="{approver_name} removed you from {project_name}. Any API tokens you held for it no longer work.",
-        severity=NoticeSeverity.WARNING,
+        severity=NotificationSeverity.WARNING,
     ),
 }
+
+
+def render_email(title: str, body: str, dashboard_url: Optional[str]) -> str:
+    """Wraps a notification's copy in a plain-text email body.
+
+    Plain text only: a handful of short transactional messages does not justify carrying
+    an HTML template around, and plain text renders everywhere.
+
+    Args:
+        title: the notification title, used as the opening line
+        body: the notification body
+        dashboard_url: base URL of the dashboard, for the closing link
+
+    Returns:
+        the email body
+    """
+    lines = [title, "", body]
+    if dashboard_url:
+        lines += ["", f"See it in the dashboard: {dashboard_url.rstrip('/')}"]
+    lines += [
+        "",
+        "--",
+        "You are receiving this because of activity on your Tergite account.",
+    ]
+    return "\n".join(lines)
 
 
 def render(type_: NotificationType, context: Dict[str, object]) -> Template:
