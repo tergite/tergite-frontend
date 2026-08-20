@@ -104,11 +104,11 @@ sequenceDiagram
     participant D as MongoDB
     participant B as BCC (backend)
 
-    C->>M: POST /jobs  (Bearer app token)
+    C->>M: POST /jobs (Bearer app token)
     M->>M: resolve project from token, check qpu_seconds > 0
     M->>D: insert job (new job_id)
     M->>B: POST /token (x-mss-signature, signed with MSS private key)
-    B->>B: verify signature against MSS public key; mint user token
+    B->>B: verify signature against MSS public key, mint user token
     B-->>M: token encrypted with MSS public key
     M->>M: decrypt token
     M-->>C: { job_id, upload_url, token }
@@ -292,15 +292,5 @@ Worth knowing before you are surprised by them:
   websocket; if BCC dies without disconnecting cleanly, MSS keeps showing it online until
   the socket drops. Called out in
   [apps/tergite-mss/docs/backends.md](apps/tergite-mss/docs/backends.md) and the root TODO.
-- **`MSS_TOKEN` expiry is silent.** When the app token a backend uses to reach MSS expires
-  or its project is deleted, the backend just logs `Unauthorized` — nothing rotates it.
-  <!-- FIXME: This kind of authentication was replaced with the asymmetric cryptographic keys-->
 - **503 handling in the dashboard is incomplete** (root `README.md` TODO).
 - **`GET /counts/job-submitters` raises `NotImplementedError`.**
-- **`apps/tergite-mss/lib/nng.py`** is an unwired experiment (it imports `pynng`, which is
-  not a declared dependency) sketching an NNG transport to the backend. Nothing imports it.
-  <!-- FIXME: This is git ignored-->
-- **`apps/tergite-mss/build/`** is stale setuptools output containing an older copy of the
-  tree, including `api/rest/routers/v1` and `v2` packages that no longer exist. Do not read
-  it as current code.
-  <!-- FIXME: This is git ignored-->
