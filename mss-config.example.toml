@@ -95,13 +95,15 @@ email_retry_limit = 3
 # Outbound SMTP. Omit this whole section to leave notifications in-app only:
 # emails are then never queued, and per-user email preferences have no effect.
 [email]
-host = "smtp.example.com"
-port = 587
+# host = "smtp.example.com"
+host = "mailpit"
+# port = 587
+port = 1025
 username = "mss@example.com"
 password = "some hidden secret"
 # whether to upgrade the connection with STARTTLS; default = true
-use_tls = true
-from_address = "no-reply@example.com"
+use_tls = false
+from_address = "no-reply@tergite.com"
 # display name on the From header; default = "Tergite"
 from_name = "Tergite"
 # seconds to wait on the SMTP server before giving up; default = 10
