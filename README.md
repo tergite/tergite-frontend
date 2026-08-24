@@ -172,19 +172,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
       and §8.3 repeats the refusal. Any endpoint listing project IDs lets any logged-in user
       enumerate every project in the system. Needs a decision to amend the RFC before it can
       be built; the admin-only email autocomplete below is not in tension and can proceed.
-- [ ] After approving a project access request, there is a `Failed to fetch` error:
-      ```
-      Access to fetch at 'http://127.0.0.1:8002/admin/user-requests/6a8c3bac0c6f8beedba1ad33' from origin 'http://127.0.0.1:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
-      TypeError: Failed to fetch
-      at ht (index-74TWp7kT.js:288:81530)
-      at Object.U7 [as mutationFn] (index-74TWp7kT.js:288:75145)
-      at Object.fn (index-74TWp7kT.js:288:42969)
-      at C (index-74TWp7kT.js:288:33357)
-      at Object.start (index-74TWp7kT.js:288:33816)
-      at JA.execute (index-74TWp7kT.js:288:43774)
-  fw	@	index-74TWp7kT.js:40
-      ```
-    - Probably use similar layout in the admin pages to that used in the dashboard pages
 - [ ] Health check requests spam the logs of tergite-backend
     - MSS and the dashboard now answer the container probe on an unlogged `/health`; the
       backend lives in its own repo and needs the same treatment there.

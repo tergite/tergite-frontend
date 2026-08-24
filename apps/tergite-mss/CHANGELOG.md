@@ -7,6 +7,12 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+### Fixed
+
+- An unhandled server error now answers with a 500 carrying the CORS headers. Errors with no
+  handler of their own were turned into a response outside the CORS middleware, so a browser
+  reported "Failed to fetch" and a CORS violation instead of the error that actually happened.
+
 ### Added
 
 - Added an unlogged `GET /health` for the container healthcheck, which used to probe

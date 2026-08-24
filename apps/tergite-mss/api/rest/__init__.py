@@ -17,6 +17,7 @@
 
 from fastapi import FastAPI
 from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 from loguru import logger
 
 import settings
@@ -55,18 +56,28 @@ setup_logging(settings.CONFIG.environment)
 app = FastAPI(**get_app_kwargs())
 
 
-# middleware
-app.add_middleware(
-    TergiteCORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
+# middleware, outermost last: add_middleware wraps what is already there
 # probed every few seconds by the container healthcheck; logging them buries real traffic
 _UNLOGGED_PATHS = frozenset({"/health"})
+
+
+@app.middleware("http")
+async def catch_unhandled_errors(request: Request, call_next):
+    """Turns an unhandled exception into a 500 response from inside the CORS middleware.
+
+    A handler registered for `Exception` is taken by Starlette's ServerErrorMiddleware,
+    which wraps every other middleware including CORS. Its response therefore carries no
+    access-control-allow-origin, and a browser reports the request as a CORS failure
+    rather than the 500 that actually happened -- which is how a `$addToSet` crash on
+    approving a request reached the dashboard as 'Failed to fetch'.
+    """
+    try:
+        return await call_next(request)
+    except Exception:
+        logger.exception(f"Unhandled error: {request.method} {request.url.path}")
+        return JSONResponse(
+            status_code=500, content={"detail": "Unexpected server error"}
+        )
 
 
 @app.middleware("http")
@@ -123,6 +134,14 @@ async def request_logging_middleware(request: Request, call_next):
         response.headers["X-Request-ID"] = request_id
         return response
 
+
+app.add_middleware(
+    TergiteCORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # exception handlers
 app.add_exception_handler(NotFoundError, to_http_error(404))
