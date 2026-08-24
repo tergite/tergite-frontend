@@ -9,6 +9,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Added
 
+- Added Approve and Reject buttons to each pending row of the admin requests table, so a
+  queue can be cleared without opening every request in turn.
 - Added a `/requests` page, under Access in the sidebar, listing the requests the reader has
   made with their status, decision and what was asked for. A requester previously had no way
   to see an outcome except by noticing the notification.

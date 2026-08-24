@@ -33,6 +33,7 @@ const requestsTableHeaders = [
   "Requested by",
   "Created",
   "Status",
+  "",
 ];
 const requestsTableDataProps = [
   "title",
@@ -40,6 +41,7 @@ const requestsTableDataProps = [
   "requester_name",
   "created_at",
   "status",
+  "actions",
 ];
 
 users.forEach((user) => {
@@ -100,7 +102,7 @@ users.forEach((user) => {
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] div", /requests/i).within(() => {
+        cy.get("[data-testid='sidebar'] a[href='/admin-requests']").within(() => {
           cy.contains(".bg-primary", `${pendingUserRequests.length}`);
         });
       });
@@ -115,7 +117,7 @@ users.forEach((user) => {
           .parent()
           .click();
 
-        cy.contains("[data-testid='sidebar'] div", /requests/i).within(() => {
+        cy.get("[data-testid='sidebar'] a[href='/admin-requests']").within(() => {
           cy.contains(".bg-primary", `${pendingUserRequests.length}`).should(
             "not.exist"
           );
@@ -128,7 +130,7 @@ users.forEach((user) => {
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] a", /requests/i).click();
+        cy.get("[data-testid='sidebar'] a[href='/admin-requests']").click();
         cy.url().should("equal", `${dashboardUrl}admin-requests`);
       });
 
@@ -138,7 +140,7 @@ users.forEach((user) => {
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] a", /requests/i).should(
+        cy.get("[data-testid='sidebar'] a[href='/admin-requests']").should(
           "not.exist"
         );
       });
@@ -183,6 +185,12 @@ users.forEach((user) => {
                           } else if (prop === "status") {
                             expect(cell.td.text()).to.match(
                               new RegExp(cell.request[prop], "i")
+                            );
+                          } else if (prop === "actions") {
+                            // every row here is pending, so both quick
+                            // responses are offered
+                            expect(cell.td.text()).to.match(
+                              /approve\s*reject/i
                             );
                           } else if (prop === "title") {
                             expect(cell.td.text()).to.eql(
@@ -460,6 +468,23 @@ users.forEach((user) => {
       });
 
     isAdmin &&
+      it("approves straight from the row, without opening the request", () => {
+        cy.viewport(1080, 750);
+        cy.wait("@user-requests-list");
+
+        const title = getTitle(qpuTimeRequests[0]);
+        cy.contains(".bg-card tbody tr", title).within(() => {
+          cy.get("[data-cy-row-approve]").click();
+        });
+
+        cy.wait("@user-requests-list");
+        // the table lists only pending requests, so an approved one drops out
+        cy.contains(".bg-card tbody td", title).should("not.exist");
+        // and the row click never fired, so no detail panel opened
+        cy.get("#request-summary").should("not.exist");
+      });
+
+    isAdmin &&
       it("approving a QPU time request increases project QPU time and removes request from pending list", () => {
         cy.viewport(1080, 750);
         const projectsMap = Object.fromEntries(
@@ -509,7 +534,7 @@ users.forEach((user) => {
               obj.request.request.seconds;
 
             // sidebar shows correct number
-            cy.contains("[data-testid='sidebar'] div", /requests/i).within(
+            cy.get("[data-testid='sidebar'] a[href='/admin-requests']").within(
               () => {
                 cy.contains(".bg-primary", `${obj.counts.pending}`);
               }
@@ -580,7 +605,7 @@ users.forEach((user) => {
             obj.counts.pending -= 1;
 
             // sidebar shows correct number
-            cy.contains("[data-testid='sidebar'] div", /requests/i).within(
+            cy.get("[data-testid='sidebar'] a[href='/admin-requests']").within(
               () => {
                 cy.contains(".bg-primary", `${obj.counts.pending}`);
               }

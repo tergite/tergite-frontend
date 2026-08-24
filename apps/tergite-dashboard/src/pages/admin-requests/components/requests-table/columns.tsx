@@ -4,6 +4,7 @@ import { getUserRequestTitle } from "@/lib/utils";
 import { ColumnDef } from "@tanstack/table-core";
 import { DateTime } from "luxon";
 import type { UserRequest } from "types";
+import { RowActions } from "./row-actions";
 
 export const columns: ColumnDef<UserRequest>[] = [
   {
@@ -35,5 +36,11 @@ export const columns: ColumnDef<UserRequest>[] = [
         failureValue="rejected"
       />
     ),
+  },
+  {
+    id: "actions",
+    header: "",
+    enableSorting: false,
+    cell: ({ row }) => <RowActions request={row.original} />,
   },
 ];

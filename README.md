@@ -172,7 +172,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
       and §8.3 repeats the refusal. Any endpoint listing project IDs lets any logged-in user
       enumerate every project in the system. Needs a decision to amend the RFC before it can
       be built; the admin-only email autocomplete below is not in tension and can proceed.
-- [ ] Pending User requests for the admin probably need to have a quick response set of buttons in the table so that admins quickly approve multiple requests instead of opening each one first
 - [ ] Approving a project access request fails with
 
   ```JSON
