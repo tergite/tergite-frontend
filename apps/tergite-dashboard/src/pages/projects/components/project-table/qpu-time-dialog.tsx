@@ -28,10 +28,10 @@ import {
   Project,
   QpuTimeExtensionPostBody,
   QpuTimeExtensionUserRequest,
-  InputDuration,
   User,
 } from "types";
 import { z } from "zod";
+import { Duration } from "luxon";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -92,7 +92,7 @@ function _QpuTimeDialog({
       async (values: z.infer<typeof formSchema>) => {
         const { reason, ...extension } = values;
         const payload: QpuTimeExtensionPostBody = {
-          seconds: toSeconds(extension),
+          seconds: Duration.fromObject(extension).as("seconds"),
           reason: reason,
           project_id: project.id,
         };
@@ -267,21 +267,4 @@ interface Props {
   className?: string;
   qpuTimeRequests: QpuTimeExtensionUserRequest[];
   onSubmit?: (data: QpuTimeExtensionUserRequest) => Promise<void>;
-}
-
-/**
- * Converts a given value to seconds
- *
- * @param value - the value to convert to seconds
- */
-function toSeconds({
-  days = 0,
-  hours = 0,
-  milliseconds = 0,
-  minutes = 0,
-  seconds = 0,
-}: InputDuration): number {
-  return (
-    seconds + minutes * 60 + milliseconds / 1000 + hours * 3_600 + days * 24
-  );
 }

@@ -30,6 +30,11 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 - The projects page no longer offers Delete on the reader's own personal project, matching
   the API, which refuses it. The admin projects page still offers it, for offboarding.
 
+### Fixed
+
+- Fixed the days field of the QPU-time request form on the projects page, which counted a
+  day as 24 seconds. Asking for 2 days requested 48 seconds on top of the default hour.
+
 ## [2026.06.0] - 2026-06-26
 
 This is part of the tergite release v2026.06.0.

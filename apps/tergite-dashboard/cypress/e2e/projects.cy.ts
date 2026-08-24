@@ -436,6 +436,10 @@ users.forEach((user) => {
 
             cy.get("#qpu-time-dialog").should("not.exist");
 
+            cy.wait("@qpu-requests-create")
+              .its("request.body.seconds")
+              .should("eq", 86_400 + 20 * 3_600 + 3 * 60 + 10);
+
             // table updated
             cy.contains(
               `.bg-card tbody tr[data-id='${index}'] td[data-header='requests'] button`,

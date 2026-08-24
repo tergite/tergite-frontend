@@ -164,8 +164,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## TODO
 
-- [ ] Adding 2 days when requesting for more qpu seconds adds only an hour or something. 
-    - We suspect wrong arithmetic in qpu increase requests on /projects especially when days are added.
 - [ ] Granting QPU time to all leaves the modal on top even when 'Confirm' is clicked, and as a result multiple clicks causes multiple seconds
     - We probably need to have the confirm to be idempotent. Two issues: Confirm does not close the modal or show success and clicking confirm multiple times increases the qpu seconds multiple times
     - The form also does not become unsubmittable afterwards because it still has valid seconds in the input
