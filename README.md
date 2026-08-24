@@ -164,8 +164,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## TODO
 
-- [ ] There is no feedback to the user after submitting the request access form.
-    - Maybe show a toast or redirect to past requests screen
 - [ ] Make the 'Project External ID' input an autocomplete
     - Maybe add a read-only autocomplete GET endpoint for project IDs
     - Make the input autocomplete with shadcn `Combobox`

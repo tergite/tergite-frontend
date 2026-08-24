@@ -24,11 +24,12 @@ import {
   requestProjectAccess,
 } from "@/lib/api-client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { ErrorInfo } from "types";
 import { z } from "zod";
+import { toast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   project_ext_id: z.string().min(1, "required"),
@@ -43,25 +44,35 @@ export function RequestAccessDialog() {
     defaultValues: { project_ext_id: "", reason: "" },
   });
 
-  const onSubmit = useCallback(
-    async (values: z.infer<typeof formSchema>) => {
-      try {
-        await requestProjectAccess(values);
-        await refreshMyRequests(queryClient);
-        await refreshMyProjectsQueries(queryClient);
-        requestForm.reset();
-        setIsOpen(false);
-      } catch (error) {
+  const accessRequest = useMutation({
+    mutationFn: useCallback(
+      (values: z.infer<typeof formSchema>) => requestProjectAccess(values),
+      [],
+    ),
+    onSuccess: useCallback(async () => {
+      await refreshMyRequests(queryClient);
+      await refreshMyProjectsQueries(queryClient);
+      toast({
+        title: "Access requested",
+        description: "The project's admin decides next.",
+      });
+      requestForm.reset();
+      setIsOpen(false);
+    }, [queryClient, requestForm]),
+    onError: useCallback(
+      (error: ErrorInfo | Error) => {
         // a 404 means no such project, which is the common case of a mistyped ID;
         // surface it on the field so the user can correct it themselves
-        const message = (error as ErrorInfo)?.message ?? String(error);
         const field =
           (error as ErrorInfo)?.status === 404 ? "project_ext_id" : "reason";
-        requestForm.setError(field, { type: "custom", message });
-      }
-    },
-    [queryClient, requestForm],
-  );
+        requestForm.setError(field, {
+          type: "custom",
+          message: error?.message ?? String(error),
+        });
+      },
+      [requestForm],
+    ),
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -79,7 +90,11 @@ export function RequestAccessDialog() {
           </DialogDescription>
         </DialogHeader>
         <Form {...requestForm}>
-          <form onSubmit={requestForm.handleSubmit(onSubmit)}>
+          <form
+            onSubmit={requestForm.handleSubmit((values) =>
+              accessRequest.mutate(values),
+            )}
+          >
             <FormField
               control={requestForm.control}
               name="project_ext_id"
@@ -115,7 +130,7 @@ export function RequestAccessDialog() {
                 type="submit"
                 variant="outline"
                 className="mx-auto w-full"
-                disabled={requestForm.formState.isSubmitting}
+                disabled={accessRequest.isPending}
               >
                 Submit
               </Button>

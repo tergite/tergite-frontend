@@ -29,6 +29,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Changed
 
+- Submitting an access request now confirms with a toast. The dialog simply closed, which
+  was indistinguishable from it having been dismissed.
 - The access-request form now asks for the "Project External ID", the identifier a user
   actually has, rather than the ambiguous "Project ID".
 - The projects page's access-request button is now a primary button reading "Request

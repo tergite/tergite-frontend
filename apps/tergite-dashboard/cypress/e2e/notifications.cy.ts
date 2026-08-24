@@ -172,6 +172,7 @@ describe("requesting project access", () => {
 
     cy.wait("@request-create").its("response.statusCode").should("eq", 201);
     cy.get("#request-access-dialog").should("not.exist");
+    cy.contains(/access requested/i).should("be.visible");
   });
 
   it("reports an unknown project id on the field rather than as a toast", () => {
