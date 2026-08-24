@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Mapping, Optional
 
 from beanie import PydanticObjectId, UpdateResponse
 from beanie.odm.operators.find.logical import Or
+from beanie.odm.operators.update.array import AddToSet
 from beanie.odm.operators.update.general import Inc, Set
 from fastapi_users.models import ID
 
@@ -117,5 +118,31 @@ class ProjectDatabase:
             Project.id == PydanticObjectId(project_id)
         ).update(
             *updates,
+            response_type=UpdateResponse.NEW_DOCUMENT,
+        )
+
+    @staticmethod
+    async def add_member(project_id: str, user_id: str, email: str):
+        """Adds a user to the given project, by ID and by email
+
+        Args:
+            project_id: the ID of the project
+            user_id: the ID of the user to add
+            email: the email address of the user to add
+
+        Returns:
+            the updated document, or None if there is no such project
+        """
+        _id = PydanticObjectId(project_id)
+
+        # a project created without members stores null, and $addToSet cannot extend
+        # null; the null filter keeps this from clobbering a concurrent addition
+        for field in (Project.user_ids, Project.user_emails):
+            await Project.find_one(
+                Project.id == _id, field == None  # noqa: E711
+            ).update(Set({field: []}))
+
+        return await Project.find_one(Project.id == _id).update(
+            AddToSet({Project.user_ids: user_id, Project.user_emails: email}),
             response_type=UpdateResponse.NEW_DOCUMENT,
         )

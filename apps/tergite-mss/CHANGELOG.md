@@ -7,6 +7,11 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed approving a project access request failing with "Cannot apply $addToSet to non-array
+  field" on any project whose member lists were stored as null rather than empty.
+
 ### Changed
 
 - Spending QPU seconds no longer clears a project's low-QPU latch; only adding time does. The latch

@@ -408,16 +408,8 @@ async def _apply_approval(request: UserRequest):
         if requester is None:
             raise NotFoundError(f"user {request.requester_id} not found")
 
-        project = await Project.find_one(
-            {"_id": PydanticObjectId(request.project_id)}
-        ).update(
-            {
-                "$addToSet": {
-                    "user_ids": request.requester_id,
-                    "user_emails": requester.email,
-                }
-            },
-            response_type=UpdateResponse.NEW_DOCUMENT,
+        project = await ProjectDatabase.add_member(
+            request.project_id, request.requester_id, requester.email
         )
         if project is None:
             raise NotFoundError(f"project {request.project_id} not found")

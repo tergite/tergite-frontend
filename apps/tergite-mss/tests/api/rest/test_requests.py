@@ -296,6 +296,33 @@ def test_approve_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db
         assert TEST_OUTSIDER_EMAIL in project["user_emails"]
 
 
+def test_approve_project_access_with_null_member_lists(
+    client, outsider_jwt_cookie, user_jwt_cookie, db
+):
+    """A project stored with null member lists still takes the new member
+
+    Projects created without members store null rather than [], which $addToSet cannot
+    extend; approval used to fail with 'Cannot apply $addToSet to non-array field'.
+    """
+    with client as client:
+        request_id = _request_access(client, outsider_jwt_cookie).json()["id"]
+        db["auth_projects"].update_one(
+            {"ext_id": TEST_PROJECT_EXT_ID},
+            {"$set": {"user_ids": None, "user_emails": None}},
+        )
+
+        response = client.put(
+            f"/me/requests/{request_id}",
+            cookies=user_jwt_cookie,
+            json={"status": "approved"},
+        )
+
+        assert response.status_code == 200
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+        assert project["user_ids"] == [TEST_OUTSIDER_ID]
+        assert project["user_emails"] == [TEST_OUTSIDER_EMAIL]
+
+
 def test_approve_is_idempotent_on_membership(
     client, outsider_jwt_cookie, user_jwt_cookie, db
 ):
