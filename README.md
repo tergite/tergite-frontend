@@ -164,10 +164,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## TODO
 
-- [ ] The 'Request project access' button is hard to see. It does not stand out.
-    - Make it a primary button
-- [ ] The words 'Request project access' on that button are too long for a button and might wrap badly on mobile views
-    - Shorten to 'Request access'
 - [ ] Request access form needs to ask for 'Project External ID' not just 'Project ID'
 - [ ] There is no feedback to the user after submitting the request access form.
     - Maybe show a toast or redirect to past requests screen

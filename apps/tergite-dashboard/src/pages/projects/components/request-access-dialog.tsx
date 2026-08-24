@@ -66,8 +66,8 @@ export function RequestAccessDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" data-cy-request-access>
-          Request project access
+        <Button type="button" data-cy-request-access>
+          Request access
         </Button>
       </DialogTrigger>
       <DialogContent id="request-access-dialog">

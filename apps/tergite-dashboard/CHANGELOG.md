@@ -29,6 +29,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Changed
 
+- The projects page's access-request button is now a primary button reading "Request
+  access". As a long outline button it neither stood out nor fitted a phone screen.
 - The projects page no longer offers Delete on the reader's own personal project, matching
   the API, which refuses it. The admin projects page still offers it, for offboarding.
 - Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
