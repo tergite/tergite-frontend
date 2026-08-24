@@ -9,6 +9,9 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Added
 
+- Added a `/requests` page, under Access in the sidebar, listing the requests the reader has
+  made with their status, decision and what was asked for. A requester previously had no way
+  to see an outcome except by noticing the notification.
 - Added an "Access" group to the sidebar and mobile menu holding Projects and Tokens. Both
   were reachable only from the user menu in the top bar, where a new user never looked.
 - Added the low and exhausted QPU-time notifications to the bell and the settings page, so a project

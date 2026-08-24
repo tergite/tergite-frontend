@@ -167,9 +167,11 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 - [ ] Make the 'Project External ID' input an autocomplete
     - Maybe add a read-only autocomplete GET endpoint for project IDs
     - Make the input autocomplete with shadcn `Combobox`
-- [ ] There is no screen for users to view their past project access requests and their status
-    - Add a sidebar nav item (we could add it as a child of say Projects or Access since we might have too many items in the sidebar) for access requests
-      - Similar style to 'Admin' submenu in the sidebar
+    - BLOCKED: RFC 0001 §4 makes this an explicit non-goal — "No autocomplete, search, or
+      project browser for shared projects. Deliberate: project membership is not public" —
+      and §8.3 repeats the refusal. Any endpoint listing project IDs lets any logged-in user
+      enumerate every project in the system. Needs a decision to amend the RFC before it can
+      be built; the admin-only email autocomplete below is not in tension and can proceed.
 - [ ] Pending User requests for the admin probably need to have a quick response set of buttons in the table so that admins quickly approve multiple requests instead of opening each one first
 - [ ] Approving a project access request fails with
 

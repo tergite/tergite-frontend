@@ -10,6 +10,7 @@ import {
   ChevronRight,
   SlidersHorizontal,
   KeyRound,
+  ClipboardList,
   KeySquare,
   FolderKanban,
 } from "lucide-react";
@@ -88,6 +89,12 @@ export function Sidebar({
               to="/tokens"
               isExpanded={isExpanded}
               text="Tokens"
+            />
+            <NavItem
+              Icon={ClipboardList}
+              to="/requests"
+              isExpanded={isExpanded}
+              text="Requests"
             />
           </CollapsibleContent>
         </Collapsible>

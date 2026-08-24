@@ -101,15 +101,11 @@ users.forEach((user) => {
         cy.get("nav a[href='/tokens']").should("be.visible");
 
         if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
-            .should("be.visible");
+          cy.get("nav a[href='/admin-requests']").should("be.visible");
 
           cy.get("nav a[href='/admin-projects']").should("be.visible");
 
-          cy.get("nav")
-            .contains(/control/i)
-            .should("be.visible");
+          cy.get("nav a[href='/admin-control']").should("be.visible");
         }
 
         // collapse button
@@ -136,9 +132,7 @@ users.forEach((user) => {
         cy.get("nav a[href='/tokens']").should("be.visible");
 
         if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
-            .should("be.visible");
+          cy.get("nav a[href='/admin-requests']").should("be.visible");
 
           cy.get("nav a[href='/admin-projects']").should("be.visible");
         }
@@ -154,17 +148,20 @@ users.forEach((user) => {
           .contains("div", /devices/i)
           .should("have.text", "DevicesDevices");
         if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
-            .should("have.text", `RequestsRequests ${requestsCount}`);
+          cy.get("nav a[href='/admin-requests']").should(
+            "have.text",
+            `RequestsRequests ${requestsCount}`
+          );
 
-          cy.get("nav")
-            .contains(/projects/i)
-            .should("have.text", "ProjectsProjects");
+          cy.get("nav a[href='/admin-projects']").should(
+            "have.text",
+            "ProjectsProjects"
+          );
 
-          cy.get("nav")
-            .contains(/control/i)
-            .should("have.text", "ControlControl");
+          cy.get("nav a[href='/admin-control']").should(
+            "have.text",
+            "ControlControl"
+          );
         }
         cy.get("[aria-label='PanelLeftClose']").should("be.visible");
         cy.get("[aria-label='PanelRightClose']").should("not.exist");
@@ -177,7 +174,7 @@ users.forEach((user) => {
         cy.get("nav [aria-label='Home']").should("be.visible");
         cy.get("nav [aria-label='Cpu']").should("be.visible");
         if (isAdmin) {
-          cy.get("nav [aria-label='HandHelping']").should("be.visible");
+          cy.get("nav a[href='/admin-requests']").should("be.visible");
           cy.get("nav [aria-label='HardHat']").should("be.visible");
           cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
         }
@@ -190,17 +187,17 @@ users.forEach((user) => {
           .should("have.text", "Devices");
 
         if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
-            .should("have.text", "Requests ");
+          cy.get("nav a[href='/admin-requests']").should(
+            "have.text",
+            "Requests "
+          );
 
-          cy.get("nav")
-            .contains(/projects/i)
-            .should("have.text", "Projects");
+          cy.get("nav a[href='/admin-projects']").should(
+            "have.text",
+            "Projects"
+          );
 
-          cy.get("nav")
-            .contains(/control/i)
-            .should("have.text", "Control");
+          cy.get("nav a[href='/admin-control']").should("have.text", "Control");
         }
 
         cy.get("[aria-label='PanelRightClose']").parent().click();
@@ -212,7 +209,7 @@ users.forEach((user) => {
         cy.get("nav [aria-label='Cpu']").should("be.visible");
 
         if (isAdmin) {
-          cy.get("nav [aria-label='HandHelping']").should("be.visible");
+          cy.get("nav a[href='/admin-requests']").should("be.visible");
           cy.get("nav [aria-label='HardHat']").should("be.visible");
           cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
         }
@@ -224,17 +221,20 @@ users.forEach((user) => {
           .contains("div", /devices/i)
           .should("have.text", "DevicesDevices");
         if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
-            .should("have.text", `RequestsRequests ${requestsCount}`);
+          cy.get("nav a[href='/admin-requests']").should(
+            "have.text",
+            `RequestsRequests ${requestsCount}`
+          );
 
-          cy.get("nav")
-            .contains(/projects/i)
-            .should("have.text", "ProjectsProjects");
+          cy.get("nav a[href='/admin-projects']").should(
+            "have.text",
+            "ProjectsProjects"
+          );
 
-          cy.get("nav")
-            .contains(/control/i)
-            .should("have.text", "ControlControl");
+          cy.get("nav a[href='/admin-control']").should(
+            "have.text",
+            "ControlControl"
+          );
         }
       });
     });

@@ -57,7 +57,7 @@ src/
     │       └── calibration-bar-chart/
     │           ├── index.tsx
     │           └── calibration-bar.tsx
-    ├── projects/, tokens/, admin-control/, admin-projects/, admin-requests/
+    ├── projects/, tokens/, requests/, admin-control/, admin-projects/, admin-requests/
 types.ts                     # all shared TypeScript types (repo root of the app)
 ```
 
@@ -194,7 +194,7 @@ by their own cypress specs. `index.html` is the vite entry that mounts `#root`.
 
 `/` is the `Dashboard` layout with `dashboardLoader` (fetches the current user, derives
 `isUserAdmin`); its children are `/` (home), `/devices`, `/devices/:deviceName`, `/tokens`,
-`/projects`, `/admin-projects`, `/admin-requests`, `/admin-control`. `/login` sits outside the
+`/projects`, `/requests`, `/admin-projects`, `/admin-requests`, `/admin-control`. `/login` sits outside the
 layout. Each route element is wrapped in `<ErrorBound>` and the layout and the child group each
 have an `errorElement` of `<ErrorAlert>`, so a failure inside a page replaces the page rather
 than the whole app.
@@ -310,7 +310,7 @@ loader must be exported alongside a component.
 
 | Task | Path |
 | --- | --- |
-| New page | `src/pages/{name}/index.tsx` exporting the component **and** its `loader`; add the `<Route>` in `src/router.tsx`; add a nav item in `layouts/dashboard/components/sidebar.tsx` — unless it is only reached in context, as `/approvals` and `/settings` are |
+| New page | `src/pages/{name}/index.tsx` exporting the component **and** its `loader`; add the `<Route>` in `src/router.tsx`; add a nav item in `layouts/dashboard/components/sidebar.tsx` **and** `topbar/mobile-menu.tsx`, which mirror each other — unless it is only reached in context, as `/approvals` and `/settings` are |
 | New component used by one page | `src/pages/{page}/components/` — a file if it is a leaf, a folder with `index.tsx` if it has children |
 | New component used by two+ pages | promote to `src/components/ui/` and strip any page knowledge |
 | New table | a `*-table/` folder with `index.tsx`, `columns.tsx`, `filter-form.tsx` (+ `detail-drawer.tsx`) |

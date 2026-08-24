@@ -36,6 +36,7 @@ import {
 } from "./pages/admin-control";
 import { Approvals, loader as approvalsLoader } from "./pages/approvals";
 import { Settings, loader as settingsLoader } from "./pages/settings";
+import { MyRequests, loader as myRequestsLoader } from "./pages/requests";
 
 export function AppRouter({ routerConstructor }: Props) {
   const appState = useContext(AppStateContext);
@@ -122,6 +123,15 @@ function getRoutes(appState: AppState, queryClient: QueryClient) {
               </ErrorBound>
             }
             loader={approvalsLoader(appState, queryClient)}
+          />
+          <Route
+            path="requests"
+            element={
+              <ErrorBound>
+                <MyRequests />
+              </ErrorBound>
+            }
+            loader={myRequestsLoader(appState, queryClient)}
           />
           <Route
             path="settings"

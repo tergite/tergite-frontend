@@ -14,6 +14,7 @@ import {
   HelpingHand,
   Settings2,
   KeyRound,
+  ClipboardList,
   KeySquare,
   FolderKanban,
 } from "lucide-react";
@@ -75,6 +76,12 @@ export function MobileMenu({ pendingRequestsCount, isUserAdmin }: Props) {
                 to="/tokens"
                 isBig={true}
                 text="Tokens"
+              />
+              <NavItem
+                Icon={ClipboardList}
+                to="/requests"
+                isBig={true}
+                text="Requests"
               />
             </CollapsibleContent>
           </Collapsible>
