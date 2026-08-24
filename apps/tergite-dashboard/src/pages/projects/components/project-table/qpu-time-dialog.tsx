@@ -36,6 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn, safeParseInt } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   days: z.number().int().default(0),
@@ -81,11 +82,11 @@ function _QpuTimeDialog({
       reason: "",
     },
   });
-  const isRequestPending = useMemo(
+  const pendingRequest = useMemo(
     () =>
-      qpuTimeRequests.filter(
+      qpuTimeRequests.find(
         (v) => v.request.project_id === project.id && v.status === "pending"
-      ).length > 0,
+      ),
     [qpuTimeRequests, project]
   );
 
@@ -123,9 +124,20 @@ function _QpuTimeDialog({
           className={cn("border-green-600 text-green-600", className)}
           type="button"
           variant="outline"
-          disabled={isRequestPending}
+          disabled={!!pendingRequest}
         >
-          {isRequestPending ? "Request Pending" : "More QPU time"}
+          {pendingRequest ? (
+            <>
+              Request Pending
+              <Badge variant="outline" className="ml-2">
+                {Duration.fromObject({
+                  seconds: pendingRequest.request.seconds,
+                }).toHuman()}
+              </Badge>
+            </>
+          ) : (
+            "More QPU time"
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent id="qpu-time-dialog">

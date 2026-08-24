@@ -205,10 +205,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 - [ ] When Project access requests or QPU time requests are approved or rejected directly and not in the notifications dropdown, the notifications remain intact
       and must be marked 'read' manually.
       - Automatically mark notifications associated with a given user request as read for all approving/rejecting users
-- [ ] When new QPU time requests are made by the user, the user does not see the value requested for
-      - Options:
-        - Redirect to the requests screen with that particular QPU time request open in the detail section
-        - Show the value of the number of seconds requested for on the projects page maybe as a badge on the 'Request pending' button
 - Handle 503 unavailbale service on the dashboard
 - Handle the disconnection issues between MSS and the backends
 

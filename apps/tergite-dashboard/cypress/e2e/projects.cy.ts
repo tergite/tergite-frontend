@@ -6,6 +6,7 @@ import tokenList from "../fixtures/tokens.json";
 import projectList from "../fixtures/projects.json";
 import userRequestList from "../fixtures/user-requests.json";
 import { bulkUpdate, generateJwt, getUsername } from "../../api/utils";
+import { Duration } from "luxon";
 import {
   type QpuTimeExtensionUserRequest,
   type Project,
@@ -158,6 +159,16 @@ users.forEach((user) => {
                             cy.wrap(cell.td)
                               .contains("button", /request pending/i)
                               .should("be.disabled");
+                            // the button carries what was asked for, so the
+                            // requester does not have to go looking
+                            cy.wrap(cell.td).contains(
+                              "button",
+                              Duration.fromObject({
+                                seconds:
+                                  qpuTimeRequestsProjectsMap[project.id].request
+                                    .seconds,
+                              }).toHuman()
+                            );
                           } else {
                             cy.wrap(cell.td)
                               .contains("button", /more qpu time/i)
