@@ -155,7 +155,22 @@ which swallows the failure of one item rather than failing the page (used for pe
 bookings, where one offline backend must not blank the home page).
 
 **Mutations** are `useMutation({ mutationFn: <action from api-client>, onSuccess: refresh… })`.
-No component calls `fetch` directly.
+
+**Every request goes through a react-query construct** — `useQuery` / `ensureQueryData` for
+reads, `useMutation` for writes. Never `await` an api-client action straight from an event
+handler, and never fetch from a `useEffect`. The hooks are not ceremony: `isPending` is what
+disables a submit button, `error` is what a form reports, `onSuccess` is the one place the
+`refresh*Queries` invalidation belongs, and the shared cache is how a write on one page
+updates a table on another. A hand-rolled `try`/`catch` gets none of that and leaves the
+rest of the app looking at stale data. Feedback after a write is a `toast` from
+`hooks/use-toast`.
+
+**Navigation goes through react-router** — `<Link>` / `<NavLink>` to move, `useNavigate` for
+a redirect from code, `redirect()` from a loader, and the route itself for state that belongs
+in the URL. Never `window.location`, `history.pushState`, or a bare `<a href>` to an internal
+route: they reload the bundle and throw away the query cache and app state. `login.tsx` uses
+`window.location.origin` to build the OAuth `next` parameter — that is a URL being *sent to
+the provider*, not navigation, and it is the only such use.
 
 ### Global state
 
@@ -299,7 +314,8 @@ loader must be exported alongside a component.
 | New component used by one page | `src/pages/{page}/components/` — a file if it is a leaf, a folder with `index.tsx` if it has children |
 | New component used by two+ pages | promote to `src/components/ui/` and strip any page knowledge |
 | New table | a `*-table/` folder with `index.tsx`, `columns.tsx`, `filter-form.tsx` (+ `detail-drawer.tsx`) |
-| New API call | a `queryOptions` (reads) or an action function (writes) in `src/lib/api-client.ts` — nowhere else calls `fetch` |
+| New API call | a `queryOptions` (reads) or an action function (writes) in `src/lib/api-client.ts` — nowhere else calls `fetch` — then consume it from a `useQuery` or a `useMutation`, never from a bare handler |
+| New destination | a `<Route>` in `src/router.tsx` with its loader; reach it with `<Link>` or `useNavigate`, never `window.location` |
 | New response shape | `types.ts`, the mock route in `api/routes/general.ts`, and the `cypress/fixtures/` JSON |
 | New shadcn primitive | the shadcn CLI, then edit the generated file in `src/components/ui/` |
 | New env variable | `VITE_`-prefix it if the browser needs it, add it to `.env.development` / `.env.test`, and thread it through `Dockerfile` as a build arg |
