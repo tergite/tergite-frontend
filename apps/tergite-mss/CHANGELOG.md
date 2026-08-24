@@ -7,6 +7,12 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
+### Added
+
+- Added `project-membership-granted` and `project-admin-assigned` notifications, emitted when an
+  admin creates or edits a project. Being added to a project, or handed one to administer, was
+  silent; only removal was announced.
+
 ### Fixed
 
 - Deciding a request now marks the "please decide this" notification read for every eligible

@@ -45,7 +45,9 @@ CHANNEL_POLICY: Dict[NotificationType, ChannelPolicy] = {
     NotificationType.QPU_SECONDS_REQUESTED: ChannelPolicy(True, True),
     NotificationType.QPU_SECONDS_GRANTED: ChannelPolicy(True, True),
     NotificationType.QPU_SECONDS_DENIED: ChannelPolicy(True, True),
+    NotificationType.PROJECT_MEMBERSHIP_GRANTED: ChannelPolicy(True, True),
     NotificationType.PROJECT_MEMBERSHIP_REVOKED: ChannelPolicy(True, True),
+    NotificationType.PROJECT_ADMIN_ASSIGNED: ChannelPolicy(True, True),
     # not awaiting anyone's action, so silenceable; on by default because a depleted
     # project stops accepting jobs and the owner would otherwise find out from a failure
     NotificationType.QPU_SECONDS_LOW: ChannelPolicy(False, True),
@@ -97,6 +99,16 @@ TEMPLATES: Dict[NotificationType, Template] = {
         title="You were removed from {project_name}",
         body="{approver_name} removed you from {project_name}. Any API tokens you held for it no longer work.",
         severity=NotificationSeverity.WARNING,
+    ),
+    NotificationType.PROJECT_MEMBERSHIP_GRANTED: Template(
+        title="You were added to {project_name}",
+        body="{approver_name} added you to {project_name} ({project_ext_id}). You can now create API tokens for it.",
+        severity=NotificationSeverity.INFO,
+    ),
+    NotificationType.PROJECT_ADMIN_ASSIGNED: Template(
+        title="You now administer {project_name}",
+        body="{approver_name} made you the admin of {project_name} ({project_ext_id}). Requests to join it come to you.",
+        severity=NotificationSeverity.INFO,
     ),
 }
 

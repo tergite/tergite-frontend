@@ -19,7 +19,9 @@ const ORDERED_TYPES: NotificationType[] = [
   NotificationType.QPU_SECONDS_DENIED,
   NotificationType.QPU_SECONDS_LOW,
   NotificationType.QPU_SECONDS_DEPLETED,
+  NotificationType.PROJECT_MEMBERSHIP_GRANTED,
   NotificationType.PROJECT_MEMBERSHIP_REVOKED,
+  NotificationType.PROJECT_ADMIN_ASSIGNED,
 ];
 
 export function NotificationPreferencesForm() {

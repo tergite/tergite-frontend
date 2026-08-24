@@ -51,7 +51,9 @@ class NotificationType(str, Enum):
     QPU_SECONDS_DENIED = "qpu-seconds-denied"
     QPU_SECONDS_LOW = "qpu-seconds-low"
     QPU_SECONDS_DEPLETED = "qpu-seconds-depleted"
+    PROJECT_MEMBERSHIP_GRANTED = "project-membership-granted"
     PROJECT_MEMBERSHIP_REVOKED = "project-membership-revoked"
+    PROJECT_ADMIN_ASSIGNED = "project-admin-assigned"
 
 
 class NotificationAction(BaseModel):

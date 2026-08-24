@@ -9,6 +9,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Added
 
+- Added the "Added to project" and "Made project admin" notifications to the bell and to
+  the per-type email switches on the settings page.
 - Added Approve and Reject buttons to each pending row of the admin requests table, so a
   queue can be cleared without opening every request in turn.
 - Added a `/requests` page, under Access in the sidebar, listing the requests the reader has

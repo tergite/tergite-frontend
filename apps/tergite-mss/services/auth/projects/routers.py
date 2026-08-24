@@ -218,12 +218,12 @@ def get_projects_router(
         "/",
         response_model=ProjectAdminView,
         response_model_exclude_none=True,
-        dependencies=[Depends(get_current_superuser)],
         status_code=status.HTTP_201_CREATED,
         name="projects:create_project",
     )
     async def create(
         project_create: project_create_schema,  # type: ignore
+        actor: User = Depends(get_current_superuser),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
     ):
         try:
@@ -235,6 +235,7 @@ def get_projects_router(
                 detail=exc.ExtendedErrorCode.PROJECT_ALREADY_EXISTS,
             )
 
+        await _notify_membership_change(None, created_project, actor)
         return await _get_full_admin_project(created_project)
 
     @router.get(
@@ -322,19 +323,21 @@ def get_projects_router(
         "/{id}",
         response_model=ProjectAdminView,
         response_model_exclude_none=True,
-        dependencies=[Depends(get_current_superuser)],
         name="projects:put_project",
     )
     async def update_project(
         project_update: project_update_schema,  # type: ignore
         request: Request,
+        actor: User = Depends(get_current_superuser),
         project=Depends(get_project_or_404),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
     ):
+        before = project.model_copy(deep=True)
         partial_project = await _prepare_partial_project(project, project_update)
         updated_project = await project_manager.update(
             partial_project, project, request=request, safe=False
         )
+        await _notify_membership_change(before, updated_project, actor)
         return await _get_full_admin_project(updated_project)
 
     @router.delete(
@@ -353,6 +356,47 @@ def get_projects_router(
         return None
 
     return router
+
+
+async def _notify_membership_change(
+    before: Optional[Project], after: Project, actor: User
+) -> None:
+    """Tells users whose standing on a project changed
+
+    An admin editing a project replaces the member list wholesale, so who gained and who
+    lost access is only visible as a diff against the previous document.
+
+    Args:
+        before: the project as it was, or None when it has just been created
+        after: the project as it now is
+        actor: the superuser who made the change
+    """
+    context = {
+        "project_name": after.name,
+        "project_ext_id": after.ext_id,
+        "approver_name": actor.username,
+    }
+    old_ids = set(before.user_ids or []) if before else set()
+    new_ids = set(after.user_ids or [])
+
+    await notifications.notify(
+        [PydanticObjectId(item) for item in new_ids - old_ids],
+        NotificationType.PROJECT_MEMBERSHIP_GRANTED,
+        context=context,
+    )
+    await notifications.notify(
+        [PydanticObjectId(item) for item in old_ids - new_ids],
+        NotificationType.PROJECT_MEMBERSHIP_REVOKED,
+        context=context,
+    )
+
+    old_admin = before.admin_id if before else None
+    if after.admin_id and after.admin_id != old_admin:
+        await notifications.notify(
+            [PydanticObjectId(after.admin_id)],
+            NotificationType.PROJECT_ADMIN_ASSIGNED,
+            context=context,
+        )
 
 
 async def _prepare_partial_project(

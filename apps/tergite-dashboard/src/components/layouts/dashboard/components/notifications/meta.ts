@@ -5,7 +5,9 @@ import {
   CheckCircle2,
   Clock,
   HelpingHand,
+  UserCog,
   UserMinus,
+  UserPlus,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -78,10 +80,22 @@ export const NOTIFICATION_TYPE_META: Record<
     iconClassName: "text-destructive",
     isActionable: false,
   },
+  [NotificationType.PROJECT_MEMBERSHIP_GRANTED]: {
+    Icon: UserPlus,
+    label: "Added to project",
+    iconClassName: "text-green-600",
+    isActionable: false,
+  },
   [NotificationType.PROJECT_MEMBERSHIP_REVOKED]: {
     Icon: UserMinus,
     label: "Removed from project",
     iconClassName: "text-destructive",
+    isActionable: false,
+  },
+  [NotificationType.PROJECT_ADMIN_ASSIGNED]: {
+    Icon: UserCog,
+    label: "Made project admin",
+    iconClassName: "text-primary",
     isActionable: false,
   },
 };
