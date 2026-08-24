@@ -56,9 +56,12 @@ setup_logging(settings.CONFIG.environment)
 app = FastAPI(**get_app_kwargs())
 
 
-# middleware, outermost last: add_middleware wraps what is already there
 # probed every few seconds by the container healthcheck; logging them buries real traffic
 _UNLOGGED_PATHS = frozenset({"/health"})
+
+# middleware. Order matters and reads backwards: add_middleware wraps whatever is
+# already registered, so the CORS layer added at the end of this block is the outermost
+# of the three and its headers survive the responses the other two produce.
 
 
 @app.middleware("http")
