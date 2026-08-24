@@ -216,8 +216,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
       - Use shadcn's Combobox for those two inputs
 - [ ] Tokens page is hidden away from the user who has never used this app
       - Maybe add the Tokens nav intem under the 'Access' sub menu in the side bar (where Projects, (access) requests are)
-- [ ] Asking for more QPU seconds on shared projects that include a value in the 'days' input ignores the days especially if the hours are filled
-      - Possibly the TimeInput was updated in the past and regressed.
 - [ ] When Project access requests or QPU time requests are approved or rejected directly and not in the notifications dropdown, the notifications remain intact
       and must be marked 'read' manually.
       - Automatically mark notifications associated with a given user request as read for all approving/rejecting users
@@ -225,10 +223,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
       - Options:
         - Redirect to the requests screen with that particular QPU time request open in the detail section
         - Show the value of the number of seconds requested for on the projects page maybe as a badge on the 'Request pending' button
-- [ ] In the QPU time request form, not changing the default '60 seconds' input still displays the 60 seconds but the backend actually sees 0 from the seconds input
-    - Options:
-      - Clear the seconds input as soon as a change starts happening on any of the inputs of that input group
-      - Send the value displayed in that input correctly, probably keep that input displayed value in sync with its value using a controlled input or something
 - Handle 503 unavailbale service on the dashboard
 - Handle the disconnection issues between MSS and the backends
 

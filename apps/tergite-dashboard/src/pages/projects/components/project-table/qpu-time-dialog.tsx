@@ -33,18 +33,24 @@ import {
 import { z } from "zod";
 import { Duration } from "luxon";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn, safeParseInt } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const formSchema = z.object({
-  hours: z.number().int().default(0),
   days: z.number().int().default(0),
+  hours: z.number().int().default(0),
   minutes: z.number().int().default(0),
   seconds: z.number().int().default(0),
-  milliseconds: z.number().int().default(0),
   reason: z.string().min(1),
 });
+
+const DURATION_FIELDS = [
+  { name: "days", id: "days", label: "days" },
+  { name: "hours", id: "hrs", label: "hrs" },
+  { name: "minutes", id: "mins", label: "mins" },
+  { name: "seconds", id: "secs", label: "secs" },
+] as const;
 
 export function QpuTimeDialog(props: Props) {
   const { project, currentUser } = props;
@@ -68,7 +74,10 @@ function _QpuTimeDialog({
   const editForm = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      days: 0,
+      hours: 0,
       minutes: 60,
+      seconds: 0,
       reason: "",
     },
   });
@@ -135,97 +144,33 @@ function _QpuTimeDialog({
             className=""
           >
             <div className="grid grid-cols-4 my-2">
-              <FormField
-                control={editForm.control}
-                name="days"
-                render={({ field }) => (
-                  <FormItem className="">
-                    <FormControl>
-                      <div>
-                        <Input
-                          id="days"
-                          type="number"
-                          {...field}
-                          onChange={(ev) =>
-                            field.onChange(parseInt(ev.target.value))
-                          }
-                        />
-                        <Label htmlFor="days">days</Label>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="hours"
-                render={({ field }) => (
-                  <FormItem className="">
-                    <FormControl>
-                      <div>
-                        <Input
-                          id="hrs"
-                          type="number"
-                          {...field}
-                          onChange={(ev) =>
-                            field.onChange(parseInt(ev.target.value))
-                          }
-                        />
-                        <Label htmlFor="hrs">hrs</Label>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="minutes"
-                render={({ field }) => (
-                  <FormItem className="">
-                    <FormControl>
-                      <div>
-                        <Input
-                          id="mins"
-                          type="number"
-                          {...field}
-                          onChange={(ev) =>
-                            field.onChange(parseInt(ev.target.value))
-                          }
-                        />
-                        <Label htmlFor="mins">mins</Label>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="seconds"
-                render={({ field }) => (
-                  <FormItem className="">
-                    <FormControl>
-                      <div>
-                        <Input
-                          id="secs"
-                          type="number"
-                          {...field}
-                          onChange={(ev) =>
-                            field.onChange(parseInt(ev.target.value))
-                          }
-                        />
-                        <Label htmlFor="secs">secs</Label>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {DURATION_FIELDS.map(({ name, id, label }) => (
+                <FormField
+                  key={id}
+                  control={editForm.control}
+                  name={name}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <div>
+                          <Input
+                            id={id}
+                            type="number"
+                            min={0}
+                            {...field}
+                            value={field.value}
+                            onChange={(ev) =>
+                              field.onChange(safeParseInt(ev.target.value) ?? 0)
+                            }
+                          />
+                          <Label htmlFor={id}>{label}</Label>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
             </div>
 
             <FormField

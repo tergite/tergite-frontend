@@ -32,8 +32,10 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Fixed
 
-- Fixed the days field of the QPU-time request form on the projects page, which counted a
-  day as 24 seconds. Asking for 2 days requested 48 seconds on top of the default hour.
+- Fixed the days box of the QPU-time request form counting a day as 24 seconds, so 2 days
+  asked for 48 seconds on top of the default hour.
+- Fixed the QPU-time request form sending a duration other than the one displayed: days,
+  hours and seconds showed blank while counting as zero, and emptying a box blocked Submit.
 
 ## [2026.06.0] - 2026-06-26
 
