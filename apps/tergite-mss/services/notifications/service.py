@@ -176,6 +176,25 @@ async def set_all_read(user_id: PydanticObjectId, is_read: bool) -> int:
     return result.modified_count
 
 
+async def mark_request_handled(request_id: str) -> int:
+    """Marks read every unread notification asking someone to act on this request
+
+    Once a request is decided nobody else can act on it, so leaving the prompts unread
+    would have every eligible approver clear the same dead item by hand.
+
+    Args:
+        request_id: the ID of the user request that has just been decided
+
+    Returns:
+        the number of notifications updated
+    """
+    now = get_current_timestamp()
+    result = await Notification.find(
+        {"action.request_id": request_id, "read_at": None}
+    ).update({"$set": {"read_at": now, "updated_at": now}})
+    return result.modified_count
+
+
 async def get_preferences(
     user_id: PydanticObjectId,
 ) -> Dict[NotificationType, ChannelPrefs]:

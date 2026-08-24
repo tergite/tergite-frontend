@@ -9,6 +9,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Fixed
 
+- Deciding a request now marks the "please decide this" notification read for every eligible
+  approver. Deciding anywhere but the notifications dropdown left the prompt to be cleared by
+  hand, once per approver.
 - Fixed approving a project access request failing with "Cannot apply $addToSet to non-array
   field" on any project whose member lists were stored as null rather than empty.
 

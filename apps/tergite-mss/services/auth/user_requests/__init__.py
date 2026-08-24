@@ -382,6 +382,7 @@ async def update(
         raise NotFoundError(f"{_id} not found")
 
     if payload.status in _DECIDED_STATUSES:
+        await notifications.mark_request_handled(str(_id))
         await _notify_requester(result, admin_user)
 
     return result

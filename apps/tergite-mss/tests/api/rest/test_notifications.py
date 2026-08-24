@@ -374,6 +374,51 @@ def test_project_without_an_admin_still_accepts_requests(
         assert db[_COLLECTION].count_documents({}) == 0
 
 
+def test_deciding_a_request_clears_its_prompt(
+    client, outsider_jwt_cookie, user_jwt_cookie, db
+):
+    """Approving anywhere marks the 'please decide this' notification read
+
+    The dropdown's own buttons are not the only way to decide a request; doing it from
+    the approvals page used to leave the prompt sitting there unread.
+    """
+    with client as client:
+        request_id = _request_access(client, outsider_jwt_cookie).json()["id"]
+        prompt = client.get("/me/notifications/", cookies=user_jwt_cookie).json()[
+            "data"
+        ][0]
+        assert prompt["read_at"] is None
+        assert prompt["action"]["request_id"] == request_id
+
+        client.put(
+            f"/me/requests/{request_id}",
+            cookies=user_jwt_cookie,
+            json={"status": "approved"},
+        )
+
+        got = db[_COLLECTION].find_one({"_id": PydanticObjectId(prompt["id"])})
+        assert got["read_at"] is not None
+
+
+def test_deciding_a_request_leaves_the_outcome_unread(
+    client, outsider_jwt_cookie, user_jwt_cookie
+):
+    """Only the actionable prompt is cleared; the requester's outcome is still news"""
+    with client as client:
+        request_id = _request_access(client, outsider_jwt_cookie).json()["id"]
+        client.put(
+            f"/me/requests/{request_id}",
+            cookies=user_jwt_cookie,
+            json={"status": "approved"},
+        )
+
+        outcome = client.get(
+            "/me/notifications/?is_read=false", cookies=outsider_jwt_cookie
+        ).json()["data"]
+        assert len(outcome) == 1
+        assert outcome[0]["type"] == "project-access-approved"
+
+
 def test_read_filter_matches_only_read_notifications(
     client, outsider_jwt_cookie, user_jwt_cookie
 ):

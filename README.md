@@ -197,9 +197,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 - [ ] In project creation and project update forms, make 'Admin email' and 'Member emails' inputs autocomplete for admins
       - Add an admin only autocomplete emails endpoint on MSS
       - Use shadcn's Combobox for those two inputs
-- [ ] When Project access requests or QPU time requests are approved or rejected directly and not in the notifications dropdown, the notifications remain intact
-      and must be marked 'read' manually.
-      - Automatically mark notifications associated with a given user request as read for all approving/rejecting users
 - Handle 503 unavailbale service on the dashboard
 - Handle the disconnection issues between MSS and the backends
 
