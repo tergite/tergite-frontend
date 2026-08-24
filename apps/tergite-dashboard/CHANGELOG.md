@@ -34,6 +34,9 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Changed
 
+- Notices and the notifications bell now show on the admin screens too; they were
+  suppressed under `/admin-*`, so an admin saw a notice only after navigating away. The
+  API token control stays off those screens, where no project is selected.
 - Submitting an access request now confirms with a toast. The dialog simply closed, which
   was indistinguishable from it having been dismissed.
 - The access-request form now asks for the "Project External ID", the identifier a user

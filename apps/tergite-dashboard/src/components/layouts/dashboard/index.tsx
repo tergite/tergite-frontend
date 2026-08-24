@@ -81,7 +81,10 @@ export function Dashboard() {
             isUserAdmin={isUserAdmin}
           />
 
-          {!isAdminScreen && <TopBanner currentUser={currentUser} />}
+          <TopBanner
+            currentUser={currentUser}
+            shouldShowApiToken={!isAdminScreen}
+          />
           <Outlet />
           <Footer />
           <Toaster />

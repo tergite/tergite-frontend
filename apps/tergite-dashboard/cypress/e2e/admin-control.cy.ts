@@ -396,6 +396,18 @@ users.forEach((user) => {
         cy.contains(/\b(info|warning|critical)\b/i).should("be.visible");
       });
 
+      it("shows the active notice banner on an admin screen too", () => {
+        cy.wait("@notices");
+        // the banner used to be suppressed under /admin-*, so an admin never saw a
+        // notice until they navigated back out
+        cy.get('[data-testid="top-banner"]').should("be.visible");
+        cy.get('[data-testid="top-banner"] [data-cy-notice-count]').should(
+          "be.visible"
+        );
+        // the API token widget stays off: no project is selected here
+        cy.get('[data-testid="top-banner"] input#api-token').should("not.exist");
+      });
+
       it("creates a new notice and increments the active count, showing a success toast", () => {
         cy.wait("@notices");
         cy.wait("@notice-count");

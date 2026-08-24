@@ -19,7 +19,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { Badge } from "@/components/ui/badge";
 import { NotificationsBell } from "./notifications";
 
-export function TopBanner({ currentUser }: Props) {
+export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
   const { apiToken, setApiToken, currentProjectExtId } =
     useContext(AppStateContext);
   const queryClient = useQueryClient();
@@ -97,38 +97,40 @@ export function TopBanner({ currentUser }: Props) {
           </div>
         </div>
 
-        <ButtonGroup>
-          <Button
-            variant="outline"
-            type="button"
-            className="text-sm pr-2 pointer-events-none text-muted-foreground"
-          >
-            API token
-          </Button>
-          <Input
-            type="password"
-            id="api-token"
-            value={apiToken || ""}
-            readOnly={true}
-            className="w-full rounded-l-md rounded-r-none bg-background pr-8  md:w-[320px]"
-          />
-          <IconButton
-            variant="outline"
-            className="rounded-none focus:mr-[1px] disabled:text-muted-foreground disabled:bg-muted"
-            Icon={RefreshCcw}
-            disabled={!currentProjectExtId || appTokenCreation.isPending}
-            onClick={() =>
-              appTokenCreation.mutate({ projectExtId: currentProjectExtId })
-            }
-          />
-          <IconButton
-            variant="outline"
-            className="rounded-l-none disabled:text-muted-foreground disabled:bg-muted"
-            disabled={!apiToken}
-            onClick={handleApiTokenCopy}
-            Icon={Copy}
-          />
-        </ButtonGroup>
+        {shouldShowApiToken && (
+          <ButtonGroup>
+            <Button
+              variant="outline"
+              type="button"
+              className="text-sm pr-2 pointer-events-none text-muted-foreground"
+            >
+              API token
+            </Button>
+            <Input
+              type="password"
+              id="api-token"
+              value={apiToken || ""}
+              readOnly={true}
+              className="w-full rounded-l-md rounded-r-none bg-background pr-8  md:w-[320px]"
+            />
+            <IconButton
+              variant="outline"
+              className="rounded-none focus:mr-[1px] disabled:text-muted-foreground disabled:bg-muted"
+              Icon={RefreshCcw}
+              disabled={!currentProjectExtId || appTokenCreation.isPending}
+              onClick={() =>
+                appTokenCreation.mutate({ projectExtId: currentProjectExtId })
+              }
+            />
+            <IconButton
+              variant="outline"
+              className="rounded-l-none disabled:text-muted-foreground disabled:bg-muted"
+              disabled={!apiToken}
+              onClick={handleApiTokenCopy}
+              Icon={Copy}
+            />
+          </ButtonGroup>
+        )}
       </div>
     </header>
   );
@@ -136,4 +138,6 @@ export function TopBanner({ currentUser }: Props) {
 
 interface Props {
   currentUser: User;
+  // admin screens have no project selected, so a token minted there would be meaningless
+  shouldShowApiToken: boolean;
 }

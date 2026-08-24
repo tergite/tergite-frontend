@@ -189,7 +189,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
       at JA.execute (index-74TWp7kT.js:288:43774)
   fw	@	index-74TWp7kT.js:40
       ```
-- [ ] Screens under the Admin sub menu do not show notices and thus user does not see them until user switches to dashboard or devices
     - Probably use similar layout in the admin pages to that used in the dashboard pages
 - [ ] Health check requests spam the logs for all apps (MSS, Dashboard, backend)
     - Options:
