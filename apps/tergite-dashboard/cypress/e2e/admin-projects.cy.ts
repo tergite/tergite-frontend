@@ -89,17 +89,17 @@ users.forEach((user) => {
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] a", /projects/i).click();
+        cy.get("[data-testid='sidebar'] a[href='/admin-projects']").click();
         cy.url().should("equal", `${dashboardUrl}admin-projects`);
       });
 
     !isAdmin &&
-      it("projects link in sidebar does not exist", () => {
+      it("admin projects link in sidebar does not exist", () => {
         cy.visit("/");
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] a", /projects/i).should(
+        cy.get("[data-testid='sidebar'] a[href='/admin-projects']").should(
           "not.exist"
         );
       });

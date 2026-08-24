@@ -164,8 +164,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## TODO
 
-- [ ] For a new user, projects nav item is not obvious to find.
-    - We probably need to add the projects link on the sidebar
 - [ ] The 'Request project access' button is hard to see. It does not stand out.
     - Make it a primary button
 - [ ] The words 'Request project access' on that button are too long for a button and might wrap badly on mobile views
@@ -211,8 +209,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 - [ ] In project creation and project update forms, make 'Admin email' and 'Member emails' inputs autocomplete for admins
       - Add an admin only autocomplete emails endpoint on MSS
       - Use shadcn's Combobox for those two inputs
-- [ ] Tokens page is hidden away from the user who has never used this app
-      - Maybe add the Tokens nav intem under the 'Access' sub menu in the side bar (where Projects, (access) requests are)
 - [ ] When Project access requests or QPU time requests are approved or rejected directly and not in the notifications dropdown, the notifications remain intact
       and must be marked 'read' manually.
       - Automatically mark notifications associated with a given user request as read for all approving/rejecting users

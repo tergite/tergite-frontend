@@ -9,6 +9,9 @@ import {
   ChevronDown,
   ChevronRight,
   SlidersHorizontal,
+  KeyRound,
+  KeySquare,
+  FolderKanban,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button, IconButton } from "@/components/ui/button";
@@ -28,8 +31,9 @@ export function Sidebar({
   personalProject,
 }: Props) {
   const widthClass = isExpanded ? "w-56" : "w-18";
-  const adminNavClass = isExpanded ? "ml-4" : "";
+  const subNavClass = isExpanded ? "ml-4" : "";
   const [isAdminOpen, setIsAdminOpen] = useState(true);
+  const [isAccessOpen, setIsAccessOpen] = useState(true);
 
   return (
     <aside
@@ -50,6 +54,44 @@ export function Sidebar({
           isExpanded={isExpanded}
           text="Devices"
         />
+        <Collapsible
+          open={isAccessOpen}
+          onOpenChange={setIsAccessOpen}
+          className="w-full"
+        >
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              className={`flex text-sm gap-2 h-9 px-2 justify-start rounded-sm  transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
+            >
+              <KeyRound className="h-4 w-4" />
+              {isExpanded ? <span>Access</span> : null}
+              {isExpanded && !isAccessOpen && (
+                <ChevronRight className="ml-auto h-4 w-4" />
+              )}
+              {isExpanded && isAccessOpen && (
+                <ChevronDown className="ml-auto h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent
+            className={`flex flex-col gap-4 my-2 border-l ${subNavClass}`}
+          >
+            <NavItem
+              Icon={FolderKanban}
+              to="/projects"
+              isExpanded={isExpanded}
+              text="Projects"
+            />
+            <NavItem
+              Icon={KeySquare}
+              to="/tokens"
+              isExpanded={isExpanded}
+              text="Tokens"
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
         {isUserAdmin && (
           <Collapsible
             open={isAdminOpen}
@@ -72,7 +114,7 @@ export function Sidebar({
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent
-              className={`flex flex-col gap-4 my-2 border-l ${adminNavClass}`}
+              className={`flex flex-col gap-4 my-2 border-l ${subNavClass}`}
             >
               <NavItem
                 Icon={HelpingHand}

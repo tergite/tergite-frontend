@@ -9,6 +9,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Added
 
+- Added an "Access" group to the sidebar and mobile menu holding Projects and Tokens. Both
+  were reachable only from the user menu in the top bar, where a new user never looked.
 - Added the low and exhausted QPU-time notifications to the bell and the settings page, so a project
   running out of time is visible before a job is rejected for it.
 - Added a `/settings` page, reached from the user menu, with a switch per notification type

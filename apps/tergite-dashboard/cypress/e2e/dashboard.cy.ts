@@ -97,15 +97,15 @@ users.forEach((user) => {
         cy.get("nav")
           .contains(/devices/i)
           .should("be.visible");
+        cy.get("nav a[href='/projects']").should("be.visible");
+        cy.get("nav a[href='/tokens']").should("be.visible");
 
         if (isAdmin) {
           cy.get("nav")
             .contains(/requests/i)
             .should("be.visible");
 
-          cy.get("nav")
-            .contains(/projects/i)
-            .should("be.visible");
+          cy.get("nav a[href='/admin-projects']").should("be.visible");
 
           cy.get("nav")
             .contains(/control/i)
@@ -132,15 +132,15 @@ users.forEach((user) => {
         cy.get("nav")
           .contains(/devices/i)
           .should("be.visible");
+        cy.get("nav a[href='/projects']").should("be.visible");
+        cy.get("nav a[href='/tokens']").should("be.visible");
 
         if (isAdmin) {
           cy.get("nav")
             .contains(/requests/i)
             .should("be.visible");
 
-          cy.get("nav")
-            .contains(/projects/i)
-            .should("be.visible");
+          cy.get("nav a[href='/admin-projects']").should("be.visible");
         }
       });
     });
