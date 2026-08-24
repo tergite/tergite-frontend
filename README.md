@@ -180,8 +180,18 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
         native `datalist` needed no new dependency and left the fields free-text, which
         matters because a superuser may name a user who has never logged in. `Combobox`
         would mean adding `cmdk` and reworking `MultiInput` to host a custom control.
-- Handle 503 unavailbale service on the dashboard
 - Handle the disconnection issues between MSS and the backends
+    - NEEDS A DECISION, not just a patch. `is_online` is set True on websocket connect and
+      False only in the `WebSocketDisconnect` handler
+      (`api/rest/routers/devices/__init__.py`), so a backend that dies without closing
+      cleanly stays "online" until TCP notices. Two candidate fixes, neither safe to land
+      unreviewed:
+      - **Liveness TTL in MSS alone.** Stamp `last_seen` on every websocket frame and treat
+        a device whose stamp is older than N as offline when serving it. No backend change,
+        but it redefines `is_online` for every consumer — dashboard, fixtures, e2e — and a
+        quiet-but-healthy backend would read as offline unless it is made to send keepalives.
+      - **Websocket ping/pong with a deadline**, which is the real answer but needs a matching
+        change in tergite-backend and therefore an RFC spanning both repos.
 
 ## Acknowledgements
 
