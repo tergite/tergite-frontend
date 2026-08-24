@@ -91,10 +91,10 @@ def test_grant_by_email(client, admin_jwt_cookie, db, personal_projects):
 def test_grant_to_all_personal_projects(
     client, admin_jwt_cookie, db, personal_projects
 ):
-    """The all-personal target reaches every existing personal project"""
+    """The all-personal-projects target reaches every existing personal project"""
     with client as client:
         response = _grant(
-            client, admin_jwt_cookie, target="all-personal", target_emails=None
+            client, admin_jwt_cookie, target="all-personal-projects", target_emails=None
         )
 
         assert response.status_code == 201
@@ -107,11 +107,13 @@ def test_grant_to_all_personal_projects(
 
 
 def test_shared_projects_are_untouched(client, admin_jwt_cookie, db, personal_projects):
-    """A grant never touches shared projects, even in all-personal mode"""
+    """A grant never touches shared projects, even in all-personal-projects mode"""
     before = get_db_record(db, Project, TEST_PROJECT_ID)["qpu_seconds"]
 
     with client as client:
-        _grant(client, admin_jwt_cookie, target="all-personal", target_emails=None)
+        _grant(
+            client, admin_jwt_cookie, target="all-personal-projects", target_emails=None
+        )
 
         assert get_db_record(db, Project, TEST_PROJECT_ID)["qpu_seconds"] == before
 
@@ -254,7 +256,7 @@ def test_grant_requires_an_idempotency_key(client, admin_jwt_cookie):
             cookies=admin_jwt_cookie,
             json={
                 "seconds": 60,
-                "target": "all-personal",
+                "target": "all-personal-projects",
                 "reason": "x",
             },
         )

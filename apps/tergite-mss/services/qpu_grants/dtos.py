@@ -26,7 +26,7 @@ class GrantTarget(str, enum.Enum):
     """Who a bulk grant applies to"""
 
     EMAILS = "emails"
-    ALL_PERSONAL = "all-personal"
+    ALL_PERSONAL_PROJECTS = "all-personal-projects"
 
 
 class SkippedTarget(BaseModel):

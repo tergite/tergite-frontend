@@ -19,6 +19,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   `approver_scope` and `project_id`. Clients asserting on exact response bodies will see the
   new fields.
 - Removed puhuri support as this is not in the long term plans for maintenance
+- Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
 
 ### Added
 

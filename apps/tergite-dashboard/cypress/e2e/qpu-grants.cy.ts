@@ -120,6 +120,40 @@ describe("granting QPU time as an admin", () => {
 
     cy.contains("#confirm-dialog button", /confirm/i).click();
     cy.wait("@grant").its("response.statusCode").should("eq", 201);
+
+    cy.get("#confirm-dialog").should("not.exist");
+    cy.get("[data-cy-grant-report]").should("be.visible");
+    cy.get("[data-cy-grant-submit]").should("be.disabled");
+  });
+
+  it("needs a fresh edit before it will grant again", () => {
+    typeEmail(plain.email);
+    cy.get("#grant-reason").type("new QPU online");
+    cy.get("[data-cy-grant-submit]").click();
+
+    cy.wait("@grant");
+    cy.get("[data-cy-grant-submit]").should("be.disabled");
+
+    cy.get("#grant-reason").type("second thoughts");
+    cy.get("[data-cy-grant-submit]").should("be.enabled");
+  });
+
+  it("gives a deliberate second grant its own idempotency key", () => {
+    typeEmail(plain.email);
+    cy.get("#grant-reason").type("first");
+    cy.get("[data-cy-grant-submit]").click();
+
+    cy.wait("@grant").then((first) => {
+      typeEmail(plain.email);
+      cy.get("#grant-reason").type("second");
+      cy.get("[data-cy-grant-submit]").click();
+
+      cy.wait("@grant").then((second) => {
+        expect(second.request.headers["idempotency-key"]).to.not.equal(
+          first.request.headers["idempotency-key"]
+        );
+      });
+    });
   });
 
   it("closes the form on cancel", () => {

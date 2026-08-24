@@ -286,7 +286,7 @@ QPU_SECONDS_GRANT_DB_COLLECTION = "qpu_seconds_grants"
 
 class GrantTarget(str, enum.Enum):
     EMAILS = "emails"                  # an explicit list
-    ALL_PERSONAL = "all-personal"      # every existing personal project
+    ALL_PERSONAL_PROJECTS = "all-personal-projects"      # every existing personal project
 
 
 class QpuSecondsGrant(Document):
@@ -637,7 +637,7 @@ that the "all existing personal projects" wording is literal and deliberate.
 }
 ```
 
-**Fan-out.** An all-personal grant emits one notification per recipient. In-app that is a single
+**Fan-out.** An all-personal-projects grant emits one notification per recipient. In-app that is a single
 `insert_many`; email is paced by the outbox sweeper (§6.4) rather than dispatched inline, which is
 what keeps a 400-user grant from becoming a 400-message burst inside one request. The notification
 reuses `QPU_SECONDS_GRANTED` with `context.reason = "admin-grant"` to distinguish it from
@@ -988,7 +988,7 @@ Small, and independent of everything except phase 2's notifications.
   `context.reason = "admin-grant"`.
 - `projects.max_grant_seconds`.
 - `grant-qpu-seconds-form.tsx` on `/admin-projects`, with the confirmation step for the
-  all-personal mode and the report rendering.
+  all-personal-projects mode and the report rendering.
 - Tests: the idempotency key rejecting a replay, dormant users landing in `skipped` rather than
   being provisioned, and the latch actually clearing so a previously-warned project warns again.
 

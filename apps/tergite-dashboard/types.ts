@@ -498,7 +498,7 @@ export type NotificationPreferences = Record<NotificationType, ChannelPrefs>;
 // who a bulk QPU-seconds grant applies to
 export enum GrantTarget {
   EMAILS = "emails",
-  ALL_PERSONAL = "all-personal",
+  ALL_PERSONAL_PROJECTS = "all-personal-projects",
 }
 
 // a target the grant could not be applied to, and why

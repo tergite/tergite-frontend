@@ -29,9 +29,12 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 - The projects page no longer offers Delete on the reader's own personal project, matching
   the API, which refuses it. The admin projects page still offers it, for offboarding.
+- Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
 
 ### Fixed
 
+- Fixed the 'Grant to all' confirmation not closing on Confirm, so every further click
+  granted the seconds again. The form now stays disabled until it is edited afresh.
 - Fixed the days box of the QPU-time request form counting a day as 24 seconds, so 2 days
   asked for 48 seconds on top of the default hour.
 - Fixed the QPU-time request form sending a duration other than the one displayed: days,

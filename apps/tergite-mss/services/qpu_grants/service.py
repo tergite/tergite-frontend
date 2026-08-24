@@ -133,7 +133,7 @@ async def _resolve_targets(
     Returns:
         the projects to increment, and the targets that could not be resolved
     """
-    if payload.target == GrantTarget.ALL_PERSONAL:
+    if payload.target == GrantTarget.ALL_PERSONAL_PROJECTS:
         projects = await Project.find({"is_personal": True}).to_list()
         return projects, []
 

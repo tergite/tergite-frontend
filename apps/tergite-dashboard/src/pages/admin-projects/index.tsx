@@ -19,6 +19,7 @@ import {
   UserRole,
   type AppState,
   type AdminProject,
+  QpuSecondsGrantReport,
 } from "../../../types";
 import { AdminProjectsTable } from "./components/projects-table";
 import { AdminProjectsSidebar } from "./components/projects-sidebar";
@@ -30,8 +31,10 @@ import { GrantQpuSecondsForm } from "./components/grant-qpu-seconds-form";
 
 export function AdminProjects() {
   const queryClient = useQueryClient();
-  const [isCreating, setIsCreating] = useState(false);
-  const [isGranting, setIsGranting] = useState(false);
+  const [mode, setMode] = useState<OperationMode>(OperationMode.EDIT);
+  // const [isCreating, setIsCreating] = useState(false);
+  // const [isGranting, setIsGranting] = useState(false);
+  // const [isEditing, setIsEditing] = useState(false);
   const { currentUser } = useLoaderData() as AdminProjectsData;
   const { data: projects = [] } = useQuery(
     allAdminProjectsQuery({
@@ -39,6 +42,11 @@ export function AdminProjects() {
     })
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [qpuSecondsGrantReport, setQpuSecondsGrantReport] =
+    useState<QpuSecondsGrantReport>();
+  const [idempotencyKey, setIdempotencyKey] = useState(() =>
+    crypto.randomUUID()
+  );
   const selectedProjectIdx = useMemo(() => {
     const selectedEntries = Object.entries(rowSelection).filter(
       ([_k, v]) => v === true
@@ -51,13 +59,13 @@ export function AdminProjects() {
 
   const handleRowClick = useCallback(
     (row: Row<AdminProject>) => {
-      setIsCreating(false);
+      setMode(OperationMode.EDIT);
       if (!row.getIsSelected()) {
         row.toggleSelected();
         setRowSelection({ [row.id]: true });
       }
     },
-    [setRowSelection, setIsCreating]
+    [setRowSelection, setMode]
   );
 
   const handleProjectDelete = useCallback(async () => {
@@ -68,21 +76,34 @@ export function AdminProjects() {
   }, [queryClient, setRowSelection]);
 
   const handleProjectEdit = useCallback(async () => {
+    setMode(OperationMode.EDIT);
     await refreshMyProjectsQueries(queryClient);
     await refreshAllAdminQueries(queryClient);
-  }, [queryClient]);
+  }, [queryClient, setMode]);
 
   const handleProjectCreate = useCallback(async () => {
-    setIsCreating(false);
+    setMode(OperationMode.EDIT);
     await refreshMyProjectsQueries(queryClient);
     await refreshAllAdminQueries(queryClient);
     setRowSelection({});
-  }, [queryClient, setIsCreating, setRowSelection]);
+  }, [queryClient, setMode, setRowSelection]);
+
+  const handleQpuSecondsGrant = useCallback(
+    async (report: QpuSecondsGrantReport) => {
+      setMode(OperationMode.GRANT_QPU_SECONDS);
+      setQpuSecondsGrantReport(report);
+      setIdempotencyKey(crypto.randomUUID());
+      await refreshMyProjectsQueries(queryClient);
+      await refreshAllAdminQueries(queryClient);
+      setRowSelection({});
+    },
+    [queryClient, setMode, setRowSelection]
+  );
 
   const handleSidebarClose = useCallback(async () => {
-    setIsCreating(false);
+    setMode(OperationMode.EDIT);
     setRowSelection({});
-  }, [setIsCreating, setRowSelection]);
+  }, [setMode, setRowSelection]);
 
   return (
     <main className="grid flex-1 items-start gap-4 grid-cols-1 p-4 sm:px-6 sm:py-0 xl:grid-cols-4">
@@ -95,8 +116,7 @@ export function AdminProjects() {
                 variant="outline"
                 data-cy-grant-qpu-time
                 onClick={() => {
-                  setIsCreating(false);
-                  setIsGranting(true);
+                  setMode(OperationMode.GRANT_QPU_SECONDS);
                 }}
               >
                 Grant QPU time
@@ -104,8 +124,7 @@ export function AdminProjects() {
               <Button
                 variant="default"
                 onClick={() => {
-                  setIsGranting(false);
-                  setIsCreating(true);
+                  setMode(OperationMode.CREATE);
                 }}
               >
                 New
@@ -124,14 +143,18 @@ export function AdminProjects() {
         </CardContent>
       </Card>
 
-      {isGranting && (
+      {mode === OperationMode.GRANT_QPU_SECONDS && (
         <GrantQpuSecondsForm
           className="order-first xl:order-none col-span-1"
-          onClose={() => setIsGranting(false)}
+          onClose={handleSidebarClose}
+          onGrant={handleQpuSecondsGrant}
+          onCancel={handleSidebarClose}
+          grantReport={qpuSecondsGrantReport}
+          idempotencyKey={idempotencyKey}
         />
       )}
 
-      {!isCreating && !isGranting && (
+      {mode === OperationMode.EDIT && (
         <AdminProjectsSidebar
           project={projects[selectedProjectIdx]}
           className="order-first xl:order-none col-span-1"
@@ -141,7 +164,7 @@ export function AdminProjects() {
         />
       )}
 
-      {isCreating && !isGranting && (
+      {mode === OperationMode.CREATE && (
         <CreateProjectForm
           className="order-first xl:order-none col-span-1"
           onCreate={handleProjectCreate}
@@ -174,4 +197,10 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
 
 interface AdminProjectsData {
   currentUser: User;
+}
+
+enum OperationMode {
+  EDIT = "edit",
+  CREATE = "create",
+  GRANT_QPU_SECONDS = "grant_qpu_seconds",
 }

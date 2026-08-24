@@ -1887,7 +1887,7 @@ router.post(
     const skipped: SkippedTarget[] = [];
     let targets: Project[] = [];
 
-    if (body.target === GrantTarget.ALL_PERSONAL) {
+    if (body.target === GrantTarget.ALL_PERSONAL_PROJECTS) {
       targets = personal;
     } else {
       for (const email of [...new Set(body.target_emails ?? [])]) {

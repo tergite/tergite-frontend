@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -25,34 +25,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { grantQpuSeconds, refreshAllAdminQueries } from "@/lib/api-client";
+import { grantQpuSeconds } from "@/lib/api-client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
-  ErrorInfo,
   GrantTarget,
+  QpuSecondsGrantPostBody,
   type QpuSecondsGrantReport,
 } from "../../../../types";
+import { toast } from "@/hooks/use-toast";
+import { X } from "lucide-react";
 
 const formSchema = z
   .object({
     seconds: z.coerce.number().positive("must be more than zero"),
     target: z.nativeEnum(GrantTarget),
-    target_emails: z.string().email().array().default([]),
+    target_emails: z.optional(z.string().email().array()),
     reason: z.string().min(1, "required"),
   })
   .refine(
     (value) =>
-      value.target !== GrantTarget.EMAILS || value.target_emails.length > 0,
-    { message: "at least one email is required", path: ["target_emails"] },
+      value.target !== GrantTarget.EMAILS || value.target_emails?.length,
+    { message: "at least one email is required", path: ["target_emails"] }
   );
 
-export function GrantQpuSecondsForm({ onClose, className = "" }: Props) {
-  const queryClient = useQueryClient();
-  const [report, setReport] = useState<QpuSecondsGrantReport>();
+export function GrantQpuSecondsForm({
+  onClose,
+  className = "",
+  grantReport,
+  idempotencyKey,
+  onGrant,
+  onCancel = () => {},
+}: Props) {
+  const [requestBody, setRequestBody] =
+    useState<QpuSecondsGrantPostBody | null>(null);
   const grantForm = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,42 +72,60 @@ export function GrantQpuSecondsForm({ onClose, className = "" }: Props) {
     },
   });
   const target = grantForm.watch("target");
-  const isAllPersonal = target === GrantTarget.ALL_PERSONAL;
+  const isGrantingAllPersonalProjects =
+    target === GrantTarget.ALL_PERSONAL_PROJECTS;
 
-  const submit = useCallback(
-    async (values: z.infer<typeof formSchema>) => {
-      try {
-        const result = await grantQpuSeconds(
-          {
-            seconds: values.seconds,
-            target: values.target,
-            reason: values.reason,
-            target_emails: isAllPersonal ? undefined : values.target_emails,
-          },
-          // a fresh key per submission: a retry of *this* click must not double-grant,
-          // but a deliberate second grant should be its own operation
-          crypto.randomUUID(),
-        );
-        setReport(result);
-        await refreshAllAdminQueries(queryClient);
-      } catch (error) {
-        const message = (error as ErrorInfo)?.message ?? String(error);
-        grantForm.setError("seconds", { type: "custom", message });
-      }
+  const qpuSecondsGrant = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      return await grantQpuSeconds(values, idempotencyKey);
     },
-    [grantForm, isAllPersonal, queryClient],
-  );
+    onSuccess: useCallback(
+      async (report: QpuSecondsGrantReport) => {
+        await onGrant(report);
+        toast({ description: `QPU seconds granted` });
+        grantForm.reset();
+      },
+      [onGrant, grantForm]
+    ),
+    throwOnError: true,
+  });
+
+  const handleConfirm = useCallback(() => {
+    if (!requestBody) return;
+    qpuSecondsGrant.mutate(requestBody!);
+  }, [requestBody, qpuSecondsGrant]);
+
+  const handleCancel = useCallback(() => {
+    grantForm.reset();
+    setRequestBody(null);
+    onCancel();
+  }, [grantForm, setRequestBody, onCancel]);
+
+  const handleDialogCancel = useCallback(() => {
+    setRequestBody(null);
+  }, [setRequestBody]);
+
+  // A hack: for some reason editForm.formState.isDirty was not always right especially
+  //   when one clicked on another project when they had just editted only the user_emails field but not submitted
+  //   if the new project had everything in common with the project, except say the user_emails, editForm.formState.isDirty
+  //   would still show that it is dirty yet it should reset whenever new values are passed to it during initialization
+  const isFormDirty = Object.keys(grantForm.formState.dirtyFields).length;
 
   return (
     <Card id="grant-qpu-seconds" className={className}>
-      <CardHeader className="flex flex-row items-center justify-between bg-muted/50">
-        <CardTitle className="text-lg">Grant QPU time</CardTitle>
-        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-          Cancel
-        </Button>
+      <CardHeader className="flex flex-row items-center bg-muted/50 justify-between space-y-0">
+        <div className="grid gap-0.5">
+          <CardTitle className="group flex items-center gap-2 text-lg">
+            Grant QPU seconds
+          </CardTitle>
+        </div>
+        <IconButton Icon={X} variant="ghost" onClick={onClose} />
       </CardHeader>
       <Form {...grantForm}>
-        <form onSubmit={grantForm.handleSubmit(submit)}>
+        <form
+          onSubmit={grantForm.handleSubmit(setRequestBody)}
+          onReset={handleCancel}
+        >
           <CardContent className="p-6 text-sm grid gap-4">
             <FormField
               control={grantForm.control}
@@ -133,7 +160,7 @@ export function GrantQpuSecondsForm({ onClose, className = "" }: Props) {
                         <SelectItem value={GrantTarget.EMAILS}>
                           These users
                         </SelectItem>
-                        <SelectItem value={GrantTarget.ALL_PERSONAL}>
+                        <SelectItem value={GrantTarget.ALL_PERSONAL_PROJECTS}>
                           All personal projects
                         </SelectItem>
                       </SelectContent>
@@ -144,7 +171,7 @@ export function GrantQpuSecondsForm({ onClose, className = "" }: Props) {
               )}
             />
 
-            {!isAllPersonal && (
+            {!isGrantingAllPersonalProjects && (
               <FormField
                 control={grantForm.control}
                 name="target_emails"
@@ -180,57 +207,66 @@ export function GrantQpuSecondsForm({ onClose, className = "" }: Props) {
               )}
             />
 
-            {report && (
+            {/* Probably move this to its own private component */}
+            {grantReport && (
               <div data-cy-grant-report className="grid gap-1 border-t pt-3">
                 <span className="font-medium">
-                  {report.granted} project{report.granted === 1 ? "" : "s"}{" "}
-                  granted {report.seconds}s
+                  {grantReport.granted} project
+                  {grantReport.granted === 1 ? "" : "s"} granted{" "}
+                  {grantReport.seconds}s
                 </span>
-                {report.skipped.length > 0 && (
-                  <>
-                    <span className="text-muted-foreground">
-                      {report.skipped.length} skipped
-                    </span>
-                    <ul className="grid gap-1">
-                      {report.skipped.map((item) => (
-                        <li key={item.email} className="text-muted-foreground">
-                          {item.email}: {item.why}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
+                {
+                  /* FIXME: All the more reason to have a separate component. This needs to be scrollable as the number of skipped items might be high*/
+                  grantReport.skipped.length > 0 && (
+                    <>
+                      <span className="text-muted-foreground">
+                        {grantReport.skipped.length} skipped
+                      </span>
+                      <ul className="grid gap-1">
+                        {grantReport.skipped.map((item) => (
+                          <li
+                            key={item.email}
+                            className="text-muted-foreground"
+                          >
+                            {item.email}: {item.why}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )
+                }
               </div>
             )}
           </CardContent>
-          <CardFooter className="border-t bg-muted/50 px-6 py-3">
-            {isAllPersonal ? (
-              // irreversible and wide-reaching, so it gets a confirmation step
-              <ConfirmDialog
-                title="Grant to every personal project?"
-                description="This adds QPU time to all personal projects and cannot be undone."
-                onConfirm={grantForm.handleSubmit(submit)}
-                trigger={
-                  <Button
-                    type="button"
-                    data-cy-grant-submit
-                    className="w-full"
-                    disabled={grantForm.formState.isSubmitting}
-                  >
-                    Grant to all
-                  </Button>
-                }
-              />
-            ) : (
-              <Button
-                type="submit"
-                data-cy-grant-submit
-                className="w-full"
-                disabled={grantForm.formState.isSubmitting}
-              >
-                Grant
-              </Button>
-            )}
+          <CardFooter className="grid grid-cols-2 gap-2 border-t bg-muted/50 px-6 py-3">
+            <ConfirmDialog
+              title="Grant to multiple personal projects?"
+              description="This adds QPU time to the selected personal projects and cannot be undone."
+              onConfirm={handleConfirm}
+              onCancel={handleDialogCancel}
+              onClose={handleDialogCancel}
+              trigger={
+                <Button
+                  type="submit"
+                  data-cy-grant-submit
+                  variant="default"
+                  disabled={
+                    !!requestBody || qpuSecondsGrant.isPending || !isFormDirty
+                  }
+                >
+                  Grant
+                </Button>
+              }
+            />
+
+            <Button
+              type="reset"
+              disabled={qpuSecondsGrant.isPending}
+              variant="secondary"
+              className="border"
+            >
+              Cancel
+            </Button>
           </CardFooter>
         </form>
       </Form>
@@ -240,5 +276,9 @@ export function GrantQpuSecondsForm({ onClose, className = "" }: Props) {
 
 interface Props {
   onClose: () => void;
+  grantReport?: QpuSecondsGrantReport;
+  idempotencyKey: string;
+  onGrant: (report: QpuSecondsGrantReport) => Promise<void>;
+  onCancel?: () => void;
   className?: string;
 }
