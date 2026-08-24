@@ -9,6 +9,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Added an unlogged `GET /health` for the container healthcheck, which used to probe
+  `GET /devices/` every ten seconds and bury real traffic in the request log.
 - Added `project-membership-granted` and `project-admin-assigned` notifications, emitted when an
   admin creates or edits a project. Being added to a project, or handed one to administer, was
   silent; only removal was announced.

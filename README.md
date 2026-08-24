@@ -185,10 +185,9 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
   fw	@	index-74TWp7kT.js:40
       ```
     - Probably use similar layout in the admin pages to that used in the dashboard pages
-- [ ] Health check requests spam the logs for all apps (MSS, Dashboard, backend)
-    - Options:
-      - Add a healthcheck endpoint which shows no logs (e.g. the logs to it are filtered out by the server software)? 
-      - Reduce information passed in INFO logs. Only ERROR, WARNING and DEBUG probably need such detail of information
+- [ ] Health check requests spam the logs of tergite-backend
+    - MSS and the dashboard now answer the container probe on an unlogged `/health`; the
+      backend lives in its own repo and needs the same treatment there.
 - [ ] In project creation and project update forms, make 'Admin email' and 'Member emails' inputs autocomplete for admins
       - Add an admin only autocomplete emails endpoint on MSS
       - Use shadcn's Combobox for those two inputs

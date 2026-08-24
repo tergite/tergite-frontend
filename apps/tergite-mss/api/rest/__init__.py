@@ -65,6 +65,10 @@ app.add_middleware(
 )
 
 
+# probed every few seconds by the container healthcheck; logging them buries real traffic
+_UNLOGGED_PATHS = frozenset({"/health"})
+
+
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
     """Generates request ID, contextualizes logging, logs requests, and records them in requests_store."""
@@ -77,6 +81,9 @@ async def request_logging_middleware(request: Request, call_next):
         or get_uuid4_str()
     )
     request.state.request_id = request_id
+
+    if request.url.path in _UNLOGGED_PATHS:
+        return await call_next(request)
 
     # Wrap request processing in Loguru context
     with logger.contextualize(request_id=request_id):
@@ -142,6 +149,16 @@ app.include_router(admin_router)
 app.include_router(jobs_router)
 app.include_router(booking_router)
 app.include_router(counts_router)
+
+
+@app.get("/health", include_in_schema=False)
+async def health():
+    """Liveness probe for the container healthcheck.
+
+    Deliberately public, trivial and unlogged: the probe runs every ten seconds and
+    drowned the request log when it went through a real endpoint.
+    """
+    return {"status": "ok"}
 
 
 @app.get("/")

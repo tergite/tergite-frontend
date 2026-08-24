@@ -9,6 +9,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Added
 
+- Added an unlogged `/health` location to the nginx config for the container healthcheck,
+  which used to fetch the whole SPA every ten seconds and fill the access log.
 - Added the "Added to project" and "Made project admin" notifications to the bell and to
   the per-type email switches on the settings page.
 - Added Approve and Reject buttons to each pending row of the admin requests table, so a

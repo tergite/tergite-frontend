@@ -169,7 +169,10 @@ docker compose -f fresh-docker-compose.yml up -d
 ```
 
 MSS is exposed on `8002`, the dashboard on `3000`. `mss` waits on a healthy Redis;
-`dashboard` waits on a healthy MSS (`GET /devices/` returning 200).
+`dashboard` waits on a healthy MSS (`GET /health` returning 200). Both `/health`
+endpoints are deliberately outside the request log — MSS skips them in
+`request_logging_middleware`, nginx with `access_log off` — because a ten-second probe
+otherwise buries real traffic.
 
 The dashboard image is a two-stage build: `node:20-alpine` runs `npm run build`, then the
 `dist/` output is copied into `nginx:1.27-alpine-slim` with a SPA-fallback
