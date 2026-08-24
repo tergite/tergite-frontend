@@ -164,7 +164,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## TODO
 
-- [ ] Request access form needs to ask for 'Project External ID' not just 'Project ID'
 - [ ] There is no feedback to the user after submitting the request access form.
     - Maybe show a toast or redirect to past requests screen
 - [ ] Make the 'Project External ID' input an autocomplete

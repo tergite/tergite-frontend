@@ -74,7 +74,8 @@ export function RequestAccessDialog() {
         <DialogHeader>
           <DialogTitle>Request access to a project</DialogTitle>
           <DialogDescription className="py-2">
-            Enter the ID of a project you already know about. Its admin decides.
+            Enter the external ID of a project you already know about. Its admin
+            decides.
           </DialogDescription>
         </DialogHeader>
         <Form {...requestForm}>
@@ -84,7 +85,7 @@ export function RequestAccessDialog() {
               name="project_ext_id"
               render={({ field }) => (
                 <FormItem className="grid gap-2 my-2">
-                  <Label htmlFor="project_ext_id">Project ID</Label>
+                  <Label htmlFor="project_ext_id">Project External ID</Label>
                   <FormControl>
                     <Input id="project_ext_id" type="text" {...field} />
                   </FormControl>

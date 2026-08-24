@@ -29,6 +29,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Changed
 
+- The access-request form now asks for the "Project External ID", the identifier a user
+  actually has, rather than the ambiguous "Project ID".
 - The projects page's access-request button is now a primary button reading "Request
   access". As a long outline button it neither stood out nor fitted a phone screen.
 - The projects page no longer offers Delete on the reader's own personal project, matching
