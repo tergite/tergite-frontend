@@ -29,6 +29,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiInput } from "@/components/ui/multi-input";
+import {
+  USER_EMAILS_DATALIST_ID,
+  UserEmailsDatalist,
+} from "./user-emails-datalist";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { X } from "lucide-react";
@@ -228,6 +232,8 @@ function AdminProjectSummary({
                   )}
                 />
 
+                <UserEmailsDatalist />
+
                 <FormField
                   control={editForm.control}
                   name="admin_email"
@@ -241,7 +247,9 @@ function AdminProjectSummary({
                           >
                             Admin
                           </Label>
-                          <Input id="admin_email" {...field} />
+                          <Input id="admin_email" {...field}
+                            list={USER_EMAILS_DATALIST_ID}
+                          />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -266,6 +274,7 @@ function AdminProjectSummary({
                             id="user_emails"
                             type="email"
                             {...field}
+                            list={USER_EMAILS_DATALIST_ID}
                           />
                         </div>
                       </FormControl>

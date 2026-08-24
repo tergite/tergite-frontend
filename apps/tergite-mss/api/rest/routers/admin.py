@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Routes for admin related operations"""
+import re
 from datetime import datetime
 from typing import List, Optional
 
@@ -97,6 +98,32 @@ async def create_qpu_time_request(
         requester=requester,
     )
     return result.model_dump(mode="json")
+
+
+@router.get("/user-emails/", tags=["users"], dependencies=[CurrentSuperuserDep])
+async def get_user_emails(
+    search: Optional[str] = Query(None),
+    limit: int = Query(20, le=100),
+) -> List[str]:
+    """Gets user email addresses, for completing the admin project forms
+
+    Superuser only, and deliberately so: a superuser already sees every member address
+    through ProjectAdminView, whereas a directory of addresses handed to any logged-in
+    user would be a disclosure. Returns addresses alone, never the user records.
+
+    Args:
+        search: a case-insensitive substring of the address; omit for the first page
+        limit: the maximum number of addresses to return
+
+    Returns:
+        the matched email addresses, alphabetically
+    """
+    filters = {}
+    if search:
+        filters["email"] = {"$regex": re.escape(search), "$options": "i"}
+
+    users = await User.find(filters, limit=limit, sort="email").to_list()
+    return [user.email for user in users]
 
 
 @router.get(

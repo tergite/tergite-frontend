@@ -1946,6 +1946,35 @@ router.post(
 );
 
 router.get(
+  "/admin/user-emails/",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
+    }
+
+    const { search, limit = "20" } = req.query as ParsedQs & {
+      search?: string;
+      limit?: string;
+    };
+    const emails = mockDb
+      .getMany<User>("users", (v) =>
+        search ? v.email.toLowerCase().includes(search.toLowerCase()) : true,
+      )
+      .map((v) => v.email)
+      .sort()
+      .slice(0, parseInt(limit));
+
+    res.json(emails);
+  }),
+);
+
+router.get(
   "/admin/qpu-seconds-grants/",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);

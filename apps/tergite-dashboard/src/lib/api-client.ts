@@ -1803,6 +1803,40 @@ export async function grantQpuSeconds(
 }
 
 /**
+ * the query for user email addresses, for completing the admin project forms
+ *
+ * @param options - extra options for filtering
+ *          - baseUrl - the base URL of the API
+ *          - search - a case-insensitive substring of the address
+ */
+export function userEmailsQuery(
+  options: { baseUrl?: string; search?: string } = {},
+) {
+  const { baseUrl = apiBaseUrl, search } = options;
+  return queryOptions({
+    queryKey: [baseUrl, "admin", "user-emails", search],
+    queryFn: async () => await getUserEmails(baseUrl, search),
+    refetchInterval,
+  });
+}
+
+/**
+ * Retrieves user email addresses, superuser only
+ *
+ * @param baseUrl - the API base URL
+ * @param search - a case-insensitive substring of the address
+ */
+async function getUserEmails(
+  baseUrl: string = apiBaseUrl,
+  search?: string,
+): Promise<string[]> {
+  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  return await authenticatedFetch(`${baseUrl}/admin/user-emails/${query}`, {
+    method: "GET",
+  });
+}
+
+/**
  * Retrieves the current user's notifications
  * @param baseUrl - the API base URL
  * @param options - extra options for filtering

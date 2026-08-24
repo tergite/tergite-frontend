@@ -25,6 +25,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiInput } from "@/components/ui/multi-input";
+import {
+  USER_EMAILS_DATALIST_ID,
+  UserEmailsDatalist,
+} from "./user-emails-datalist";
 import { useToast } from "@/hooks/use-toast";
 import { createAdminProject } from "@/lib/api-client";
 import { DateTime } from "luxon";
@@ -225,6 +229,8 @@ export function CreateProjectForm({
                   )}
                 />
 
+                <UserEmailsDatalist />
+
                 <FormField
                   control={createForm.control}
                   name="admin_email"
@@ -238,7 +244,9 @@ export function CreateProjectForm({
                           >
                             Admin email
                           </Label>
-                          <Input id="admin_email" type="email" {...field} />
+                          <Input id="admin_email" type="email" {...field}
+                            list={USER_EMAILS_DATALIST_ID}
+                          />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -263,6 +271,7 @@ export function CreateProjectForm({
                             id="user_emails"
                             type="email"
                             {...field}
+                            list={USER_EMAILS_DATALIST_ID}
                           />
                         </div>
                       </FormControl>

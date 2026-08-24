@@ -49,6 +49,11 @@ users.forEach((user) => {
         "my-project-list"
       );
       cy.intercept("GET", `${apiBaseUrl}/me`).as("my-user-info");
+      cy.intercept("GET", `${apiBaseUrl}/admin/user-emails/*`).as(
+        "user-emails"
+      );
+      cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
+      cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
       cy.intercept("GET", `${apiBaseUrl}/admin/projects/*`).as("projects-list");
       cy.intercept("POST", `${apiBaseUrl}/admin/projects/`).as(
         "create-project"
@@ -81,6 +86,10 @@ users.forEach((user) => {
       cy.wait("@my-user-info");
       cy.wait("@my-project-list");
       isAdmin && cy.wait("@projects-list");
+      // the notice banner shows on admin screens too; letting it land keeps it from
+      // shifting the layout under a realClick
+      cy.wait("@notices");
+      cy.wait("@notice-count");
     });
 
     isAdmin &&
@@ -680,13 +689,26 @@ users.forEach((user) => {
                 ]),
               ];
 
-              cy.contains("#projects-table button", /new/i).realClick();
+              cy.contains("#projects-table button", /new/i).click();
 
               // sidebar placeholder should not exist
               cy.get("#sidebar-placeholder").should("not.exist");
 
               cy.contains("#create-project h3", /new project/i).should(
                 "be.visible"
+              );
+
+              // the email fields complete from the directory, so a superuser does
+              // not have to remember an exact address. No cy.wait here: the sidebar
+              // has already primed the query, so the click makes no fresh request
+              cy.get("#create-project [data-cy-user-emails] option").should(
+                "have.length.at.least",
+                1
+              );
+              cy.get("#create-project input#admin_email").should(
+                "have.attr",
+                "list",
+                "user-emails"
               );
 
               cy.contains("#create-project div", /name/i).within(() => {
@@ -891,7 +913,7 @@ users.forEach((user) => {
     isAdmin &&
       it("cancelling project creation goes back to the default placeholder", () => {
         cy.viewport(1728, 1117);
-        cy.contains("#projects-table button", /new/i).realClick();
+        cy.contains("#projects-table button", /new/i).click();
 
         cy.get("#sidebar-placeholder").should("not.exist");
         cy.contains("#create-project button", /cancel/i)
@@ -905,7 +927,7 @@ users.forEach((user) => {
     isAdmin &&
       it("clicking x on the create project card header goes back to the default holder", () => {
         cy.viewport(1728, 1117);
-        cy.contains("#projects-table button", /new/i).realClick();
+        cy.contains("#projects-table button", /new/i).click();
 
         cy.get("#sidebar-placeholder").should("not.exist");
         cy.contains("#create-project div.justify-between", /new project/i)
@@ -955,7 +977,7 @@ users.forEach((user) => {
           cy.wrap({ el, idx }).then((obj) => {
             const project = projects[obj.idx];
             if (project) {
-              cy.contains("#projects-table button", /new/i).realClick();
+              cy.contains("#projects-table button", /new/i).click();
               cy.get("#create-project").should("be.visible");
               cy.get("#project-summary").should("not.exist");
               cy.get("#sidebar-placeholder").should("not.exist");

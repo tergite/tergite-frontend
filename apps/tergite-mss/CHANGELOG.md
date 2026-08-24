@@ -7,44 +7,15 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
-### Fixed
-
-- An unhandled server error now answers with a 500 carrying the CORS headers. Errors with no
-  handler of their own were turned into a response outside the CORS middleware, so a browser
-  reported "Failed to fetch" and a CORS violation instead of the error that actually happened.
-
 ### Added
 
+- Added `GET /admin/user-emails/`, a superuser-only lookup of user email addresses behind the
+  admin project forms. Ordinary users are refused: a directory of addresses is not public.
 - Added an unlogged `GET /health` for the container healthcheck, which used to probe
   `GET /devices/` every ten seconds and bury real traffic in the request log.
 - Added `project-membership-granted` and `project-admin-assigned` notifications, emitted when an
   admin creates or edits a project. Being added to a project, or handed one to administer, was
   silent; only removal was announced.
-
-### Fixed
-
-- Deciding a request now marks the "please decide this" notification read for every eligible
-  approver. Deciding anywhere but the notifications dropdown left the prompt to be cleared by
-  hand, once per approver.
-- Fixed approving a project access request failing with "Cannot apply $addToSet to non-array
-  field" on any project whose member lists were stored as null rather than empty.
-
-### Changed
-
-- Spending QPU seconds no longer clears a project's low-QPU latch; only adding time does. The latch
-  was cleared on every write, so once the new low-QPU warning existed the admin would have been
-  notified once per job for the same depletion rather than once.
-- A superuser can delete a personal project, for offboarding or an erasure request; only the
-  owner is refused, since deleting their own would hand them a fresh allowance on next login.
-  An earlier iteration refused everyone, leaving no route but editing the database by hand.
-- Project responses now include `is_personal`, and user request responses include
-  `approver_scope` and `project_id`. Clients asserting on exact response bodies will see the
-  new fields.
-- Removed puhuri support as this is not in the long term plans for maintenance
-- Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
-
-### Added
-
 - Added `qpu-seconds-low` and `qpu-seconds-depleted` notifications, raised as a job's usage takes a
   project below `projects.qpu_seconds_low_threshold` (default 600) or to zero. The admin hears about
   running low, admin and members both hear about running out; previously the first sign was a
@@ -79,8 +50,30 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added smart traceback capture in exception handlers (logs full tracebacks for `500+` server errors, logs `4xx` client errors as warnings without tracebacks).
 - Added lifecycle process start/shutdown messages and OAuth2 client provider registration logs.
 
+### Changed
+
+- Spending QPU seconds no longer clears a project's low-QPU latch; only adding time does. The latch
+  was cleared on every write, so once the new low-QPU warning existed the admin would have been
+  notified once per job for the same depletion rather than once.
+- A superuser can delete a personal project, for offboarding or an erasure request; only the
+  owner is refused, since deleting their own would hand them a fresh allowance on next login.
+  An earlier iteration refused everyone, leaving no route but editing the database by hand.
+- Project responses now include `is_personal`, and user request responses include
+  `approver_scope` and `project_id`. Clients asserting on exact response bodies will see the
+  new fields.
+- Removed puhuri support as this is not in the long term plans for maintenance
+- Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
+
 ### Fixed
 
+- An unhandled server error now answers with a 500 carrying the CORS headers. Errors with no
+  handler of their own were turned into a response outside the CORS middleware, so a browser
+  reported "Failed to fetch" and a CORS violation instead of the error that actually happened.
+- Deciding a request now marks the "please decide this" notification read for every eligible
+  approver. Deciding anywhere but the notifications dropdown left the prompt to be cleared by
+  hand, once per approver.
+- Fixed approving a project access request failing with "Cannot apply $addToSet to non-array
+  field" on any project whose member lists were stored as null rather than empty.
 - Fixed error OAUTH_USER_ALREADY_EXISTS when a user signs in with a different Oauth provider but same email.
 
 ## [2026.06.0] - 2026-06-26
