@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import React from "react";
 
 const MultiInput = React.forwardRef<HTMLInputElement, Props>(
-  ({ value, type, name, onChange, ...props }, ref) => {
+  ({ value, type, name, onChange, InputComponent, ...props }, ref) => {
     const [stringValue, setStringValue] = useState(toStringValue(value));
     const handleOnChange = useCallback(() => {
       const inputValue = toinputValue(type, stringValue);
@@ -44,6 +44,7 @@ const MultiInput = React.forwardRef<HTMLInputElement, Props>(
           type={type}
           value={value}
           onChange={handleMultiInputChange}
+          InputComponent={InputComponent}
         />
       </>
     );
@@ -58,6 +59,7 @@ function _MultiInput({
   disabled,
   onChange,
   className = "",
+  InputComponent = Input,
   ...rest
 }: Props) {
   const defaultValue = useMemo(() => (type == "number" ? [0] : [""]), [type]);
@@ -80,12 +82,8 @@ function _MultiInput({
   );
 
   const handleInputChange = useCallback(
-    (ev: ChangeEvent<HTMLInputElement>) => {
-      ev.preventDefault();
-      const indexStr = ev.target.dataset.index as string;
-      const index = parseInt(indexStr);
+    (index: number) => (ev: ChangeEvent<HTMLInputElement>) => {
       const newValue = ev.target.value;
-
       const newInnerValue = value?.map((v, i) => (i === index ? newValue : v));
       onChange && onChange(newInnerValue);
     },
@@ -103,7 +101,7 @@ function _MultiInput({
             key={index}
             className={cn("w-full grid grid-cols-9", className)}
           >
-            <Input
+            <InputComponent
               id={`${id}-${index}`}
               disabled={disabled}
               value={item}
@@ -111,7 +109,7 @@ function _MultiInput({
               data-cy-inner-input={index}
               data-index={index}
               className="rounded-l-md rounded-r-none col-span-8"
-              onChange={handleInputChange}
+              onChange={handleInputChange(index)}
               {...rest}
             />
             <IconButton
@@ -177,6 +175,10 @@ interface Props
   > {
   value?: InputValue;
   onChange?: (value?: InputValue) => void;
+  // swap in a richer control per row, e.g. one that suggests as you type
+  InputComponent?: React.ComponentType<
+    React.InputHTMLAttributes<HTMLInputElement>
+  >;
 }
 
 export { MultiInput };

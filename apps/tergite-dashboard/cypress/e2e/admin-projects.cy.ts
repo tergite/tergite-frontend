@@ -699,17 +699,19 @@ users.forEach((user) => {
               );
 
               // the email fields complete from the directory, so a superuser does
-              // not have to remember an exact address. No cy.wait here: the sidebar
-              // has already primed the query, so the click makes no fresh request
-              cy.get("#create-project [data-cy-user-emails] option").should(
-                "have.length.at.least",
-                1
-              );
-              cy.get("#create-project input#admin_email").should(
-                "have.attr",
-                "list",
-                "user-emails"
-              );
+              // not have to remember an exact address
+              cy.get("#create-project input#admin_email").type("doe");
+              cy.get("[data-cy-suggestions] [role='option']")
+                .should("have.length.at.least", 1)
+                .first()
+                .then(($option) => {
+                  const suggested = $option.text();
+                  cy.wrap($option).click();
+                  cy.get("#create-project input#admin_email").should(
+                    "have.value",
+                    suggested
+                  );
+                });
 
               cy.contains("#create-project div", /name/i).within(() => {
                 project.name && cy.get("input").clear().type(project.name);

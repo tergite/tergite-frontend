@@ -40,6 +40,11 @@ function login(user: User) {
   cy.wait("@my-user-info");
 }
 
+/** Every grant, to named users or to all, goes through the confirmation step */
+function confirmGrant() {
+  cy.contains("#confirm-dialog button", /confirm/i).click();
+}
+
 /** Adds one email row to a MultiInput, the way the component requires */
 function typeEmail(email: string, index = 0) {
   cy.get("#grant-emails-wrapper").within(() => {
@@ -89,6 +94,7 @@ describe("granting QPU time as an admin", () => {
     typeEmail(plain.email);
     cy.get("#grant-reason").type("new QPU online");
     cy.get("[data-cy-grant-submit]").click();
+    confirmGrant();
 
     cy.wait("@grant").its("response.statusCode").should("eq", 201);
     cy.get("[data-cy-grant-report]").within(() => {
@@ -102,6 +108,7 @@ describe("granting QPU time as an admin", () => {
     typeEmail("nobody@example.com");
     cy.get("#grant-reason").type("typo");
     cy.get("[data-cy-grant-submit]").click();
+    confirmGrant();
 
     cy.wait("@grant");
     cy.get("[data-cy-grant-report]").within(() => {
@@ -130,6 +137,7 @@ describe("granting QPU time as an admin", () => {
     typeEmail(plain.email);
     cy.get("#grant-reason").type("new QPU online");
     cy.get("[data-cy-grant-submit]").click();
+    confirmGrant();
 
     cy.wait("@grant");
     cy.get("[data-cy-grant-submit]").should("be.disabled");
@@ -139,14 +147,18 @@ describe("granting QPU time as an admin", () => {
   });
 
   it("gives a deliberate second grant its own idempotency key", () => {
+    // the first grant's report grows the card, pushing Grant below a 750px fold
+    cy.viewport(1280, 1200);
     typeEmail(plain.email);
     cy.get("#grant-reason").type("first");
     cy.get("[data-cy-grant-submit]").click();
+    confirmGrant();
 
     cy.wait("@grant").then((first) => {
       typeEmail(plain.email);
       cy.get("#grant-reason").type("second");
       cy.get("[data-cy-grant-submit]").click();
+      confirmGrant();
 
       cy.wait("@grant").then((second) => {
         expect(second.request.headers["idempotency-key"]).to.not.equal(

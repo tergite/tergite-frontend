@@ -175,11 +175,6 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 - [ ] Health check requests spam the logs of tergite-backend
     - MSS and the dashboard now answer the container probe on an unlogged `/health`; the
       backend lives in its own repo and needs the same treatment there.
-- [ ] Upgrade the admin email autocomplete from a `datalist` to shadcn's `Combobox`
-      - The endpoint (`GET /admin/user-emails/`) and the completion itself are in place; a
-        native `datalist` needed no new dependency and left the fields free-text, which
-        matters because a superuser may name a user who has never logged in. `Combobox`
-        would mean adding `cmdk` and reworking `MultiInput` to host a custom control.
 - Handle the disconnection issues between MSS and the backends
     - NEEDS A DECISION, not just a patch. `is_online` is set True on websocket connect and
       False only in the `WebSocketDisconnect` handler
