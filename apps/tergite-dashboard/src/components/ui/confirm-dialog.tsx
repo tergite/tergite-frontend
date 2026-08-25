@@ -16,6 +16,8 @@ import { ReactElement, type MouseEventHandler } from "react";
 export function ConfirmDialog({
   onConfirm,
   onCancel,
+  open,
+  onOpen = () => {},
   onClose = () => {},
   trigger,
   title,
@@ -23,11 +25,12 @@ export function ConfirmDialog({
   confirmBtnLabel = "Confirm",
   cancelBtnLabel = "Cancel",
 }: Props) {
+  const extraProps = open !== undefined ? { open } : {};
+
   return (
     <Dialog
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
+      {...extraProps}
+      onOpenChange={(open) => (open ? onOpen() : onClose())}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent id="confirm-dialog">
@@ -68,4 +71,6 @@ interface Props {
   description: string;
   confirmBtnLabel?: string;
   cancelBtnLabel?: string;
+  open?: boolean;
+  onOpen?: () => void;
 }

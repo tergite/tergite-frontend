@@ -245,6 +245,7 @@ export function GrantQpuSecondsForm({
               onConfirm={handleConfirm}
               onCancel={handleDialogCancel}
               onClose={handleDialogCancel}
+              open={!!requestBody}
               trigger={
                 <Button
                   type="submit"
