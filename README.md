@@ -164,6 +164,10 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## TODO
 
+- [ ] Notifications marked as read still show up in the notification list.
+    - they should disappear after being marked read
+- [ ] On the autocomplete input for adding users when creating projects, there is something
+    that quickly renders and disappears almost immediately on clicking in it
 - [ ] Make the 'Project External ID' input an autocomplete
     - Maybe add a read-only autocomplete GET endpoint for project IDs
     - Make the input autocomplete with shadcn `Combobox`
