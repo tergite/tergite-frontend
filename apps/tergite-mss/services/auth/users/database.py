@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Definition of the FastAPIUsers-specific Database adapter for users"""
+import re
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from fastapi_users_db_beanie import BeanieUserDatabase
@@ -64,3 +65,25 @@ class UserDatabase(BeanieUserDatabase):
             limit=limit,
             **kwargs,
         ).to_list()
+
+    @staticmethod
+    async def get_emails(search: Optional[str] = None, limit: int = 20) -> List[str]:
+        """Gets user email addresses, alphabetically
+
+        Returns addresses alone, never the user records: the callers that may see this
+        are completing a form, not reading a directory.
+
+        Args:
+            search: a case-insensitive substring of the address; omit for the first page
+            limit: the maximum number of addresses to return
+
+        Returns:
+            the matched email addresses
+        """
+        filter_obj = {}
+        if search:
+            # escaped, or a caller could hand us a regex to evaluate
+            filter_obj["email"] = {"$regex": re.escape(search), "$options": "i"}
+
+        users = await User.find(filter_obj, limit=limit, sort="email").to_list()
+        return [user.email for user in users]

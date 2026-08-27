@@ -11,7 +11,6 @@
 # that they have been altered from the originals.
 
 """Routes for admin related operations"""
-import re
 from datetime import datetime
 from typing import List, Optional
 
@@ -25,6 +24,7 @@ from services.auth import (
     APP_TOKEN_AUTH,
     Project,
     User,
+    UserDatabase,
     user_requests,
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
@@ -118,12 +118,7 @@ async def get_user_emails(
     Returns:
         the matched email addresses, alphabetically
     """
-    filters = {}
-    if search:
-        filters["email"] = {"$regex": re.escape(search), "$options": "i"}
-
-    users = await User.find(filters, limit=limit, sort="email").to_list()
-    return [user.email for user in users]
+    return await UserDatabase.get_emails(search=search, limit=limit)
 
 
 @router.get(

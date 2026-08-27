@@ -41,6 +41,7 @@ from .service import (
     JWT_HEADER_BACKEND,
     on_startup,
 )
+from .users import UserDatabase
 from .users.dtos import User, UserCreate, UserRead, UserUpdate
 
 __all__ = [
@@ -59,6 +60,7 @@ __all__ = [
     ProjectAdminView,
     PaginatedListResponse,
     ProjectDatabase,
+    UserDatabase,
     AppToken,
     AppTokenRead,
     AppTokenCreate,
