@@ -11,7 +11,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 - Added address completion to the "Admin email" and "Member emails" inputs of the admin
   project forms, so a superuser no longer has to recall an address exactly. It is a
-  combobox rather than a `<datalist>`, which Firefox and iOS Safari render only partially.
+  combobox rather than a `<datalist>`, which Firefox and iOS Safari render only partially,
+  and it searches the server on a pause in typing rather than filtering one fetched page.
 - Added an unlogged `/health` location to the nginx config for the container healthcheck,
   which used to fetch the whole SPA every ten seconds and fill the access log.
 - Added the "Added to project" and "Made project admin" notifications to the bell and to

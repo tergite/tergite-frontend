@@ -1816,7 +1816,10 @@ export function userEmailsQuery(
   return queryOptions({
     queryKey: [baseUrl, "admin", "user-emails", search],
     queryFn: async () => await getUserEmails(baseUrl, search),
-    refetchInterval,
+    // a directory of addresses does not go stale in the life of a form, and the list
+    // must not blank while the next search is in flight
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
   });
 }
 
