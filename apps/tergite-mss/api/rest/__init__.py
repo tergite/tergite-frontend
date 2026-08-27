@@ -34,7 +34,7 @@ from utils.exc import (
     TooManyRequestsError,
     UnknownBccError,
 )
-from utils.logging import setup_logging
+from utils.logging import UNLOGGED_PATHS, setup_logging
 
 from . import app_kwargs
 from .app_kwargs import get_app_kwargs
@@ -55,9 +55,6 @@ setup_logging(settings.CONFIG.environment)
 # application
 app = FastAPI(**get_app_kwargs())
 
-
-# probed every few seconds by the container healthcheck; logging them buries real traffic
-_UNLOGGED_PATHS = frozenset({"/health"})
 
 # middleware. Order matters and reads backwards: add_middleware wraps whatever is
 # already registered, so the CORS layer added at the end of this block is the outermost
@@ -96,7 +93,7 @@ async def request_logging_middleware(request: Request, call_next):
     )
     request.state.request_id = request_id
 
-    if request.url.path in _UNLOGGED_PATHS:
+    if request.url.path in UNLOGGED_PATHS:
         return await call_next(request)
 
     # Wrap request processing in Loguru context

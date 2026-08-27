@@ -10,10 +10,13 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the app itself: its middleware and its unrouted endpoints"""
+import logging
+
 import pytest
 from loguru import logger
 
 from api.rest import app
+from utils.logging import UNLOGGED_PATHS, EndpointFilter
 
 _ORIGIN = "http://127.0.0.1:3000"
 _RAISING_PATH = "/_raises_for_test"
@@ -66,6 +69,28 @@ def test_health_is_not_logged(client):
     # the /devices/ line proves the sink is actually capturing
     assert "/devices/" in logged
     assert "/health" not in logged
+
+
+def test_uvicorn_access_log_skips_the_probe():
+    """The middleware only silences our own logger; uvicorn keeps its own access log
+
+    Its records are what reach the docker logs, so the probe has to be dropped there too.
+    """
+    access_filter = EndpointFilter(UNLOGGED_PATHS)
+
+    def _record(path: str) -> logging.LogRecord:
+        return logging.LogRecord(
+            name="uvicorn.access",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='%s - "%s %s HTTP/%s" %d',
+            args=("127.0.0.1:1", "GET", path, "1.1", 200),
+            exc_info=None,
+        )
+
+    assert access_filter.filter(_record("/health")) is False
+    assert access_filter.filter(_record("/devices/")) is True
 
 
 def test_unhandled_error_is_a_500(client, raising_route):

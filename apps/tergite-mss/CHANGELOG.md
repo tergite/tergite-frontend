@@ -12,7 +12,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added `GET /admin/user-emails/`, a superuser-only lookup of user email addresses behind the
   admin project forms. Ordinary users are refused: a directory of addresses is not public.
 - Added an unlogged `GET /health` for the container healthcheck, which used to probe
-  `GET /devices/` every ten seconds and bury real traffic in the request log.
+  `GET /devices/` every ten seconds and bury real traffic in the request log and in
+  uvicorn's access log, which is what reaches `docker logs`.
 - Added `project-membership-granted` and `project-admin-assigned` notifications, emitted when an
   admin creates or edits a project. Being added to a project, or handed one to administer, was
   silent; only removal was announced.
