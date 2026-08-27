@@ -95,13 +95,7 @@ users.forEach((user) => {
       cy.visit("/");
       cy.url().should("equal", dashboardUrl);
 
-      cy.get("[data-testid='topbar'] [aria-label='UserRound']").click({
-        force: true,
-      });
-      cy.contains(
-        '[data-radix-popper-content-wrapper] [role="menuitem"]',
-        /tokens/i
-      ).click();
+      cy.get("[data-testid='sidebar'] a[href='/tokens']").click();
       cy.url().should("equal", `${dashboardUrl}tokens`);
     });
 

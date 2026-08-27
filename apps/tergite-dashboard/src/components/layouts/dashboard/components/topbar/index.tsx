@@ -92,12 +92,6 @@ export function Topbar({
           <DropdownMenuLabel>{username}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link to="/projects">Projects</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/tokens">Tokens</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
             <Link to="/settings" data-cy-settings-link>
               Settings
             </Link>

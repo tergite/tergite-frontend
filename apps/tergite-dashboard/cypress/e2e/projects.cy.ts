@@ -103,13 +103,7 @@ users.forEach((user) => {
       cy.wait("@my-user-info");
       cy.url().should("equal", dashboardUrl);
 
-      cy.get("[data-testid='topbar'] [aria-label='UserRound']").click({
-        force: true,
-      });
-      cy.contains(
-        '[data-radix-popper-content-wrapper] [role="menuitem"]',
-        /projects/i
-      ).click();
+      cy.get("[data-testid='sidebar'] a[href='/projects']").click();
       cy.url().should("equal", `${dashboardUrl}projects`);
     });
 

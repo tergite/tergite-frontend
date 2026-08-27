@@ -42,6 +42,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Changed
 
+- The user menu no longer repeats Projects and Tokens, which the sidebar now carries. It
+  keeps only what lives nowhere else: Settings and Logout.
 - The "Request Pending" button on the projects page now carries how much QPU time was
   asked for. A requester had no way to see the figure they had submitted.
 - Notices and the notifications bell now show on the admin screens too; they were
