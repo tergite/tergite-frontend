@@ -175,10 +175,14 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
       project browser for shared projects. Deliberate: project membership is not public" —
       and §8.3 repeats the refusal. Any endpoint listing project IDs lets any logged-in user
       enumerate every project in the system. Needs a decision to amend the RFC before it can
-      be built; the admin-only email autocomplete below is not in tension and can proceed.
+      be built; the admin-only email autocomplete below is not in tension and can proceed. 
+      <!-- FIXME: Rethought this. Logged in users are free to know the shared projects available. 
+      It is not PII. They are logged in already and there is already a gate in the name of the project
+      admin who must admit membership into a project if anyone wants to enter.-->
 - [ ] Health check requests spam the logs of tergite-backend
     - MSS and the dashboard now answer the container probe on an unlogged `/health`; the
       backend lives in its own repo and needs the same treatment there.
+      <!-- FIXME: You said this endpoint does not log. It actually does-->
 - Handle the disconnection issues between MSS and the backends
     - NEEDS A DECISION, not just a patch. `is_online` is set True on websocket connect and
       False only in the `WebSocketDisconnect` handler
@@ -191,6 +195,13 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
         quiet-but-healthy backend would read as offline unless it is made to send keepalives.
       - **Websocket ping/pong with a deadline**, which is the real answer but needs a matching
         change in tergite-backend and therefore an RFC spanning both repos.
+        <!-- FIXME: Choose this. Note however that the disconnection issues would not have been solved.
+        In the past, the backend abruptly became unreachable in production and sometimes even the 
+        frontend did the same. I was thinking of having a stream-persisted NATS in between them
+        at least as another medium of exchange between the two - being switchable say in one of 
+        our config files such that if one wants to use websockets, they go ahead. If NATS they go ahead.
+        It would also mean it is easy to check if the NATS gets rid of those sporadic disconnections.
+        But all this is for a future RFC or something-->
 
 ## Acknowledgements
 
