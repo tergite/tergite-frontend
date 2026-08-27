@@ -69,31 +69,5 @@ users.forEach((user) => {
       cy.contains("dummy server error").should("be.visible");
       cy.contains("button", /back/i).click();
     });
-
-    it("names a 503 as the service being unavailable", () => {
-      const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
-      cy.intercept("GET", `${apiBaseUrl}/devices/*`, (req) => {
-        req.reply(503, { detail: "backend is down for maintenance" });
-      }).as("devices-unavailable");
-
-      cy.visit("/");
-      cy.wait("@devices-unavailable");
-
-      cy.contains(/service unavailable/i).should("be.visible");
-      cy.contains(/not answering/i).should("be.visible");
-      cy.contains("backend is down for maintenance").should("be.visible");
-    });
-
-    it("treats an unreachable API as a 503 rather than 'Failed to fetch'", () => {
-      const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
-      cy.intercept("GET", `${apiBaseUrl}/devices/*`, { forceNetworkError: true }).as(
-        "devices-dead"
-      );
-
-      cy.visit("/");
-
-      cy.contains(/service unavailable/i).should("be.visible");
-      cy.get("[data-cy-error-status='503']").should("exist");
-    });
   });
 });

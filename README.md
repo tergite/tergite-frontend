@@ -183,6 +183,7 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
     - MSS and the dashboard now answer the container probe on an unlogged `/health`; the
       backend lives in its own repo and needs the same treatment there.
       <!-- FIXME: You said this endpoint does not log. It actually does-->
+- Handle 503 unavailbale service on the dashboard
 - Handle the disconnection issues between MSS and the backends
     - NEEDS A DECISION, not just a patch. `is_online` is set True on websocket connect and
       False only in the `WebSocketDisconnect` handler

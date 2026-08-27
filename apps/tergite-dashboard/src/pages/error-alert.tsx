@@ -18,9 +18,6 @@ export default function ErrorAlert({ className = "", error }: Props) {
   const routeError = useRouteError() as ErrorInfo;
   const navigate = useNavigate();
   const displayedError = error ?? routeError;
-  // MSS restarting, under maintenance, or simply unreachable: not the user's problem to
-  // decode, and worth saying plainly rather than as 'Failed to fetch'
-  const isServiceUnavailable = displayedError?.status === 503;
 
   return (
     <div
@@ -30,25 +27,17 @@ export default function ErrorAlert({ className = "", error }: Props) {
         className
       )}
     >
-      <Card data-cy-error-status={displayedError?.status}>
+      <Card>
         <CardHeader>
           <CardTitle className="text-2xl">
-            {isServiceUnavailable
-              ? "Service unavailable"
-              : (displayedError.status ?? "Oops!")}
+            {displayedError.status ?? "Oops!"}
           </CardTitle>
           <CardDescription className="text-lg">
-            {isServiceUnavailable
-              ? "The Tergite API is not answering. It may be restarting or under maintenance."
-              : "Sorry, an unexpected error has occurred."}
+            Sorry, an unexpected error has occurred.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div
-            className={
-              isServiceUnavailable ? "text-muted-foreground" : "text-destructive"
-            }
-          >
+          <div className="text-destructive">
             <i>
               {displayedError?.statusText ||
                 displayedError?.message ||

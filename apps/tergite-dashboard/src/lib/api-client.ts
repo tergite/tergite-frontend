@@ -1959,21 +1959,10 @@ async function authenticatedFetch<T>(
   init: RequestInit = {},
   options: { isJsonOutput?: boolean } = {},
 ): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(input, {
-      ...init,
-      credentials: "include",
-    });
-  } catch {
-    // fetch rejects with a bare TypeError when MSS is unreachable, which reaches the
-    // user as 'Failed to fetch'; give it the shape of the 503 it amounts to
-    const error = new Error(
-      "the Tergite API is unreachable",
-    ) as ErrorInfo;
-    error.status = 503;
-    throw error;
-  }
+  const response = await fetch(input, {
+    ...init,
+    credentials: "include",
+  });
 
   if (response.ok) {
     const { isJsonOutput = true } = options;

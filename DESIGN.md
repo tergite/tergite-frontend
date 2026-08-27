@@ -295,4 +295,5 @@ Worth knowing before you are surprised by them:
   websocket; if BCC dies without disconnecting cleanly, MSS keeps showing it online until
   the socket drops. Called out in
   [apps/tergite-mss/docs/backends.md](apps/tergite-mss/docs/backends.md) and the root TODO.
+- **503 handling in the dashboard is incomplete** (root `README.md` TODO).
 - **`GET /counts/job-submitters` raises `NotImplementedError`.**

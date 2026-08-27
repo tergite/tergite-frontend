@@ -9,8 +9,6 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Added
 
-- A 503, or an API that cannot be reached at all, is now reported as "Service unavailable"
-  rather than a bare status code or the browser's "Failed to fetch".
 - Added address completion to the "Admin email" and "Member emails" inputs of the admin
   project forms, so a superuser no longer has to recall an address exactly. It is a
   combobox rather than a `<datalist>`, which Firefox and iOS Safari render only partially.
