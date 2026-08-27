@@ -9,17 +9,17 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-
-"""Tests that error responses stay usable by a browser"""
+"""Integration tests for the app itself: its middleware and its unrouted endpoints"""
 import pytest
+from loguru import logger
 
 from api.rest import app
 
 _ORIGIN = "http://127.0.0.1:3000"
-_PATH = "/_raises_for_test"
+_RAISING_PATH = "/_raises_for_test"
 
 
-class _Unregistered(Exception):
+class _UnregisteredError(Exception):
     """A type with no exception handler of its own, as pymongo's errors are"""
 
 
@@ -27,19 +27,51 @@ class _Unregistered(Exception):
 def raising_route():
     """Adds a route that blows up in a way no exception handler covers"""
 
-    @app.get(_PATH, include_in_schema=False)
+    @app.get(_RAISING_PATH, include_in_schema=False)
     async def _raise():
-        raise _Unregistered("boom")
+        raise _UnregisteredError("boom")
 
     yield
     app.router.routes = [
-        route for route in app.router.routes if getattr(route, "path", None) != _PATH
+        route
+        for route in app.router.routes
+        if getattr(route, "path", None) != _RAISING_PATH
     ]
 
 
-def test_unhandled_error_is_a_500(client, raising_route):
+def test_health_needs_no_credentials(client):
+    """The container probe has no cookie and no app token"""
     with client as client:
-        response = client.get(_PATH, headers={"Origin": _ORIGIN})
+        response = client.get("/health")
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok"}
+
+
+def test_health_is_not_logged(client):
+    """A ten-second probe must not fill the request log
+
+    loguru does not propagate to caplog, so the assertion needs its own sink.
+    """
+    lines = []
+    sink_id = logger.add(lines.append, level="DEBUG")
+    try:
+        with client as client:
+            client.get("/health")
+            client.get("/devices/")
+    finally:
+        logger.remove(sink_id)
+
+    logged = " ".join(lines)
+    # the /devices/ line proves the sink is actually capturing
+    assert "/devices/" in logged
+    assert "/health" not in logged
+
+
+def test_unhandled_error_is_a_500(client, raising_route):
+    """An error with no handler of its own still gets a tidy response"""
+    with client as client:
+        response = client.get(_RAISING_PATH, headers={"Origin": _ORIGIN})
 
         assert response.status_code == 500
         assert response.json() == {"detail": "Unexpected server error"}
@@ -52,7 +84,7 @@ def test_unhandled_error_keeps_its_cors_headers(client, raising_route):
     writes carries no access-control-allow-origin.
     """
     with client as client:
-        response = client.get(_PATH, headers={"Origin": _ORIGIN})
+        response = client.get(_RAISING_PATH, headers={"Origin": _ORIGIN})
 
         assert response.headers["access-control-allow-origin"] == _ORIGIN
 

@@ -46,6 +46,7 @@ from ..._utils.records import paginate, prune, with_offset_datetimes
 from ...conftest import BACKEND_SLUGS, PROJECT_LIST, get_auth_cookie
 
 _REQ_STATUSES = ["pending", "rejected", "approved"]
+_USER_EMAILS_URL = "/admin/user-emails/"
 _USER_REQUEST_COLLECTION = "auth_user_requests"
 _USER_REQUESTS_IN_DB = load_json_fixture("user_requests.json")
 _PROJECT_CREATE_LIST = load_json_fixture("project_create_list.json")
@@ -1364,6 +1365,62 @@ def test_unauthenticated_get_notices(client, db):
         response = client.get("/admin/notices")
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
+
+
+def test_admin_get_user_emails(client, admin_jwt_cookie):
+    """Admins can look up user emails at /admin/user-emails/, addresses alone"""
+    with client as client:
+        response = client.get(_USER_EMAILS_URL, cookies=admin_jwt_cookie)
+
+        got = response.json()
+        assert response.status_code == 200
+        assert TEST_USER_EMAIL in got
+        assert all(isinstance(item, str) for item in got)
+        assert got == sorted(got)
+
+
+def test_admin_search_user_emails(client, admin_jwt_cookie):
+    """Typing part of an address is the whole point of the endpoint"""
+    with client as client:
+        response = client.get(
+            f"{_USER_EMAILS_URL}?search=OHN.D", cookies=admin_jwt_cookie
+        )
+
+        assert response.json() == [TEST_USER_EMAIL]
+
+
+def test_admin_search_user_emails_is_not_a_regex(client, admin_jwt_cookie):
+    """A regex in the query must be matched as text, not evaluated"""
+    with client as client:
+        response = client.get(
+            f"{_USER_EMAILS_URL}?search=.%2B%40", cookies=admin_jwt_cookie
+        )
+
+        assert response.json() == []
+
+
+def test_admin_get_user_emails_limited(client, admin_jwt_cookie):
+    """The page size is the caller's to set"""
+    with client as client:
+        response = client.get(f"{_USER_EMAILS_URL}?limit=1", cookies=admin_jwt_cookie)
+
+        assert len(response.json()) == 1
+
+
+def test_non_admin_cannot_get_user_emails(client, user_jwt_cookie):
+    """A directory of addresses is not for every logged-in user"""
+    with client as client:
+        response = client.get(_USER_EMAILS_URL, cookies=user_jwt_cookie)
+
+        assert response.status_code == 403
+
+
+def test_unauthenticated_get_user_emails(client):
+    """Anonymous callers get nothing"""
+    with client as client:
+        response = client.get(_USER_EMAILS_URL)
+
+        assert response.status_code == 401
 
 
 def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:

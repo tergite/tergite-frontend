@@ -17,10 +17,14 @@ from beanie import PydanticObjectId
 from services.notifications import CHANNEL_POLICY, NotificationType
 from services.notifications.templates import ChannelPolicy, render
 from tests._utils.auth import (
+    TEST_OUTSIDER_EMAIL,
     TEST_OUTSIDER_ID,
     TEST_PROJECT_EXT_ID,
     TEST_PROJECT_ID,
     TEST_SUPERUSER_ID,
+    TEST_SYSTEM_USER_EMAIL,
+    TEST_SYSTEM_USER_ID,
+    TEST_USER_EMAIL,
     TEST_USER_ID,
 )
 from utils import rate_limit
@@ -49,6 +53,24 @@ def _notifications_for(db, user_id):
     return list(
         db[_COLLECTION].find({"user_id": PydanticObjectId(user_id)}).sort("created_at")
     )
+
+
+def _types_for(db, user_id):
+    return [item["type"] for item in _notifications_for(db, user_id)]
+
+
+def _create_project(client, cookie, **overrides):
+    body = {
+        "admin_email": TEST_USER_EMAIL,
+        "user_emails": [TEST_OUTSIDER_EMAIL],
+        "ext_id": "notified-project",
+        "is_active": True,
+        "name": "notified project",
+        "description": "a project whose members hear about it",
+        "qpu_seconds": 100,
+        **overrides,
+    }
+    return client.post("/admin/projects/", json=body, cookies=cookie)
 
 
 def test_request_notifies_the_project_admin(client, outsider_jwt_cookie, db):
@@ -155,6 +177,79 @@ def test_qpu_grant_notifies_the_requester(
 
         assert [item["type"] for item in got] == [NotificationType.QPU_SECONDS_GRANTED]
         assert "300s" in got[0]["title"]
+
+
+def test_project_creation_notifies_the_new_members(client, admin_jwt_cookie, db):
+    """Everyone put on a brand new project is told they were added"""
+    with client as client:
+        assert _create_project(client, admin_jwt_cookie).status_code == 201
+
+        assert _types_for(db, TEST_OUTSIDER_ID) == [
+            NotificationType.PROJECT_MEMBERSHIP_GRANTED
+        ]
+
+
+def test_project_creation_notifies_the_admin(client, admin_jwt_cookie, db):
+    """The user named as admin hears about that, not only about membership"""
+    with client as client:
+        assert _create_project(client, admin_jwt_cookie).status_code == 201
+
+        assert set(_types_for(db, TEST_USER_ID)) == {
+            NotificationType.PROJECT_MEMBERSHIP_GRANTED,
+            NotificationType.PROJECT_ADMIN_ASSIGNED,
+        }
+
+
+def test_project_update_notifies_the_added_and_the_removed(
+    client, admin_jwt_cookie, db
+):
+    """Replacing the member list is a grant for some and a revocation for others"""
+    with client as client:
+        response = client.put(
+            f"/admin/projects/{TEST_PROJECT_ID}",
+            json={"user_emails": [TEST_OUTSIDER_EMAIL]},
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 200
+        assert NotificationType.PROJECT_MEMBERSHIP_GRANTED in _types_for(
+            db, TEST_OUTSIDER_ID
+        )
+        assert NotificationType.PROJECT_MEMBERSHIP_REVOKED in _types_for(
+            db, TEST_SYSTEM_USER_ID
+        )
+
+
+def test_project_update_notifies_the_new_admin(client, admin_jwt_cookie, db):
+    """Handing a project to someone else tells them they now run it"""
+    with client as client:
+        response = client.put(
+            f"/admin/projects/{TEST_PROJECT_ID}",
+            json={"admin_email": TEST_SYSTEM_USER_EMAIL},
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 200
+        assert NotificationType.PROJECT_ADMIN_ASSIGNED in _types_for(
+            db, TEST_SYSTEM_USER_ID
+        )
+
+
+def test_project_update_that_changes_no_membership_notifies_nobody(
+    client, admin_jwt_cookie, db
+):
+    """A rename must not spam every member"""
+    with client as client:
+        before = db[_COLLECTION].count_documents({})
+
+        response = client.put(
+            f"/admin/projects/{TEST_PROJECT_ID}",
+            json={"name": "a new name"},
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 200
+        assert db[_COLLECTION].count_documents({}) == before
 
 
 def test_view_my_notifications(client, outsider_jwt_cookie, user_jwt_cookie):
