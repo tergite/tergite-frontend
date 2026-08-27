@@ -91,21 +91,43 @@ users.forEach((user) => {
         cy.contains(/Wallenberg Centre for Quantum Technology/i).should(
           "be.visible",
         );
-        cy.get("nav")
+        cy.get("nav a[href='/']")
           .contains(/dashboard/i)
           .should("be.visible");
-        cy.get("nav")
+        cy.get("nav a[href='/devices']")
           .contains(/devices/i)
           .should("be.visible");
-        cy.get("nav a[href='/projects']").should("be.visible");
-        cy.get("nav a[href='/tokens']").should("be.visible");
+
+        cy.get("[data-testid='access-submenu']").within(() => {
+          cy.get("button")
+            .contains(/access/i)
+            .should("be.visible");
+
+          cy.get("nav a[href='/projects']")
+            .contains(/projects/i)
+            .should("be.visible");
+          cy.get("nav a[href='/tokens']")
+            .contains(/tokens/i)
+            .should("be.visible");
+          cy.get("nav a[href='/requests']")
+            .contains(/requests/i)
+            .should("be.visible");
+        });
 
         if (isAdmin) {
-          cy.get("nav a[href='/admin-requests']").should("be.visible");
+          cy.get("[data-testid='admin-submenu']").within(() => {
+            cy.get("button").contains(/admin/i).should("be.visible");
 
-          cy.get("nav a[href='/admin-projects']").should("be.visible");
-
-          cy.get("nav a[href='/admin-control']").should("be.visible");
+            cy.get("nav a[href='/admin-projects']")
+              .contains(/projects/i)
+              .should("be.visible");
+            cy.get("nav a[href='/admin-control']")
+              .contains(/control/i)
+              .should("be.visible");
+            cy.get("nav a[href='/admin-requests']")
+              .contains(/requests/i)
+              .should("be.visible");
+          });
         }
 
         // collapse button
@@ -122,46 +144,77 @@ users.forEach((user) => {
       cy.contains("button", "Toggle Menu").realClick();
 
       cy.get('[data-testid="mobile-menu"]').within(() => {
-        cy.get("nav")
+        cy.get("nav a[href='/']")
           .contains(/dashboard/i)
           .should("be.visible");
-        cy.get("nav")
+        cy.get("nav a[href='/devices']")
           .contains(/devices/i)
           .should("be.visible");
-        cy.get("nav a[href='/projects']").should("be.visible");
-        cy.get("nav a[href='/tokens']").should("be.visible");
+        cy.get("nav a[href='/projects']")
+          .contains(/projects/i)
+          .should("be.visible");
+        cy.get("nav a[href='/tokens']")
+          .contains(/tokens/i)
+          .should("be.visible");
 
         if (isAdmin) {
-          cy.get("nav a[href='/admin-requests']").should("be.visible");
+          cy.get("nav a[href='/admin-requests']")
+            .contains(/requests/i)
+            .should("be.visible");
 
-          cy.get("nav a[href='/admin-projects']").should("be.visible");
+          cy.get("nav a[href='/admin-projects']")
+            .contains(/projects/i)
+            .should("be.visible");
         }
       });
     });
 
     it("renders the collapsed sidebar when collapse button is pressed", () => {
       cy.get("[data-testid='sidebar']").within(() => {
-        cy.get("nav")
+        cy.get("nav a[href='/']")
           .contains("div", /dashboard/i)
           .should("have.text", "DashboardDashboard");
-        cy.get("nav")
+        cy.get("nav a[href='/devices']")
           .contains("div", /devices/i)
           .should("have.text", "DevicesDevices");
+
+        cy.get("[data-testid='access-submenu']").within(() => {
+          cy.get("button")
+            .contains(/access/i)
+            .should("be.visible");
+
+          cy.get("nav a[href='/projects']")
+            .contains("div", /projects/i)
+            .should("have.text", "ProjectsProjects");
+
+          cy.get("nav a[href='/tokens']")
+            .contains("div", /tokens/i)
+            .should("have.text", "TokensTokens");
+
+          cy.get("nav a[href='/requests']")
+            .contains("div", /requests/i)
+            .should("have.text", "RequestsRequests");
+        });
+
         if (isAdmin) {
-          cy.get("nav a[href='/admin-requests']").should(
-            "have.text",
-            `RequestsRequests ${requestsCount}`
-          );
+          cy.get("[data-testid='admin-submenu']").within(() => {
+            cy.get("button").contains(/admin/i).should("be.visible");
 
-          cy.get("nav a[href='/admin-projects']").should(
-            "have.text",
-            "ProjectsProjects"
-          );
+            cy.get("nav a[href='/admin-requests']").should(
+              "have.text",
+              `RequestsRequests ${requestsCount}`
+            );
 
-          cy.get("nav a[href='/admin-control']").should(
-            "have.text",
-            "ControlControl"
-          );
+            cy.get("nav a[href='/admin-projects']").should(
+              "have.text",
+              "ProjectsProjects"
+            );
+
+            cy.get("nav a[href='/admin-control']").should(
+              "have.text",
+              "ControlControl"
+            );
+          });
         }
         cy.get("[aria-label='PanelLeftClose']").should("be.visible");
         cy.get("[aria-label='PanelRightClose']").should("not.exist");
@@ -174,7 +227,7 @@ users.forEach((user) => {
         cy.get("nav [aria-label='Home']").should("be.visible");
         cy.get("nav [aria-label='Cpu']").should("be.visible");
         if (isAdmin) {
-          cy.get("nav a[href='/admin-requests']").should("be.visible");
+          cy.get("nav a[aria-label='HelpingHand']").should("be.visible");
           cy.get("nav [aria-label='HardHat']").should("be.visible");
           cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
         }

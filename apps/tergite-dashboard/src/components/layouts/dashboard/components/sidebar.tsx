@@ -59,6 +59,7 @@ export function Sidebar({
           open={isAccessOpen}
           onOpenChange={setIsAccessOpen}
           className="w-full"
+          data-testid="access-submenu"
         >
           <CollapsibleTrigger asChild>
             <Button
@@ -104,6 +105,7 @@ export function Sidebar({
             open={isAdminOpen}
             onOpenChange={setIsAdminOpen}
             className="w-full"
+            data-testid="admin-submenu"
           >
             <CollapsibleTrigger asChild>
               <Button
