@@ -41,6 +41,19 @@ describe("combobox-input", () => {
     ]);
   });
 
+  // the input is outside the popover content, so a click on it used to read as an
+  // interaction outside and shut the list the focus had just opened
+  it("keeps the list up when the input itself is clicked", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole("combobox"));
+    expect(options()).toHaveLength(SUGGESTIONS.length);
+
+    await user.click(screen.getByRole("combobox"));
+    expect(options()).toHaveLength(SUGGESTIONS.length);
+  });
+
   it("puts the picked suggestion in the field", async () => {
     const user = userEvent.setup();
     render(<Harness />);

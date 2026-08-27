@@ -20,6 +20,16 @@ const ComboboxInput = React.forwardRef<HTMLInputElement, Props>(
   ) => {
     const [isOpen, setIsOpen] = React.useState(false);
     const [activeIndex, setActiveIndex] = React.useState(-1);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+    React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement);
+
+    // the input sits outside the popover content, so a click on it reads to Radix as an
+    // interaction outside and closes what focus has just opened -- a visible flicker
+    const keepOpenOnOwnInput = React.useCallback((ev: Event) => {
+      if (inputRef.current?.contains(ev.target as Node)) {
+        ev.preventDefault();
+      }
+    }, []);
 
     const matches = React.useMemo(() => {
       const query = `${value ?? ""}`.trim().toLowerCase();
@@ -68,7 +78,7 @@ const ComboboxInput = React.forwardRef<HTMLInputElement, Props>(
       <Popover open={isOpen && matches.length > 0} onOpenChange={setIsOpen}>
         <PopoverAnchor asChild>
           <Input
-            ref={ref}
+            ref={inputRef}
             value={value}
             className={className}
             role="combobox"
@@ -90,6 +100,9 @@ const ComboboxInput = React.forwardRef<HTMLInputElement, Props>(
           // the input keeps focus, or typing would end the moment the list opened
           onOpenAutoFocus={(ev) => ev.preventDefault()}
           onCloseAutoFocus={(ev) => ev.preventDefault()}
+          onPointerDownOutside={keepOpenOnOwnInput}
+          onFocusOutside={keepOpenOnOwnInput}
+          onInteractOutside={keepOpenOnOwnInput}
         >
           <ul data-cy-suggestions role="listbox" className="grid">
             {matches.map((item, index) => (
