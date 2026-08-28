@@ -42,22 +42,19 @@ export function Sidebar({
       className={`fixed inset-y-0 left-0 z-10 hidden sm:pt-1 ${widthClass} flex-col border-r bg-background sm:flex`}
     >
       <Logo isExpanded={isExpanded} />
-      <div className="flex flex-col gap-4 px-6 sm:py-4">
-        <nav className="flex flex-col gap-4">
-          <NavItem
-            to="/"
-            Icon={HomeIcon}
-            isExpanded={isExpanded}
-            text="Dashboard"
-          />
-          <NavItem
-            to="/devices"
-            Icon={Cpu}
-            isExpanded={isExpanded}
-            text="Devices"
-          />
-        </nav>
-
+      <nav className="flex flex-col gap-4 px-6 sm:py-4">
+        <NavItem
+          to="/"
+          Icon={HomeIcon}
+          isExpanded={isExpanded}
+          text="Dashboard"
+        />
+        <NavItem
+          to="/devices"
+          Icon={Cpu}
+          isExpanded={isExpanded}
+          text="Devices"
+        />
         <Collapsible
           open={isAccessOpen}
           onOpenChange={setIsAccessOpen}
@@ -79,27 +76,27 @@ export function Sidebar({
               )}
             </Button>
           </CollapsibleTrigger>
-          <CollapsibleContent className={`my-2 border-l ${subNavClass}`}>
-            <nav className="flex flex-col gap-4">
-              <NavItem
-                Icon={FolderKanban}
-                to="/projects"
-                isExpanded={isExpanded}
-                text="Projects"
-              />
-              <NavItem
-                Icon={KeySquare}
-                to="/tokens"
-                isExpanded={isExpanded}
-                text="Tokens"
-              />
-              <NavItem
-                Icon={ClipboardList}
-                to="/requests"
-                isExpanded={isExpanded}
-                text="Requests"
-              />
-            </nav>
+          <CollapsibleContent
+            className={`flex flex-col gap-4 my-2 border-l ${subNavClass}`}
+          >
+            <NavItem
+              Icon={FolderKanban}
+              to="/projects"
+              isExpanded={isExpanded}
+              text="Projects"
+            />
+            <NavItem
+              Icon={KeySquare}
+              to="/tokens"
+              isExpanded={isExpanded}
+              text="Tokens"
+            />
+            <NavItem
+              Icon={ClipboardList}
+              to="/requests"
+              isExpanded={isExpanded}
+              text="Requests"
+            />
           </CollapsibleContent>
         </Collapsible>
 
@@ -125,36 +122,36 @@ export function Sidebar({
                 )}
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className={`my-2 border-l ${subNavClass}`}>
-              <nav className="flex flex-col gap-4">
-                <NavItem
-                  Icon={HelpingHand}
-                  to="/admin-requests"
-                  isExpanded={isExpanded}
-                  text="Requests"
-                >
-                  {" "}
-                  {!!pendingRequestsCount && isExpanded && (
-                    <Badge variant="default">{pendingRequestsCount}</Badge>
-                  )}
-                </NavItem>
-                <NavItem
-                  Icon={HardHat}
-                  to="/admin-projects"
-                  isExpanded={isExpanded}
-                  text="Projects"
-                />
-                <NavItem
-                  Icon={SlidersHorizontal}
-                  to="/admin-control"
-                  isExpanded={isExpanded}
-                  text="Control"
-                />
-              </nav>
+            <CollapsibleContent
+              className={`flex flex-col gap-4 my-2 border-l ${subNavClass}`}
+            >
+              <NavItem
+                Icon={HelpingHand}
+                to="/admin-requests"
+                isExpanded={isExpanded}
+                text="Requests"
+              >
+                {" "}
+                {!!pendingRequestsCount && isExpanded && (
+                  <Badge variant="default">{pendingRequestsCount}</Badge>
+                )}
+              </NavItem>
+              <NavItem
+                Icon={HardHat}
+                to="/admin-projects"
+                isExpanded={isExpanded}
+                text="Projects"
+              />
+              <NavItem
+                Icon={SlidersHorizontal}
+                to="/admin-control"
+                isExpanded={isExpanded}
+                text="Control"
+              />
             </CollapsibleContent>
           </Collapsible>
         )}
-      </div>
+      </nav>
 
       <div className="mt-auto grid gap-3 justify-items-center py-4">
         <QpuMeter project={personalProject} isExpanded={isExpanded} />
