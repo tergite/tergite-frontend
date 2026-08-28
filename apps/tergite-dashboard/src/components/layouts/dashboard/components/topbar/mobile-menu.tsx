@@ -17,6 +17,7 @@ import {
   ClipboardList,
   KeySquare,
   FolderKanban,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,13 +48,14 @@ export function MobileMenu({ pendingRequestsCount, isUserAdmin }: Props) {
           <Logo />
         </SheetTitle>
 
-        <nav className="grid gap-6 text-lg font-medium">
+        <nav className="grid gap-4 text-lg font-medium overflow-y-auto max-h-[75vh]">
           <NavItem to="/" Icon={HomeIcon} text="Dashboard" isBig={true} />
           <NavItem to="/devices" Icon={Cpu} text="Devices" isBig={true} />
           <Collapsible
             open={isAccessOpen}
             onOpenChange={setIsAccessOpen}
             className="w-full"
+            data-testid="access-submenu"
           >
             <CollapsibleTrigger asChild>
               <Button
@@ -91,6 +93,7 @@ export function MobileMenu({ pendingRequestsCount, isUserAdmin }: Props) {
               open={isAdminOpen}
               onOpenChange={setIsAdminOpen}
               className="w-full"
+              data-testid="admin-submenu"
             >
               <CollapsibleTrigger asChild>
                 <Button
@@ -117,6 +120,12 @@ export function MobileMenu({ pendingRequestsCount, isUserAdmin }: Props) {
                   to="/admin-projects"
                   isBig={true}
                   text="Projects"
+                />
+                <NavItem
+                  Icon={SlidersHorizontal}
+                  to="/admin-control"
+                  isBig={true}
+                  text="Control"
                 />
               </CollapsibleContent>
             </Collapsible>

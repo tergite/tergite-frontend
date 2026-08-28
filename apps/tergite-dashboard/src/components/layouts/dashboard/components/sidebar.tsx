@@ -42,7 +42,7 @@ export function Sidebar({
       className={`fixed inset-y-0 left-0 z-10 hidden sm:pt-1 ${widthClass} flex-col border-r bg-background sm:flex`}
     >
       <Logo isExpanded={isExpanded} />
-      <nav className="flex flex-col gap-4 px-6 sm:py-4">
+      <nav className="flex flex-col gap-4 px-6 sm:py-4 overflow-y-auto max-h-[75vh]">
         <NavItem
           to="/"
           Icon={HomeIcon}

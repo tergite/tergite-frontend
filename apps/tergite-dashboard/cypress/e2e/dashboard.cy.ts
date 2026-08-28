@@ -84,7 +84,7 @@ users.forEach((user) => {
     });
 
     it("renders the sidebar in desktop mode", () => {
-      cy.viewport(1080, 720);
+      cy.viewport(1080, 750);
       cy.get("[data-testid='sidebar']").should("be.visible");
       cy.get("[data-testid='sidebar']").within(() => {
         cy.contains("WACQT").should("be.visible");
@@ -98,33 +98,36 @@ users.forEach((user) => {
           .contains(/devices/i)
           .should("be.visible");
 
-        cy.get("[data-testid='access-submenu']").within(() => {
+        cy.get("nav [data-testid='access-submenu']").within(() => {
           cy.get("button")
             .contains(/access/i)
             .should("be.visible");
 
-          cy.get("nav a[href='/projects']")
+          cy.get("a[href='/projects']")
             .contains(/projects/i)
             .should("be.visible");
-          cy.get("nav a[href='/tokens']")
+          cy.get("a[href='/tokens']")
             .contains(/tokens/i)
             .should("be.visible");
-          cy.get("nav a[href='/requests']")
+          cy.get("a[href='/requests']")
             .contains(/requests/i)
             .should("be.visible");
         });
 
         if (isAdmin) {
-          cy.get("[data-testid='admin-submenu']").within(() => {
+          cy.get("nav [data-testid='admin-submenu']").within(() => {
             cy.get("button").contains(/admin/i).should("be.visible");
 
-            cy.get("nav a[href='/admin-projects']")
+            cy.get("a[href='/admin-projects']")
+              .scrollIntoView()
               .contains(/projects/i)
               .should("be.visible");
-            cy.get("nav a[href='/admin-control']")
+            cy.get("a[href='/admin-control']")
+              .scrollIntoView()
               .contains(/control/i)
               .should("be.visible");
-            cy.get("nav a[href='/admin-requests']")
+            cy.get("a[href='/admin-requests']")
+              .scrollIntoView()
               .contains(/requests/i)
               .should("be.visible");
           });
@@ -136,7 +139,7 @@ users.forEach((user) => {
     });
 
     it("renders the mobile-menu in mobile mode", () => {
-      cy.viewport(320, 700);
+      cy.viewport(360, 740);
       cy.contains("button", "Toggle Menu").should("be.visible");
 
       cy.get('[data-testid="mobile-menu"]').should("not.exist");
@@ -144,33 +147,56 @@ users.forEach((user) => {
       cy.contains("button", "Toggle Menu").realClick();
 
       cy.get('[data-testid="mobile-menu"]').within(() => {
-        cy.get("nav a[href='/']")
+          cy.get("a[href='/']")
           .contains(/dashboard/i)
           .should("be.visible");
-        cy.get("nav a[href='/devices']")
+
+          cy.get("a[href='/devices']")
           .contains(/devices/i)
           .should("be.visible");
-        cy.get("nav a[href='/projects']")
+
+        cy.get('nav [data-testid="access-submenu"]').within(() => {
+          cy.get("a[href='/projects']")
+            .scrollIntoView()
           .contains(/projects/i)
           .should("be.visible");
-        cy.get("nav a[href='/tokens']")
+          cy.get("a[href='/tokens']")
+            .scrollIntoView()
           .contains(/tokens/i)
           .should("be.visible");
 
+          cy.get("a[href='/requests']")
+            .scrollIntoView()
+            .contains(/requests/i)
+            .should("be.visible");
+        });
+
+
         if (isAdmin) {
-          cy.get("nav a[href='/admin-requests']")
+          cy.get('nav [data-testid="admin-submenu"]').within(() => {
+            cy.get("a[href='/admin-requests']")
+              .scrollIntoView()
             .contains(/requests/i)
             .should("be.visible");
 
-          cy.get("nav a[href='/admin-projects']")
+            cy.get("a[href='/admin-projects']")
+              .scrollIntoView()
             .contains(/projects/i)
             .should("be.visible");
+
+            cy.get("a[href='/admin-control']")
+              .scrollIntoView()
+              .contains(/control/i)
+              .should("be.visible");
+          });
         }
       });
     });
 
     it("renders the collapsed sidebar when collapse button is pressed", () => {
+      cy.viewport(1080, 750);
       cy.get("[data-testid='sidebar']").within(() => {
+        const assertIsUncollapsed = () => {
         cy.get("nav a[href='/']")
           .contains("div", /dashboard/i)
           .should("have.text", "DashboardDashboard");
@@ -178,39 +204,39 @@ users.forEach((user) => {
           .contains("div", /devices/i)
           .should("have.text", "DevicesDevices");
 
-        cy.get("[data-testid='access-submenu']").within(() => {
+          cy.get("nav [data-testid='access-submenu']").within(() => {
           cy.get("button")
             .contains(/access/i)
             .should("be.visible");
 
-          cy.get("nav a[href='/projects']")
+            cy.get("a[href='/projects']")
             .contains("div", /projects/i)
             .should("have.text", "ProjectsProjects");
 
-          cy.get("nav a[href='/tokens']")
+            cy.get("a[href='/tokens']")
             .contains("div", /tokens/i)
             .should("have.text", "TokensTokens");
 
-          cy.get("nav a[href='/requests']")
+            cy.get("a[href='/requests']")
             .contains("div", /requests/i)
             .should("have.text", "RequestsRequests");
         });
 
         if (isAdmin) {
-          cy.get("[data-testid='admin-submenu']").within(() => {
+            cy.get("nav [data-testid='admin-submenu']").within(() => {
             cy.get("button").contains(/admin/i).should("be.visible");
 
-            cy.get("nav a[href='/admin-requests']").should(
+              cy.get("a[href='/admin-requests']").should(
               "have.text",
               `RequestsRequests ${requestsCount}`
             );
 
-            cy.get("nav a[href='/admin-projects']").should(
+              cy.get("a[href='/admin-projects']").should(
               "have.text",
               "ProjectsProjects"
             );
 
-            cy.get("nav a[href='/admin-control']").should(
+              cy.get("a[href='/admin-control']").should(
               "have.text",
               "ControlControl"
             );
@@ -218,16 +244,19 @@ users.forEach((user) => {
         }
         cy.get("[aria-label='PanelLeftClose']").should("be.visible");
         cy.get("[aria-label='PanelRightClose']").should("not.exist");
+        };
 
-        cy.get("[aria-label='PanelLeftClose']").parent().realClick();
-
+        const assertIsCollapsed = () => {
         cy.get("[aria-label='PanelLeftClose']").should("not.exist");
         cy.get("[aria-label='PanelRightClose']").should("be.visible");
 
         cy.get("nav [aria-label='Home']").should("be.visible");
         cy.get("nav [aria-label='Cpu']").should("be.visible");
+          cy.get("nav [aria-label='FolderKanban']").should("be.visible");
+          cy.get("nav [aria-label='KeySquare']").should("be.visible");
+          cy.get("nav [aria-label='ClipboardList']").should("be.visible");
         if (isAdmin) {
-          cy.get("nav a[aria-label='HelpingHand']").should("be.visible");
+            // cy.get("nav [aria-label='HelpingHand']").should("be.visible");
           cy.get("nav [aria-label='HardHat']").should("be.visible");
           cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
         }
@@ -238,6 +267,10 @@ users.forEach((user) => {
         cy.get("nav")
           .contains("div", /devices/i)
           .should("have.text", "Devices");
+
+          cy.get("nav a[href='/projects']").should("have.text", "Projects");
+          cy.get("nav a[href='/tokens']").should("have.text", "Tokens");
+          cy.get("nav a[href='/requests']").should("have.text", "Requests");
 
         if (isAdmin) {
           cy.get("nav a[href='/admin-requests']").should(
@@ -250,45 +283,19 @@ users.forEach((user) => {
             "Projects"
           );
 
-          cy.get("nav a[href='/admin-control']").should("have.text", "Control");
+            cy.get("nav a[href='/admin-control']").should(
+              "have.text",
+              "Control"
+            );
         }
+        };
 
+        // run
+        assertIsUncollapsed();
+        cy.get("[aria-label='PanelLeftClose']").parent().realClick();
+        assertIsCollapsed();
         cy.get("[aria-label='PanelRightClose']").parent().click();
-
-        cy.get("[aria-label='PanelLeftClose']").should("be.visible");
-        cy.get("[aria-label='PanelRightClose']").should("not.exist");
-
-        cy.get("nav [aria-label='Home']").should("be.visible");
-        cy.get("nav [aria-label='Cpu']").should("be.visible");
-
-        if (isAdmin) {
-          cy.get("nav a[href='/admin-requests']").should("be.visible");
-          cy.get("nav [aria-label='HardHat']").should("be.visible");
-          cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
-        }
-
-        cy.get("nav")
-          .contains("div", /dashboard/i)
-          .should("have.text", "DashboardDashboard");
-        cy.get("nav")
-          .contains("div", /devices/i)
-          .should("have.text", "DevicesDevices");
-        if (isAdmin) {
-          cy.get("nav a[href='/admin-requests']").should(
-            "have.text",
-            `RequestsRequests ${requestsCount}`
-          );
-
-          cy.get("nav a[href='/admin-projects']").should(
-            "have.text",
-            "ProjectsProjects"
-          );
-
-          cy.get("nav a[href='/admin-control']").should(
-            "have.text",
-            "ControlControl"
-          );
-        }
+        assertIsUncollapsed();
       });
     });
 

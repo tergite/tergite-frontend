@@ -58,6 +58,7 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 - The projects page no longer offers Delete on the reader's own personal project, matching
   the API, which refuses it. The admin projects page still offers it, for offboarding.
 - Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
+- Made sidebar and mobile menu scrollable
 
 ### Fixed
 
