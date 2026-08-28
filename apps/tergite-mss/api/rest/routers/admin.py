@@ -24,7 +24,7 @@ from services.auth import (
     APP_TOKEN_AUTH,
     Project,
     User,
-    UserDatabase,
+    get_user_emails,
     user_requests,
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
@@ -118,7 +118,7 @@ async def get_user_emails(
     Returns:
         the matched email addresses, alphabetically
     """
-    return await UserDatabase.get_emails(search=search, limit=limit)
+    return await get_user_emails(search=search, limit=limit)
 
 
 @router.get(

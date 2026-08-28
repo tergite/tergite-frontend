@@ -39,6 +39,7 @@ from .service import (
     JWT_AUTH,
     JWT_COOKIE_BACKEND,
     JWT_HEADER_BACKEND,
+    get_user_emails,
     on_startup,
 )
 from .users import UserDatabase
@@ -80,4 +81,5 @@ __all__ = [
     GET_CURRENT_LAX_PROJECT,
     on_startup,
     get_project_db,
+    get_user_emails,
 ]

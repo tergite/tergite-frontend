@@ -11,7 +11,8 @@
 # that they have been altered from the originals.
 
 """Service for oauth2 authentication and project-based authorization"""
-from typing import List
+import re
+from typing import List, Optional
 
 import motor.motor_asyncio
 from beanie import PydanticObjectId, init_beanie
@@ -133,3 +134,25 @@ def register_oauth2_client(
         prefix=f"/app/{client.name}",
         tags=tags,
     )
+
+
+async def get_user_emails(search: Optional[str] = None, limit: int = 20) -> List[str]:
+    """Gets user email addresses, alphabetically
+
+    Returns addresses alone, never the user records: the callers that may see this
+    are completing a form, not reading a directory.
+
+    Args:
+        search: a case-insensitive substring of the address; omit for the first page
+        limit: the maximum number of addresses to return
+
+    Returns:
+        the matched email addresses
+    """
+    filter_obj = {}
+    if search:
+        # escaped, or a caller could hand us a regex to evaluate
+        filter_obj["email"] = {"$regex": re.escape(search), "$options": "i"}
+
+    records = await users.User.find(filter_obj, limit=limit, sort="email").to_list()
+    return [user.email for user in records]
