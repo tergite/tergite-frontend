@@ -9,15 +9,15 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Email delivery for notifications, using the notification row as the outbox.
+"""Email delivery for notices, using the notice row as the outbox.
 
 Sending inline would make an approve click as slow as the mail server and fail the click
-when the mail server is down. Instead each notification carries its own delivery state and
+when the mail server is down. Instead each notice carries its own delivery state and
 a single background task drains the pending ones, which also means a restart resumes rather
 than loses whatever was queued.
 
 Rows are not claimed before sending, so a second MSS process sweeping the same database would
-send some notifications twice. One process per deployment is the assumption.
+send some notices twice. One process per deployment is the assumption.
 """
 import asyncio
 from typing import Dict, List, Optional
@@ -29,20 +29,22 @@ import settings
 from services.external import email
 from utils.date_time import get_current_timestamp
 
-from .dtos import EmailStatus, Notification
+from ..dtos import EmailStatus, Notice
 from .templates import render_email
 
 _task: Optional[asyncio.Task] = None
+
+# FIXME: Pending work
 
 
 async def send_pending(limit: int = 50) -> int:
     """Sends one batch of pending emails.
 
     Never raises: a failure is recorded on the row and retried on a later sweep, up to
-    `notifications.email_retry_limit` attempts.
+    `notices.email_retry_limit` attempts.
 
     Args:
-        limit: the maximum number of notifications to attempt in this batch
+        limit: the maximum number of notices to attempt in this batch
 
     Returns:
         the number sent successfully
@@ -50,47 +52,45 @@ async def send_pending(limit: int = 50) -> int:
     if not email.is_configured():
         return 0
 
-    pending: List[Notification] = (
-        await Notification.find({"email_status": EmailStatus.PENDING}, limit=limit)
+    pending: List[Notice] = (
+        await Notice.find({"email_status": EmailStatus.PENDING}, limit=limit)
         .sort("updated_at")
         .to_list()
     )
     if len(pending) == 0:
         return 0
 
-    addresses = await _addresses_for([notification.user_id for notification in pending])
-    dashboard_url = settings.CONFIG.notifications.dashboard_url
-    retry_limit = settings.CONFIG.notifications.email_retry_limit
+    addresses = await _addresses_for([notice.user_id for notice in pending])
+    dashboard_url = settings.CONFIG.notices.dashboard_url
+    retry_limit = settings.CONFIG.notices.email_retry_limit
     sent = 0
 
-    for notification in pending:
-        address = addresses.get(notification.user_id)
+    for notice in pending:
+        address = addresses.get(notice.user_id)
         if address is None:
             # no address to send to, so no amount of retrying will help
-            await _record(notification, EmailStatus.FAILED)
+            await _record(notice, EmailStatus.FAILED)
             continue
 
         try:
             await email.send(
                 to_address=address,
-                subject=notification.title,
-                body=render_email(notification.title, notification.body, dashboard_url),
+                subject=notice.title,
+                body=render_email(notice.title, notice.body, dashboard_url),
             )
         except Exception:
-            attempts = notification.email_attempts + 1
+            attempts = notice.email_attempts + 1
             status = (
                 EmailStatus.FAILED if attempts >= retry_limit else EmailStatus.PENDING
             )
             logger.exception(
-                f"failed to email notification {notification.id} "
+                f"failed to email notice {notice.id} "
                 f"(attempt {attempts}/{retry_limit})"
             )
-            await _record(notification, status, attempts=attempts)
+            await _record(notice, status, attempts=attempts)
             continue
 
-        await _record(
-            notification, EmailStatus.SENT, attempts=notification.email_attempts + 1
-        )
+        await _record(notice, EmailStatus.SENT, attempts=notice.email_attempts + 1)
         sent += 1
 
     return sent
@@ -103,7 +103,7 @@ def start_sweeper() -> None:
         return
 
     _task = asyncio.create_task(_sweep_forever())
-    logger.info("Notification email sweeper started")
+    logger.info("Notice email sweeper started")
 
 
 async def stop_sweeper() -> None:
@@ -118,12 +118,12 @@ async def stop_sweeper() -> None:
     except asyncio.CancelledError:
         pass
     _task = None
-    logger.info("Notification email sweeper stopped")
+    logger.info("Notice email sweeper stopped")
 
 
 async def _sweep_forever() -> None:
     """Drains the outbox on an interval until cancelled"""
-    interval = settings.CONFIG.notifications.email_sweep_interval
+    interval = settings.CONFIG.notices.email_sweep_interval
     while True:
         try:
             await send_pending()
@@ -131,7 +131,7 @@ async def _sweep_forever() -> None:
             raise
         except Exception:
             # the loop must outlive any single bad sweep
-            logger.exception("notification email sweep failed")
+            logger.exception("notice email sweep failed")
         await asyncio.sleep(interval)
 
 
@@ -147,11 +147,11 @@ async def _addresses_for(
 
 
 async def _record(
-    notification: Notification, status: EmailStatus, attempts: Optional[int] = None
+    notice: Notice, status: EmailStatus, attempts: Optional[int] = None
 ) -> None:
-    """Writes the delivery outcome back onto the notification"""
+    """Writes the delivery outcome back onto the notice"""
     update = {"email_status": status, "updated_at": get_current_timestamp()}
     if attempts is not None:
         update["email_attempts"] = attempts
 
-    await Notification.find_one({"_id": notification.id}).update({"$set": update})
+    await Notice.find_one({"_id": notice.id}).update({"$set": update})

@@ -96,7 +96,7 @@ async def update_all_my_notifications(
     Returns:
         a general message reporting how many were updated
     """
-    updated = await notifications.set_all_read(user.id, is_read=body.is_read)
+    updated = await notifications.mark_read_many(user.id, is_read=body.is_read)
     return {"status": "success", "detail": f"{updated} notifications updated"}
 
 
@@ -110,7 +110,7 @@ async def get_my_notification_preferences(user: User = CurrentUserDep):
     Returns:
         a map of notification type to its in-app and email preference
     """
-    prefs = await notifications.get_preferences(user.id)
+    prefs = await notifications.get_email_preferences(user.id)
     return {key.value: value.model_dump() for key, value in prefs.items()}
 
 
@@ -129,5 +129,5 @@ async def update_my_notification_preferences(
     Returns:
         the user's full effective preferences after the update
     """
-    prefs = await notifications.set_preferences(user.id, prefs=body)
+    prefs = await notifications.set_email_preferences(user.id, prefs=body)
     return {key.value: value.model_dump() for key, value in prefs.items()}

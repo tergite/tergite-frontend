@@ -454,9 +454,7 @@ async def publish_notice(
     Returns:
         the created notice
     """
-    return await notices_service.publish_notice(
-        db, current_user_id=current_user.id, payload=payload
-    )
+    return await notices_service.publish_custom_notice(db, current_user_id=current_user.id, payload=payload)
 
 
 @router.delete(
@@ -498,7 +496,7 @@ async def dismiss_notice(
     Returns:
         a general message about the status of the operation
     """
-    await notices_service.dismiss_notice(db, pk=notice_id, user_id=current_user.id)
+    await notices_service.mark_read_one(db, pk=notice_id, user_id=current_user.id, is_read=)
     return {"status": "success"}
 
 
