@@ -94,11 +94,13 @@ dashboard_url = "https://dashboard.example.com"
 email_sweep_interval = 60
 # attempts per notification email before it is marked failed; default = 3
 email_retry_limit = 3
+# the name of the application as will be seen in the email notifications; default = Tergite
+app_name = "WACQT"
 
 # Outbound SMTP. Omit this whole section to leave notifications in-app only:
 # emails are then never queued, and per-user email preferences have no effect.
 [email]
-host = "smtp.example.com"
+hostname = "smtp.example.com"
 port = 587
 username = "mss@example.com"
 password = "some hidden secret"

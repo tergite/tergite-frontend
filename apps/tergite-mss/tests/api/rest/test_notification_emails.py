@@ -256,12 +256,14 @@ def test_sweeper_survives_a_failing_sweep(
 def test_send_without_configuration_is_rejected():
     """The client refuses rather than silently dropping the message"""
     with pytest.raises(ServiceUnavailableError, match="not configured"):
-        _run(email.send("someone@example.com", "hi", "there"))
+        _run(email._send_email("someone@example.com", "hi", "there"))
 
 
 def test_send_passes_the_smtp_settings_through(smtp):
     """The transport is driven entirely by config, including STARTTLS"""
-    _run(email.send("someone@example.com", "hi", "there", conf=_TEST_EMAIL_CONFIG))
+    _run(
+        email._send_email("someone@example.com", "hi", "there", conf=_TEST_EMAIL_CONFIG)
+    )
 
     assert smtp.await_args.kwargs == {
         "hostname": "smtp.example.com",

@@ -17,6 +17,7 @@ import socket
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import aiosmtplib
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
@@ -208,15 +209,22 @@ class ProjectsConfig(BaseModel):
 class EmailConfig(BaseModel):
     """SMTP settings. Omit the whole table to disable the email channel."""
 
-    host: str
+    hostname: str = "localhost"
     port: int = 587
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | bytes | None = (None,)
+    password: str | bytes | None = (None,)
+    timeout: float | None = aiosmtplib.smtp.DEFAULT_TIMEOUT
     use_tls: bool = True
+    start_tls: bool | None = True
+
     from_address: str
     from_name: str = "Tergite"
-    # request timeout in seconds
-    timeout: int = 10
+
+    # A helper protected property to help during initialization of the email SMTP
+    _non_smtp_fields = {
+        "from_address",
+        "from_name",
+    }
 
 
 class NotificationsConfig(BaseModel):
@@ -226,14 +234,16 @@ class NotificationsConfig(BaseModel):
     retention_days: int = 90
 
     # base URL of the dashboard, used for deep links in emails.
-    # required when [email] is set, since a mail with dead links is worse than no mail
-    dashboard_url: Optional[str] = None
+    dashboard_url: str = ""
 
     # seconds between outbox sweeps
     email_sweep_interval: float = 60
 
     # attempts before an email is marked failed
     email_retry_limit: int = 3
+
+    # the name of the application as will be seen in the email notifications
+    app_name: str = "Tergite"
 
 
 class AuthConfig(BaseModel):

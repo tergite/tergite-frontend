@@ -9,61 +9,192 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Outbound SMTP client.
-
-Lives under services/external because, like bcc, it talks to a system outside this app.
+"""The service for sending emails
 """
+import asyncio
+from contextlib import aclosing
 from email.message import EmailMessage
-from typing import Optional
+from functools import cached_property
+from typing import AsyncGenerator, Coroutine, Dict, Sequence
 
 import aiosmtplib
 from loguru import logger
+from pydantic import BaseModel
 
 import settings
 from utils.config import EmailConfig
-from utils.exc import ServiceUnavailableError
 
 
-async def send(
-    to_address: str,
-    subject: str,
-    body: str,
-    conf: Optional[EmailConfig] = None,
+class EmailDetails(BaseModel):
+    """The details needed to send an email.
+
+    Attributes:
+        to: Email address to send.
+        subject: Subject of the email.
+        body: Body of the email.
+    """
+
+    to: str
+    subject: str
+    body: str
+
+    def to_email_message(self, from_value: str) -> EmailMessage:
+        """Converts the details to an email message."""
+        message = EmailMessage()
+        message["From"] = from_value
+        message["To"] = self.to
+        message["Subject"] = self.subject
+        message.set_content(self.body)
+        return message
+
+
+class Emailer:
+    """A process that sends email messages"""
+
+    def __init__(self, config: EmailConfig = settings.CONFIG.email) -> None:
+        if not isinstance(config, EmailConfig):
+            raise ValueError("email config needs to be an instance of EmailConfig")
+
+        self._config = config
+        self._smtp = aiosmtplib.SMTP(
+            **config.model_dump(exclude=config._non_smtp_fields)
+        )
+        self._tasks: Dict[str, asyncio.Task] = {}
+        self.__coroutines: Dict[str, Coroutine] = {}
+        self._is_started: bool = False
+
+    @cached_property
+    def from_value(self):
+        """The value to be put in the 'from' email field."""
+        return f"{self._config.from_name} <{self._config.from_address}>"
+
+    def start(self) -> None:
+        """Starts the emailer and all its schedules.
+
+        No new schedules should be registered after this.
+        """
+        for name, coro in self.__coroutines.items():
+            self._tasks[name] = asyncio.create_task(coro)
+
+        self.__coroutines.clear()
+        self._is_started = True
+        logger.info("Emailer started.")
+
+    def close(self) -> None:
+        """Releases the resources used by the emailer"""
+        for task in self._tasks.values():
+            task.cancel()
+
+        self._smtp.close()
+        self._is_started = False
+        self._tasks.clear()
+        logger.info("Emailer stopped.")
+
+    def register_batch_schedule(
+        self,
+        name: str,
+        interval: float,
+        batch_generator: AsyncGenerator[Sequence[EmailDetails], None],
+        ignore_errors: bool = True,
+        **kwargs,
+    ):
+        """Registers a schedule for sending emails. It must be done before emailer starts.
+
+        Args:
+            name: The name of the schedule.
+            interval: The interval in seconds between sending emails.
+            batch_generator: A generator that yields batch emails to send.
+            ignore_errors: Whether to ignore errors during sending.
+            **kwargs: Optional arguments for SMTP.send_message().
+
+        Raises:
+            ValueError: if the name is already registered.
+            RuntimeError: Cannot register a schedule after emailer is started.
+        """
+        if self._is_started:
+            raise RuntimeError("Cannot register a schedule after emailer is started.")
+        if name in self._tasks:
+            raise ValueError(f"Email schedule already registered: {name}")
+
+        self.__coroutines[name] = _send_on_repeat(
+            smtp=self._smtp,
+            interval=interval,
+            from_value=f"{self.from_value}",
+            batch_generator=batch_generator,
+            ignore_errors=ignore_errors,
+            **kwargs,
+        )
+        logger.info(
+            f"Email schedule {name} registered for interval {interval} seconds."
+        )
+
+    def get_schedule(self, name: str) -> asyncio.Task:
+        """Gets the task that is running the schedule of given name.
+
+        Args:
+            name: The name of the schedule.
+
+        Returns:
+            The task that is running the schedule.
+
+        Raises:
+            KeyError: If the schedule of given name doesn't exist.
+        """
+        return self._tasks[name]
+
+    async def send(self, details: EmailDetails, **kwargs):
+        """Send an email message.
+
+        Args:
+            details: EmailDetails to send.
+            **kwargs: Optional arguments for SMTP.send_message().
+
+        Raises:
+            SMTPRecipientsRefused: delivery to all recipients failed
+            SMTPResponseException: on invalid response
+            RuntimeError: SMTP client is not configured
+        """
+        if not self._smtp:
+            raise RuntimeError("SMTP client is not configured")
+
+        message = details.to_email_message(from_value=self.from_value)
+        logger.debug(f"Sending email to {details.to}: {details.subject}")
+        return await self._smtp.send_message(message, **kwargs)
+
+
+async def _send_on_repeat(
+    smtp: aiosmtplib.SMTP,
+    interval: float,
+    from_value: str,
+    batch_generator: AsyncGenerator[Sequence[EmailDetails], None],
+    ignore_errors: bool = True,
+    **kwargs,
 ) -> None:
-    """Sends one plain-text message.
+    """Send email messages on a schedule.
 
     Args:
-        to_address: the recipient
-        subject: the subject line
-        body: the plain-text body
-        conf: the SMTP settings; defaults to the app config
+        smtp: An aiosmtplib.SMTP instance.
+        interval: The interval in seconds between sending emails.
+        from_value: Email address field to send from.
+        batch_generator: A generator that yields batch of EmailDetail's to send.
+        ignore_errors: Whether to ignore errors during sending.
+        **kwargs: Optional arguments for SMTP.send_message().
 
     Raises:
-        ServiceUnavailableError: the email channel is not configured
-        aiosmtplib.SMTPException: the message could not be sent
+        asyncio.CancelledError: if task is cancelled.
     """
-    conf = conf or settings.CONFIG.email
-    if conf is None:
-        raise ServiceUnavailableError("the email channel is not configured")
-
-    message = EmailMessage()
-    message["From"] = f"{conf.from_name} <{conf.from_address}>"
-    message["To"] = to_address
-    message["Subject"] = subject
-    message.set_content(body)
-
-    logger.debug(f"Sending email to {to_address}: {subject}")
-    await aiosmtplib.send(
-        message,
-        hostname=conf.host,
-        port=conf.port,
-        username=conf.username,
-        password=conf.password,
-        start_tls=conf.use_tls,
-        timeout=conf.timeout,
-    )
-
-
-def is_configured() -> bool:
-    """Whether the email channel can send at all"""
-    return settings.CONFIG.email is not None
+    async with aclosing(batch_generator) as email_batches:
+        async for batch in email_batches:
+            for detail in batch:
+                try:
+                    msg = detail.to_email_message(from_value=from_value)
+                    await smtp.send_message(msg, **kwargs)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    if ignore_errors:
+                        logger.exception(f"sending email on repeat failed")
+                    else:
+                        raise
+            # wait for next interval
+            await asyncio.sleep(interval)

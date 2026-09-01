@@ -10,17 +10,20 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 #
+import asyncio
 from copy import deepcopy
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Tuple
 
 import pymongo
 from beanie import PydanticObjectId, init_beanie
+from beanie.odm.operators.find.logical import Or
 from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 import settings
 from services.external import email as email_service
+from services.external.email.service import EmailDetails, Emailer
 from services.notices.dtos import (
     NOTICE_DB_COLLECTION,
     CustomNoticeCreate,
@@ -33,6 +36,7 @@ from services.notices.dtos import (
 )
 from services.notices.utils.templates import get_template
 from utils import mongodb as mongodb_utils
+from utils.config import NotificationsConfig
 from utils.date_time import get_current_timestamp, get_utc_now
 from utils.exc import NotFoundError
 
@@ -466,8 +470,16 @@ async def set_email_preferences(
     return current
 
 
-async def on_startup(db: AsyncIOMotorDatabase):
-    """Runs init operations when the application is starting up"""
+async def on_startup(
+    db: AsyncIOMotorDatabase, emailer: Emailer, conf: NotificationsConfig
+):
+    """Runs init operations when the application is starting up
+
+    Args:
+        db: the mongo database where the notice information is stored
+        emailer: the emailer instance that sends emails
+        conf: the notices configuration
+    """
     await init_beanie(
         database=db,
         document_models=[
@@ -475,6 +487,16 @@ async def on_startup(db: AsyncIOMotorDatabase):
             NoticePreferences,
             NoticeTemplate,
         ],
+    )
+
+    batch_generator = _get_pending_email_batches(
+        batch_size=50, dashboard_url=conf.dashboard_url, app_name=conf.app_name
+    )
+    emailer.register_batch_schedule(
+        "notices",
+        interval=conf.email_sweep_interval,
+        batch_generator=batch_generator,
+        ignore_errors=True,
     )
 
 
@@ -568,3 +590,177 @@ async def _get_email_preferences_map(
         record.user_id: record.email_prefs.get(notice_type, True)
         async for record in result
     }
+
+
+async def _get_pending_email_batches(
+    batch_size: int, dashboard_url: str, app_name: str
+) -> AsyncGenerator[list[EmailDetails], Any]:
+    """Generates email details batches that are yet to be sent.
+
+    Args:
+        batch_size: the size of each the batch
+        dashboard_url: the URL of the dashboard
+        app_name: the name of the application
+
+    Returns:
+        the Generator of pending email batches
+    """
+    # FIXME: We probably need a way to get the failed emails and
+    #  set them to EMAIL_FAILED after the given number of attempts
+    #   or maybe when trying we set the email status of the notices to EmailStatus.IN_PROGRESS
+    #   or pass the registration function a callback that retrieves the failed and passed (at least the indexes)
+    #   and acts on that feedback. - the last one seems to be the best
+    while True:
+        notices = await _find_notices_pending_email(batch_size)
+        batch = await _to_email_details(
+            notices, dashboard_url=dashboard_url, app_name=app_name
+        )
+        yield batch
+        await asyncio.sleep(1)
+
+
+async def _find_notices_pending_email(limit: int) -> List[Notice]:
+    """Gets the notices that are yet to be sent as emails
+
+    Args:
+        limit: the maximum number of notices to return
+
+    Returns:
+        the list of notices that are yet to be sent as emails
+    """
+    now = get_current_timestamp()
+
+    return (
+        await Notice.find(
+            {
+                "email_status": EmailStatus.PENDING,
+                "user_id": {"$ne": None},
+                "expires_at": {"$or": [{"$ne": None}, {"$gt": now}]},
+            },
+            limit=limit,
+        )
+        .sort("updated_at")
+        .to_list()
+    )
+
+
+async def _to_email_details(
+    notices: Sequence[Notice], dashboard_url: str, app_name: str
+) -> List[EmailDetails]:
+    """Converts a given list of notice objects to a list of EmailDetails
+
+    Args:
+        notices: the list of notice objects
+        dashboard_url: the URL of the dashboard
+        app_name: the name of the application
+
+    Returns:
+        the list of EmailDetails
+    """
+    from services.auth.users.dtos import User
+
+    user_ids = [notice.user_id for notice in notices]
+    users = await User.find({"_id": {"$in": list(set(user_ids))}}).to_list()
+    user_emails_map = {v.id: v.email for v in users}
+
+    return [
+        EmailDetails(
+            to=user_emails_map[v.user_id],
+            subject=v.title,
+            body=_to_email_body(v, dashboard_url, app_name),
+        )
+        for v in notices
+    ]
+
+
+def _to_email_body(notice: Notice, dashboard_url: str, app_name: str) -> str:
+    """Converts a given notice object to a body of the email
+
+    Args:
+        notice: the notice object
+        dashboard_url: the URL of the dashboard
+        app_name: the name of the application
+
+    Returns:
+        the body of the email for the given notice
+    """
+    return f""""
+{notice.title}
+
+{notice.body}
+
+See it in the dashboard: {dashboard_url}
+
+--
+You are receiving this because of activity on your {app_name} account.
+"""
+
+
+async def send_pending(limit: int = 50) -> int:
+    """Sends one batch of pending_notices emails for notices that are not broadcast.
+
+    Never raises: a failure is recorded on the row and retried on a later sweep, up to
+    `notices.email_retry_limit` attempts.
+
+    Args:
+        limit: the maximum number of notices to attempt in this batch
+
+    Returns:
+        the number sent successfully
+    """
+    addresses = await _addresses_for([notice.user_id for notice in pending_notices])
+    dashboard_url = settings.CONFIG.notices.dashboard_url
+    retry_limit = settings.CONFIG.notices.email_retry_limit
+    sent = 0
+
+    for notice in pending_notices:
+        address = addresses.get(notice.user_id)
+        if address is None:
+            # no address to send to, so no amount of retrying will help
+            await _record(notice, EmailStatus.FAILED)
+            continue
+
+        try:
+            await email._send_email(
+                to_addr=address,
+                subject=notice.title,
+                body=render_email(notice.title, notice.body, dashboard_url),
+            )
+        except Exception:
+            attempts = notice.email_attempts + 1
+            status = (
+                EmailStatus.FAILED if attempts >= retry_limit else EmailStatus.PENDING
+            )
+            logger.exception(
+                f"failed to email notice {notice.id} "
+                f"(attempt {attempts}/{retry_limit})"
+            )
+            await _record(notice, status, attempts=attempts)
+            continue
+
+        await _record(notice, EmailStatus.SENT, attempts=notice.email_attempts + 1)
+        sent += 1
+
+    return sent
+
+
+async def _addresses_for(
+    user_ids: List[PydanticObjectId],
+) -> Dict[PydanticObjectId, str]:
+    """Maps recipient IDs to email addresses in one query"""
+    # imported here because services.auth reaches back into this package at import time
+    from services.auth.users.dtos import User
+
+    users = await User.find({"_id": {"$in": list(set(user_ids))}}).to_list()
+    return {user.id: user.email for user in users}
+
+
+async def _record(
+    notice: Notice, status: EmailStatus, attempts: Optional[int] = None
+) -> None:
+    """Writes the delivery outcome back onto the notice"""
+    update = {"email_status": status, "updated_at": get_current_timestamp()}
+    if attempts is not None:
+        update["email_attempts"] = attempts
+
+    await Notice.find_one({"_id": notice.id}).update({"$set": update})

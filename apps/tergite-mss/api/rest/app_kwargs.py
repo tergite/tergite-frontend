@@ -23,7 +23,7 @@ from loguru import logger
 
 import settings
 from services import calibration as calib_service
-from services import notifications, qpu_grants
+from services import qpu_grants
 from services.auth import service as auth_service
 from services.devices import service as devices_service
 from services.external import bcc
@@ -59,8 +59,7 @@ async def lifespan(_app: FastAPI):
     db = await get_default_mongodb()
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)
-    await notices_service.on_startup(db)
-    await notifications.on_startup(db)
+    await notices_service.on_startup(db,,
     notifications.start_sweeper()
     await qpu_grants.on_startup(db)
     logger.info("Tergite MSS startup sequence completed successfully.")

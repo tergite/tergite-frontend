@@ -10,6 +10,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Outbound SMTP client"""
-from .service import is_configured, send
+from .service import _send_email, is_configured
 
-__all__ = ["is_configured", "send"]
+__all__ = ["is_configured", "_send_email"]

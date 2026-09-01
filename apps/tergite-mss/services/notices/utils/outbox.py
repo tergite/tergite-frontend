@@ -34,11 +34,15 @@ from .templates import render_email
 
 _task: Optional[asyncio.Task] = None
 
-# FIXME: Pending work
+# FIXME: Code smells
+#   - Calls to global variables and settings deep inside the body of the functions
+#   - Some global _task
+#   - starting background tasks in random files where it is not even easy to track what processes are running
+#   - some lazy naming of variables and functions
 
 
 async def send_pending(limit: int = 50) -> int:
-    """Sends one batch of pending emails.
+    """Sends one batch of pending_notices emails for notices that are not broadcast.
 
     Never raises: a failure is recorded on the row and retried on a later sweep, up to
     `notices.email_retry_limit` attempts.
@@ -52,20 +56,24 @@ async def send_pending(limit: int = 50) -> int:
     if not email.is_configured():
         return 0
 
-    pending: List[Notice] = (
-        await Notice.find({"email_status": EmailStatus.PENDING}, limit=limit)
+    pending_notices: List[Notice] = (
+        await Notice.find(
+            Notice.email_status == EmailStatus.PENDING,
+            Notice.user_id != None,
+            limit=limit,
+        )
         .sort("updated_at")
         .to_list()
     )
-    if len(pending) == 0:
+    if len(pending_notices) == 0:
         return 0
 
-    addresses = await _addresses_for([notice.user_id for notice in pending])
+    addresses = await _addresses_for([notice.user_id for notice in pending_notices])
     dashboard_url = settings.CONFIG.notices.dashboard_url
     retry_limit = settings.CONFIG.notices.email_retry_limit
     sent = 0
 
-    for notice in pending:
+    for notice in pending_notices:
         address = addresses.get(notice.user_id)
         if address is None:
             # no address to send to, so no amount of retrying will help
@@ -73,8 +81,8 @@ async def send_pending(limit: int = 50) -> int:
             continue
 
         try:
-            await email.send(
-                to_address=address,
+            await email._send_email(
+                to_addr=address,
                 subject=notice.title,
                 body=render_email(notice.title, notice.body, dashboard_url),
             )
@@ -96,43 +104,44 @@ async def send_pending(limit: int = 50) -> int:
     return sent
 
 
-def start_sweeper() -> None:
-    """Starts the background sweep, if the email channel is configured"""
-    global _task
-    if not email.is_configured() or _task is not None:
-        return
-
-    _task = asyncio.create_task(_sweep_forever())
-    logger.info("Notice email sweeper started")
-
-
-async def stop_sweeper() -> None:
-    """Stops the background sweep"""
-    global _task
-    if _task is None:
-        return
-
-    _task.cancel()
-    try:
-        await _task
-    except asyncio.CancelledError:
-        pass
-    _task = None
-    logger.info("Notice email sweeper stopped")
-
-
-async def _sweep_forever() -> None:
-    """Drains the outbox on an interval until cancelled"""
-    interval = settings.CONFIG.notices.email_sweep_interval
-    while True:
-        try:
-            await send_pending()
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            # the loop must outlive any single bad sweep
-            logger.exception("notice email sweep failed")
-        await asyncio.sleep(interval)
+#
+# def start_sweeper() -> None:
+#     """Starts the background sweep, if the email channel is configured"""
+#     global _task
+#     if not email.is_configured() or _task is not None:
+#         return
+#
+#     _task = asyncio.create_task(_sweep_forever())
+#     logger.info("Notice email sweeper started")
+#
+#
+# async def stop_sweeper() -> None:
+#     """Stops the background sweep"""
+#     global _task
+#     if _task is None:
+#         return
+#
+#     _task.cancel()
+#     try:
+#         await _task
+#     except asyncio.CancelledError:
+#         pass
+#     _task = None
+#     logger.info("Notice email sweeper stopped")
+#
+#
+# async def _sweep_forever() -> None:
+#     """Drains the outbox on an interval until cancelled"""
+#     interval = settings.CONFIG.notices.email_sweep_interval
+#     while True:
+#         try:
+#             await send_pending()
+#         except asyncio.CancelledError:
+#             raise
+#         except Exception:
+#             # the loop must outlive any single bad sweep
+#             logger.exception("notice email sweep failed")
+#         await asyncio.sleep(interval)
 
 
 async def _addresses_for(
