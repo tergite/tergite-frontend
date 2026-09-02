@@ -42,7 +42,7 @@ from tests._utils.records import (
 _JOBS_LIST = load_json_fixture("job_list.json")
 _JOBS_COLLECTION = "jobs"
 _PROJECTS_COLLECTION = "auth_projects"
-_NOTIFICATIONS_COLLECTION = "notifications"
+_NOTIFICATIONS_COLLECTION = "notices"
 _DEVICE = "Loke"
 # one payload with execution timestamps is enough; the billing itself is tested elsewhere
 _JOB_UPDATE = load_json_fixture("job_timestamped_updates.json")[0]

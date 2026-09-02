@@ -9,7 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Data Transfer Objects for the notifications service"""
+"""Data Transfer Objects for the notices service"""
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Self

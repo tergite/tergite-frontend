@@ -27,7 +27,9 @@ from services import qpu_grants
 from services.auth import service as auth_service
 from services.devices import service as devices_service
 from services.external import bcc
+from services.external.email import Emailer
 from services.notices import service as notices_service
+from utils.config import EmailConfig
 
 from .routers.devices import ws_manager as devices_ws_manager
 from .utils import get_default_mongodb
@@ -55,13 +57,16 @@ def get_app_kwargs() -> Dict[str, Any]:
 async def lifespan(_app: FastAPI):
     # on startup
     logger.info("Initializing Tergite MSS database connections and client services...")
+    emailer = Emailer(config=settings.CONFIG.email)
     await bcc.create_clients(configs=settings.CONFIG.backends)
     db = await get_default_mongodb()
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)
-    await notices_service.on_startup(db,,
-    notifications.start_sweeper()
+    await notices_service.on_startup(db, emailer, conf=settings.CONFIG.notices)
+    # FIXME: Fix naming of qpu_grants
     await qpu_grants.on_startup(db)
+
+    emailer.start()
     logger.info("Tergite MSS startup sequence completed successfully.")
 
     yield
@@ -69,8 +74,8 @@ async def lifespan(_app: FastAPI):
     logger.info(
         "Tergite MSS shutting down. Closing active connections and cleaning up..."
     )
-    await notifications.stop_sweeper()
     await bcc.close_clients()
     await devices_ws_manager.close_all(reason="server shutting down")
     await devices_service.disconnect_all(db)
+    emailer.close()
     logger.info("Tergite MSS shutdown sequence completed.")

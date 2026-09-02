@@ -10,21 +10,24 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 #
-import asyncio
 from copy import deepcopy
 from datetime import datetime, timedelta
-from typing import Any, AsyncGenerator, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import pymongo
 from beanie import PydanticObjectId, init_beanie
-from beanie.odm.operators.find.logical import Or
 from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 import settings
 from services.external import email as email_service
-from services.external.email.service import EmailDetails, Emailer
-from services.notices.dtos import (
+from services.external.email.service import Emailer
+from utils import mongodb as mongodb_utils
+from utils.config import NoticesConfig
+from utils.date_time import get_current_timestamp, get_utc_now
+from utils.exc import NotFoundError
+
+from .dtos import (
     NOTICE_DB_COLLECTION,
     CustomNoticeCreate,
     EmailStatus,
@@ -34,20 +37,21 @@ from services.notices.dtos import (
     NoticeType,
     RefType,
 )
-from services.notices.utils.templates import get_template
-from utils import mongodb as mongodb_utils
-from utils.config import NotificationsConfig
-from utils.date_time import get_current_timestamp, get_utc_now
-from utils.exc import NotFoundError
+from .emails import (
+    get_email_preferences_map,
+    get_pending_email_batches,
+    process_email_batch_results,
+)
+from .templates import get_template
 
 
-async def mark_read_one(
+async def toggle_notice_read_status(
     db: AsyncIOMotorDatabase,
     pk: PydanticObjectId,
     user_id: PydanticObjectId,
     is_read: bool,
 ) -> Notice:
-    """Updates the read status of the notice for the given user
+    """Toggles the read status of the notice for the given user
 
     Args:
         db: the mongo database where the notices are stored
@@ -88,7 +92,7 @@ async def mark_read_one(
     return Notice.model_validate(notice)
 
 
-async def mark_read_many(
+async def toggle_notice_read_status_many(
     db: AsyncIOMotorDatabase,
     user_id: PydanticObjectId,
     is_read: bool,
@@ -99,7 +103,7 @@ async def mark_read_many(
     max_expires_utc: Optional[datetime] = None,
     types: Optional[Sequence[NoticeType]] = None,
 ) -> int:
-    """Marks every one of the user's notifications read or unread
+    """Marks many of the user's notices read or unread
 
     Args:
         db: the mongo database from which to get the records
@@ -113,15 +117,8 @@ async def mark_read_many(
         types: the notice types to filter by; default = None i.e. any
 
     Returns:
-        the number of notifications updated
+        the number of notices updated
     """
-    if is_read:
-        # filter for the unread
-        _nested_append(filters, path=("dismissed_by", "$nin"), value=user_id)
-    else:
-        # filter for the read
-        _nested_append(filters, path=("dismissed_by", "$in"), value=user_id)
-
     filters = _merge_filters(
         filters,
         user_id=user_id,
@@ -131,6 +128,7 @@ async def mark_read_many(
         max_expires_utc=max_expires_utc,
         include_dismissed=True,
         types=types,
+        is_read=not is_read,
     )
 
     now = get_current_timestamp()
@@ -160,7 +158,7 @@ async def mark_ref_handled(
 ) -> int:
     """Marks read every unread notice associated with a given reference of a certain id and type
 
-    This is useful in bulk clearing notifications that no longer have any consequence,
+    This is useful in bulk clearing notices that no longer have any consequence,
     without having users dismiss them manually. An example is a user request to create
     a project. If the system admin created that project then there would be no need
     for that admin to go clear all the notices manually.
@@ -251,7 +249,7 @@ async def create_system_notice(
     context: Optional[Dict[str, Any]] = None,
     ref_type: Optional[RefType] = None,
     ref_id: Optional[PydanticObjectId] = None,
-    retention_days: int = settings.CONFIG.notifications.retention_days,
+    retention_days: int = settings.CONFIG.notices.retention_days,
     **kwargs,
 ) -> List[Notice]:
     """Creates a system notice for the given users.
@@ -276,7 +274,7 @@ async def create_system_notice(
     context = context or {}
     try:
         template = await get_template(notice_type, context)
-        email_prefs_map = await _get_email_preferences_map(
+        email_prefs_map = await get_email_preferences_map(
             notice_type, user_ids=user_ids
         )
 
@@ -323,6 +321,7 @@ async def find_many_notices(
     max_expires_utc: Optional[datetime] = None,
     include_dismissed: bool = False,
     types: Optional[Sequence[NoticeType]] = None,
+    is_read: Optional[bool] = None,
 ) -> List[Notice]:
     """Gets many notices from the db
 
@@ -339,6 +338,7 @@ async def find_many_notices(
         max_expires_utc: the maximum UTC timestamp that the notice should expire
         include_dismissed: whether to include dismissed notices; defaults to False
         types: the notice types to filter by; default = None i.e. any
+        is_read: whether to have notices that are read or not; defaults to None
 
     Returns:
         a list of the notices got
@@ -356,6 +356,7 @@ async def find_many_notices(
         max_expires_utc=max_expires_utc,
         include_dismissed=include_dismissed,
         types=types,
+        is_read=is_read,
     )
     return await mongodb_utils.find(
         db[NOTICE_DB_COLLECTION],
@@ -377,6 +378,7 @@ async def count_many_notices(
     max_expires_utc: Optional[datetime] = None,
     include_dismissed: bool = False,
     types: Optional[Sequence[NoticeType]] = None,
+    is_read: Optional[bool] = None,
 ) -> int:
     """Gets the number of notices that match the given query
 
@@ -390,6 +392,7 @@ async def count_many_notices(
         max_expires_utc: the maximum UTC timestamp that the notice should expire
         include_dismissed: whether to include dismissed notices; defaults to False
         types: the notice types to filter by; default = None i.e. any
+        is_read: whether to have notices that are read or not; defaults to None
 
     Returns:
         a number of matched records
@@ -403,6 +406,7 @@ async def count_many_notices(
         max_expires_utc=max_expires_utc,
         include_dismissed=include_dismissed,
         types=types,
+        is_read=is_read,
     )
     return await db[NOTICE_DB_COLLECTION].count_documents(filters)
 
@@ -470,9 +474,7 @@ async def set_email_preferences(
     return current
 
 
-async def on_startup(
-    db: AsyncIOMotorDatabase, emailer: Emailer, conf: NotificationsConfig
-):
+async def on_startup(db: AsyncIOMotorDatabase, emailer: Emailer, conf: NoticesConfig):
     """Runs init operations when the application is starting up
 
     Args:
@@ -489,13 +491,17 @@ async def on_startup(
         ],
     )
 
-    batch_generator = _get_pending_email_batches(
-        batch_size=50, dashboard_url=conf.dashboard_url, app_name=conf.app_name
+    batch_generator = get_pending_email_batches(
+        batch_size=50,
+        dashboard_url=conf.dashboard_url,
+        app_name=conf.app_name,
+        max_attempts=conf.email_retry_limit,
     )
     emailer.register_batch_schedule(
         "notices",
         interval=conf.email_sweep_interval,
         batch_generator=batch_generator,
+        batch_callback=process_email_batch_results,
         ignore_errors=True,
     )
 
@@ -509,6 +515,7 @@ def _merge_filters(
     max_expires_utc: Optional[datetime] = None,
     include_dismissed: bool = False,
     types: Optional[Sequence[NoticeType]] = None,
+    is_read: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Combines the filters with the key-word arguments passed"""
     result = deepcopy(filters)
@@ -537,6 +544,13 @@ def _merge_filters(
 
     if types:
         _nested_insert(result, path=("type", "$in"), value=types)
+
+    if is_read is False:
+        # filter for the unread
+        _nested_append(filters, path=("dismissed_by", "$nin"), value=user_id)
+    elif is_read:
+        # filter for the read
+        _nested_append(filters, path=("dismissed_by", "$in"), value=user_id)
 
     return result
 
@@ -570,197 +584,3 @@ def _nested_insert(dst: Dict[str, Any], path: Tuple[str, ...], value: Any):
         collection = collection.setdefault(segment, {})
 
     collection[path[-1]] = value
-
-
-async def _get_email_preferences_map(
-    notice_type: NoticeType,
-    user_ids: Sequence[PydanticObjectId],
-) -> Dict[PydanticObjectId, bool]:
-    """Retrieves a map of email preferences for the given notice type keyed by user_id
-
-    Args:
-        notice_type: the notice type
-        user_ids: the IDs of the users
-
-    Returns:
-        a map of channel preferences for the given notice type keyed by user_id
-    """
-    result = NoticePreferences.find({"user_id": {"$in": list(user_ids)}})
-    return {
-        record.user_id: record.email_prefs.get(notice_type, True)
-        async for record in result
-    }
-
-
-async def _get_pending_email_batches(
-    batch_size: int, dashboard_url: str, app_name: str
-) -> AsyncGenerator[list[EmailDetails], Any]:
-    """Generates email details batches that are yet to be sent.
-
-    Args:
-        batch_size: the size of each the batch
-        dashboard_url: the URL of the dashboard
-        app_name: the name of the application
-
-    Returns:
-        the Generator of pending email batches
-    """
-    # FIXME: We probably need a way to get the failed emails and
-    #  set them to EMAIL_FAILED after the given number of attempts
-    #   or maybe when trying we set the email status of the notices to EmailStatus.IN_PROGRESS
-    #   or pass the registration function a callback that retrieves the failed and passed (at least the indexes)
-    #   and acts on that feedback. - the last one seems to be the best
-    while True:
-        notices = await _find_notices_pending_email(batch_size)
-        batch = await _to_email_details(
-            notices, dashboard_url=dashboard_url, app_name=app_name
-        )
-        yield batch
-        await asyncio.sleep(1)
-
-
-async def _find_notices_pending_email(limit: int) -> List[Notice]:
-    """Gets the notices that are yet to be sent as emails
-
-    Args:
-        limit: the maximum number of notices to return
-
-    Returns:
-        the list of notices that are yet to be sent as emails
-    """
-    now = get_current_timestamp()
-
-    return (
-        await Notice.find(
-            {
-                "email_status": EmailStatus.PENDING,
-                "user_id": {"$ne": None},
-                "expires_at": {"$or": [{"$ne": None}, {"$gt": now}]},
-            },
-            limit=limit,
-        )
-        .sort("updated_at")
-        .to_list()
-    )
-
-
-async def _to_email_details(
-    notices: Sequence[Notice], dashboard_url: str, app_name: str
-) -> List[EmailDetails]:
-    """Converts a given list of notice objects to a list of EmailDetails
-
-    Args:
-        notices: the list of notice objects
-        dashboard_url: the URL of the dashboard
-        app_name: the name of the application
-
-    Returns:
-        the list of EmailDetails
-    """
-    from services.auth.users.dtos import User
-
-    user_ids = [notice.user_id for notice in notices]
-    users = await User.find({"_id": {"$in": list(set(user_ids))}}).to_list()
-    user_emails_map = {v.id: v.email for v in users}
-
-    return [
-        EmailDetails(
-            to=user_emails_map[v.user_id],
-            subject=v.title,
-            body=_to_email_body(v, dashboard_url, app_name),
-        )
-        for v in notices
-    ]
-
-
-def _to_email_body(notice: Notice, dashboard_url: str, app_name: str) -> str:
-    """Converts a given notice object to a body of the email
-
-    Args:
-        notice: the notice object
-        dashboard_url: the URL of the dashboard
-        app_name: the name of the application
-
-    Returns:
-        the body of the email for the given notice
-    """
-    return f""""
-{notice.title}
-
-{notice.body}
-
-See it in the dashboard: {dashboard_url}
-
---
-You are receiving this because of activity on your {app_name} account.
-"""
-
-
-async def send_pending(limit: int = 50) -> int:
-    """Sends one batch of pending_notices emails for notices that are not broadcast.
-
-    Never raises: a failure is recorded on the row and retried on a later sweep, up to
-    `notices.email_retry_limit` attempts.
-
-    Args:
-        limit: the maximum number of notices to attempt in this batch
-
-    Returns:
-        the number sent successfully
-    """
-    addresses = await _addresses_for([notice.user_id for notice in pending_notices])
-    dashboard_url = settings.CONFIG.notices.dashboard_url
-    retry_limit = settings.CONFIG.notices.email_retry_limit
-    sent = 0
-
-    for notice in pending_notices:
-        address = addresses.get(notice.user_id)
-        if address is None:
-            # no address to send to, so no amount of retrying will help
-            await _record(notice, EmailStatus.FAILED)
-            continue
-
-        try:
-            await email._send_email(
-                to_addr=address,
-                subject=notice.title,
-                body=render_email(notice.title, notice.body, dashboard_url),
-            )
-        except Exception:
-            attempts = notice.email_attempts + 1
-            status = (
-                EmailStatus.FAILED if attempts >= retry_limit else EmailStatus.PENDING
-            )
-            logger.exception(
-                f"failed to email notice {notice.id} "
-                f"(attempt {attempts}/{retry_limit})"
-            )
-            await _record(notice, status, attempts=attempts)
-            continue
-
-        await _record(notice, EmailStatus.SENT, attempts=notice.email_attempts + 1)
-        sent += 1
-
-    return sent
-
-
-async def _addresses_for(
-    user_ids: List[PydanticObjectId],
-) -> Dict[PydanticObjectId, str]:
-    """Maps recipient IDs to email addresses in one query"""
-    # imported here because services.auth reaches back into this package at import time
-    from services.auth.users.dtos import User
-
-    users = await User.find({"_id": {"$in": list(set(user_ids))}}).to_list()
-    return {user.id: user.email for user in users}
-
-
-async def _record(
-    notice: Notice, status: EmailStatus, attempts: Optional[int] = None
-) -> None:
-    """Writes the delivery outcome back onto the notice"""
-    update = {"email_status": status, "updated_at": get_current_timestamp()}
-    if attempts is not None:
-        update["email_attempts"] = attempts
-
-    await Notice.find_one({"_id": notice.id}).update({"$set": update})

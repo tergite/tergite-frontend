@@ -70,7 +70,7 @@ def test_removal_notifies_the_removed_member(client, user_jwt_cookie, db):
         client.delete(_url(), cookies=user_jwt_cookie)
 
         got = list(
-            db["notifications"].find({"user_id": PydanticObjectId(TEST_SYSTEM_USER_ID)})
+            db["notices"].find({"user_id": PydanticObjectId(TEST_SYSTEM_USER_ID)})
         )
 
         assert [item["type"] for item in got] == [
@@ -134,7 +134,7 @@ def test_removing_a_non_member_is_a_no_op(client, user_jwt_cookie, db):
         )
 
         assert response.status_code == 204
-        assert db["notifications"].count_documents({}) == 0
+        assert db["notices"].count_documents({}) == 0
 
 
 def test_removal_twice_is_a_no_op(client, user_jwt_cookie, db):
@@ -144,7 +144,7 @@ def test_removal_twice_is_a_no_op(client, user_jwt_cookie, db):
         response = client.delete(_url(), cookies=user_jwt_cookie)
 
         assert response.status_code == 204
-        assert db["notifications"].count_documents({}) == 1
+        assert db["notices"].count_documents({}) == 1
 
 
 def test_remove_from_unknown_project(client, user_jwt_cookie):

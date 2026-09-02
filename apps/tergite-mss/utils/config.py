@@ -15,18 +15,20 @@ import enum
 import json
 import socket
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional
 
 import aiosmtplib
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
+    Field,
     MongoDsn,
     RedisDsn,
     computed_field,
     field_validator,
     model_validator,
 )
+from pydantic.main import IncEx
 
 _PROJECT_FOLDER = Path(__file__).parent.parent
 
@@ -226,23 +228,28 @@ class EmailConfig(BaseModel):
         "from_name",
     }
 
+    @property
+    def non_smtp_fields(self) -> set[str]:
+        """The fields that are not used when initializing the SMTP instance"""
+        return self._non_smtp_fields
 
-class NotificationsConfig(BaseModel):
-    """Configuration for the notifications service"""
+
+class NoticesConfig(BaseModel):
+    """Configuration for the notices service"""
 
     # days a notification is kept before the TTL index removes it
-    retention_days: int = 90
+    retention_days: int = Field(default=90, ge=0)
 
     # base URL of the dashboard, used for deep links in emails.
     dashboard_url: str = ""
 
     # seconds between outbox sweeps
-    email_sweep_interval: float = 60
+    email_sweep_interval: float = Field(default=60, gt=0)
 
     # attempts before an email is marked failed
-    email_retry_limit: int = 3
+    email_retry_limit: int = Field(default=3, ge=0)
 
-    # the name of the application as will be seen in the email notifications
+    # the name of the application as will be seen in the email notices
     app_name: str = "Tergite"
 
 
@@ -307,8 +314,8 @@ class AppConfig(BaseModel, extra="allow"):
     # configuration for projects and personal projects
     projects: ProjectsConfig = ProjectsConfig()
 
-    # configuration for notifications
-    notifications: NotificationsConfig = NotificationsConfig()
+    # configuration for notices
+    notices: NoticesConfig = NoticesConfig()
 
     # SMTP settings; None disables the email channel entirely
     email: Optional[EmailConfig] = None
@@ -329,9 +336,9 @@ class AppConfig(BaseModel, extra="allow"):
     @model_validator(mode="after")
     def dashboard_url_required_for_email(self) -> "AppConfig":
         """Silently sending mail with dead links is worse than failing at startup"""
-        if self.email is not None and not self.notifications.dashboard_url:
+        if self.email is not None and not self.notices.dashboard_url:
             raise ValueError(
-                "notifications.dashboard_url is required when [email] is configured"
+                "notices.dashboard_url is required when [email] is configured"
             )
         return self
 

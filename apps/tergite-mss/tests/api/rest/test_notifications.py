@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Tests for the /me/notifications endpoints and notification emission"""
+"""Tests for the /me/notices endpoints and notification emission"""
 import pytest
 from beanie import PydanticObjectId
 
@@ -29,7 +29,7 @@ from tests._utils.auth import (
 )
 from utils import rate_limit
 
-_COLLECTION = "notifications"
+_COLLECTION = "notices"
 _PREFS_COLLECTION = "notification_preferences"
 
 
@@ -253,14 +253,12 @@ def test_project_update_that_changes_no_membership_notifies_nobody(
 
 
 def test_view_my_notifications(client, outsider_jwt_cookie, user_jwt_cookie):
-    """GET /me/notifications/ returns only the caller's own notifications"""
+    """GET /me/notices/ returns only the caller's own notices"""
     with client as client:
         _request_access(client, outsider_jwt_cookie)
 
-        admin_view = client.get("/me/notifications/", cookies=user_jwt_cookie).json()
-        requester_view = client.get(
-            "/me/notifications/", cookies=outsider_jwt_cookie
-        ).json()
+        admin_view = client.get("/me/notices/", cookies=user_jwt_cookie).json()
+        requester_view = client.get("/me/notices/", cookies=outsider_jwt_cookie).json()
 
         assert len(admin_view["data"]) == 1
         assert requester_view["data"] == []
@@ -272,10 +270,10 @@ def test_filter_notifications_by_type(client, outsider_jwt_cookie, user_jwt_cook
         _request_access(client, outsider_jwt_cookie)
 
         matching = client.get(
-            "/me/notifications/?type=project-access-requested", cookies=user_jwt_cookie
+            "/me/notices/?type=project-access-requested", cookies=user_jwt_cookie
         ).json()
         other = client.get(
-            "/me/notifications/?type=qpu-seconds-granted", cookies=user_jwt_cookie
+            "/me/notices/?type=qpu-seconds-granted", cookies=user_jwt_cookie
         ).json()
 
         assert len(matching["data"]) == 1
@@ -283,22 +281,20 @@ def test_filter_notifications_by_type(client, outsider_jwt_cookie, user_jwt_cook
 
 
 def test_mark_notification_read(client, outsider_jwt_cookie, user_jwt_cookie):
-    """PUT /me/notifications/{pk} stamps read_at and the unread filter reflects it"""
+    """PUT /me/notices/{pk} stamps read_at and the unread filter reflects it"""
     with client as client:
         _request_access(client, outsider_jwt_cookie)
-        pk = client.get("/me/notifications/", cookies=user_jwt_cookie).json()["data"][
-            0
-        ]["id"]
+        pk = client.get("/me/notices/", cookies=user_jwt_cookie).json()["data"][0]["id"]
 
         response = client.put(
-            f"/me/notifications/{pk}", cookies=user_jwt_cookie, json={"is_read": True}
+            f"/me/notices/{pk}", cookies=user_jwt_cookie, json={"is_read": True}
         )
 
         assert response.status_code == 200
         assert response.json()["read_at"] is not None
 
         unread = client.get(
-            "/me/notifications/?is_read=false", cookies=user_jwt_cookie
+            "/me/notices/?is_read=false", cookies=user_jwt_cookie
         ).json()
         assert unread["data"] == []
 
@@ -307,15 +303,11 @@ def test_mark_notification_unread(client, outsider_jwt_cookie, user_jwt_cookie):
     """Read state is reversible"""
     with client as client:
         _request_access(client, outsider_jwt_cookie)
-        pk = client.get("/me/notifications/", cookies=user_jwt_cookie).json()["data"][
-            0
-        ]["id"]
-        client.put(
-            f"/me/notifications/{pk}", cookies=user_jwt_cookie, json={"is_read": True}
-        )
+        pk = client.get("/me/notices/", cookies=user_jwt_cookie).json()["data"][0]["id"]
+        client.put(f"/me/notices/{pk}", cookies=user_jwt_cookie, json={"is_read": True})
 
         response = client.put(
-            f"/me/notifications/{pk}", cookies=user_jwt_cookie, json={"is_read": False}
+            f"/me/notices/{pk}", cookies=user_jwt_cookie, json={"is_read": False}
         )
 
         assert response.json()["read_at"] is None
@@ -327,12 +319,10 @@ def test_cannot_mark_another_users_notification(
     """One user cannot touch another's notification, even knowing its id"""
     with client as client:
         _request_access(client, outsider_jwt_cookie)
-        pk = client.get("/me/notifications/", cookies=user_jwt_cookie).json()["data"][
-            0
-        ]["id"]
+        pk = client.get("/me/notices/", cookies=user_jwt_cookie).json()["data"][0]["id"]
 
         response = client.put(
-            f"/me/notifications/{pk}",
+            f"/me/notices/{pk}",
             cookies=outsider_jwt_cookie,
             json={"is_read": True},
         )
@@ -341,33 +331,31 @@ def test_cannot_mark_another_users_notification(
 
 
 def test_mark_all_read(client, outsider_jwt_cookie, user_jwt_cookie):
-    """PUT /me/notifications/ marks the whole list read"""
+    """PUT /me/notices/ marks the whole list read"""
     with client as client:
         _request_access(client, outsider_jwt_cookie)
 
         response = client.put(
-            "/me/notifications/", cookies=user_jwt_cookie, json={"is_read": True}
+            "/me/notices/", cookies=user_jwt_cookie, json={"is_read": True}
         )
 
         assert response.status_code == 200
         assert response.json() == {
             "status": "success",
-            "detail": "1 notifications updated",
+            "detail": "1 notices updated",
         }
         unread = client.get(
-            "/me/notifications/?is_read=false", cookies=user_jwt_cookie
+            "/me/notices/?is_read=false", cookies=user_jwt_cookie
         ).json()
         assert unread["data"] == []
 
 
 def test_notification_count(client, outsider_jwt_cookie, user_jwt_cookie):
-    """GET /counts/notifications mirrors the notices count endpoint"""
+    """GET /counts/notices mirrors the notices count endpoint"""
     with client as client:
         _request_access(client, outsider_jwt_cookie)
 
-        response = client.get(
-            "/counts/notifications?is_read=false", cookies=user_jwt_cookie
-        )
+        response = client.get("/counts/notices?is_read=false", cookies=user_jwt_cookie)
 
         assert response.status_code == 200
         assert response.json() == {"count": 1}
@@ -376,7 +364,7 @@ def test_notification_count(client, outsider_jwt_cookie, user_jwt_cookie):
 def test_unauthenticated_notifications_view(client):
     """Notifications need a signed-in user"""
     with client as client:
-        assert client.get("/me/notifications/").status_code == 401
+        assert client.get("/me/notices/").status_code == 401
 
 
 def test_default_preferences(client, user_jwt_cookie):
@@ -479,9 +467,7 @@ def test_deciding_a_request_clears_its_prompt(
     """
     with client as client:
         request_id = _request_access(client, outsider_jwt_cookie).json()["id"]
-        prompt = client.get("/me/notifications/", cookies=user_jwt_cookie).json()[
-            "data"
-        ][0]
+        prompt = client.get("/me/notices/", cookies=user_jwt_cookie).json()["data"][0]
         assert prompt["read_at"] is None
         assert prompt["action"]["request_id"] == request_id
 
@@ -508,7 +494,7 @@ def test_deciding_a_request_leaves_the_outcome_unread(
         )
 
         outcome = client.get(
-            "/me/notifications/?is_read=false", cookies=outsider_jwt_cookie
+            "/me/notices/?is_read=false", cookies=outsider_jwt_cookie
         ).json()["data"]
         assert len(outcome) == 1
         assert outcome[0]["type"] == "project-access-approved"
@@ -520,19 +506,11 @@ def test_read_filter_matches_only_read_notifications(
     """is_read=true returns the read ones, complementing the unread filter"""
     with client as client:
         _request_access(client, outsider_jwt_cookie)
-        pk = client.get("/me/notifications/", cookies=user_jwt_cookie).json()["data"][
-            0
-        ]["id"]
+        pk = client.get("/me/notices/", cookies=user_jwt_cookie).json()["data"][0]["id"]
 
-        before = client.get(
-            "/me/notifications/?is_read=true", cookies=user_jwt_cookie
-        ).json()
-        client.put(
-            f"/me/notifications/{pk}", cookies=user_jwt_cookie, json={"is_read": True}
-        )
-        after = client.get(
-            "/me/notifications/?is_read=true", cookies=user_jwt_cookie
-        ).json()
+        before = client.get("/me/notices/?is_read=true", cookies=user_jwt_cookie).json()
+        client.put(f"/me/notices/{pk}", cookies=user_jwt_cookie, json={"is_read": True})
+        after = client.get("/me/notices/?is_read=true", cookies=user_jwt_cookie).json()
 
         assert before["data"] == []
         assert len(after["data"]) == 1
@@ -543,7 +521,7 @@ def test_emission_failure_does_not_fail_the_request(
 ):
     """A notification is a side effect, so its failure must not fail the operation"""
     mocker.patch(
-        "services.notifications.service.Notification.insert_many",
+        "services.notices.service.Notification.insert_many",
         side_effect=RuntimeError("mongo is sad"),
     )
 

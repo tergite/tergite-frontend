@@ -204,9 +204,7 @@ def test_grant_notifies_the_owner(client, admin_jwt_cookie, db, personal_project
     with client as client:
         _grant(client, admin_jwt_cookie)
 
-        got = list(
-            db["notifications"].find({"user_id": PydanticObjectId(TEST_USER_ID)})
-        )
+        got = list(db["notices"].find({"user_id": PydanticObjectId(TEST_USER_ID)}))
 
         assert [item["type"] for item in got] == [NotificationType.QPU_SECONDS_GRANTED]
         assert got[0]["context"]["reason"] == "admin-grant"

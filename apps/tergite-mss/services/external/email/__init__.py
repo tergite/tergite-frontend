@@ -10,6 +10,13 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Outbound SMTP client"""
-from .service import _send_email, is_configured
+from .dtos import BatchEmailCallback, BatchEmailGenerator, EmailDetails, EmailResult
+from .service import Emailer
 
-__all__ = ["is_configured", "_send_email"]
+__all__ = [
+    "Emailer",
+    "EmailDetails",
+    "BatchEmailCallback",
+    "BatchEmailGenerator",
+    "EmailResult",
+]

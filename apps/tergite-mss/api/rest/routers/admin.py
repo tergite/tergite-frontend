@@ -28,7 +28,7 @@ from services.auth import (
     user_requests,
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
-from services.notices.dtos import Notice, NoticeCreate
+from services.notices.dtos import CustomNoticeCreate, Notice
 from services.qpu_grants import QpuSecondsGrantCreate, QpuSecondsGrantReport
 from utils.api import GeneralMessage, PaginatedListResponse
 
@@ -439,7 +439,7 @@ async def switch_backend_on(
 @router.post("/notices/", response_model_by_alias=False)
 async def publish_notice(
     db: MongoDbDep,
-    payload: NoticeCreate,
+    payload: CustomNoticeCreate,
     current_user: User = CurrentSuperuserDep,
 ) -> Notice:
     """Publishes a notice
@@ -454,7 +454,9 @@ async def publish_notice(
     Returns:
         the created notice
     """
-    return await notices_service.publish_custom_notice(db, current_user_id=current_user.id, payload=payload)
+    return await notices_service.publish_custom_notice(
+        db, current_user_id=current_user.id, payload=payload
+    )
 
 
 @router.delete(
@@ -480,6 +482,7 @@ async def delete_notice(
     return await notices_service.delete_notice(db, pk=notice_id)
 
 
+# FIXME: Move this to me?
 @router.post("/notices/{notice_id}/dismiss")
 async def dismiss_notice(
     db: MongoDbDep,
@@ -491,15 +494,18 @@ async def dismiss_notice(
     Args:
         db: the MongoDB database where the notice will be stored
         notice_id: the unique identifier of the notice
-        current_user: the current logged in user
+        current_user: the current logged-in user
 
     Returns:
         a general message about the status of the operation
     """
-    await notices_service.mark_read_one(db, pk=notice_id, user_id=current_user.id, is_read=)
+    await notices_service.toggle_notice_read_status(
+        db, pk=notice_id, user_id=current_user.id, is_read=True
+    )
     return {"status": "success"}
 
 
+# FIXME: Make this for only admins to see the notices they added
 @router.get("/notices", response_model_by_alias=False)
 async def get_many_notices(
     db: MongoDbDep,

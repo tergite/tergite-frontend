@@ -26,14 +26,13 @@ from .service import (
     find_many_notices,
     get_email_preferences,
     get_one_notice,
-    mark_read_many,
-    mark_read_one,
     mark_ref_handled,
     on_startup,
     publish_custom_notice,
     set_email_preferences,
+    toggle_notice_read_status,
+    toggle_notice_read_status_many,
 )
-from .utils.outbox import send_pending, start_sweeper, stop_sweeper
 
 __all__ = [
     "EmailStatus",
@@ -49,10 +48,7 @@ __all__ = [
     "create_system_notice",
     "publish_custom_notice",
     "on_startup",
-    "send_pending",
-    "mark_read_many",
+    "toggle_notice_read_status_many",
     "set_email_preferences",
-    "mark_read_one",
-    "start_sweeper",
-    "stop_sweeper",
+    "toggle_notice_read_status",
 ]

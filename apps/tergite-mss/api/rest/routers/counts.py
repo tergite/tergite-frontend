@@ -67,13 +67,13 @@ async def get_notice_count(
     return {"count": count}
 
 
-@router.get("/notifications")
+@router.get("/notices")
 async def get_notification_count(
     types: List[NotificationType] = Query((), alias="type"),
     is_read: Optional[bool] = Query(None),
     current_user: User = CurrentUserDep,
 ) -> CountsResponse:
-    """Gets the number of the current user's notifications matching the filter
+    """Gets the number of the current user's notices matching the filter
 
     Args:
         types: the types to filter by; repeat the param for many

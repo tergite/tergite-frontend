@@ -14,21 +14,9 @@
 Plain format strings rather than a template engine: a handful of short messages does not
 justify the dependency.
 """
-from typing import Dict, Optional
+from typing import Dict
 
-from ..dtos import NoticeSeverity, NoticeTemplate, NoticeTemplateInDb, NoticeType
-
-
-class _NoKeyErrorDict(dict):
-    """A dictionary that never has a KeyError because missing keys return an empty string.
-
-    Keeps a notification from failing to send because one optional field was absent.
-    Templates therefore carry no format specs -- numbers arrive pre-formatted.
-    """
-
-    def __missing__(self, key: str) -> str:
-        return ""
-
+from .dtos import NoticeSeverity, NoticeTemplate, NoticeTemplateInDb, NoticeType
 
 _DEFAULT_TEMPLATES: Dict[NoticeType, NoticeTemplate] = {
     NoticeType.PROJECT_ACCESS_REQUESTED: NoticeTemplate(
@@ -89,37 +77,15 @@ _DEFAULT_TEMPLATES: Dict[NoticeType, NoticeTemplate] = {
 }
 
 
-def render_email(
-    title: str, body: str, dashboard_url: Optional[str], app_name: str = "Tergite"
-) -> str:
-    """Wraps a notification's copy in a plain-text email body.
+class _NoKeyErrorDict(dict):
+    """A dictionary that never has a KeyError because missing keys return an empty string.
 
-    Plain text only: a handful of short transactional messages does not justify carrying
-    an HTML template around, and plain text renders everywhere.
-
-    Args:
-        title: the notification title, used as the opening line
-        body: the notification body
-        dashboard_url: base URL of the dashboard, for the closing link
-        app_name: name of the application
-
-    Returns:
-        the email body
+    Keeps a notification from failing to send because one optional field was absent.
+    Templates therefore carry no format specs -- numbers arrive pre-formatted.
     """
-    call_to_action = (
-        f"See it in the dashboard: {dashboard_url.rstrip('/')}" if dashboard_url else ""
-    )
 
-    return f""""
-{title}
-    
-{body}
-    
-{call_to_action}
-    
---
-You are receiving this because of activity on your {app_name} account.
-"""
+    def __missing__(self, key: str) -> str:
+        return ""
 
 
 async def get_template(notice_type: NoticeType, context: dict) -> NoticeTemplate:

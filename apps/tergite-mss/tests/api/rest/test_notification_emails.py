@@ -30,7 +30,7 @@ from utils.config import AppConfig, EmailConfig
 from utils.date_time import get_current_timestamp
 from utils.exc import ServiceUnavailableError
 
-_COLLECTION = "notifications"
+_COLLECTION = "notices"
 _DASHBOARD_URL = "https://dashboard.example.com"
 _TEST_EMAIL_CONFIG = EmailConfig(
     host="smtp.example.com",
@@ -53,27 +53,27 @@ def clear_rate_limits():
 def email_configured():
     """Turns on the email channel for the duration of the test"""
     original_email = settings.CONFIG.email
-    original_url = settings.CONFIG.notifications.dashboard_url
+    original_url = settings.CONFIG.notices.dashboard_url
     settings.CONFIG.email = _TEST_EMAIL_CONFIG
-    settings.CONFIG.notifications.dashboard_url = _DASHBOARD_URL
+    settings.CONFIG.notices.dashboard_url = _DASHBOARD_URL
     yield _TEST_EMAIL_CONFIG
     settings.CONFIG.email = original_email
-    settings.CONFIG.notifications.dashboard_url = original_url
+    settings.CONFIG.notices.dashboard_url = original_url
 
 
 @pytest.fixture
 def fast_sweeps():
     """Sweeps often enough that a test need not wait a whole interval"""
-    original = settings.CONFIG.notifications.email_sweep_interval
-    settings.CONFIG.notifications.email_sweep_interval = 0.05
+    original = settings.CONFIG.notices.email_sweep_interval
+    settings.CONFIG.notices.email_sweep_interval = 0.05
     yield
-    settings.CONFIG.notifications.email_sweep_interval = original
+    settings.CONFIG.notices.email_sweep_interval = original
 
 
 @pytest.fixture
 def sweeper_disabled(mocker):
     """Keeps the outbox untouched, so queueing can be asserted on its own"""
-    yield mocker.patch("services.notifications.start_sweeper")
+    yield mocker.patch("services.notices.start_sweeper")
 
 
 @pytest.fixture
@@ -201,7 +201,7 @@ def test_sending_gives_up_at_the_retry_limit(
     client, outsider_jwt_cookie, db, email_configured, fast_sweeps, failing_smtp
 ):
     """Retrying forever would make the outbox grow without bound"""
-    retry_limit = settings.CONFIG.notifications.email_retry_limit
+    retry_limit = settings.CONFIG.notices.email_retry_limit
 
     with client as client:
         _request_access(client, outsider_jwt_cookie)
@@ -244,7 +244,7 @@ def test_sweeper_survives_a_failing_sweep(
 ):
     """One bad sweep must not take the loop down for the rest of the process"""
     sweep = mocker.patch(
-        "services.notifications.outbox.send_pending",
+        "services.notices.outbox.send_pending",
         new_callable=mocker.AsyncMock,
         side_effect=[RuntimeError("boom"), 0, 0, 0, 0, 0, 0, 0, 0, 0],
     )
@@ -304,7 +304,7 @@ def test_email_config_accepts_a_dashboard_url():
         **{
             **TEST_APP_CONFIG,
             "email": _TEST_EMAIL_CONFIG.model_dump(),
-            "notifications": {"dashboard_url": _DASHBOARD_URL},
+            "notices": {"dashboard_url": _DASHBOARD_URL},
         }
     )
 

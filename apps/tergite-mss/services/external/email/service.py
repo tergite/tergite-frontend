@@ -13,39 +13,21 @@
 """
 import asyncio
 from contextlib import aclosing
-from email.message import EmailMessage
 from functools import cached_property
-from typing import AsyncGenerator, Coroutine, Dict, Sequence
+from typing import (
+    Coroutine,
+    Dict,
+    List,
+    Sequence,
+)
 
 import aiosmtplib
 from loguru import logger
-from pydantic import BaseModel
 
 import settings
+from services.external.email import BatchEmailCallback, BatchEmailGenerator
+from services.external.email.dtos import EmailDetails, EmailResult
 from utils.config import EmailConfig
-
-
-class EmailDetails(BaseModel):
-    """The details needed to send an email.
-
-    Attributes:
-        to: Email address to send.
-        subject: Subject of the email.
-        body: Body of the email.
-    """
-
-    to: str
-    subject: str
-    body: str
-
-    def to_email_message(self, from_value: str) -> EmailMessage:
-        """Converts the details to an email message."""
-        message = EmailMessage()
-        message["From"] = from_value
-        message["To"] = self.to
-        message["Subject"] = self.subject
-        message.set_content(self.body)
-        return message
 
 
 class Emailer:
@@ -56,9 +38,8 @@ class Emailer:
             raise ValueError("email config needs to be an instance of EmailConfig")
 
         self._config = config
-        self._smtp = aiosmtplib.SMTP(
-            **config.model_dump(exclude=config._non_smtp_fields)
-        )
+        smtp_options = config.model_dump(exclude=config.non_smtp_fields)
+        self._smtp = aiosmtplib.SMTP(**smtp_options)
         self._tasks: Dict[str, asyncio.Task] = {}
         self.__coroutines: Dict[str, Coroutine] = {}
         self._is_started: bool = False
@@ -94,7 +75,8 @@ class Emailer:
         self,
         name: str,
         interval: float,
-        batch_generator: AsyncGenerator[Sequence[EmailDetails], None],
+        batch_generator: BatchEmailGenerator,
+        batch_callback: BatchEmailCallback,
         ignore_errors: bool = True,
         **kwargs,
     ):
@@ -104,6 +86,10 @@ class Emailer:
             name: The name of the schedule.
             interval: The interval in seconds between sending emails.
             batch_generator: A generator that yields batch emails to send.
+            batch_callback: A callback that will be called on each batch,
+                with a sequence of EmailResult in the order of the EmailDetails passed
+                where for each index, the EmailResult corresponds to the original EmailDetails
+                in that index.
             ignore_errors: Whether to ignore errors during sending.
             **kwargs: Optional arguments for SMTP.send_message().
 
@@ -121,6 +107,7 @@ class Emailer:
             interval=interval,
             from_value=f"{self.from_value}",
             batch_generator=batch_generator,
+            batch_callback=batch_callback,
             ignore_errors=ignore_errors,
             **kwargs,
         )
@@ -166,7 +153,8 @@ async def _send_on_repeat(
     smtp: aiosmtplib.SMTP,
     interval: float,
     from_value: str,
-    batch_generator: AsyncGenerator[Sequence[EmailDetails], None],
+    batch_generator: BatchEmailGenerator,
+    batch_callback: BatchEmailCallback,
     ignore_errors: bool = True,
     **kwargs,
 ) -> None:
@@ -177,24 +165,40 @@ async def _send_on_repeat(
         interval: The interval in seconds between sending emails.
         from_value: Email address field to send from.
         batch_generator: A generator that yields batch of EmailDetail's to send.
+        batch_callback: A callback that will be called on each batch,
+            with a sequence of EmailResult in the order of the EmailDetails passed
+            where for each index, the EmailResult corresponds to the original EmailDetails
+            in that index.
         ignore_errors: Whether to ignore errors during sending.
         **kwargs: Optional arguments for SMTP.send_message().
 
     Raises:
         asyncio.CancelledError: if task is cancelled.
+        ValueError: on more than one Resent header block on no sender kwarg or
+            From header in message on no recipients kwarg or To, Cc or Bcc header in message
+        SMTPRecipientsRefused: delivery to all recipients failed
+        SMTPResponseException: on invalid response
     """
+    assert interval > 0, "interval must be greater than 0"
+
     async with aclosing(batch_generator) as email_batches:
-        async for batch in email_batches:
-            for detail in batch:
+        async for batch in email_batches:  # type: Sequence[EmailDetails]
+            results: List[EmailResult] = [
+                EmailResult(ref_id=v.ref_id, can_retry=v.can_retry) for v in batch
+            ]
+            for idx, detail in enumerate(batch):
                 try:
                     msg = detail.to_email_message(from_value=from_value)
                     await smtp.send_message(msg, **kwargs)
                 except asyncio.CancelledError:
                     raise
-                except Exception:
+                except Exception as exp:
                     if ignore_errors:
+                        results[idx].error = exp
                         logger.exception(f"sending email on repeat failed")
                     else:
                         raise
-            # wait for next interval
+
+            # close processing for current batch, prepare for the next one
+            await batch_callback(results)
             await asyncio.sleep(interval)
