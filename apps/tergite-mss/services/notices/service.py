@@ -20,7 +20,6 @@ from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 import settings
-from services.external import email as email_service
 from services.external.email.service import Emailer
 from utils import mongodb as mongodb_utils
 from utils.config import NoticesConfig
@@ -45,10 +44,10 @@ from .emails import (
 from .templates import get_template
 
 
-async def toggle_notice_read_status(
+async def toggle_read_status(
     db: AsyncIOMotorDatabase,
     pk: PydanticObjectId,
-    user_id: PydanticObjectId,
+    user_id: PydanticObjectId | str,
     is_read: bool,
 ) -> Notice:
     """Toggles the read status of the notice for the given user
@@ -65,6 +64,7 @@ async def toggle_notice_read_status(
     Raises:
         NotFoundError: if the notice does not exist
     """
+    user_id = PydanticObjectId(user_id)
     now = get_current_timestamp()
     read_at = now if is_read else None
 
@@ -92,9 +92,9 @@ async def toggle_notice_read_status(
     return Notice.model_validate(notice)
 
 
-async def toggle_notice_read_status_many(
+async def toggle_read_status_many(
     db: AsyncIOMotorDatabase,
-    user_id: PydanticObjectId,
+    user_id: PydanticObjectId | str,
     is_read: bool,
     filters: Optional[Dict[str, Any]] = None,
     min_start_utc: Optional[datetime] = None,
@@ -119,6 +119,7 @@ async def toggle_notice_read_status_many(
     Returns:
         the number of notices updated
     """
+    user_id = PydanticObjectId(user_id)
     filters = _merge_filters(
         filters,
         user_id=user_id,
@@ -221,7 +222,7 @@ async def delete_notice(db: AsyncIOMotorDatabase, pk: PydanticObjectId) -> Notic
 
 async def publish_custom_notice(
     db: AsyncIOMotorDatabase,
-    current_user_id: PydanticObjectId,
+    current_user_id: PydanticObjectId | str,
     payload: CustomNoticeCreate,
 ) -> List[Notice]:
     """Creates a new notice in the database
@@ -234,6 +235,7 @@ async def publish_custom_notice(
     Returns:
         the created notice
     """
+    current_user_id = PydanticObjectId(current_user_id)
     notices = await payload.to_documents(db, user_id=current_user_id)
     resp = await Notice.insert_many(notices)
     # FIXME: I am not sure if I need to update the ids, but I do so anyway
@@ -278,13 +280,10 @@ async def create_system_notice(
             notice_type, user_ids=user_ids
         )
 
-        if not email_service.is_configured():
-            email_status_map = {k: EmailStatus.NOT_APPLICABLE for k in user_ids}
-        else:
-            email_status_map = {
-                k: EmailStatus.PENDING if v else EmailStatus.NOT_APPLICABLE
-                for k, v in email_prefs_map.items()
-            }
+        email_status_map = {
+            k: EmailStatus.PENDING if v else EmailStatus.NOT_APPLICABLE
+            for k, v in email_prefs_map.items()
+        }
 
         records = [
             Notice(
@@ -308,13 +307,13 @@ async def create_system_notice(
         return []
 
 
-async def find_many_notices(
+async def find_many(
     db: AsyncIOMotorDatabase,
     filters: Optional[Dict[str, Any]] = None,
     limit: Optional[int] = None,
     skip: int = 0,
     sort: List[str] = (),
-    user_id: Optional[PydanticObjectId] = None,
+    user_id: Optional[PydanticObjectId | str] = None,
     min_start_utc: Optional[datetime] = None,
     max_start_utc: Optional[datetime] = None,
     min_expires_utc: Optional[datetime] = None,
@@ -346,6 +345,9 @@ async def find_many_notices(
     Raises:
         ValidationError: final results are not valid Notice objects
     """
+    if user_id:
+        user_id = PydanticObjectId(user_id)
+
     # FIXME: the system notices default sort was ("-created_at")
     filters = _merge_filters(
         filters,
@@ -368,10 +370,10 @@ async def find_many_notices(
     )
 
 
-async def count_many_notices(
+async def count_many(
     db: AsyncIOMotorDatabase,
     filters: Optional[Dict[str, Any]] = None,
-    user_id: Optional[PydanticObjectId] = None,
+    user_id: Optional[PydanticObjectId | str] = None,
     min_start_utc: Optional[datetime] = None,
     max_start_utc: Optional[datetime] = None,
     min_expires_utc: Optional[datetime] = None,
@@ -397,6 +399,9 @@ async def count_many_notices(
     Returns:
         a number of matched records
     """
+    if user_id:
+        user_id = PydanticObjectId(user_id)
+
     filters = _merge_filters(
         filters,
         user_id=user_id,
@@ -411,7 +416,7 @@ async def count_many_notices(
     return await db[NOTICE_DB_COLLECTION].count_documents(filters)
 
 
-async def get_one_notice(db: AsyncIOMotorDatabase, pk: PydanticObjectId) -> Notice:
+async def get_one(db: AsyncIOMotorDatabase, pk: PydanticObjectId) -> Notice:
     """Gets the notice of the given pk
 
     Args:
@@ -431,7 +436,7 @@ async def get_one_notice(db: AsyncIOMotorDatabase, pk: PydanticObjectId) -> Noti
 
 
 async def get_email_preferences(
-    user_id: PydanticObjectId,
+    user_id: PydanticObjectId | str,
 ) -> Dict[NoticeType, bool]:
     """The user's effective preferences, with defaults filled in for every type
 
@@ -441,6 +446,7 @@ async def get_email_preferences(
     Returns:
         a full map of type to preferences
     """
+    user_id = PydanticObjectId(user_id)
     record = await NoticePreferences.find_one({"user_id": user_id})
     prefs_in_db = record.email_prefs if record is not None else {}
 
@@ -448,7 +454,7 @@ async def get_email_preferences(
 
 
 async def set_email_preferences(
-    user_id: PydanticObjectId, prefs: Dict[NoticeType, bool]
+    user_id: PydanticObjectId | str, prefs: Dict[NoticeType, bool]
 ) -> Dict[NoticeType, bool]:
     """Applies a partial preference update
 
@@ -459,6 +465,7 @@ async def set_email_preferences(
     Returns:
         the user's full effective preferences after the update
     """
+    user_id = PydanticObjectId(user_id)
     record = await NoticePreferences.find_one({"user_id": user_id})
     current = record.email_prefs if record is not None else {}
     current.update(prefs)

@@ -265,9 +265,6 @@ class CustomNoticeCreate(BaseModel):
         ]
 
 
-NoticePartial = create_partial_model("NoticePartial", Notice)
-"""The partial notice to be used when updating the database"""
-
 NoticeTemplatePartial = create_partial_model(
     "NoticeTemplatePartial", NoticeTemplateInDb
 )

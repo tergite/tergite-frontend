@@ -41,6 +41,8 @@ from ..dependencies import (
     RequestIdDep,
 )
 
+# TODO: Move the different components into differnet modules and convert this to an admin package
+
 router = APIRouter(prefix="/admin")
 
 router.include_router(
@@ -482,34 +484,11 @@ async def delete_notice(
     return await notices_service.delete_notice(db, pk=notice_id)
 
 
-# FIXME: Move this to me?
-@router.post("/notices/{notice_id}/dismiss")
-async def dismiss_notice(
-    db: MongoDbDep,
-    notice_id: PydanticObjectId,
-    current_user: User = CurrentUserDep,
-) -> GeneralMessage:
-    """Dismisses a notice
-
-    Args:
-        db: the MongoDB database where the notice will be stored
-        notice_id: the unique identifier of the notice
-        current_user: the current logged-in user
-
-    Returns:
-        a general message about the status of the operation
-    """
-    await notices_service.toggle_notice_read_status(
-        db, pk=notice_id, user_id=current_user.id, is_read=True
-    )
-    return {"status": "success"}
-
-
-# FIXME: Make this for only admins to see the notices they added
-@router.get("/notices", response_model_by_alias=False)
+@router.get(
+    "/notices", response_model_by_alias=False, dependencies=[CurrentSuperuserDep]
+)
 async def get_many_notices(
     db: MongoDbDep,
-    current_user: User = CurrentUserDep,
     skip: int = 0,
     limit: Optional[int] = None,
     sort: List[str] = Query(("starts_at",)),
@@ -526,7 +505,6 @@ async def get_many_notices(
 
     Args:
         db: the MongoDB database where the notice will be stored
-        current_user: the current logged-in user
         skip: the number of notices to skip
         limit: the maximum number of notices to return
         sort: the sort order
@@ -540,11 +518,7 @@ async def get_many_notices(
     Returns:
         a paginated list of notices
     """
-    # Make sure for ordinary users, the user id is always of the current user
-    if not current_user.is_superuser:
-        user_id = current_user.id
-
-    data = await notices_service.find_many_notices(
+    data = await notices_service.find_many(
         db,
         limit=limit,
         skip=skip,

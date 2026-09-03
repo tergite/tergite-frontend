@@ -18,6 +18,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 from fastapi import status as http_status
 
+from api.rest.dependencies import CurrentUserDep
 from services.auth import User, user_requests
 from services.auth.user_requests import (
     ProjectAccessPostBody,
@@ -27,7 +28,8 @@ from services.auth.user_requests import (
 )
 from utils.api import PaginatedListResponse
 
-from ..dependencies import CurrentUserDep
+# FIXME: Cleanup the API of requests
+
 
 router = APIRouter(prefix="/requests", tags=["user-requests"])
 

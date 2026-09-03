@@ -19,9 +19,9 @@ from fastapi import APIRouter, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
 from services import notices as notice_service
-from services import notifications
+from services import notices as notices_service
 from services.auth.users.dtos import User
-from services.notifications import NotificationType
+from services.notices import NoticeType
 from utils.api import CountsResponse
 
 router = APIRouter(prefix="/counts", tags=["counts"])
@@ -55,7 +55,7 @@ async def get_notice_count(
     if not current_user.is_superuser:
         user_id = current_user.id
 
-    count = await notice_service.count_many_notices(
+    count = await notice_service.count_many(
         db,
         user_id=user_id,
         min_start_utc=min_start_utc,
@@ -69,19 +69,21 @@ async def get_notice_count(
 
 @router.get("/notices")
 async def get_notification_count(
-    types: List[NotificationType] = Query((), alias="type"),
+    db: MongoDbDep,
+    types: List[NoticeType] = Query((), alias="type"),
     is_read: Optional[bool] = Query(None),
-    current_user: User = CurrentUserDep,
+    user_id: str = CurrentUserIdDep,
 ) -> CountsResponse:
     """Gets the number of the current user's notices matching the filter
 
     Args:
+        db: the MongoDB database where the notices are stored
         types: the types to filter by; repeat the param for many
         is_read: filter on read state; default = None i.e. either
         current_user: the current signed-in user
     """
-    count = await notifications.count_many(
-        current_user.id, types=types, is_read=is_read
+    count = await notices_service.count_many(
+        db, user_id=user_id, types=types, is_read=is_read
     )
     return {"count": count}
 

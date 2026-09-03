@@ -32,7 +32,12 @@ from services.auth.service import (
 from services.auth.users import UserDatabase
 from services.external import bcc
 
-from .utils import get_bcc_client, get_default_mongodb, get_request_id
+from .utils import (
+    get_bcc_client,
+    get_current_user_pydantic_id,
+    get_default_mongodb,
+    get_request_id,
+)
 
 CurrentSystemUserProjectDep = Annotated[User, Depends(GET_CURRENT_SYSTEM_USER_PROJECT)]
 CurrentProjectDep = Depends(GET_CURRENT_PROJECT)
