@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 from beanie import PydanticObjectId, UpdateResponse
 
 import settings
-from services import notifications
-from services.notifications import NotificationAction, NotificationType
+from services import notices
+from services.notices import NoticeType
 from utils import rate_limit
 from utils.config import UserRole
 from utils.exc import ConflictError, ForbiddenError, NotFoundError, TooManyRequestsError
@@ -32,6 +32,17 @@ from .dtos import (
     UserRequestType,
     UserRequestUpdate,
 )
+
+# FIXME: Question - how do we unify the requests api. Some requests are for admins only
+#   while other requests are any user.
+#   - Maybe we can have 'system requests' and 'user requests'
+#   - system requests go to the system and are approved of by a system admin
+#   - user requests are requests to a given user
+#   - Come to think of it, we probably need project requests also
+#   - Maybe we can have one struct --- CustomRequest --- with a type field with Enum('system','project','user')
+#   - And all are CRUD through `/requests`
+#   - And basing on type, the appropriate people are notified
+#   - And in the dashboard, only one page is available of requests: just filterable by type
 
 _DECIDED_STATUSES = (UserRequestStatus.APPROVED, UserRequestStatus.REJECTED)
 

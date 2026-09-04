@@ -33,10 +33,10 @@ from utils.api import PaginatedListResponse
 
 router = APIRouter(prefix="/requests", tags=["user-requests"])
 
-# a union once RFC 0002 adds create-project; the discriminator is already in place
 RequestCreate = ProjectAccessPostBody
 
 
+# FIXME: Should never be defined here
 class RequestRole(str, Enum):
     """Which side of a request the current user is asking about"""
 
@@ -62,6 +62,7 @@ async def create_request(body: RequestCreate, requester: User = CurrentUserDep):
         409: already a member of, or already has a pending request for, the project
         429: too many pending requests, or too many failed project lookups
     """
+    # FIXME: Create project access, yet the requests endpoint is a general term
     result = await user_requests.create_project_access_request(
         body=body, requester=requester
     )
