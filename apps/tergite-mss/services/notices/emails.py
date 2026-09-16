@@ -17,12 +17,13 @@ from beanie.odm.operators.find.comparison import In
 from loguru import logger
 
 from services.external.email import BatchEmailGenerator, EmailDetails, EmailResult
-from services.notices import EmailStatus, Notice, NoticePreferences, NoticeType
+from services.notices import EmailStatus, Notice, NoticePreferences
+from services.notices.dtos import NoticeTypeId
 from utils.date_time import get_current_timestamp, get_utc_now
 
 
 async def get_email_preferences_map(
-    notice_type: NoticeType,
+    notice_type: NoticeTypeId,
     user_ids: Sequence[PydanticObjectId],
 ) -> Dict[PydanticObjectId, bool]:
     """Retrieves a map of email preferences for the given notice type keyed by user_id

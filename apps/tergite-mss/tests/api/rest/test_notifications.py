@@ -82,7 +82,7 @@ def test_request_notifies_the_project_admin(client, outsider_jwt_cookie, db):
 
         assert len(got) == 1
         assert got[0]["type"] == NotificationType.PROJECT_ACCESS_REQUESTED
-        assert got[0]["action"]["kind"] == "user-request"
+        assert got[0]["action"]["id"] == "user-request"
         assert "test-project" in got[0]["title"]
         assert got[0]["read_at"] is None
 

@@ -32,16 +32,17 @@ from .dtos import (
     EmailStatus,
     Notice,
     NoticePreferences,
-    NoticeTemplate,
     NoticeType,
     RefType,
+    BaseNoticeContext,
+    NoticeTemplate,
+    NoticeTypeId,
 )
 from .emails import (
     get_email_preferences_map,
     get_pending_email_batches,
     process_email_batch_results,
 )
-from .templates import get_template
 
 
 async def toggle_read_status(
@@ -247,8 +248,8 @@ async def publish_custom_notice(
 
 async def create_system_notice(
     user_ids: Sequence[PydanticObjectId],
-    notice_type: NoticeType,
-    context: Optional[Dict[str, Any]] = None,
+    notice_type: NoticeTypeId,
+    context: Optional[BaseNoticeContext] = None,
     ref_type: Optional[RefType] = None,
     ref_id: Optional[PydanticObjectId] = None,
     retention_days: int = settings.CONFIG.notices.retention_days,
@@ -262,7 +263,7 @@ async def create_system_notice(
     Args:
         user_ids: the recipients; one document is written per user
         notice_type: the notice type, which selects the copy and the channel policy
-        context: values interpolated into the copy, also stored for deep links
+        context: values for generating the notice content
         ref_type: the reference type that is associated with this notice, e.g. a user_request
         ref_id: the unique identifier of the reference in the collection of the given ref_type
         retention_days: the number of days this notice should be retained
@@ -273,9 +274,8 @@ async def create_system_notice(
     if len(user_ids) == 0:
         return []
 
-    context = context or {}
     try:
-        template = await get_template(notice_type, context)
+        template = await NoticeTemplate.find_one(NoticeTemplate.type == notice_type)
         email_prefs_map = await get_email_preferences_map(
             notice_type, user_ids=user_ids
         )
@@ -285,18 +285,18 @@ async def create_system_notice(
             for k, v in email_prefs_map.items()
         }
 
+        expires_at = get_utc_now() + timedelta(retention_days)
+
         records = [
-            Notice(
+            Notice.from_template(
+                template=template,
+                context=context,
                 user_id=user_id,
                 type=notice_type,
-                title=template.title,
-                body=template.body,
-                severity=template.severity,
                 ref_type=ref_type,
                 ref_id=ref_id,
-                context=context,
                 email_status=email_status_map[user_id],
-                expires_at=get_utc_now() + timedelta(retention_days),
+                expires_at=expires_at,
             )
             for user_id in user_ids
         ]
@@ -498,6 +498,8 @@ async def on_startup(db: AsyncIOMotorDatabase, emailer: Emailer, conf: NoticesCo
         ],
     )
 
+    await _init_notice_templates_in_db()
+
     batch_generator = get_pending_email_batches(
         batch_size=50,
         dashboard_url=conf.dashboard_url,
@@ -591,3 +593,18 @@ def _nested_insert(dst: Dict[str, Any], path: Tuple[str, ...], value: Any):
         collection = collection.setdefault(segment, {})
 
     collection[path[-1]] = value
+
+
+async def _init_notice_templates_in_db():
+    """Initializes the notice templates in the database with the default templates"""
+    result = await NoticeTemplate.find(projection={"type": 1}).to_list()
+    existing_types = {item.type for item in result}
+    new_records = [
+        NoticeTemplate.from_notice_type(v)
+        for v in NoticeType
+        if v.id not in existing_types
+    ]
+
+    if new_records:
+        await NoticeTemplate.insert_many(new_records)
+        logger.info(f"Initialized {len(new_records)} new notice template(s) in db.")

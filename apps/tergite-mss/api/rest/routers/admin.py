@@ -18,14 +18,13 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi import status as http_status
 
-from services import notices as notices_service
+from services import notices as notices_service, requests as requests_service
 from services import qpu_grants
 from services.auth import (
     APP_TOKEN_AUTH,
     Project,
     User,
     get_user_emails,
-    user_requests,
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
 from services.notices.dtos import CustomNoticeCreate, Notice
@@ -57,7 +56,7 @@ router.include_router(
 )
 async def get_qpu_time_requests(
     project_ids: Optional[List[str]] = Query(None, alias="project_id"),
-    status: Optional[user_requests.UserRequestStatus] = Query(None),
+    status: Optional[requests_service.RequestStatus] = Query(None),
     skip: int = Query(0),
     limit: Optional[int] = Query(None),
 ):
@@ -67,7 +66,7 @@ async def get_qpu_time_requests(
         filters["request.project_id"] = {"$in": project_ids}
     if status is not None:
         filters["status"] = status
-    data = await user_requests.get_many_qpu_time_requests(
+    data = await requests_service.get_many_qpu_time_requests(
         filters, skip=skip, limit=limit
     )
     return PaginatedListResponse(data=data, skip=skip, limit=limit).model_dump(
@@ -81,7 +80,7 @@ async def get_qpu_time_requests(
     status_code=http_status.HTTP_201_CREATED,
 )
 async def create_qpu_time_request(
-    request_body: user_requests.QpuTimeExtensionPostBody,
+    request_body: requests_service.ProjectQpuSecondsPostBody,
     requester: User = CurrentUserDep,
 ):
     """Creates a new QPU time request"""
@@ -95,7 +94,7 @@ async def create_qpu_time_request(
         raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN)
 
     request_body.project_name = project.name
-    result = await user_requests.create_qpu_time_request(
+    result = await requests_service.create(
         request_body=request_body,
         requester=requester,
     )
@@ -127,7 +126,7 @@ async def get_user_emails(
     "/user-requests/", tags=["user-requests"], dependencies=[CurrentSuperuserDep]
 )
 async def get_user_requests(
-    status: Optional[user_requests.UserRequestStatus] = Query(None),
+    status: Optional[requests_service.RequestStatus] = Query(None),
     skip: int = Query(0),
     limit: Optional[int] = Query(None),
 ):
@@ -135,7 +134,7 @@ async def get_user_requests(
     filters = {}
     if status is not None:
         filters["status"] = status
-    data = await user_requests.get_many(filters, skip=skip, limit=limit)
+    data = await requests_service.get_many(filters, skip=skip, limit=limit)
     return PaginatedListResponse(data=data, skip=skip, limit=limit).model_dump(
         mode="json",
         exclude_data_none_fields=False,
@@ -245,14 +244,14 @@ async def view_bcc_users(
 @router.put("/user-requests/{_id}", tags=["user-requests"])
 async def update_user_request(
     _id: PydanticObjectId,
-    body: user_requests.UserRequestUpdate,
+    body: requests_service.RequestUpdate,
     user: User = CurrentSuperuserDep,
 ):
     """Updates the user request of the given id with the body content
 
     This also does any necessary operations in case this update is an approval
     """
-    result = await user_requests.update(_id, payload=body, admin_user=user)
+    result = await requests_service.update(_id, payload=body, admin_user=user)
     return result.model_dump(mode="json")
 
 

@@ -19,12 +19,13 @@ from fastapi import APIRouter, Query
 from fastapi import status as http_status
 
 from api.rest.dependencies import CurrentUserDep
-from services.auth import User, user_requests
-from services.auth.user_requests import (
-    ProjectAccessPostBody,
-    UserRequestStatus,
-    UserRequestType,
-    UserRequestUpdate,
+from services.auth import User
+from services import requests as requests_service
+from services.requests import (
+    RequestPostBody,
+    RequestStatus,
+    RequestType,
+    RequestUpdate,
 )
 from utils.api import PaginatedListResponse
 
@@ -32,8 +33,6 @@ from utils.api import PaginatedListResponse
 
 
 router = APIRouter(prefix="/requests", tags=["user-requests"])
-
-RequestCreate = ProjectAccessPostBody
 
 
 # FIXME: Should never be defined here
@@ -45,7 +44,7 @@ class RequestRole(str, Enum):
 
 
 @router.post("/", status_code=http_status.HTTP_201_CREATED)
-async def create_request(body: RequestCreate, requester: User = CurrentUserDep):
+async def create_request(body: RequestPostBody, requester: User = CurrentUserDep):
     """Creates a request of the type named in the body
 
     Currently only `project-access` is creatable here; RFC 0002 adds `create-project`.
@@ -63,17 +62,16 @@ async def create_request(body: RequestCreate, requester: User = CurrentUserDep):
         429: too many pending requests, or too many failed project lookups
     """
     # FIXME: Create project access, yet the requests endpoint is a general term
-    result = await user_requests.create_project_access_request(
-        body=body, requester=requester
+    return await requests_service.create(
+        request_body=body, requester=requester
     )
-    return result.model_dump(mode="json")
 
 
 @router.get("/")
 async def get_my_requests(
     role: RequestRole = Query(RequestRole.REQUESTER),
-    status: Optional[UserRequestStatus] = Query(None),
-    types: List[UserRequestType] = Query((), alias="type"),
+    status: Optional[RequestStatus] = Query(None),
+    types: List[RequestType] = Query((), alias="type"),
     skip: int = Query(0),
     limit: Optional[int] = Query(None),
     user: User = CurrentUserDep,
@@ -92,11 +90,11 @@ async def get_my_requests(
         the paginated list of matched requests, newest first
     """
     if role == RequestRole.APPROVER:
-        data = await user_requests.get_many_as_approver(
+        data = await requests_service.get_many_as_approver(
             user, status=status, types=types, skip=skip, limit=limit
         )
     else:
-        data = await user_requests.get_many_as_requester(
+        data = await requests_service.get_many_as_requester(
             str(user.id), status=status, types=types, skip=skip, limit=limit
         )
 
@@ -108,7 +106,7 @@ async def get_my_requests(
 @router.put("/{_id}")
 async def react_to_request(
     _id: PydanticObjectId,
-    body: UserRequestUpdate,
+    body: RequestUpdate,
     user: User = CurrentUserDep,
 ):
     """Approves or rejects a request the current user is entitled to react to
@@ -126,5 +124,5 @@ async def react_to_request(
         404: {_id} not found
         409: request has already been approved/rejected
     """
-    result = await user_requests.update(_id, payload=body, admin_user=user)
+    result = await requests_service.update(_id, payload=body, admin_user=user)
     return result.model_dump(mode="json")

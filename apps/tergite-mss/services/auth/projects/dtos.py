@@ -53,6 +53,7 @@ class ProjectSource(str, enum.Enum):
 class ProjectCreate(BaseModel):
     """The schema for creating a project"""
 
+    # FIXME: Get rid of this since we got rid of puhuri
     ext_id: str
     """ext_id is the id in an external project allocation service"""
 
@@ -117,7 +118,9 @@ class ProjectUpdate(BaseModel):
 
 class Project(ProjectCreate, Document):
     is_active: bool = True
+    # FIXME: Change the type of admin_id to Optional[PydanticObjectId]
     admin_id: Optional[str] = None
+    # FIXME: Change the type of user_ids to Optional[List[PydanticObjectId]]
     user_ids: Optional[List[str]] = None
     # set only by ensure_personal_project, never from a request body
     is_personal: bool = False
