@@ -12,7 +12,7 @@
 
 """Routes for the current user's requests, as requester or as approver"""
 
-from typing import Optional, Literal, Tuple
+from typing import Literal, Optional, Tuple
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
@@ -27,10 +27,9 @@ from services.requests import (
     RequestType,
     RequestUpdate,
 )
-from services.requests.service import ALL_REQ_TYPES, ALL_REQ_STATUSES
+from services.requests.service import ALL_REQ_STATUSES, ALL_REQ_TYPES
 from utils.api import PaginatedListResponse
 from utils.exc import NotFoundError
-
 
 router = APIRouter(prefix="/requests", tags=["user-requests"])
 
@@ -48,7 +47,6 @@ async def create(body: RequestPostBody, requester: User = CurrentUserDep):
     Returns:
         the created user request
     """
-    # FIXME: Create project access, yet the requests endpoint is a general term
     return await requests_service.create(request_body=body, requester=requester)
 
 
@@ -117,7 +115,9 @@ async def update(
     Raises:
         404: {_id} not found
     """
-    result = await requests_service.update({"_id": pk}, payload=body, current_user=user, limit=1)
+    result = await requests_service.update(
+        {"_id": pk}, payload=body, current_user=user, limit=1
+    )
     if len(result) == 0:
         raise NotFoundError(f"{pk} not found")
 

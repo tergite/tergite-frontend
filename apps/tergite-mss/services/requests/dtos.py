@@ -12,7 +12,7 @@
 
 import enum
 from functools import cached_property
-from typing import Any, Callable, List, Literal, Optional, Self, Tuple, Type
+from typing import Any, List, Optional, Self, Tuple, Type
 
 from beanie import Document, PydanticObjectId
 from pydantic import (
@@ -24,7 +24,6 @@ from pydantic import (
     field_serializer,
     field_validator,
 )
-from pydantic.main import IncEx
 from pymongo import IndexModel
 
 from services.auth import User

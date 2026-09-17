@@ -23,7 +23,7 @@ from beanie import PydanticObjectId
 
 import settings
 from services.auth import Project
-from services.notifications import NotificationType
+from services.notices import NoticeType
 from tests._utils.auth import (
     TEST_PROJECT_EXT_ID,
     TEST_PROJECT_ID,
@@ -101,7 +101,7 @@ def _bill_a_job(client, db, starting_seconds=None):
             assert socket.receive_json()["status"] == "success"
 
 
-def _notifications_of(db, type_: NotificationType):
+def _notifications_of(db, type_: NoticeType):
     return list(db[_NOTIFICATIONS_COLLECTION].find({"type": type_}))
 
 
@@ -126,7 +126,7 @@ def test_dropping_below_the_threshold_warns_the_admin(client, db, threshold):
     """The person who can request more time is the one told about it"""
     _bill_a_job(client, db, starting_seconds=threshold + _JOB_COST - 1)
 
-    got = _notifications_of(db, NotificationType.QPU_SECONDS_LOW)
+    got = _notifications_of(db, NoticeType.QPU_SECONDS_LOW)
 
     assert len(got) == 1
     assert f"{threshold + _JOB_COST - 1 - _JOB_COST:.0f}s" in got[0]["body"]
@@ -140,7 +140,7 @@ def test_staying_above_the_threshold_warns_nobody(client, db, threshold):
     """A project with plenty of time left is not worth interrupting anyone over"""
     _bill_a_job(client, db, starting_seconds=threshold * 10)
 
-    assert _notifications_of(db, NotificationType.QPU_SECONDS_LOW) == []
+    assert _notifications_of(db, NoticeType.QPU_SECONDS_LOW) == []
     assert _project(db)["low_qpu_notified_at"] is None
 
 
@@ -152,7 +152,7 @@ def test_a_second_job_does_not_warn_again(client, db, threshold):
 
     _bill_a_job(client, db)
 
-    assert len(_notifications_of(db, NotificationType.QPU_SECONDS_LOW)) == 1
+    assert len(_notifications_of(db, NoticeType.QPU_SECONDS_LOW)) == 1
     assert _project(db)["low_qpu_notified_at"] == latch
 
 
@@ -160,7 +160,7 @@ def test_running_out_tells_the_admin_and_the_members(client, db, threshold):
     """Members cannot fix it but they need to know why their jobs stopped"""
     _bill_a_job(client, db, starting_seconds=1)
 
-    got = _notifications_of(db, NotificationType.QPU_SECONDS_DEPLETED)
+    got = _notifications_of(db, NoticeType.QPU_SECONDS_DEPLETED)
 
     assert {record["user_id"] for record in got} == {
         PydanticObjectId(TEST_USER_ID),
@@ -173,7 +173,7 @@ def test_running_out_tells_the_admin_and_the_members(client, db, threshold):
 def test_running_out_reports_even_after_a_low_warning(client, db, threshold):
     """Depletion is judged on the crossing, so a stamped latch must not swallow it"""
     _bill_a_job(client, db, starting_seconds=threshold + _JOB_COST - 1)
-    assert len(_notifications_of(db, NotificationType.QPU_SECONDS_LOW)) == 1
+    assert len(_notifications_of(db, NoticeType.QPU_SECONDS_LOW)) == 1
     db[_JOBS_COLLECTION].delete_many({})
     db[_PROJECTS_COLLECTION].update_one(
         {"ext_id": TEST_PROJECT_EXT_ID}, {"$set": {"qpu_seconds": 1}}
@@ -181,14 +181,14 @@ def test_running_out_reports_even_after_a_low_warning(client, db, threshold):
 
     _bill_a_job(client, db)
 
-    assert len(_notifications_of(db, NotificationType.QPU_SECONDS_DEPLETED)) == 2
+    assert len(_notifications_of(db, NoticeType.QPU_SECONDS_DEPLETED)) == 2
 
 
 def test_an_already_empty_project_does_not_warn_again(client, db, threshold):
     """Only the job that crosses zero reports it"""
     _bill_a_job(client, db, starting_seconds=-5)
 
-    assert _notifications_of(db, NotificationType.QPU_SECONDS_DEPLETED) == []
+    assert _notifications_of(db, NoticeType.QPU_SECONDS_DEPLETED) == []
 
 
 def test_the_warnings_are_silenceable(client, db, threshold, user_jwt_cookie):
@@ -204,4 +204,4 @@ def test_the_warnings_are_silenceable(client, db, threshold, user_jwt_cookie):
 
     _bill_a_job(client, db, starting_seconds=threshold + _JOB_COST - 1)
 
-    assert _notifications_of(db, NotificationType.QPU_SECONDS_LOW) == []
+    assert _notifications_of(db, NoticeType.QPU_SECONDS_LOW) == []

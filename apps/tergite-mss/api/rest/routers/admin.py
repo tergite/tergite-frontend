@@ -15,28 +15,22 @@ from datetime import datetime
 from typing import List, Optional
 
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Header, HTTPException, Query
-from fastapi import status as http_status
+from fastapi import APIRouter, Query
 
 from services import notices as notices_service
-from services import qpu_grants
-from services import requests as requests_service
 from services.auth import (
     APP_TOKEN_AUTH,
-    Project,
     User,
     get_user_emails,
 )
 from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo, RecalibrationInfo
 from services.notices.dtos import CustomNoticeCreate, Notice
-from services.qpu_grants import QpuSecondsGrantCreate, QpuSecondsGrantReport
 from utils.api import GeneralMessage, PaginatedListResponse
 
 from ..dependencies import (
     BccClientDep,
     CurrentSuperuserDep,
     CurrentUserDep,
-    CurrentUserIdDep,
     MongoDbDep,
     RequestIdDep,
 )
@@ -50,56 +44,6 @@ router.include_router(
     prefix="/projects",
     tags=["projects"],
 )
-
-
-@router.get(
-    "/qpu-time-requests/", tags=["user-requests"], dependencies=[CurrentUserIdDep]
-)
-async def get_qpu_time_requests(
-    project_ids: Optional[List[str]] = Query(None, alias="project_id"),
-    status: Optional[requests_service.RequestStatus] = Query(None),
-    skip: int = Query(0),
-    limit: Optional[int] = Query(None),
-):
-    """Retrieves the qpu time requests filtered by the given query params"""
-    filters = {}
-    if isinstance(project_ids, list):
-        filters["request.project_id"] = {"$in": project_ids}
-    if status is not None:
-        filters["status"] = status
-    data = await requests_service.get_many_qpu_time_requests(
-        filters, skip=skip, limit=limit
-    )
-    return PaginatedListResponse(data=data, skip=skip, limit=limit).model_dump(
-        mode="json", exclude_data_none_fields=False
-    )
-
-
-@router.post(
-    "/qpu-time-requests/",
-    tags=["user-requests"],
-    status_code=http_status.HTTP_201_CREATED,
-)
-async def create_qpu_time_request(
-    request_body: requests_service.ProjectQpuSecondsPostBody,
-    requester: User = CurrentUserDep,
-):
-    """Creates a new QPU time request"""
-    project = await Project.find_one(
-        {
-            "_id": PydanticObjectId(request_body.project_id),
-            "user_ids": str(requester.id),
-        }
-    )
-    if project is None:
-        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN)
-
-    request_body.project_name = project.name
-    result = await requests_service.create(
-        request_body=request_body,
-        requester=requester,
-    )
-    return result.model_dump(mode="json")
 
 
 @router.get("/user-emails/", tags=["users"], dependencies=[CurrentSuperuserDep])
@@ -121,25 +65,6 @@ async def get_user_emails(
         the matched email addresses, alphabetically
     """
     return await get_user_emails(search=search, limit=limit)
-
-
-@router.get(
-    "/user-requests/", tags=["user-requests"], dependencies=[CurrentSuperuserDep]
-)
-async def get_user_requests(
-    status: Optional[requests_service.RequestStatus] = Query(None),
-    skip: int = Query(0),
-    limit: Optional[int] = Query(None),
-):
-    """Gets the user requests that match the given filters"""
-    filters = {}
-    if status is not None:
-        filters["status"] = status
-    data = await requests_service.get_many(filters, skip=skip, limit=limit)
-    return PaginatedListResponse(data=data, skip=skip, limit=limit).model_dump(
-        mode="json",
-        exclude_data_none_fields=False,
-    )
 
 
 @router.post("/bcc-users/{backend}", response_model=BCCUserProfile)
@@ -239,63 +164,6 @@ async def view_bcc_users(
         skip=skip,
         limit=limit,
         is_admin=requester.is_superuser,
-    )
-
-
-@router.put("/user-requests/{_id}", tags=["user-requests"])
-async def update_user_request(
-    _id: PydanticObjectId,
-    body: requests_service.RequestUpdate,
-    user: User = CurrentSuperuserDep,
-):
-    """Updates the user request of the given id with the body content
-
-    This also does any necessary operations in case this update is an approval
-    """
-    result = await requests_service.update(_id, payload=body, admin_user=user)
-    return result.model_dump(mode="json")
-
-
-@router.post("/qpu-seconds-grants/", status_code=http_status.HTTP_201_CREATED)
-async def create_qpu_seconds_grant(
-    body: QpuSecondsGrantCreate,
-    idempotency_key: str = Header(..., alias="Idempotency-Key"),
-    granted_by: User = CurrentSuperuserDep,
-) -> QpuSecondsGrantReport:
-    """Grants QPU seconds to many personal projects at once
-
-    Args:
-        body: how many seconds, to whom, and why
-        idempotency_key: makes a replayed request a no-op rather than a second grant
-        granted_by: the superuser performing the grant
-
-    Returns:
-        a report of how many projects were granted and which targets were skipped
-
-    Raises:
-        403: a single grant may not exceed {max} seconds
-    """
-    return await qpu_grants.grant(
-        body, granted_by=granted_by, idempotency_key=idempotency_key
-    )
-
-
-@router.get("/qpu-seconds-grants/")
-async def get_qpu_seconds_grants(
-    skip: int = Query(0),
-    limit: Optional[int] = Query(None),
-    _admin: User = CurrentSuperuserDep,
-):
-    """Gets the history of bulk QPU-second grants, newest first
-
-    Args:
-        skip: the number of records to skip
-        limit: the maximum number of records to return
-        _admin: the superuser making the request
-    """
-    data = await qpu_grants.get_many(skip=skip, limit=limit)
-    return PaginatedListResponse(data=data, skip=skip, limit=limit).model_dump(
-        mode="json"
     )
 
 

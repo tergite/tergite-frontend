@@ -19,7 +19,7 @@ from services import notices
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
 from utils.config import UserRole
-from utils.exc import NotFoundError
+from utils.exc import ForbiddenError, NotFoundError
 
 from .dtos import (
     Request,
@@ -57,7 +57,11 @@ async def create(
 
     Returns:
         the created Request object
+
+    Raises:
+        ForbiddenError: if the user does not have permission to perform the request
     """
+    await _has_resource_access(request_body, user=requester)
     target_user_ids = await _get_target_user_ids(request_body)
     record = Request.from_post_body(
         request_body, requester=requester, target_user_ids=target_user_ids
@@ -199,6 +203,8 @@ async def update(
         .update({"$set": update_dict}, response_type=UpdateResponse.NEW_DOCUMENT)
         .to_list()
     )
+    if len(result) == 0:
+        raise NotFoundError(f"no match found")
 
     if payload.status in _DECIDED_STATUSES:
         ref_type_ids_map = {}
@@ -265,3 +271,36 @@ async def _get_target_user_ids(request: RequestPostBody) -> List[PydanticObjectI
         return [user.id for user in superusers]
 
     return []
+
+
+async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
+    """Checks if the user has access to the resource they are requesting on
+
+    Args:
+        request: the request post body
+        user: the user to check
+
+    Returns:
+        True if the user has access to the resource
+    """
+    if request.type == RequestType.CREATE_PROJECT:
+        return user is not None
+
+    elif request.type in (RequestType.CLOSE_PROJECT, RequestType.TRANSFER_PROJECT):
+        project = await Project.find_one(
+            Project.id == request.resource_id,
+            Project.admin_id == str(user.id),
+            projection={"_id": 1},
+        )
+        return project is not None
+    elif request.type == RequestType.PROJECT_QPU_SECONDS:
+        project = await Project.find_one(
+            Project.id == request.resource_id,
+            Project.user_ids == str(user.id),
+            projection={"_id": 1},
+        )
+        return project is not None
+    elif request.type == RequestType.PROJECT_ACCESS:
+        return user is not None
+
+    raise ForbiddenError(f"operation not permitted on resource {request.resource_id}")
