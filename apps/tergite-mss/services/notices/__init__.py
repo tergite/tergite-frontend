@@ -19,13 +19,13 @@ from .dtos import (
     NoticeType,
 )
 from .service import (
+    clear_notices_by_reference,
     count_many,
     create_system_notice,
     delete_notice,
     find_many,
     get_email_preferences,
     get_one,
-    mark_ref_handled,
     on_startup,
     publish_custom_notice,
     set_email_preferences,
@@ -42,7 +42,7 @@ __all__ = [
     "count_many",
     "find_many",
     "get_email_preferences",
-    "mark_ref_handled",
+    "clear_notices_by_reference",
     "create_system_notice",
     "publish_custom_notice",
     "on_startup",

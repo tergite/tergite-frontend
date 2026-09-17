@@ -28,15 +28,15 @@ from utils.exc import NotFoundError
 
 from .dtos import (
     NOTICE_DB_COLLECTION,
+    BaseNoticeContext,
     CustomNoticeCreate,
     EmailStatus,
     Notice,
     NoticePreferences,
-    NoticeType,
-    RefType,
-    BaseNoticeContext,
     NoticeTemplate,
+    NoticeType,
     NoticeTypeId,
+    RefType,
 )
 from .emails import (
     get_email_preferences_map,
@@ -155,10 +155,10 @@ async def toggle_read_status_many(
     return result.modified_count
 
 
-async def mark_ref_handled(
-    db: AsyncIOMotorDatabase, ref_type: RefType, ref_id: PydanticObjectId
+async def clear_notices_by_reference(
+    ref_type_ids_map: Dict[RefType, List[PydanticObjectId]]
 ) -> int:
-    """Marks read every unread notice associated with a given reference of a certain id and type
+    """Marks read every unread notice associated with the given reference ids per type
 
     This is useful in bulk clearing notices that no longer have any consequence,
     without having users dismiss them manually. An example is a user request to create
@@ -166,23 +166,25 @@ async def mark_ref_handled(
     for that admin to go clear all the notices manually.
 
     Args:
-        db: the mongo database from which to get the records
-        ref_type: the type of the reference
-        ref_id: the ID of the associated reference object that has been decided
+        ref_type_ids_map: mapping of reference types and the reference IDs
 
     Returns:
         the number of notices updated
     """
     now = get_current_timestamp()
     filters = {
-        "ref_id": ref_id,
-        "ref_type": ref_type,
-        "read_at": None,
-        "expires_at": {"$or": [{"$eq": None}, {"$gte": now}]},
+        "$or": [
+            {
+                "ref_id": {"$in": ref_ids},
+                "ref_type": ref_type,
+                "read_at": None,
+                "expires_at": {"$or": [{"$eq": None}, {"$gte": now}]},
+            }
+            for ref_type, ref_ids in ref_type_ids_map.items()
+        ]
     }
 
-    result = await db[NOTICE_DB_COLLECTION].update_many(
-        filters,
+    result = await Notice.find(filters).update_many(
         {
             "$set": {
                 "read_at": {

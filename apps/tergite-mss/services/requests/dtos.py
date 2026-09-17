@@ -12,28 +12,26 @@
 
 import enum
 from functools import cached_property
-from typing import Any, Callable, Literal, Optional, Type, Self, Tuple, List
+from typing import Any, Callable, List, Literal, Optional, Self, Tuple, Type
 
 from beanie import Document, PydanticObjectId
 from pydantic import (
     BaseModel,
-    Field,
-    field_serializer,
-    computed_field,
     ConfigDict,
-    field_validator,
+    Field,
     ValidationInfo,
+    computed_field,
+    field_serializer,
+    field_validator,
 )
 from pydantic.main import IncEx
 from pymongo import IndexModel
 
 from services.auth import User
-from services.notices import NoticeType
-from services.notices.dtos import RefType, ProjectRequestContext
-from utils.date_time import get_current_timestamp
-
-
 from services.auth.projects.dtos import ProjectCreate
+from services.notices import NoticeType
+from services.notices.dtos import ProjectRequestContext, RefType
+from utils.date_time import get_current_timestamp
 
 # FIXME:
 #   We probably need to associate every request with one target user and one requester
@@ -84,6 +82,7 @@ class RequestType(str, enum.Enum):
 
 class RequestMetadata(BaseModel):
     """The metadata for a given request"""
+
     resource: RefType
 
 
@@ -147,7 +146,9 @@ class RequestPostBody(BaseModel):
 
     @field_validator("metadata", mode="before")
     @classmethod
-    def has_right_metadata_type(cls, value: Any, info: ValidationInfo) -> RequestMetadata:
+    def has_right_metadata_type(
+        cls, value: Any, info: ValidationInfo
+    ) -> RequestMetadata:
         req_type = RequestType(info.data["type"])
         try:
             metadata_cls = cls.__type_metadata_cls_map__[req_type]
@@ -157,7 +158,7 @@ class RequestPostBody(BaseModel):
         return metadata_cls.model_validate(value)
 
 
-class  Request(RequestPostBody, Document):
+class Request(RequestPostBody, Document):
     """The schema for all user requests that have to be approved/rejected by an admin"""
 
     requester_id: PydanticObjectId
@@ -172,25 +173,70 @@ class  Request(RequestPostBody, Document):
 
     __type_status_notice_map__: dict[Tuple[RequestType, RequestStatus], NoticeType] = {
         # project creation
-        (RequestType.CREATE_PROJECT, RequestStatus.PENDING): NoticeType.PROJECT_CREATE_REQUESTED,
-        (RequestType.CREATE_PROJECT, RequestStatus.REJECTED): NoticeType.PROJECT_CREATE_REJECTED,
-        (RequestType.CREATE_PROJECT, RequestStatus.APPROVED): NoticeType.PROJECT_CREATE_APPROVED,
+        (
+            RequestType.CREATE_PROJECT,
+            RequestStatus.PENDING,
+        ): NoticeType.PROJECT_CREATE_REQUESTED,
+        (
+            RequestType.CREATE_PROJECT,
+            RequestStatus.REJECTED,
+        ): NoticeType.PROJECT_CREATE_REJECTED,
+        (
+            RequestType.CREATE_PROJECT,
+            RequestStatus.APPROVED,
+        ): NoticeType.PROJECT_CREATE_APPROVED,
         # closing projects
-        (RequestType.CLOSE_PROJECT, RequestStatus.PENDING): NoticeType.PROJECT_CLOSE_REQUESTED,
-        (RequestType.CLOSE_PROJECT, RequestStatus.REJECTED): NoticeType.PROJECT_CLOSE_REJECTED,
-        (RequestType.CLOSE_PROJECT, RequestStatus.APPROVED): NoticeType.PROJECT_CLOSE_APPROVED,
+        (
+            RequestType.CLOSE_PROJECT,
+            RequestStatus.PENDING,
+        ): NoticeType.PROJECT_CLOSE_REQUESTED,
+        (
+            RequestType.CLOSE_PROJECT,
+            RequestStatus.REJECTED,
+        ): NoticeType.PROJECT_CLOSE_REJECTED,
+        (
+            RequestType.CLOSE_PROJECT,
+            RequestStatus.APPROVED,
+        ): NoticeType.PROJECT_CLOSE_APPROVED,
         # project transfer
-        (RequestType.TRANSFER_PROJECT, RequestStatus.PENDING): NoticeType.PROJECT_TRANSFER_REQUESTED,
-        (RequestType.TRANSFER_PROJECT, RequestStatus.REJECTED): NoticeType.PROJECT_TRANSFER_REJECTED,
-        (RequestType.TRANSFER_PROJECT, RequestStatus.APPROVED): NoticeType.PROJECT_TRANSFER_APPROVED,
+        (
+            RequestType.TRANSFER_PROJECT,
+            RequestStatus.PENDING,
+        ): NoticeType.PROJECT_TRANSFER_REQUESTED,
+        (
+            RequestType.TRANSFER_PROJECT,
+            RequestStatus.REJECTED,
+        ): NoticeType.PROJECT_TRANSFER_REJECTED,
+        (
+            RequestType.TRANSFER_PROJECT,
+            RequestStatus.APPROVED,
+        ): NoticeType.PROJECT_TRANSFER_APPROVED,
         # QPU seconds requests
-        (RequestType.PROJECT_QPU_SECONDS, RequestStatus.PENDING): NoticeType.QPU_SECONDS_REQUESTED,
-        (RequestType.PROJECT_QPU_SECONDS, RequestStatus.REJECTED): NoticeType.QPU_SECONDS_DENIED,
-        (RequestType.PROJECT_QPU_SECONDS, RequestStatus.APPROVED): NoticeType.QPU_SECONDS_GRANTED,
+        (
+            RequestType.PROJECT_QPU_SECONDS,
+            RequestStatus.PENDING,
+        ): NoticeType.QPU_SECONDS_REQUESTED,
+        (
+            RequestType.PROJECT_QPU_SECONDS,
+            RequestStatus.REJECTED,
+        ): NoticeType.QPU_SECONDS_DENIED,
+        (
+            RequestType.PROJECT_QPU_SECONDS,
+            RequestStatus.APPROVED,
+        ): NoticeType.QPU_SECONDS_GRANTED,
         # project access
-        (RequestType.PROJECT_ACCESS, RequestStatus.PENDING): NoticeType.PROJECT_ACCESS_REQUESTED,
-        (RequestType.PROJECT_ACCESS, RequestStatus.REJECTED): NoticeType.PROJECT_ACCESS_REJECTED,
-        (RequestType.PROJECT_ACCESS, RequestStatus.APPROVED): NoticeType.PROJECT_ACCESS_APPROVED,
+        (
+            RequestType.PROJECT_ACCESS,
+            RequestStatus.PENDING,
+        ): NoticeType.PROJECT_ACCESS_REQUESTED,
+        (
+            RequestType.PROJECT_ACCESS,
+            RequestStatus.REJECTED,
+        ): NoticeType.PROJECT_ACCESS_REJECTED,
+        (
+            RequestType.PROJECT_ACCESS,
+            RequestStatus.APPROVED,
+        ): NoticeType.PROJECT_ACCESS_APPROVED,
     }
 
     class Settings:
@@ -210,8 +256,7 @@ class  Request(RequestPostBody, Document):
 
     @property
     def notice_type(self) -> NoticeType:
-        """The notice type for this request given current status
-        """
+        """The notice type for this request given current status"""
         return self.__type_status_notice_map__[(self.type, self.status)]
 
     @property
@@ -225,30 +270,30 @@ class  Request(RequestPostBody, Document):
         metadata = self.metadata
 
         if isinstance(metadata, CreateProjectMetadata):
-                project_name = metadata.name
-                project_ext_id = metadata.ext_id
+            project_name = metadata.name
+            project_ext_id = metadata.ext_id
 
         elif isinstance(metadata, CloseProjectMetadata):
-                pass
+            pass
 
         elif isinstance(metadata, TransferProjectMetadata):
-                admin_email = metadata.admin_email
+            admin_email = metadata.admin_email
 
         elif isinstance(metadata, ProjectQpuSecondsMetadata):
-                project_name = metadata.project_name or ""
+            project_name = metadata.project_name or ""
 
         elif isinstance(metadata, ProjectAccessMetadata):
-                project_name = metadata.project_name or ""
+            project_name = metadata.project_name or ""
 
         return ProjectRequestContext(
-                requester_name=self.requester_name,
-                project_name=project_name,
-                project_ext_id=project_ext_id,
-                reason=self.reason,
-                approver_name=approver_name,
-                seconds=seconds,
-                admin_email=admin_email,
-            )
+            requester_name=self.requester_name,
+            project_name=project_name,
+            project_ext_id=project_ext_id,
+            reason=self.reason,
+            approver_name=approver_name,
+            seconds=seconds,
+            admin_email=admin_email,
+        )
 
     @classmethod
     def from_post_body(
@@ -275,47 +320,16 @@ class  Request(RequestPostBody, Document):
         )
 
 
-class RequestUpdate(Request):
-    """The schema for updating requests"""
+class RequestUpdate(BaseModel):
+    """The schema for updating requests.
+
+    Note that only a few things can be updated on a request
+    because once a request is sent, correcting it by updating
+    would cause misalignment between involved parties
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    type: Optional[RequestType] = None
-    requester_id: Optional[PydanticObjectId] = None
-    requester_name: Optional[str] = None
     status: Optional[RequestStatus] = None
-    approver_id: Optional[PydanticObjectId] = None
-    approver_name: Optional[str] = None
     rejection_reason: Optional[str] = None
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
-
-    def model_dump(
-        self,
-        *,
-        mode: Literal["json", "python"] | str = "python",
-        include: IncEx | None = None,
-        exclude: IncEx | None = None,
-        context: Any | None = None,
-        by_alias: bool | None = None,
-        exclude_unset: bool = True,
-        exclude_defaults: bool = False,
-        exclude_none: bool = True,
-        round_trip: bool = False,
-        warnings: bool | Literal["none", "warn", "error"] = True,
-        fallback: Callable[[Any], Any] | None = None,
-        serialize_as_any: bool = False,
-    ) -> dict[str, Any]:
-        return super().model_dump(
-            mode=mode,
-            include=include,
-            exclude=exclude,
-            context=context,
-            by_alias=by_alias,
-            exclude_unset=exclude_unset,
-            exclude_defaults=exclude_defaults,
-            exclude_none=exclude_none,
-            round_trip=round_trip,
-            warnings=warnings,
-            fallback=fallback,
-            serialize_as_any=serialize_as_any,
-        )

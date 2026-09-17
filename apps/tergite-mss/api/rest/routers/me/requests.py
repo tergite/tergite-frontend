@@ -11,40 +11,32 @@
 # that they have been altered from the originals.
 
 """Routes for the current user's requests, as requester or as approver"""
-from enum import Enum
-from typing import List, Optional
+
+from typing import Optional, Literal, Tuple
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 from fastapi import status as http_status
 
 from api.rest.dependencies import CurrentUserDep
-from services.auth import User
 from services import requests as requests_service
+from services.auth import User
 from services.requests import (
     RequestPostBody,
     RequestStatus,
     RequestType,
     RequestUpdate,
 )
+from services.requests.service import ALL_REQ_TYPES, ALL_REQ_STATUSES
 from utils.api import PaginatedListResponse
-
-# FIXME: Cleanup the API of requests
+from utils.exc import NotFoundError
 
 
 router = APIRouter(prefix="/requests", tags=["user-requests"])
 
 
-# FIXME: Should never be defined here
-class RequestRole(str, Enum):
-    """Which side of a request the current user is asking about"""
-
-    REQUESTER = "requester"
-    APPROVER = "approver"
-
-
 @router.post("/", status_code=http_status.HTTP_201_CREATED)
-async def create_request(body: RequestPostBody, requester: User = CurrentUserDep):
+async def create(body: RequestPostBody, requester: User = CurrentUserDep):
     """Creates a request of the type named in the body
 
     Currently only `project-access` is creatable here; RFC 0002 adds `create-project`.
@@ -55,23 +47,17 @@ async def create_request(body: RequestPostBody, requester: User = CurrentUserDep
 
     Returns:
         the created user request
-
-    Raises:
-        404: no project with ID '{ext_id}'
-        409: already a member of, or already has a pending request for, the project
-        429: too many pending requests, or too many failed project lookups
     """
     # FIXME: Create project access, yet the requests endpoint is a general term
-    return await requests_service.create(
-        request_body=body, requester=requester
-    )
+    return await requests_service.create(request_body=body, requester=requester)
 
 
 @router.get("/")
-async def get_my_requests(
-    role: RequestRole = Query(RequestRole.REQUESTER),
-    status: Optional[RequestStatus] = Query(None),
-    types: List[RequestType] = Query((), alias="type"),
+async def get_many(
+    role: Literal["requester", "approver"] = Query("approver"),
+    status: Tuple[RequestStatus, ...] = Query(ALL_REQ_STATUSES),
+    types: Tuple[RequestType, ...] = Query(ALL_REQ_TYPES, alias="type"),
+    sort: tuple[str, ...] = Query(("-created_at",)),
     skip: int = Query(0),
     limit: Optional[int] = Query(None),
     user: User = CurrentUserDep,
@@ -80,8 +66,9 @@ async def get_my_requests(
 
     Args:
         role: whether to return the user's own requests or those they may react to
-        status: the status to filter by; default = None i.e. any
-        types: the request types to filter by; repeat the param for many
+        status: the status to filter by; default = ALL_REQ_STATUSES i.e. any
+        types: the request types to filter by; repeat the param for many; default = ALL_REQ_TYPES
+        sort: the fields to sort by and in what direction, '-' meaning descending order; default = -created_at
         skip: the number of records to skip
         limit: the maximum number of records to return
         user: the current signed-in user
@@ -89,14 +76,20 @@ async def get_my_requests(
     Returns:
         the paginated list of matched requests, newest first
     """
-    if role == RequestRole.APPROVER:
-        data = await requests_service.get_many_as_approver(
-            user, status=status, types=types, skip=skip, limit=limit
-        )
+    filter_obj: dict = {"status": {"$in": status}}
+    if role == "approver":
+        filter_obj["target_user_ids"] = user.id
     else:
-        data = await requests_service.get_many_as_requester(
-            str(user.id), status=status, types=types, skip=skip, limit=limit
-        )
+        filter_obj["requester_id"] = user.id
+
+    data = await requests_service.get_many(
+        filter_obj,
+        current_user_id=user.id,
+        request_types=types,
+        skip=skip,
+        sort=sort,
+        limit=limit,
+    )
 
     return PaginatedListResponse(data=data, skip=skip, limit=limit).model_dump(
         mode="json"
@@ -104,25 +97,28 @@ async def get_my_requests(
 
 
 @router.put("/{_id}")
-async def react_to_request(
-    _id: PydanticObjectId,
+async def update(
+    pk: PydanticObjectId,
     body: RequestUpdate,
     user: User = CurrentUserDep,
 ):
-    """Approves or rejects a request the current user is entitled to react to
+    """Updates a request.
+
+    Only approvers can update a request, not requesters.
 
     Args:
-        _id: the unique identifier of the request
-        body: the new status, plus a rejection reason if rejecting
+        pk: the unique identifier of the request
+        body: the payload containing new field values
         user: the current signed-in user
 
     Returns:
-        the updated user request
+        the updated request
 
     Raises:
-        403: you are not entitled to react to this request
         404: {_id} not found
-        409: request has already been approved/rejected
     """
-    result = await requests_service.update(_id, payload=body, admin_user=user)
-    return result.model_dump(mode="json")
+    result = await requests_service.update({"_id": pk}, payload=body, current_user=user, limit=1)
+    if len(result) == 0:
+        raise NotFoundError(f"{pk} not found")
+
+    return result[0]

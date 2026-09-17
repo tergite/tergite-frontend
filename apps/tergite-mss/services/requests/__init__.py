@@ -10,14 +10,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from .dtos import (
-    Request,
-    RequestStatus,
-    RequestType,
-    RequestUpdate,
- RequestPostBody
-)
-from .service import create
+from .dtos import Request, RequestPostBody, RequestStatus, RequestType, RequestUpdate
+from .service import create, get_many, get_one, update
 
 _DECIDED_STATUSES = (RequestStatus.APPROVED, RequestStatus.REJECTED)
 
@@ -28,4 +22,7 @@ __all__ = [
     "RequestUpdate",
     "RequestPostBody",
     "create",
+    "get_one",
+    "get_many",
+    "update",
 ]

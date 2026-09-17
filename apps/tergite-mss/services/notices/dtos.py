@@ -13,19 +13,19 @@
 import dataclasses
 from datetime import datetime
 from enum import Enum, nonmember
-from typing import Any, Dict, List, Optional, Self, Type, Annotated, TypeAlias
+from typing import Annotated, Any, Dict, List, Optional, Self, Type, TypeAlias
 
 from beanie import Document, PydanticObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import (
     BaseModel,
+    BeforeValidator,
+    ConfigDict,
     Field,
     computed_field,
     field_serializer,
-    model_validator,
-    ConfigDict,
     field_validator,
-    BeforeValidator,
+    model_validator,
 )
 from pydantic_core.core_schema import ValidationInfo
 from pymongo import IndexModel
@@ -332,6 +332,7 @@ class Notice(Document):
             IndexModel([("email_status", 1), ("updated_at", 1)], sparse=True),
             IndexModel("expires_at", expireAfterSeconds=0),
             IndexModel(("starts_at", "expires_at")),
+            IndexModel(("ref_type", "ref_id"), sparse=True),
         ]
         validate_on_save = True
 

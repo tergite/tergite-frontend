@@ -18,8 +18,9 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi import status as http_status
 
-from services import notices as notices_service, requests as requests_service
+from services import notices as notices_service
 from services import qpu_grants
+from services import requests as requests_service
 from services.auth import (
     APP_TOKEN_AUTH,
     Project,
