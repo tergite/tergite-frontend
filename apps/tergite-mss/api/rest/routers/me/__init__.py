@@ -14,12 +14,12 @@
 
 from fastapi import APIRouter
 
-from api.rest.dependencies import CurrentUserDep
-from services.auth import APP_TOKEN_AUTH, APP_TOKEN_BACKEND, User, UserRead
+from services.auth import APP_TOKEN_AUTH, APP_TOKEN_BACKEND
 
 from .jobs import router as jobs_router
 from .notices import router as notices_router
 from .requests import router as requests_router
+from .profile import router as profile_router
 
 router = APIRouter(prefix="/me")
 
@@ -35,12 +35,7 @@ router.include_router(
     tags=["auth"],
 )
 
-router.include_router(requests_router)
-router.include_router(notices_router)
-router.include_router(jobs_router)
-
-
-@router.get("", tags=["users"], response_model=UserRead)
-async def get_my_user_info(user: User = CurrentUserDep):
-    """Retrieves the information on the current user"""
-    return user.model_dump()
+router.include_router(requests_router, prefix="/requests", tags=["user-requests"])
+router.include_router(notices_router, prefix="/notices", tags=["notices"])
+router.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
+router.include_router(profile_router, prefix="/profile", tags=["profile"])

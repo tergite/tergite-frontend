@@ -31,7 +31,7 @@ from services.requests.service import ALL_REQ_STATUSES, ALL_REQ_TYPES
 from utils.api import PaginatedListResponse
 from utils.exc import NotFoundError
 
-router = APIRouter(prefix="/requests", tags=["user-requests"])
+router = APIRouter()
 
 
 @router.post("/", status_code=http_status.HTTP_201_CREATED)

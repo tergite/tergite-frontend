@@ -18,7 +18,7 @@ from services.jobs import get_latest_many
 from services.jobs.dtos import JobQuery
 from utils.api import PaginatedListResponse
 
-router = APIRouter(prefix="/jobs", tags=["jobs"])
+router = APIRouter()
 
 
 @router.get("/")

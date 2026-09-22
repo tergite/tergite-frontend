@@ -19,7 +19,7 @@ from api.rest.dependencies import CurrentUserIdDep
 from services import notices as notices_service
 from services.notices import NoticeType
 
-router = APIRouter(prefix="/preferences", tags=["notices-preferences"])
+router = APIRouter()
 
 
 @router.get("/")
