@@ -14,10 +14,12 @@
 
 from fastapi import APIRouter
 
-from .preferences import router as preferences_router
 from .notices import router as notices_router
+from .preferences import router as preferences_router
 
 router = APIRouter()
 
-router.include_router(preferences_router, prefix="/preferences", tags=["notices-preferences"])
+router.include_router(
+    preferences_router, prefix="/preferences", tags=["notices-preferences"]
+)
 router.include_router(notices_router, prefix="", tags=["notices"])

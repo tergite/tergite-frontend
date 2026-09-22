@@ -18,8 +18,8 @@ from services.auth import APP_TOKEN_AUTH, APP_TOKEN_BACKEND
 
 from .jobs import router as jobs_router
 from .notices import router as notices_router
-from .requests import router as requests_router
 from .profile import router as profile_router
+from .requests import router as requests_router
 
 router = APIRouter(prefix="/me")
 

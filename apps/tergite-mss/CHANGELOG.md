@@ -69,6 +69,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - [BREAKING]: Changed `/admin/bcc-users` to `/admin/bcc/users` endpoints
 - [BREAKING]: Changed `/admin/recalibration` to `/admin/bcc/recalibration` endpoints
 - [BREAKING]: Changed `/admin/switch` to `/admin/bcc/switch` endpoints
+- [BREAKING]: Changed GET `/me` profile endpoint to GET `/me/profile`
 
 ### Fixed
 

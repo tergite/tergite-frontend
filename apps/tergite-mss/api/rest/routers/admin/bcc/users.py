@@ -92,9 +92,7 @@ async def remove_bcc_user(
     return response
 
 
-@router.get(
-    "/{backend}", response_model=PaginatedListResponse[BCCUserProfile]
-)
+@router.get("/{backend}", response_model=PaginatedListResponse[BCCUserProfile])
 async def view_bcc_users(
     bcc_client: BccClientDep,
     request_id: RequestIdDep,

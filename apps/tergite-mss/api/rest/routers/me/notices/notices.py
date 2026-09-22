@@ -22,8 +22,8 @@ from services.auth import User
 from services.notices import NoticeType
 from utils.api import GeneralMessage, PaginatedListResponse
 
-
 router = APIRouter()
+
 
 @router.get("/")
 async def get_my_notices(

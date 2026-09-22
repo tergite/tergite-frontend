@@ -16,8 +16,8 @@ from fastapi import APIRouter
 
 from services.auth import APP_TOKEN_AUTH
 
-from .notices import router as notices_router
 from .bcc import router as bcc_router
+from .notices import router as notices_router
 from .users import router as users_router
 
 router = APIRouter(prefix="/admin")

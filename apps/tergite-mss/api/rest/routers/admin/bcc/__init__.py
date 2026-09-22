@@ -14,13 +14,14 @@
 
 from fastapi import APIRouter
 
-
-from .users import router as users_router
 from .recalibration import router as recalibration_router
 from .switch import router as switch_router
+from .users import router as users_router
 
 router = APIRouter()
 
 router.include_router(users_router, prefix="/users", tags=["users"])
-router.include_router(recalibration_router, prefix="/recalibration", tags=["recalibration"])
+router.include_router(
+    recalibration_router, prefix="/recalibration", tags=["recalibration"]
+)
 router.include_router(switch_router, prefix="/switch", tags=["switch"])

@@ -76,9 +76,7 @@ async def delete_notice(
     return await notices_service.delete_notice(db, pk=notice_id)
 
 
-@router.get(
-    "", response_model_by_alias=False, dependencies=[CurrentSuperuserDep]
-)
+@router.get("", response_model_by_alias=False, dependencies=[CurrentSuperuserDep])
 async def get_many_notices(
     db: MongoDbDep,
     skip: int = 0,
