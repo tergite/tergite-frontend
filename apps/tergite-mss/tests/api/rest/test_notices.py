@@ -29,6 +29,8 @@ from tests._utils.auth import (
 )
 from utils import rate_limit
 
+# FIXME: Cleanup this file
+
 _COLLECTION = "notices"
 _PREFS_COLLECTION = "notification_preferences"
 

@@ -24,6 +24,8 @@ from tests.conftest import get_auth_cookie
 
 _GITHUB_CALLBACK = "/auth/github/callback"
 
+# FIXME: Cleanup this file
+
 
 @pytest.fixture
 def personal_qpu_seconds():

@@ -14,7 +14,7 @@
 from beanie import PydanticObjectId
 
 from services.auth import Project
-from services.notifications import NotificationType
+from services.notices import NoticeType
 from tests._utils.auth import (
     TEST_OUTSIDER_EMAIL,
     TEST_OUTSIDER_ID,
@@ -27,6 +27,7 @@ from tests._utils.auth import (
 
 _TOKEN_COLLECTION = "auth_app_tokens"
 
+# FIXME: Cleanup this file
 
 def _url(project_id=TEST_PROJECT_ID, member_id=TEST_SYSTEM_USER_ID):
     return f"/me/projects/{project_id}/members/{member_id}"
@@ -74,7 +75,7 @@ def test_removal_notifies_the_removed_member(client, user_jwt_cookie, db):
         )
 
         assert [item["type"] for item in got] == [
-            NotificationType.PROJECT_MEMBERSHIP_REVOKED
+            NoticeType.PROJECT_MEMBERSHIP_REVOKED
         ]
         assert "test-project" in got[0]["title"]
 

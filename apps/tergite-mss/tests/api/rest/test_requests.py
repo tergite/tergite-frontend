@@ -16,7 +16,7 @@ from beanie import PydanticObjectId
 
 from services.auth import Project
 from services.auth.projects.dtos import personal_project_ext_id
-from services.auth.user_requests import UserRequest
+from services.requests import Request
 from tests._utils.auth import (
     TEST_NO_QPU_PROJECT_EXT_ID,
     TEST_OUTSIDER_EMAIL,
@@ -27,17 +27,10 @@ from tests._utils.auth import (
     TEST_USER_ID,
     get_db_record,
 )
-from utils import rate_limit
 
 _ACCESS_URL = "/me/requests/"
 
-
-@pytest.fixture(autouse=True)
-def clear_rate_limits():
-    """Rate limit counters outlive a test's database, so clear them explicitly"""
-    yield
-    for user_id in (TEST_OUTSIDER_ID, TEST_USER_ID, TEST_SUPERUSER_ID):
-        rate_limit.reset(f"project-lookup:{user_id}")
+# FIXME: Cleanup this file
 
 
 def _request_access(client, cookie, ext_id=TEST_PROJECT_EXT_ID, reason="let me in"):
@@ -61,7 +54,7 @@ def test_request_project_access(client, outsider_jwt_cookie, db):
         assert got["project_id"] == TEST_PROJECT_ID
         assert got["requester_id"] == TEST_OUTSIDER_ID
         assert got["request"]["project_name"] == "test-project"
-        assert get_db_record(db, UserRequest, got["id"]) is not None
+        assert get_db_record(db, Request, got["id"]) is not None
 
 
 def test_request_access_to_unknown_project(client, outsider_jwt_cookie):
