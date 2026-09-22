@@ -64,6 +64,11 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   new fields.
 - Removed puhuri support as this is not in the long term plans for maintenance
 - Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
+- [BREAKING]: Changed `/admin/qpu-user-requests` to `/me/requests` endpoints; 
+  expanding it to handle all types of user requests
+- [BREAKING]: Changed `/admin/bcc-users` to `/admin/bcc/users` endpoints
+- [BREAKING]: Changed `/admin/recalibration` to `/admin/bcc/recalibration` endpoints
+- [BREAKING]: Changed `/admin/switch` to `/admin/bcc/switch` endpoints
 
 ### Fixed
 
