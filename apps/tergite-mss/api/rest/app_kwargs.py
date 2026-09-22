@@ -23,13 +23,12 @@ from loguru import logger
 
 import settings
 from services import calibration as calib_service
-from services import qpu_grants
+from services import requests as requests_service
 from services.auth import service as auth_service
 from services.devices import service as devices_service
 from services.external import bcc
 from services.external.email import Emailer
 from services.notices import service as notices_service
-from utils.config import EmailConfig
 
 from .routers.devices import ws_manager as devices_ws_manager
 from .utils import get_default_mongodb
@@ -63,9 +62,7 @@ async def lifespan(_app: FastAPI):
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)
     await notices_service.on_startup(db, emailer, conf=settings.CONFIG.notices)
-    # FIXME: Fix naming of qpu_grants
-    await qpu_grants.on_startup(db)
-
+    await requests_service.on_startup(db)
     emailer.start()
     logger.info("Tergite MSS startup sequence completed successfully.")
 

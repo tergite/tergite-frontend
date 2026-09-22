@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 from .dtos import Request, RequestPostBody, RequestStatus, RequestType, RequestUpdate
-from .service import create, get_many, get_one, update
+from .service import create, get_many, get_one, on_startup, update
 
 _DECIDED_STATUSES = (RequestStatus.APPROVED, RequestStatus.REJECTED)
 
@@ -25,4 +25,5 @@ __all__ = [
     "get_one",
     "get_many",
     "update",
+    "on_startup",
 ]

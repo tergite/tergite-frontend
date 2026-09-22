@@ -12,8 +12,14 @@
 # that they have been altered from the originals.
 
 from starlette.datastructures import Headers, MutableHeaders
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
 from starlette.types import Message, Send
+
+from utils.api import WebsocketRequestLog, get_request_logs_store
+from utils.crypto import get_uuid4_str
+from utils.logging import UNLOGGED_PATHS
 
 
 class TergiteCORSMiddleware(CORSMiddleware):
@@ -41,3 +47,25 @@ class TergiteCORSMiddleware(CORSMiddleware):
             self.allow_explicit_origin(headers, origin)
 
         await send(message)
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """Middleware for handling all requests IDs in a store"""
+
+    async def dispatch(self, request: Request, call_next):
+        """Generates request ID, and records the request IDs in requests_store."""
+        if request.url.path in UNLOGGED_PATHS:
+            return await call_next(request)
+
+        # Resolve request ID (reuse x-request-id header if sent, or generate new)
+        request_id = request.headers.get("x-request-id") or get_uuid4_str()
+        request.state.request_id = request_id
+        response = await call_next(request)
+
+        requests_store = get_request_logs_store()
+        if not requests_store.exists(request_id):
+            requests_store.insert(WebsocketRequestLog.from_request(request))
+
+        # Attach request ID to response headers
+        response.headers["x-request-id"] = request_id
+        return response

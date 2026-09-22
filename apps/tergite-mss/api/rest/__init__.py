@@ -16,15 +16,11 @@
 # that they have been altered from the originals.
 
 from fastapi import FastAPI
-from fastapi.requests import Request
-from fastapi.responses import JSONResponse
-from loguru import logger
 
 import settings
-from api.rest.middleware import TergiteCORSMiddleware
+from api.rest.middleware import RequestIDMiddleware, TergiteCORSMiddleware
 from services.auth.utils import TooManyListQueryParams
-from utils.api import WebsocketRequestLog, get_request_logs_store, to_http_error
-from utils.crypto import get_uuid4_str
+from utils.api import to_http_error
 from utils.exc import (
     ConflictError,
     DbValidationError,
@@ -34,7 +30,7 @@ from utils.exc import (
     TooManyRequestsError,
     UnknownBccError,
 )
-from utils.logging import UNLOGGED_PATHS, setup_logging
+from utils.logging import setup_logging
 
 from . import app_kwargs
 from .app_kwargs import get_app_kwargs
@@ -55,86 +51,7 @@ setup_logging(settings.CONFIG.environment)
 # application
 app = FastAPI(**get_app_kwargs())
 
-
-# middleware. Order matters and reads backwards: add_middleware wraps whatever is
-# already registered, so the CORS layer added at the end of this block is the outermost
-# of the three and its headers survive the responses the other two produce.
-
-
-@app.middleware("http")
-async def catch_unhandled_errors(request: Request, call_next):
-    """Turns an unhandled exception into a 500 response from inside the CORS middleware.
-
-    A handler registered for `Exception` is taken by Starlette's ServerErrorMiddleware,
-    which wraps every other middleware including CORS. Its response therefore carries no
-    access-control-allow-origin, and a browser reports the request as a CORS failure
-    rather than the 500 that actually happened -- which is how a `$addToSet` crash on
-    approving a request reached the dashboard as 'Failed to fetch'.
-    """
-    try:
-        return await call_next(request)
-    except Exception:
-        logger.exception(f"Unhandled error: {request.method} {request.url.path}")
-        return JSONResponse(
-            status_code=500, content={"detail": "Unexpected server error"}
-        )
-
-
-@app.middleware("http")
-async def request_logging_middleware(request: Request, call_next):
-    """Generates request ID, contextualizes logging, logs requests, and records them in requests_store."""
-    import time
-
-    # Resolve request ID (reuse x-request-id header if sent, or generate new)
-    request_id = (
-        request.headers.get("x-request-id")
-        or request.headers.get("X-Request-ID")
-        or get_uuid4_str()
-    )
-    request.state.request_id = request_id
-
-    if request.url.path in UNLOGGED_PATHS:
-        return await call_next(request)
-
-    # Wrap request processing in Loguru context
-    with logger.contextualize(request_id=request_id):
-        logger.debug(
-            f"Incoming request: {request.method} {request.url.path} "
-            f"from {request.client.host if request.client else 'unknown'}"
-        )
-
-        start_time = time.time()
-        try:
-            response = await call_next(request)
-            duration = (time.time() - start_time) * 1000
-
-            # Log response based on status code
-            log_msg = f"Completed request: {request.method} {request.url.path} - Status: {response.status_code} - Duration: {duration:.2f}ms"
-            if response.status_code >= 500:
-                logger.error(log_msg)
-            elif response.status_code >= 400:
-                logger.warning(log_msg)
-            else:
-                logger.info(log_msg)
-
-        except Exception as exc:
-            duration = (time.time() - start_time) * 1000
-            logger.exception(
-                f"Request crashed: {request.method} {request.url.path} - Duration: {duration:.2f}ms"
-            )
-            raise exc
-
-        # Handle requests store recording
-        requests_store = get_request_logs_store()
-        if not requests_store.exists(request_id):
-            requests_store.insert(WebsocketRequestLog.from_request(request))
-
-        # Attach request ID to response headers
-        response.headers["x-request-id"] = request_id
-        response.headers["X-Request-ID"] = request_id
-        return response
-
-
+app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     TergiteCORSMiddleware,
     allow_origins=["*"],
@@ -178,8 +95,3 @@ async def health():
     drowned the request log when it went through a real endpoint.
     """
     return {"status": "ok"}
-
-
-@app.get("/")
-async def home(current_project: CurrentStrictProjectDep):
-    return "Welcome to the MSS machine"

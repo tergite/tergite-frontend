@@ -9,11 +9,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
-- Added `GET /admin/user-emails/`, a superuser-only lookup of user email addresses behind the
-  admin project forms. Ordinary users are refused: a directory of addresses is not public.
-- Added an unlogged `GET /health` for the container healthcheck, which used to probe
-  `GET /devices/` every ten seconds and bury real traffic in the request log and in
-  uvicorn's access log, which is what reaches `docker logs`.
+- Added `GET /admin/users/emails/`, a superuser-only lookup of user email addresses behind the
+  admin project forms.
+- Added an unlogged `GET /health` for the container healthcheck.
 - Added `project-membership-granted` and `project-admin-assigned` notifications, emitted when an
   admin creates or edits a project. Being added to a project, or handed one to administer, was
   silent; only removal was announced.
@@ -25,9 +23,6 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   `notifications.dashboard_url`. Omit `[email]` and nothing changes. Sending is done by a
   background sweeper reading the notification rows themselves, so an approval is never as slow
   as the mail server and a restart resumes the queue rather than losing it.
-- Added POST and GET `/admin/qpu-seconds-grants/` so a superuser can add QPU seconds to many
-  personal projects at once, by email list or to all of them. Requires an `Idempotency-Key`
-  header, since `$inc` is not idempotent and a retried bulk grant would otherwise apply twice.
 - Personal projects are now named after the owner's email local part, e.g.
   `paul.doe (personal)`, so an admin listing projects no longer sees a column of
   identically named rows. The `ext_id` is unchanged.
@@ -47,8 +42,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Integrated `loguru` for clean, structured, and environment-dependent logging.
 - Added flat JSON log formatter in production for seamless Docker and `journalctl` ingestion.
 - Added standard logging `InterceptHandler` to capture and route logs from Uvicorn, FastAPI, and Beanie/Motor to Loguru.
-- Added request correlation tracking via `logger.contextualize` in a unified request-response logging middleware.
-- Added smart traceback capture in exception handlers (logs full tracebacks for `500+` server errors, logs `4xx` client errors as warnings without tracebacks).
+- Added smart traceback capture in exception handlers 
+  (logs full tracebacks for `500+` server errors, logs `4xx` client errors as warnings without tracebacks).
 - Added lifecycle process start/shutdown messages and OAuth2 client provider registration logs.
 
 ### Changed
@@ -63,7 +58,6 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   `approver_scope` and `project_id`. Clients asserting on exact response bodies will see the
   new fields.
 - Removed puhuri support as this is not in the long term plans for maintenance
-- Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
 - [BREAKING]: Changed `/admin/qpu-user-requests` to `/me/requests` endpoints; 
   expanding it to handle all types of user requests
 - [BREAKING]: Changed `/admin/bcc-users` to `/admin/bcc/users` endpoints
