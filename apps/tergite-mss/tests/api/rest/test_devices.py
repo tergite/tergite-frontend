@@ -15,6 +15,7 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 import pytest
+from bson import ObjectId
 from fastapi.websockets import WebSocketDisconnect
 
 from tests._utils.bcc import create_bcc_headers
@@ -28,7 +29,6 @@ from tests._utils.records import (
     pop_field,
     with_incremental_timestamps,
 )
-from tests.api.rest.test_calibrations import _attach_str_ids
 
 _DEVICES_COLLECTION = "devices"
 _EXCLUDED_FIELDS = ["_id"]
@@ -328,3 +328,19 @@ def test_update_pre_existing_device(
             assert all(
                 [is_not_older_than(x, seconds=30) for x in updated_at_timestamps]
             )
+
+
+def _attach_str_ids(
+    data: List[Dict[str, Any]], ids: List[ObjectId], id_field: str = "_id"
+) -> List[Dict[str, Any]]:
+    """Attaches ids in string form to the data
+
+    Args:
+        data: the list of raw data records
+        ids: the list of ObjectId ids, in the same order as that of the data
+        id_field: the field on the records that is to have the id
+
+    Returns:
+        the list of records with ids attached to them
+    """
+    return [{**item, id_field: str(ids[idx])} for idx, item in enumerate(data)]

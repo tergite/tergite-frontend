@@ -29,6 +29,7 @@ _TOKEN_COLLECTION = "auth_app_tokens"
 
 # FIXME: Cleanup this file
 
+
 def _url(project_id=TEST_PROJECT_ID, member_id=TEST_SYSTEM_USER_ID):
     return f"/me/projects/{project_id}/members/{member_id}"
 
@@ -74,9 +75,7 @@ def test_removal_notifies_the_removed_member(client, user_jwt_cookie, db):
             db["notices"].find({"user_id": PydanticObjectId(TEST_SYSTEM_USER_ID)})
         )
 
-        assert [item["type"] for item in got] == [
-            NoticeType.PROJECT_MEMBERSHIP_REVOKED
-        ]
+        assert [item["type"] for item in got] == [NoticeType.PROJECT_MEMBERSHIP_REVOKED]
         assert "test-project" in got[0]["title"]
 
 
