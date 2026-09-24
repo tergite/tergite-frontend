@@ -82,3 +82,21 @@ client_type = "github"
 email_regex = "^(john\\.doe|paul\\.doe)@example\\.com$"
 email_domain = "example.com"
 roles = ["admin", "user"]
+
+[notices]
+retention_days = 90
+dashboard_url = "https://dashboard.example.com"
+email_sweep_interval = 0.05
+email_retry_limit = 3
+app_name = "WACQT"
+
+[email]
+hostname = "smtp.example.com"
+port = 2525
+username = "mss@example.com"
+password = "hidden"
+# use_tls = true
+from_address = "no-reply@example.com"
+from_name = "Tergite test"
+# timeout = 10
+

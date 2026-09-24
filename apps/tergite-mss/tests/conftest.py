@@ -10,6 +10,7 @@ from tests._utils.env import (
     setup_test_env,
 )
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
+from utils.config import EmailConfig
 
 # Set up the test environment before any other imports are made
 setup_test_env()
@@ -150,7 +151,7 @@ def outsider_jwt_cookie() -> Dict[str, str]:
 
 
 @pytest.fixture
-def project_id(db) -> PydanticObjectId:
+def project_id(db) -> Generator[PydanticObjectId, Any, None]:
     """the project id for the default app token header"""
     from services.auth import Project
 

@@ -24,9 +24,26 @@ from tests.conftest import get_auth_cookie
 
 _GITHUB_CALLBACK = "/auth/github/callback"
 
-# FIXME: Cleanup this file
+# FIXME: Organization of the test files and test functions should mimic the hierarchy of the actual
+#   REST api routes as seen in the api/rest/routers folder
+#   NOTE: Do note change the hierarchy of those routers in api/rest/routers unless it fits the
+#       general mental model. It is not advisable to just keep adding new routes without considering
+#       how they fall into the current general structure and layout.
 
+# FIXME: Linked to above, tests in the test files like test_project_members, test_qpu_warnings, test_requests, etc. need
+#   to be put in the appropriate test files following the router they belong to e.g. test_project_members is probably
+#   part of tests/api/me/test_my_projects.
 
+# FIXME: Small utilities like _url in tests/api/test_project_members.py are ugly. First of all they are inappropriately named. A function name must be a verb.
+#   Secondly, they are just a single line. They don't help at all except make the process of reading the code just longer because one
+#   has to jump to the definition of that one line.
+
+# FIXME: Avoid scattering fixtures all over modules. They need to be in one place in the conftest
+#   so that we avoid redefining them or having conflicts if the same fixtures are defined twice but with different implementations
+# FIXME: Instead of sprinkling fixtures all over the test files, consider the fixtures that are already being used to set
+#   the environment of the app e.g. tests/fixtures/config.test.toml and tests/_utils/env.py. You may find that it is faster
+#   and easier to track when the values you want to set e.g. personal_qpu_seconds are set in the appropriate file (which is already
+#   loaded by default in the client fixture)
 @pytest.fixture
 def personal_qpu_seconds():
     """Grants a non-zero personal allowance for the duration of the test"""
@@ -45,19 +62,6 @@ def personal_projects_disabled():
     settings.CONFIG.projects.personal_projects_enabled = original
 
 
-def _login(client, cookie_oauth_state):
-    return client.get(
-        f"{_GITHUB_CALLBACK}?code=test&state={cookie_oauth_state}",
-        follow_redirects=False,
-    )
-
-
-def _personal_project(db, user_id):
-    return get_db_record(
-        db, Project, _filter={"ext_id": personal_project_ext_id(user_id)}
-    )
-
-
 def test_login_creates_personal_project(
     client, github_user, cookie_oauth_state, db, personal_qpu_seconds
 ):
@@ -66,7 +70,7 @@ def test_login_creates_personal_project(
         assert _login(client, cookie_oauth_state).status_code == 307
 
         user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
-        project = _personal_project(db, user["_id"])
+        project = _get_personal_project(db, user["_id"])
 
         assert project is not None
         assert project["name"] == personal_project_name(TEST_GITHUB_PROFILE["email"])
@@ -86,7 +90,7 @@ def test_personal_project_defaults_to_zero_seconds(
 
         user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
 
-        assert _personal_project(db, user["_id"])["qpu_seconds"] == 0
+        assert _get_personal_project(db, user["_id"])["qpu_seconds"] == 0
 
 
 def test_second_login_does_not_duplicate(client, github_user, cookie_oauth_state, db):
@@ -108,7 +112,7 @@ def test_existing_user_converges_on_login(
 ):
     """A user predating the feature gets their project on next login, with no migration"""
     with client as client:
-        assert _personal_project(db, insert_chalmers_user["_id"]) is None
+        assert _get_personal_project(db, insert_chalmers_user["_id"]) is None
 
         response = client.get(
             f"/auth/chalmers/callback?code=test&state={cookie_oauth_state}",
@@ -116,7 +120,7 @@ def test_existing_user_converges_on_login(
         )
 
         assert response.status_code == 307
-        assert _personal_project(db, insert_chalmers_user["_id"]) is not None
+        assert _get_personal_project(db, insert_chalmers_user["_id"]) is not None
 
 
 def test_disabled_personal_projects(
@@ -170,14 +174,14 @@ def test_superuser_can_delete_a_personal_project(
     with client as client:
         _login(client, cookie_oauth_state)
         user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
-        project = _personal_project(db, user["_id"])
+        project = _get_personal_project(db, user["_id"])
 
         response = client.delete(
             f"/admin/projects/{project['_id']}", cookies=admin_jwt_cookie
         )
 
         assert response.status_code == 204
-        assert _personal_project(db, user["_id"]) is None
+        assert _get_personal_project(db, user["_id"]) is None
 
 
 def test_owner_cannot_delete_their_own_personal_project(
@@ -187,7 +191,7 @@ def test_owner_cannot_delete_their_own_personal_project(
     with client as client:
         _login(client, cookie_oauth_state)
         user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
-        project = _personal_project(db, user["_id"])
+        project = _get_personal_project(db, user["_id"])
 
         response = client.delete(
             f"/me/projects/{project['_id']}",
@@ -198,7 +202,7 @@ def test_owner_cannot_delete_their_own_personal_project(
         assert response.json() == {
             "detail": "you cannot delete your own personal project"
         }
-        assert _personal_project(db, user["_id"]) is not None
+        assert _get_personal_project(db, user["_id"]) is not None
 
 
 def test_shared_project_can_still_be_deleted(client, admin_jwt_cookie, db, project_id):
@@ -210,3 +214,19 @@ def test_shared_project_can_still_be_deleted(client, admin_jwt_cookie, db, proje
 
         assert response.status_code == 204
         assert get_db_record(db, Project, str(project_id)) is None
+
+
+# FIXME: Helpers should always be below the main functions so that it reads like an article ... important things, then appendix
+
+def _login(client, cookie_oauth_state):
+    return client.get(
+        f"{_GITHUB_CALLBACK}?code=test&state={cookie_oauth_state}",
+        follow_redirects=False,
+    )
+
+
+# FIXME: Names of functions must be verbs unless they are conversion functions like to_str()
+def _get_personal_project(db, user_id):
+    return get_db_record(
+        db, Project, _filter={"ext_id": personal_project_ext_id(user_id)}
+    )
