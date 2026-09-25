@@ -21,7 +21,7 @@ from pytest_lazyfixture import lazy_fixture
 from pytest_mock import MockerFixture
 
 from services.auth import Project
-from tests._utils.auth import TEST_PROJECT_EXT_ID, TEST_USER_ID, get_db_record
+from tests._utils.auth import TEST_PROJECT_ID, TEST_USER_ID, get_db_record
 from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import (
     get_current_timestamp_str,
@@ -337,7 +337,7 @@ def test_update_job_resource_usage(
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
 
     project_before_update = get_db_record(
-        db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
     )
 
     url = f"/devices/ws/{device}"
@@ -358,7 +358,7 @@ def test_update_job_resource_usage(
             assert response["status"] == "success"
 
     project_after_update = get_db_record(
-        db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
     )
     expected_resource_usage = _get_resource_usage(raw_payload["timestamps"])
     actual_resource_usage = round(
@@ -381,7 +381,7 @@ def test_update_job_resource_usage_advanced(
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
 
     project_before_update = get_db_record(
-        db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
     )
 
     url = f"/devices/ws/{device}"
@@ -402,7 +402,7 @@ def test_update_job_resource_usage_advanced(
             assert response["status"] == "success"
 
     project_after_update = get_db_record(
-        db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
     )
     expected_resource_usage = _get_resource_usage(payload["timestamps"])
     actual_resource_usage = round(

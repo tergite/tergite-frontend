@@ -262,7 +262,6 @@ class Request(RequestPostBody, Document):
     def notice_context(self) -> ProjectRequestContext:
         """The context for the notice that is to be sent out for the given request"""
         project_name = ""
-        project_ext_id = ""
         approver_name = ""
         seconds = ""
         admin_email = ""
@@ -270,7 +269,6 @@ class Request(RequestPostBody, Document):
 
         if isinstance(metadata, CreateProjectMetadata):
             project_name = metadata.name
-            project_ext_id = metadata.ext_id
 
         elif isinstance(metadata, CloseProjectMetadata):
             pass
@@ -287,7 +285,6 @@ class Request(RequestPostBody, Document):
         return ProjectRequestContext(
             requester_name=self.requester_name,
             project_name=project_name,
-            project_ext_id=project_ext_id,
             reason=self.reason,
             approver_name=approver_name,
             seconds=seconds,

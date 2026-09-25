@@ -25,7 +25,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   as the mail server and a restart resumes the queue rather than losing it.
 - Personal projects are now named after the owner's email local part, e.g.
   `paul.doe (personal)`, so an admin listing projects no longer sees a column of
-  identically named rows. The `ext_id` is unchanged.
+  identically named rows.
 - Added an auto-created personal project for every user, granted on login with
   `projects.personal_qpu_seconds` (default 0). Previously a new user had no project and so
   could not create an app token or submit a job without an admin adding them to one.
@@ -64,6 +64,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - [BREAKING]: Changed `/admin/recalibration` to `/admin/bcc/recalibration` endpoints
 - [BREAKING]: Changed `/admin/switch` to `/admin/bcc/switch` endpoints
 - [BREAKING]: Changed GET `/me` profile endpoint to GET `/me/profile`
+- [BREAKING]: Remove `ext_id`, `source` and `resource_ids` from project schema
 
 ### Fixed
 

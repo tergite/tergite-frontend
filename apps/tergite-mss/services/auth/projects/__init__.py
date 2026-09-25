@@ -9,13 +9,13 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Optional, Sequence
+from typing import Sequence
 
 from fastapi import APIRouter, Depends
 from fastapi_users.authentication import BearerTransport
-from pymongo.errors import DuplicateKeyError
 
 import settings
+from utils.config import ProjectsConfig
 
 from ..app_tokens.auth_backend import AppTokenAuthenticationBackend
 from ..app_tokens.authenticator import AppTokenAuthenticator
@@ -24,7 +24,7 @@ from ..app_tokens.routers import get_app_tokens_router
 from ..app_tokens.strategy import AppTokenStrategy
 from ..users import get_user_db
 from ..users.database import UserDatabase
-from ..users.dtos import CurrentUserDependency, User
+from ..users.dtos import CurrentUserDependency
 from ..users.manager import UserManagerDependency
 from . import routers
 from .database import ProjectDatabase
@@ -33,10 +33,7 @@ from .dtos import (
     ProjectAdminView,
     ProjectCreate,
     ProjectRead,
-    ProjectSource,
     ProjectUpdate,
-    personal_project_ext_id,
-    personal_project_name,
 )
 from .manager import ProjectAppTokenManager, ProjectManagerDependency
 from .routers import CurrentSuperUserDependency, CurrentUserIdDependency
@@ -44,46 +41,10 @@ from .routers import CurrentSuperUserDependency, CurrentUserIdDependency
 
 async def get_project_db():
     """Dependency injector of the projects database"""
-    yield ProjectDatabase()
-
-
-async def ensure_personal_project(user: User) -> Optional[Project]:
-    """Creates the user's personal project if they do not have one yet.
-
-    Idempotent, and safe against concurrent logins: ext_id is derived from the user ID
-    so the unique index on ext_id rejects the loser of a race, which is then re-read.
-
-    Args:
-        user: the user whose personal project is required
-
-    Returns:
-        the personal project, or None if personal projects are disabled
-    """
-    if not settings.CONFIG.projects.personal_projects_enabled:
-        return None
-
-    ext_id = personal_project_ext_id(user.id)
-    existing = await ProjectDatabase.get_by_ext_id(ext_id)
-    if existing is not None:
-        return existing
-
-    project = Project(
-        ext_id=ext_id,
-        name=personal_project_name(user.email),
-        qpu_seconds=settings.CONFIG.projects.personal_qpu_seconds,
-        admin_id=str(user.id),
-        user_ids=[str(user.id)],
-        user_emails=[user.email],
-        admin_email=user.email,
-        is_personal=True,
-        source=ProjectSource.INTERNAL,
-    )
-    try:
-        await project.create()
-    except DuplicateKeyError:
-        return await ProjectDatabase.get_by_ext_id(ext_id)
-
-    return project
+    # Using a global variable here because this is a dependency injector,
+    #   and it would be easier to test if the settings is used directly in the code
+    #   as opposed to used as a default parameter.
+    return ProjectDatabase(conf=settings.CONFIG.projects)
 
 
 def get_app_token_backend(

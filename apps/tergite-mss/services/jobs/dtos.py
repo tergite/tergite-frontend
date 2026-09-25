@@ -127,8 +127,8 @@ class Job(JobCreate):
 
     id: Optional[PydanticObjectId] = Field(alias="_id", default=None)
     job_id: str = Field(default_factory=get_uuid4_str)
-    project_id: Optional[str] = None
-    user_id: Optional[str] = None
+    project_id: Optional[PydanticObjectId] = None
+    user_id: Optional[PydanticObjectId] = None
     status: JobStatus = JobStatus.PENDING
     failure_reason: Optional[str] = None
     cancellation_reason: Optional[str] = None
@@ -151,10 +151,10 @@ class Job(JobCreate):
         except AttributeError:
             return None
 
-    @field_serializer("id", when_used="json")
-    def serialize_id(self, _id: PydanticObjectId):
-        """Convert id to builtin types like str when working with JSON"""
-        return str(_id)
+    @field_serializer("id", "project_id", "user_id", when_used="json")
+    def serialize_object_id(self, value: PydanticObjectId):
+        """Convert objectID to builtin types like str when working with JSON"""
+        return str(value)
 
     def model_dump(
         self,

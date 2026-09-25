@@ -72,10 +72,10 @@ class AppTokenStrategy(DatabaseStrategy):
             return None
 
         try:
-            user_id = str(access_token.user_id)
-            ext_id = access_token.project_ext_id
-            return await project_manager.get_pair_by_ext_and_user_id(
-                ext_id=ext_id, user_id=user_id
+            user_id = access_token.user_id
+            project_id = access_token.project_id
+            return await project_manager.get_project_user_pair(
+                project_id=project_id, user_id=user_id
             )
         except ProjectNotExists:
             return None

@@ -797,7 +797,7 @@ def _extract_error_message(response: httpx.Response) -> str:
     """
     try:
         response_json = response.json()
-        return response_json.get("detail", response_json)
+        return response_json.get("detail")
     except JSONDecodeError:
         return response.text
 

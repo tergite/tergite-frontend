@@ -76,7 +76,7 @@ def get_app_tokens_router(
         skip: int = Query(0),
         limit: Optional[int] = Query(None),
         ids: Optional[List[PydanticObjectId]] = Query(None, alias="id"),
-        project_ext_id: Optional[List[str]] = Query(None),
+        project_id: Optional[List[PydanticObjectId]] = Query(None),
         title: Optional[List[str]] = Query(None),
         min_lifespan_seconds: Optional[int] = Query(None),
         max_lifespan_seconds: Optional[int] = Query(None),
@@ -92,15 +92,15 @@ def get_app_tokens_router(
 
             filter_obj["_id"] = {"$in": ids}
 
-        if project_ext_id is not None:
-            if len(project_ext_id) > MAX_LIST_QUERY_LEN:
+        if project_id is not None:
+            if len(project_id) > MAX_LIST_QUERY_LEN:
                 raise TooManyListQueryParams(
-                    "project_ext_id",
+                    "project_id",
                     expected=MAX_LIST_QUERY_LEN,
-                    got=len(project_ext_id),
+                    got=len(project_id),
                 )
 
-            filter_obj["project_ext_id"] = {"$in": project_ext_id}
+            filter_obj["project_id"] = {"$in": project_id}
 
         if title is not None:
             if len(title) > MAX_LIST_QUERY_LEN:
@@ -139,7 +139,9 @@ def get_app_tokens_router(
         strategy: AppTokenStrategy = Depends(backend.get_strategy),
         user_id: str = Depends(get_current_user_id),
     ):
-        project = await project_manager.authenticate(details=payload, user_id=user_id)
+        project = await project_manager.authenticate(
+            details=payload, user_id=PydanticObjectId(user_id)
+        )
 
         if project is None or not project.is_active:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)

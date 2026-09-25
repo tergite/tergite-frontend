@@ -191,21 +191,8 @@ class ProjectsConfig(BaseModel):
     # deployment behaving as it did before personal projects existed.
     personal_qpu_seconds: float = 0
 
-    # whether personal projects are auto-created on login at all
-    personal_projects_enabled: bool = True
-
     # notify the project admin when remaining QPU seconds fall below this
     qpu_seconds_low_threshold: float = 600
-
-    # maximum pending user requests one user may have at a time
-    max_pending_requests_per_user: int = 5
-
-    # maximum failed project lookups per user per hour before 429
-    max_failed_lookups_per_hour: int = 20
-
-    # upper bound on a single bulk QPU-seconds grant, so a mistyped figure cannot hand
-    # out a decade of machine time; 30 days
-    max_grant_seconds: float = 2592000
 
 
 class EmailConfig(BaseModel):

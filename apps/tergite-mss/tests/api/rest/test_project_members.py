@@ -50,7 +50,7 @@ def test_removal_revokes_the_members_tokens(client, user_jwt_cookie, db):
         before = db[_TOKEN_COLLECTION].count_documents(
             {
                 "user_id": PydanticObjectId(TEST_SYSTEM_USER_ID),
-                "project_ext_id": "test-project-1",
+                "project_id": "test-project-1",
             }
         )
         assert before == 1
@@ -60,7 +60,7 @@ def test_removal_revokes_the_members_tokens(client, user_jwt_cookie, db):
         after = db[_TOKEN_COLLECTION].count_documents(
             {
                 "user_id": PydanticObjectId(TEST_SYSTEM_USER_ID),
-                "project_ext_id": "test-project-1",
+                "project_id": "test-project-1",
             }
         )
         assert after == 0

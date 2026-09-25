@@ -97,16 +97,14 @@ def test_email_is_not_queued_when_opted_out(
         )
 
 
-def test_sweeper_sends_a_queued_email(
-    client, outsider_jwt_cookie, db, smtp
-):
+def test_sweeper_sends_a_queued_email(client, outsider_jwt_cookie, db, smtp):
     """The end-to-end path: a request notifies an admin, who is then emailed"""
     with client as client:
         _request_project_access(client, outsider_jwt_cookie)
 
         assert _wait_until(
             lambda: _get_latest_user_notice(db, TEST_USER_ID)["email_status"]
-                    == EmailStatus.SENT
+            == EmailStatus.SENT
         )
 
     message = smtp.call_args.args[0]
@@ -117,9 +115,7 @@ def test_sweeper_sends_a_queued_email(
     assert _get_latest_user_notice(db, TEST_USER_ID)["email_attempts"] == 1
 
 
-def test_a_failed_send_stays_pending(
-    client, outsider_jwt_cookie, db, failing_smtp
-):
+def test_a_failed_send_stays_pending(client, outsider_jwt_cookie, db, failing_smtp):
     """A dead mail server must not lose the mail"""
     with client as client:
         _request_project_access(client, outsider_jwt_cookie)
@@ -144,28 +140,30 @@ def test_sending_gives_up_at_the_retry_limit(
 
         assert _wait_until(
             lambda: _get_latest_user_notice(db, TEST_USER_ID)["email_status"]
-                    == EmailStatus.FAILED
+            == EmailStatus.FAILED
         )
 
-        assert _get_latest_user_notice(db, TEST_USER_ID)["email_attempts"] == retry_limit
+        assert (
+            _get_latest_user_notice(db, TEST_USER_ID)["email_attempts"] == retry_limit
+        )
 
 
-def test_a_notification_for_an_unknown_user_fails_at_once(
-    client, db, smtp
-):
+def test_a_notification_for_an_unknown_user_fails_at_once(client, db, smtp):
     """No address to send to means no retry will ever help"""
-    db[_COLLECTION].insert_one({
-        "user_id": PydanticObjectId(),
-        "type": NoticeType.PROJECT_ACCESS_APPROVED,
-        "title": "Access approved",
-        "body": "you are in",
-        "severity": "info",
-        "context": {},
-        "email_status": EmailStatus.PENDING,
-        "email_attempts": 0,
-        "created_at": get_current_timestamp(),
-        "updated_at": get_current_timestamp(),
-    })
+    db[_COLLECTION].insert_one(
+        {
+            "user_id": PydanticObjectId(),
+            "type": NoticeType.PROJECT_ACCESS_APPROVED,
+            "title": "Access approved",
+            "body": "you are in",
+            "severity": "info",
+            "context": {},
+            "email_status": EmailStatus.PENDING,
+            "email_attempts": 0,
+            "created_at": get_current_timestamp(),
+            "updated_at": get_current_timestamp(),
+        }
+    )
 
     with client as client:
         assert _wait_until(
@@ -175,9 +173,7 @@ def test_a_notification_for_an_unknown_user_fails_at_once(
         smtp.assert_not_awaited()
 
 
-def test_sweeper_does_not_run_when_unconfigured(
-    client, outsider_jwt_cookie, db, smtp
-):
+def test_sweeper_does_not_run_when_unconfigured(client, outsider_jwt_cookie, db, smtp):
     """An unconfigured channel starts no background task"""
     with client as client:
         _request_project_access(client, outsider_jwt_cookie)
@@ -186,9 +182,7 @@ def test_sweeper_does_not_run_when_unconfigured(
         smtp.assert_not_awaited()
 
 
-def test_sweeper_survives_a_failing_sweep(
-    client, db, mocker
-):
+def test_sweeper_survives_a_failing_sweep(client, db, mocker):
     """One bad sweep must not take the loop down for the rest of the process"""
     sweep = mocker.patch(
         "services.notices.outbox.send_pending",
@@ -269,7 +263,7 @@ def _request_project_access(client, cookie):
         cookies=cookie,
         json={
             "type": "project-access",
-            "project_ext_id": TEST_PROJECT_EXT_ID,
+            "project_id": TEST_PROJECT_EXT_ID,
             "reason": "let me in",
         },
     )

@@ -127,7 +127,6 @@
   {
     "request": {
       "name": "New Test 5",
-      "ext_id": "new-test-5",
       "description": "A new test project being created to test out requests",
       "user_emails": ["jane.doe@example.com", "system.doe@example.com"],
       "qpu_seconds": 90000

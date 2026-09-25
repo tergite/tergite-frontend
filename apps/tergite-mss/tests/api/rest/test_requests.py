@@ -11,34 +11,23 @@
 # that they have been altered from the originals.
 
 """Tests for the /me/requests endpoints and personal projects"""
-import pytest
 from beanie import PydanticObjectId
 
 from services.auth import Project
-from services.auth.projects.dtos import personal_project_ext_id
 from services.requests import Request
 from tests._utils.auth import (
-    TEST_NO_QPU_PROJECT_EXT_ID,
     TEST_OUTSIDER_EMAIL,
     TEST_OUTSIDER_ID,
-    TEST_PROJECT_EXT_ID,
     TEST_PROJECT_ID,
     TEST_SUPERUSER_ID,
     TEST_USER_ID,
     get_db_record,
 )
+from utils.crypto import generate_linked_id
 
 _ACCESS_URL = "/me/requests/"
 
 # FIXME: Cleanup this file
-
-
-def _request_access(client, cookie, ext_id=TEST_PROJECT_EXT_ID, reason="let me in"):
-    return client.post(
-        _ACCESS_URL,
-        cookies=cookie,
-        json={"type": "project-access", "project_ext_id": ext_id, "reason": reason},
-    )
 
 
 def test_request_project_access(client, outsider_jwt_cookie, db):
@@ -58,10 +47,10 @@ def test_request_project_access(client, outsider_jwt_cookie, db):
 
 
 def test_request_access_to_unknown_project(client, outsider_jwt_cookie):
-    """A project ext_id that does not exist is a 404"""
+    """A project _id that does not exist is a 404"""
     with client as client:
         response = _request_access(
-            client, outsider_jwt_cookie, ext_id="no-such-project"
+            client, outsider_jwt_cookie, project_id="no-such-project"
         )
 
         assert response.status_code == 404
@@ -72,10 +61,10 @@ def test_request_access_to_personal_project_is_not_found(
     client, outsider_jwt_cookie, db
 ):
     """Personal projects answer 404 identically, so they cannot be probed for"""
-    ext_id = personal_project_ext_id(TEST_USER_ID)
+    project_id = generate_linked_id(TEST_USER_ID, namespace="project")
     db["auth_projects"].insert_one(
         {
-            "ext_id": ext_id,
+            "id": project_id,
             "name": "someone (personal)",
             "admin_id": TEST_USER_ID,
             "user_ids": [TEST_USER_ID],
@@ -85,10 +74,12 @@ def test_request_access_to_personal_project_is_not_found(
     )
 
     with client as client:
-        response = _request_access(client, outsider_jwt_cookie, ext_id=ext_id)
+        response = _request_access(
+            client, outsider_jwt_cookie, project_id=str(project_id)
+        )
 
         assert response.status_code == 404
-        assert response.json() == {"detail": f"no project with ID '{ext_id}'"}
+        assert response.json() == {"detail": f"no project with ID '{project_id}'"}
 
 
 def test_request_access_when_already_a_member(client, user_jwt_cookie):
@@ -119,72 +110,10 @@ def test_request_access_for_second_project(client, outsider_jwt_cookie):
     with client as client:
         assert _request_access(client, outsider_jwt_cookie).status_code == 201
         response = _request_access(
-            client, outsider_jwt_cookie, ext_id=TEST_NO_QPU_PROJECT_EXT_ID
+            client, outsider_jwt_cookie, project_id=TEST_NO_QPU_PROJECT_EXT_ID
         )
 
         assert response.status_code == 201
-
-
-def test_failed_lookups_are_rate_limited(client, outsider_jwt_cookie):
-    """Repeated failed lookups eventually 429, so ext_ids cannot be enumerated"""
-    limit = 20
-    with client as client:
-        for attempt in range(limit):
-            response = _request_access(
-                client, outsider_jwt_cookie, ext_id=f"nope-{attempt}"
-            )
-            assert response.status_code == 404
-
-        response = _request_access(client, outsider_jwt_cookie, ext_id="nope-last")
-
-        assert response.status_code == 429
-        assert "rate limit exceeded" in response.json()["detail"]
-
-
-def test_rate_limit_is_checked_before_the_lookup(client, outsider_jwt_cookie):
-    """Once limited, even a real project returns 429 and reveals nothing"""
-    with client as client:
-        for attempt in range(20):
-            _request_access(client, outsider_jwt_cookie, ext_id=f"nope-{attempt}")
-
-        response = _request_access(client, outsider_jwt_cookie)
-
-        assert response.status_code == 429
-
-
-def test_successful_lookups_are_not_counted(client, outsider_jwt_cookie):
-    """Only failures count against the limit"""
-    with client as client:
-        _request_access(client, outsider_jwt_cookie)
-
-        assert (
-            rate_limit.get_connection().get(
-                "__ratelimit__project-lookup:" + TEST_OUTSIDER_ID
-            )
-            is None
-        )
-
-
-def test_pending_request_quota(client, outsider_jwt_cookie, db, inserted_projects):
-    """A user may not hold more than the configured number of pending requests"""
-    extra = [
-        {
-            "type": "project-qpu-seconds",
-            "requester_id": TEST_OUTSIDER_ID,
-            "status": "pending",
-            "request": {},
-        }
-        for _ in range(5)
-    ]
-    db["auth_user_requests"].insert_many(extra)
-
-    with client as client:
-        response = _request_access(client, outsider_jwt_cookie)
-
-        assert response.status_code == 429
-        assert response.json() == {
-            "detail": "too many pending requests; at most 5 allowed"
-        }
 
 
 def test_unauthenticated_request_access(client):
@@ -194,7 +123,7 @@ def test_unauthenticated_request_access(client):
             _ACCESS_URL,
             json={
                 "type": "project-access",
-                "project_ext_id": TEST_PROJECT_EXT_ID,
+                "project_id": TEST_PROJECT_ID,
                 "reason": "hi",
             },
         )
@@ -300,7 +229,7 @@ def test_approve_project_access_with_null_member_lists(
     with client as client:
         request_id = _request_access(client, outsider_jwt_cookie).json()["id"]
         db["auth_projects"].update_one(
-            {"ext_id": TEST_PROJECT_EXT_ID},
+            {"_id": PydanticObjectId(TEST_PROJECT_ID)},
             {"$set": {"user_ids": None, "user_emails": None}},
         )
 
@@ -421,12 +350,10 @@ def test_non_superuser_cannot_grant_qpu_seconds_on_own_personal_project(
     client, outsider_jwt_cookie, db
 ):
     """QPU seconds stay a system-admin allocation even on a self-administered project"""
-    ext_id = personal_project_ext_id(TEST_OUTSIDER_ID)
-    project_id = PydanticObjectId()
+    project_id = generate_linked_id(TEST_OUTSIDER_ID, namespace="project")
     db["auth_projects"].insert_one(
         {
             "_id": project_id,
-            "ext_id": ext_id,
             "name": "someone (personal)",
             "admin_id": TEST_OUTSIDER_ID,
             "user_ids": [TEST_OUTSIDER_ID],
@@ -467,7 +394,7 @@ def test_superuser_grants_qpu_seconds(client, admin_jwt_cookie, db):
     """Approving a QPU request increments the project and clears the low-QPU latch"""
     request_id = PydanticObjectId()
     db["auth_projects"].update_one(
-        {"ext_id": TEST_PROJECT_EXT_ID},
+        {"_id": PydanticObjectId(TEST_PROJECT_ID)},
         {"$set": {"qpu_seconds": 10, "low_qpu_notified_at": "2026-01-01T00:00:00Z"}},
     )
     db["auth_user_requests"].insert_one(
@@ -497,3 +424,11 @@ def test_superuser_grants_qpu_seconds(client, admin_jwt_cookie, db):
         project = get_db_record(db, Project, TEST_PROJECT_ID)
         assert project["qpu_seconds"] == 100
         assert project["low_qpu_notified_at"] is None
+
+
+def _request_access(client, cookie, project_id=TEST_PROJECT_ID, reason="let me in"):
+    return client.post(
+        _ACCESS_URL,
+        cookies=cookie,
+        json={"type": "project-access", "project_id": project_id, "reason": reason},
+    )

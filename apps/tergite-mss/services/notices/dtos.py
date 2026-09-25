@@ -84,7 +84,6 @@ class ProjectRequestContext(BaseNoticeContext):
 
     requester_name: str = ""
     project_name: str = ""
-    project_ext_id: str = ""
     reason: str = ""
     approver_name: str = ""
     seconds: float | str = ""
@@ -232,7 +231,7 @@ class NoticeType(NoticeTypeInfo, Enum):
     PROJECT_MEMBERSHIP_GRANTED = NoticeTypeInfo(
         id="project-membership-granted",
         title="You were added to {project_name}",
-        body="{approver_name} added you to {project_name} ({project_ext_id}). You can now create API tokens for it.",
+        body="{approver_name} added you to {project_name} ({project_id}). You can now create API tokens for it.",
         severity=NoticeSeverity.INFO,
         context_cls=ProjectRequestContext,
     )
@@ -246,7 +245,7 @@ class NoticeType(NoticeTypeInfo, Enum):
     PROJECT_ADMIN_ASSIGNED = NoticeTypeInfo(
         id="project-admin-assigned",
         title="You now administer {project_name}",
-        body="{approver_name} made you the admin of {project_name} ({project_ext_id}). Requests to join it come to you.",
+        body="{approver_name} made you the admin of {project_name} ({project_id}). Requests to join it come to you.",
         severity=NoticeSeverity.INFO,
         context_cls=ProjectRequestContext,
     )

@@ -10,9 +10,10 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Data Transfer Objects for the projects submodule in the auth service"""
-import enum
-from typing import List, Optional, Union
 
+from typing import List, Optional, Set
+
+import pymongo
 from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from pymongo import IndexModel
@@ -24,75 +25,48 @@ PROJECT_DB_COLLECTION = "auth_projects"
 DELETED_PROJECT_DB_COLLECTION = "deleted_auth_projects"
 
 
-def personal_project_ext_id(user_id: Union[str, PydanticObjectId]) -> str:
-    """The ext_id of a user's personal project.
+class ProjectBase(BaseModel):
+    """The base schema for Project schemas"""
 
-    Derived from the user ID so the unique index on ext_id enforces one per user,
-    and so no email lands in token records, query strings or logs.
-    """
-    return f"personal-{user_id}"
-
-
-def personal_project_name(email: str) -> str:
-    """The display name of a user's personal project.
-
-    Carries the email local part, unlike the ext_id: a name is only ever displayed,
-    never propagated into token titles, query strings or logs, and without it an
-    admin sees a column of identically named rows.
-    """
-    return f"{email.split('@')[0]} (personal)"
+    name: str
+    qpu_seconds: float = 0
+    description: str = ""
 
 
-class ProjectSource(str, enum.Enum):
-    """Enumeration for all possible origins of projects"""
-
-    PUHURI = "puhuri"
-    INTERNAL = "internal"
-
-
-class ProjectCreate(BaseModel):
+class ProjectCreate(ProjectBase):
     """The schema for creating a project"""
 
-    # FIXME: Get rid of this since we got rid of puhuri
-    ext_id: str
-    """ext_id is the id in an external project allocation service"""
-
     name: str
-    admin_email: Optional[str] = None
-    user_emails: Optional[List[str]] = None
-    qpu_seconds: float = 0
-    source: ProjectSource = ProjectSource.INTERNAL
-    resource_ids: List[str] = []
-    description: Optional[str] = None
+    admin_email: str
+    user_emails: List[str] = ()
 
 
-class ProjectRead(BaseModel):
+class ProjectRead(ProjectBase):
     """The schema for viewing a project as non admin"""
 
-    model_config = ConfigDict(
-        from_attributes=True,
-    )
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
     id: PydanticObjectId
-    name: str
-    ext_id: str
-    qpu_seconds: float = 0
-    is_active: bool = True
-    description: Optional[str] = None
-    user_ids: List[str]
-    admin_id: str
-    is_personal: bool = False
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    is_active: bool
+    user_ids: List[PydanticObjectId]
+    admin_id: PydanticObjectId
+    is_personal: bool
+    created_at: str
+    updated_at: str
 
     def model_dump(self, *args, **kwargs):
         # get rid of the default None's
         return super().model_dump(*args, **{**kwargs, "exclude_none": True})
 
-    @field_serializer("id", when_used="json")
-    def serialize_id(self, _id: PydanticObjectId):
+    @field_serializer("id", "admin_id", when_used="json")
+    def serialize_id(self, value: PydanticObjectId):
         """Convert id to string when working with JSON"""
-        return str(_id)
+        return str(value)
+
+    @field_serializer("user_ids", when_used="json")
+    def serialize_id(self, value: List[PydanticObjectId]):
+        """Convert list of ids to list of strings when working with JSON"""
+        return [str(v) for v in value]
 
 
 class ProjectAdminView(ProjectRead):
@@ -100,12 +74,14 @@ class ProjectAdminView(ProjectRead):
 
     model_config = ConfigDict(from_attributes=True)
 
-    admin_email: Optional[str] = None
-    user_emails: Optional[List[str]] = None
+    admin_email: str
+    user_emails: List[str] = ()
 
 
-class ProjectUpdate(BaseModel):
+class ProjectUpdate(ProjectCreate):
     """The schema for updating a project"""
+
+    model_config = ConfigDict(extra="ignore")
 
     name: Optional[str] = None
     is_active: Optional[bool] = None
@@ -116,24 +92,25 @@ class ProjectUpdate(BaseModel):
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
 
-class Project(ProjectCreate, Document):
+class Project(ProjectRead, Document):
+    model_config = ConfigDict(extra="ignore")
+
     is_active: bool = True
-    # FIXME: Change the type of admin_id to Optional[PydanticObjectId]
-    admin_id: Optional[str] = None
-    # FIXME: Change the type of user_ids to Optional[List[PydanticObjectId]]
-    user_ids: Optional[List[str]] = None
-    # set only by ensure_personal_project, never from a request body
+    user_ids: List[PydanticObjectId] = ()
     is_personal: bool = False
-    # set when a low-QPU notice has been sent; cleared on a grant so the notice re-arms
-    low_qpu_notified_at: Optional[str] = None
-    created_at: Optional[str] = Field(default_factory=get_current_timestamp)
-    updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
+    created_at: str = Field(default_factory=get_current_timestamp)
+    updated_at: str = Field(default_factory=get_current_timestamp)
 
     class Settings:
         name = PROJECT_DB_COLLECTION
         indexes = [
-            IndexModel("ext_id", unique=True),
+            IndexModel("name", unique=True),
         ]
+
+    @property
+    def members(self) -> Set[PydanticObjectId]:
+        """All IDs of the users who are members of the project"""
+        return {self.admin_id, *(self.user_ids or [])}
 
 
 class DeletedProject(Project):
@@ -143,5 +120,5 @@ class DeletedProject(Project):
         name = DELETED_PROJECT_DB_COLLECTION
 
 
-ProjectPartial = create_partial_model("ProjectPartial", Project)
+ProjectPartial = create_partial_model("ProjectPartial", Project, exclude=("id",))
 """The partial project to be used when updating the database"""

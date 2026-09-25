@@ -42,7 +42,7 @@ from tests._utils.auth import (
     TEST_GITHUB_TOKEN_RESP,
     TEST_NO_QPU_APP_TOKEN_STRING,
     TEST_OUTSIDER_ID,
-    TEST_PROJECT_EXT_ID,
+    TEST_PROJECT_ID,
     TEST_SUPERUSER_ID,
     TEST_SYSTEM_USER_APP_TOKEN_STRING,
     TEST_USER_DICT,
@@ -155,7 +155,9 @@ def project_id(db) -> Generator[PydanticObjectId, Any, None]:
     """the project id for the default app token header"""
     from services.auth import Project
 
-    project = get_db_record(db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID})
+    project = get_db_record(
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
+    )
     yield project["_id"]
 
 
@@ -195,7 +197,7 @@ def unallocated_projects(db) -> Dict[str, Dict[str, Any]]:
     projects = {}
     for item in PROJECT_LIST:
         qpu_seconds = int(random.uniform(-54000, 0))
-        projects[item["ext_id"]] = {**item, "qpu_seconds": qpu_seconds}
+        projects[item["_id"]] = {**item, "qpu_seconds": qpu_seconds}
         insert_if_not_exist(
             db,
             Project,
@@ -439,13 +441,13 @@ def get_unauthorized_app_token_post():
     to the given project
     """
     admin_only_projects = [
-        project["ext_id"]
+        project["_id"]
         for project in PROJECT_LIST
         if project["user_emails"] == [TEST_SUPERUSER_ID]
     ]
 
     user_only_projects = [
-        project["ext_id"]
+        project["_id"]
         for project in PROJECT_LIST
         if project["user_ids"] == [TEST_USER_ID]
     ]
@@ -453,13 +455,13 @@ def get_unauthorized_app_token_post():
     admin_only_post_data = [
         (body, get_auth_header(TEST_USER_ID))
         for body in APP_TOKEN_LIST
-        if body["project_ext_id"] in admin_only_projects
+        if body["project_id"] in admin_only_projects
     ]
 
     user_only_post_data = [
         (body, get_auth_header(TEST_SUPERUSER_ID))
         for body in APP_TOKEN_LIST
-        if body["project_ext_id"] in user_only_projects
+        if body["project_id"] in user_only_projects
     ]
 
     return admin_only_post_data + user_only_post_data
@@ -472,13 +474,13 @@ def get_unauthorized_app_token_post_with_cookies():
     to the given project
     """
     admin_only_projects = [
-        project["ext_id"]
+        project["_id"]
         for project in PROJECT_LIST
         if project["user_ids"] == [TEST_SUPERUSER_ID]
     ]
 
     user_only_projects = [
-        project["ext_id"]
+        project["_id"]
         for project in PROJECT_LIST
         if project["user_ids"] == [TEST_USER_ID]
     ]
@@ -486,13 +488,13 @@ def get_unauthorized_app_token_post_with_cookies():
     admin_only_post_data = [
         (body, get_auth_cookie(TEST_USER_ID))
         for body in APP_TOKEN_LIST
-        if body["project_ext_id"] in admin_only_projects
+        if body["project_id"] in admin_only_projects
     ]
 
     user_only_post_data = [
         (body, get_auth_cookie(TEST_SUPERUSER_ID))
         for body in APP_TOKEN_LIST
-        if body["project_ext_id"] in user_only_projects
+        if body["project_id"] in user_only_projects
     ]
 
     return admin_only_post_data + user_only_post_data

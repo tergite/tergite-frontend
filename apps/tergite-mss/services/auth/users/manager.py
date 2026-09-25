@@ -48,9 +48,11 @@ class UserManager(ObjectIDIDMixin, BaseUserManager):
         stub users created by admins listing unknown emails on a project, also get one.
         """
         # imported here because projects imports this module at import time
-        from ..projects import ensure_personal_project
+        from ..projects import get_project_db
 
-        await ensure_personal_project(user)
+        project_db = await get_project_db()
+
+        await project_db.create_personal_project_if_not_exist(user)
 
     async def oauth_callback(
         self,

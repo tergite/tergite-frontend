@@ -67,7 +67,6 @@ def test_admin_create_project(db, project, client, admin_jwt_cookie, freezer):
 
         expected = {
             "id": got["id"],
-            "ext_id": project["ext_id"],
             "is_active": True,
             "qpu_seconds": project.get("qpu_seconds", 0),
             "name": project["name"],
@@ -150,7 +149,6 @@ def test_admin_update_project(db, payload, client, admin_jwt_cookie, freezer):
 
         expected = {
             "id": _id,
-            "ext_id": project["ext_id"],
             "is_active": payload.get("is_active", project["is_active"]),
             "qpu_seconds": payload.get("qpu_seconds", project["qpu_seconds"]),
             "name": payload.get("name", project["name"]),
@@ -196,18 +194,15 @@ def test_admin_view_all_projects_in_detail(
         project_list = [
             {
                 "id": str(item["_id"]),
-                "ext_id": item["ext_id"],
                 "qpu_seconds": item["qpu_seconds"],
-                "is_active": item.get("is_active", True),
+                "is_active": item.get("is_active"),
                 "user_ids": item.get("user_ids"),
                 "admin_id": item.get("admin_id"),
                 "admin_email": USER_ID_EMAIL_MAP.get(item.get("admin_id")),
-                "user_emails": [
-                    USER_ID_EMAIL_MAP.get(v) for v in item.get("user_ids", [])
-                ],
+                "user_emails": [USER_ID_EMAIL_MAP.get(v) for v in item.get("user_ids")],
                 "name": item.get("name"),
                 "description": item.get("description"),
-                "is_personal": item.get("is_personal", False),
+                "is_personal": item.get("is_personal"),
                 "created_at": item.get("created_at"),
                 "updated_at": item.get("updated_at"),
             }
@@ -247,20 +242,35 @@ def test_admin_view_single_project_in_detail(
         got = response.json()
         expected = {
             "id": _id,
-            "ext_id": project["ext_id"],
             "qpu_seconds": project["qpu_seconds"],
             "is_active": project["is_active"],
-            "user_ids": project.get("user_ids"),
-            "admin_id": project.get("admin_id"),
-            "admin_email": USER_ID_EMAIL_MAP.get(project.get("admin_id")),
+            "user_ids": project.get(
+                "user_ids",
+            ),
+            "admin_id": project.get(
+                "admin_id",
+            ),
+            "admin_email": USER_ID_EMAIL_MAP.get(
+                project.get(
+                    "admin_id",
+                )
+            ),
             "user_emails": [
                 USER_ID_EMAIL_MAP.get(v) for v in project.get("user_ids", [])
             ],
-            "name": project.get("name"),
-            "description": project.get("description"),
+            "name": project.get(
+                "name",
+            ),
+            "description": project.get(
+                "description",
+            ),
             "is_personal": project.get("is_personal", False),
-            "created_at": project.get("created_at"),
-            "updated_at": project.get("updated_at"),
+            "created_at": project.get(
+                "created_at",
+            ),
+            "updated_at": project.get(
+                "updated_at",
+            ),
         }
 
         assert response.status_code == 200

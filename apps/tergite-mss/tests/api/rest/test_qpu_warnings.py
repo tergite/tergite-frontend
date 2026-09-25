@@ -25,8 +25,8 @@ import settings
 from services.auth import Project
 from services.notices import NoticeType
 from tests._utils.auth import (
-    TEST_PROJECT_EXT_ID,
     TEST_PROJECT_ID,
+    TEST_PROJECT_NAME,
     TEST_SYSTEM_USER_ID,
     TEST_USER_ID,
     get_db_record,
@@ -89,7 +89,7 @@ def _bill_a_job(client, db, starting_seconds=None):
     )
     if starting_seconds is not None:
         db[_PROJECTS_COLLECTION].update_one(
-            {"ext_id": TEST_PROJECT_EXT_ID},
+            {"_id": PydanticObjectId(TEST_PROJECT_ID)},
             {"$set": {"qpu_seconds": starting_seconds, "low_qpu_notified_at": None}},
         )
 
@@ -108,7 +108,9 @@ def _notifications_of(db, type_: NoticeType):
 
 
 def _project(db):
-    return get_db_record(db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID})
+    return get_db_record(
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
+    )
 
 
 def test_spending_still_tracks_the_running_balance(client, db, threshold):
@@ -178,7 +180,7 @@ def test_running_out_reports_even_after_a_low_warning(client, db, threshold):
     assert len(_notifications_of(db, NoticeType.QPU_SECONDS_LOW)) == 1
     db[_JOBS_COLLECTION].delete_many({})
     db[_PROJECTS_COLLECTION].update_one(
-        {"ext_id": TEST_PROJECT_EXT_ID}, {"$set": {"qpu_seconds": 1}}
+        {"_id": PydanticObjectId(TEST_PROJECT_ID)}, {"$set": {"qpu_seconds": 1}}
     )
 
     _bill_a_job(client, db)

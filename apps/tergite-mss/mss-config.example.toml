@@ -72,17 +72,9 @@ public_url = ""
 # deployment behaving as it did before personal projects existed; set a non-zero
 # value to let every new user start with usable time.
 personal_qpu_seconds = 0
-# whether personal projects are auto-created when a user logs in; default = true
-personal_projects_enabled = true
 # notify the project admin when remaining QPU seconds fall below this; default = 600
 qpu_seconds_low_threshold = 600
-# maximum pending user requests one user may hold at a time; default = 5
-max_pending_requests_per_user = 5
-# maximum failed project lookups per user per hour before 429; default = 20
-max_failed_lookups_per_hour = 20
-# upper bound on a single bulk QPU-seconds grant, so a mistyped figure cannot hand out
-# a decade of machine time; default = 2592000 (30 days)
-max_grant_seconds = 2592000
+
 
 [notices]
 # days a notice is kept before the TTL index removes it; default = 90

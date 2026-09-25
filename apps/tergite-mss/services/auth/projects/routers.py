@@ -21,10 +21,11 @@ from fastapi_users import exceptions, schemas
 from fastapi_users.password import PasswordHelper
 from pydantic import BaseModel, Field
 
-from services import notifications
-from services.notifications import NotificationType
+from services import notices
+from services.notices import NoticeType
 from utils.api import PaginatedListResponse
 
+from ...notices.dtos import ProjectRequestContext, RefType
 from ..users.dtos import CurrentSuperUserDependency, CurrentUserIdDependency, User
 from ..users.manager import UserManager, UserManagerDependency
 from ..utils import MAX_LIST_QUERY_LEN, TooManyListQueryParams
@@ -114,7 +115,7 @@ def get_my_projects_router(
     )
     async def remove_member(
         _id: PydanticObjectId,
-        member_id: str,
+        member_id: PydanticObjectId,
         user_id: str = Depends(get_current_user_id),
         user_manager: UserManager = Depends(get_user_manager),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
@@ -129,10 +130,8 @@ def get_my_projects_router(
         except (exc.ProjectNotExists, exceptions.InvalidID) as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
 
-        actor = await user_manager.get(PydanticObjectId(user_id))
-        if actor is None or not (
-            actor.is_superuser or project.admin_id == str(actor.id)
-        ):
+        current_user = await user_manager.get(PydanticObjectId(user_id))
+        if project.admin_id != current_user.id and not current_user.is_superuser:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
         if member_id == project.admin_id:
@@ -141,26 +140,25 @@ def get_my_projects_router(
                 detail="the project admin cannot be removed",
             )
 
-        member = await user_manager.get(PydanticObjectId(member_id))
-        current_ids = project.user_ids or []
-        current_emails = project.user_emails or []
-        if member is None or member_id not in current_ids:
-            # idempotent: nothing to do for someone who is not a member
-            return None
+        new_user_ids = [v for v in project.user_ids if v != member_id]
+        if len(new_user_ids) == len(project.user_ids):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="user not a member"
+            )
 
-        partial = ProjectPartial(
-            user_ids=[item for item in current_ids if item != member_id],
-            user_emails=[item for item in current_emails if item != member.email],
+        await project_manager.update(
+            ProjectPartial(user_ids=new_user_ids), project, safe=False
         )
-        await project_manager.update(partial, project, safe=False)
-        await notifications.notify(
-            [member.id],
-            NotificationType.PROJECT_MEMBERSHIP_REVOKED,
-            context={
-                "project_name": project.name,
-                "project_ext_id": project.ext_id,
-                "approver_name": actor.username,
-            },
+
+        await notices.create_system_notice(
+            user_ids=[member_id],
+            notice_type=NoticeType.PROJECT_MEMBERSHIP_REVOKED.id,
+            context=ProjectRequestContext(
+                project_name=project.name,
+                approver_name=current_user.username,
+            ),
+            ref_type=RefType.PROJECT,
+            ref_id=project.id,
         )
         return None
 
@@ -269,7 +267,7 @@ def get_projects_router(
         limit: Optional[int] = Query(None),
         ids: Optional[List[PydanticObjectId]] = Query(None, alias="id"),
         user_ids: Optional[List[str]] = Query(None),
-        ext_id: Optional[List[str]] = Query(None),
+        name: Optional[List[str]] = Query(None),
         is_active: Optional[bool] = Query(None),
         min_qpu_seconds: Optional[int] = Query(None),
         max_qpu_seconds: Optional[int] = Query(None),
@@ -291,13 +289,13 @@ def get_projects_router(
 
             filter_obj["user_ids"] = {"$in": user_ids}
 
-        if ext_id is not None:
-            if len(ext_id) > MAX_LIST_QUERY_LEN:
+        if name is not None:
+            if len(name) > MAX_LIST_QUERY_LEN:
                 raise TooManyListQueryParams(
-                    "ext_id", expected=MAX_LIST_QUERY_LEN, got=len(ext_id)
+                    "name", expected=MAX_LIST_QUERY_LEN, got=len(name)
                 )
 
-            filter_obj["ext_id"] = {"$in": ext_id}
+            filter_obj["name"] = {"$in": name}
 
         if is_active is not None:
             filter_obj["is_active"] = is_active
@@ -359,7 +357,7 @@ def get_projects_router(
 
 
 async def _notify_membership_change(
-    before: Optional[Project], after: Project, actor: User
+    initial_project: Optional[Project], final_project: Project, actor: User
 ) -> None:
     """Tells users whose standing on a project changed
 
@@ -367,35 +365,41 @@ async def _notify_membership_change(
     lost access is only visible as a diff against the previous document.
 
     Args:
-        before: the project as it was, or None when it has just been created
-        after: the project as it now is
+        initial_project: the project as it was, or None when it has just been created
+        final_project: the project as it now is
         actor: the superuser who made the change
     """
-    context = {
-        "project_name": after.name,
-        "project_ext_id": after.ext_id,
-        "approver_name": actor.username,
-    }
-    old_ids = set(before.user_ids or []) if before else set()
-    new_ids = set(after.user_ids or [])
-
-    await notifications.notify(
-        [PydanticObjectId(item) for item in new_ids - old_ids],
-        NotificationType.PROJECT_MEMBERSHIP_GRANTED,
-        context=context,
+    context = ProjectRequestContext(
+        project_name=final_project.name,
+        approver_name=actor.username,
     )
-    await notifications.notify(
-        [PydanticObjectId(item) for item in old_ids - new_ids],
-        NotificationType.PROJECT_MEMBERSHIP_REVOKED,
+    old_ids = set(initial_project.user_ids or []) if initial_project else set()
+    new_ids = set(final_project.user_ids or [])
+
+    await notices.create_system_notice(
+        user_ids=[PydanticObjectId(item) for item in new_ids - old_ids],
+        notice_type=NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
         context=context,
+        ref_type=RefType.PROJECT,
+        ref_id=final_project.id,
     )
 
-    old_admin = before.admin_id if before else None
-    if after.admin_id and after.admin_id != old_admin:
-        await notifications.notify(
-            [PydanticObjectId(after.admin_id)],
-            NotificationType.PROJECT_ADMIN_ASSIGNED,
+    await notices.create_system_notice(
+        user_ids=[PydanticObjectId(item) for item in old_ids - new_ids],
+        notice_type=NoticeType.PROJECT_MEMBERSHIP_REVOKED.id,
+        context=context,
+        ref_type=RefType.PROJECT,
+        ref_id=final_project.id,
+    )
+
+    old_admin = initial_project.admin_id if initial_project else None
+    if final_project.admin_id and final_project.admin_id != old_admin:
+        await notices.create_system_notice(
+            user_ids=[PydanticObjectId(final_project.admin_id)],
+            notice_type=NoticeType.PROJECT_ADMIN_ASSIGNED.id,
             context=context,
+            ref_type=RefType.PROJECT,
+            ref_id=final_project.id,
         )
 
 

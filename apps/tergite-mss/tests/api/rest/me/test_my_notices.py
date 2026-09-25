@@ -20,12 +20,19 @@ from bson import ObjectId
 from starlette.testclient import TestClient
 
 from services.notices import NoticeType
-from tests._utils.auth import TEST_SUPERUSER_ID, TEST_USER_ID, TEST_OUTSIDER_ID, TEST_PROJECT_ID, TEST_OUTSIDER_EMAIL, \
-    TEST_SYSTEM_USER_ID, TEST_SYSTEM_USER_EMAIL, TEST_PROJECT_EXT_ID, TEST_USER_EMAIL
+from tests._utils.auth import (
+    TEST_OUTSIDER_EMAIL,
+    TEST_OUTSIDER_ID,
+    TEST_PROJECT_ID,
+    TEST_SUPERUSER_ID,
+    TEST_SYSTEM_USER_EMAIL,
+    TEST_SYSTEM_USER_ID,
+    TEST_USER_EMAIL,
+    TEST_USER_ID,
+)
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mongodb import find_in_collection
 from tests._utils.records import with_offset_datetimes
-
 
 _PREFS_COLLECTION = "notice_preferences"
 _NOTICES_COLLECTION = "notices"
@@ -219,7 +226,9 @@ def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
-def test_project_access_request_notifies_the_project_admin(client, outsider_jwt_cookie, db):
+def test_project_access_request_notifies_the_project_admin(
+    client, outsider_jwt_cookie, db
+):
     """Filing an access request reaches the admin of the project concerned"""
     with client as client:
         _request_project_access(client, outsider_jwt_cookie)
@@ -233,7 +242,9 @@ def test_project_access_request_notifies_the_project_admin(client, outsider_jwt_
         assert got[0]["read_at"] is None
 
 
-def test_project_access_request_does_not_notify_the_requester(client, outsider_jwt_cookie, db):
+def test_project_access_request_does_not_notify_the_requester(
+    client, outsider_jwt_cookie, db
+):
     """The requester is not their own approver, so gets nothing on filing"""
     with client as client:
         _request_project_access(client, outsider_jwt_cookie)
@@ -255,9 +266,7 @@ def test_approval_notifies_the_requester(
 
         got = _get_user_notices(db, TEST_OUTSIDER_ID)
 
-        assert [item["type"] for item in got] == [
-            NoticeType.PROJECT_ACCESS_APPROVED
-        ]
+        assert [item["type"] for item in got] == [NoticeType.PROJECT_ACCESS_APPROVED]
         assert "test-project" in got[0]["title"]
 
 
@@ -295,9 +304,7 @@ def test_qpu_request_notifies_superusers(client, user_jwt_cookie, db):
 
         got = _get_user_notices(db, TEST_SUPERUSER_ID)
 
-        assert [item["type"] for item in got] == [
-            NoticeType.QPU_SECONDS_REQUESTED
-        ]
+        assert [item["type"] for item in got] == [NoticeType.QPU_SECONDS_REQUESTED]
         assert "120s" in got[0]["body"]
         assert _get_user_notices(db, TEST_USER_ID) == []
 
@@ -332,9 +339,7 @@ def test_project_creation_notifies_the_new_members(client, admin_jwt_cookie, db)
         assert response.status_code == 201
 
         user_notice_types = _get_user_notice_types(db, TEST_OUTSIDER_ID)
-        assert user_notice_types == [
-            NoticeType.PROJECT_MEMBERSHIP_GRANTED
-        ]
+        assert user_notice_types == [NoticeType.PROJECT_MEMBERSHIP_GRANTED]
 
 
 def test_project_creation_notifies_the_admin(client, admin_jwt_cookie, db):
@@ -360,8 +365,12 @@ def test_project_update_notifies_the_added_and_the_removed(
         )
 
         assert response.status_code == 200
-        assert NoticeType.PROJECT_MEMBERSHIP_GRANTED in _get_user_notice_types(db, TEST_OUTSIDER_ID)
-        assert NoticeType.PROJECT_MEMBERSHIP_REVOKED in _get_user_notice_types(db, TEST_SYSTEM_USER_ID)
+        assert NoticeType.PROJECT_MEMBERSHIP_GRANTED in _get_user_notice_types(
+            db, TEST_OUTSIDER_ID
+        )
+        assert NoticeType.PROJECT_MEMBERSHIP_REVOKED in _get_user_notice_types(
+            db, TEST_SYSTEM_USER_ID
+        )
 
 
 def test_project_update_notifies_the_new_admin(client, admin_jwt_cookie, db):
@@ -374,7 +383,9 @@ def test_project_update_notifies_the_new_admin(client, admin_jwt_cookie, db):
         )
 
         assert response.status_code == 200
-        assert NoticeType.PROJECT_ADMIN_ASSIGNED in _get_user_notice_types(db, TEST_SYSTEM_USER_ID)
+        assert NoticeType.PROJECT_ADMIN_ASSIGNED in _get_user_notice_types(
+            db, TEST_SYSTEM_USER_ID
+        )
 
 
 def test_project_update_that_changes_no_membership_notifies_nobody(
@@ -584,21 +595,6 @@ def test_render_tolerates_a_missing_context_value():
     assert "approver_name" not in got.body
 
 
-def test_project_without_an_admin_still_accepts_requests(
-    client, outsider_jwt_cookie, db
-):
-    """An admin-less project has no approver to notify, and must not break filing"""
-    db["auth_projects"].update_one(
-        {"ext_id": TEST_PROJECT_EXT_ID}, {"$set": {"admin_id": None}}
-    )
-
-    with client as client:
-        response = _request_project_access(client, outsider_jwt_cookie)
-
-        assert response.status_code == 201
-        assert db[_NOTICES_COLLECTION].count_documents({}) == 0
-
-
 def test_deciding_a_request_clears_its_prompt(
     client, outsider_jwt_cookie, user_jwt_cookie, db
 ):
@@ -674,12 +670,14 @@ def test_emission_failure_does_not_fail_the_request(
         assert _get_user_notices(db, TEST_USER_ID) == []
 
 
-def _request_project_access(client, cookie, ext_id=TEST_PROJECT_EXT_ID, reason="let me in"):
+def _request_project_access(
+    client, cookie, project_id=TEST_PROJECT_ID, reason="let me in"
+):
     """A helper to request for project access"""
     return client.post(
         "/me/requests/",
         cookies=cookie,
-        json={"type": "project-access", "project_ext_id": ext_id, "reason": reason},
+        json={"type": "project-access", "project_id": project_id, "reason": reason},
     )
 
 
@@ -693,7 +691,11 @@ def _get_user_notices(db: pymongo.database.Database, user_id: Any):
     Returns:
         A list of dictionaries that represent the notices
     """
-    result = db[_NOTICES_COLLECTION].find({"user_id": PydanticObjectId(user_id)}).sort("created_at")
+    result = (
+        db[_NOTICES_COLLECTION]
+        .find({"user_id": PydanticObjectId(user_id)})
+        .sort("created_at")
+    )
     return list(result)
 
 
@@ -724,7 +726,6 @@ def _create_project(client: TestClient, cookie: str, **options):
     body = {
         "admin_email": TEST_USER_EMAIL,
         "user_emails": [TEST_OUTSIDER_EMAIL],
-        "ext_id": "notified-project",
         "is_active": True,
         "name": "notified project",
         "description": "a project whose members hear about it",

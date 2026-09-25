@@ -30,7 +30,7 @@ class _UnregisteredError(Exception):
 def raising_route():
     """Adds a route that blows up in a way no exception handler covers"""
 
-    @app.get(_RAISING_PATH, include_in_schema=False)
+    @app.get(_RAISING_PATH)
     async def _raise():
         raise _UnregisteredError("boom")
 

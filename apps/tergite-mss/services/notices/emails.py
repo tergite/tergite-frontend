@@ -37,8 +37,7 @@ async def get_email_preferences_map(
     """
     result = NoticePreferences.find({"user_id": {"$in": list(user_ids)}})
     return {
-        record.user_id: record.email_prefs.get(notice_type, True)
-        async for record in result
+        record.user_id: record.email_prefs.get(notice_type) async for record in result
     }
 
 

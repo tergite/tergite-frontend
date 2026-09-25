@@ -2,7 +2,6 @@
   {
     "admin_email": "david.doe@example.com",
     "user_emails": [],
-    "ext_id": "project-1730289305124",
     "is_active": true,
     "name": "fooo bar",
     "description": "fancy description",
@@ -11,7 +10,6 @@
   {
     "admin_email": "david.doe@example.com",
     "user_emails": ["tom.doe@example.com", "jane.doe@example.com"],
-    "ext_id": "ebyaheru",
     "is_active": true,
     "name": "fenecansi owenyini",
     "description": "Musa yateeza amajju",
@@ -20,7 +18,6 @@
   {
     "admin_email": "john.doe@example.com",
     "user_emails": ["paul.doe@example.com"],
-    "ext_id": "default project",
     "is_active": false,
     "name": "30/10/2024 project",
     "description": "Bulyomu akajunwa hwabwembazi za Ruhanga"
@@ -28,7 +25,6 @@
   {
     "admin_email": "new.user@xample.com",
     "user_emails": [],
-    "ext_id": "some-other-ext-id-5",
     "is_active": false,
     "name": "Mukama ahaisibwe",
     "description": "Project created on 30/10/2024",

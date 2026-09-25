@@ -74,16 +74,15 @@ def test_view_own_projects_in_less_detail(
         project_list = [
             {
                 "id": str(item["_id"]),
-                "name": item.get("name", None),
-                "ext_id": item["ext_id"],
+                "name": item.get("name"),
                 "qpu_seconds": item["qpu_seconds"],
-                "description": item.get("description", None),
-                "user_ids": item.get("user_ids", None),
-                "admin_id": item.get("admin_id", None),
-                "is_active": item.get("is_active", True),
-                "is_personal": item.get("is_personal", False),
-                "created_at": item.get("created_at", None),
-                "updated_at": item.get("updated_at", None),
+                "description": item.get("description"),
+                "user_ids": item.get("user_ids"),
+                "admin_id": item.get("admin_id"),
+                "is_active": item.get("is_active"),
+                "is_personal": item.get("is_personal"),
+                "created_at": item.get("created_at"),
+                "updated_at": item.get("updated_at"),
             }
             for item in [TEST_PROJECT_DICT, TEST_NO_QPU_PROJECT_DICT] + PROJECT_LIST
             if user_id in item["user_ids"]
@@ -109,7 +108,6 @@ def test_view_my_project_in_less_detail(
         expected = {
             "id": project_id,
             "name": project["name"],
-            "ext_id": project["ext_id"],
             "qpu_seconds": project["qpu_seconds"],
             "description": project["description"],
             "user_ids": project["user_ids"],

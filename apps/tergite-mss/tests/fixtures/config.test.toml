@@ -100,3 +100,6 @@ from_address = "no-reply@example.com"
 from_name = "Tergite test"
 # timeout = 10
 
+[projects]
+personal_qpu_seconds = 0
+qpu_seconds_low_threshold = 600

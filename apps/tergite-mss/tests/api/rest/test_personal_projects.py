@@ -15,12 +15,9 @@ import pytest
 
 import settings
 from services.auth import Project
-from services.auth.projects.dtos import (
-    personal_project_ext_id,
-    personal_project_name,
-)
 from tests._utils.auth import TEST_GITHUB_PROFILE, get_db_record
 from tests.conftest import get_auth_cookie
+from utils.crypto import generate_linked_id
 
 _GITHUB_CALLBACK = "/auth/github/callback"
 
@@ -37,6 +34,7 @@ _GITHUB_CALLBACK = "/auth/github/callback"
 # FIXME: Small utilities like _url in tests/api/test_project_members.py are ugly. First of all they are inappropriately named. A function name must be a verb.
 #   Secondly, they are just a single line. They don't help at all except make the process of reading the code just longer because one
 #   has to jump to the definition of that one line.
+
 
 # FIXME: Avoid scattering fixtures all over modules. They need to be in one place in the conftest
 #   so that we avoid redefining them or having conflicts if the same fixtures are defined twice but with different implementations
@@ -73,7 +71,9 @@ def test_login_creates_personal_project(
         project = _get_personal_project(db, user["_id"])
 
         assert project is not None
-        assert project["name"] == personal_project_name(TEST_GITHUB_PROFILE["email"])
+        assert project["name"] == _get_personal_project_name(
+            TEST_GITHUB_PROFILE["email"]
+        )
         assert project["is_personal"] is True
         assert project["qpu_seconds"] == personal_qpu_seconds
         assert project["admin_id"] == str(user["_id"])
@@ -139,23 +139,23 @@ def test_concurrent_creation_yields_one_project(
     """A login losing the create race re-reads the winner rather than erroring
 
     Simulated by making the existence check miss once, so the insert hits the unique
-    index on ext_id exactly as the loser of a real race would.
+    index on _id exactly as the loser of a real race would.
     """
     from services.auth.projects import ProjectDatabase
 
-    real_get = ProjectDatabase.get_by_ext_id
+    real_get = ProjectDatabase.get
     calls = {"n": 0}
 
-    async def miss_once(ext_id):
+    async def miss_once(_id):
         calls["n"] += 1
         if calls["n"] == 1:
             return None
-        return await real_get(ext_id)
+        return await real_get(_id)
 
     with client as client:
         _login(client, cookie_oauth_state)
         user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
-        mocker.patch.object(ProjectDatabase, "get_by_ext_id", side_effect=miss_once)
+        mocker.patch.object(ProjectDatabase, "get", side_effect=miss_once)
 
         assert _login(client, cookie_oauth_state).status_code == 307
 
@@ -218,15 +218,12 @@ def test_shared_project_can_still_be_deleted(client, admin_jwt_cookie, db, proje
 
 # FIXME: Helpers should always be below the main functions so that it reads like an article ... important things, then appendix
 
+
 def _login(client, cookie_oauth_state):
-    return client.get(
-        f"{_GITHUB_CALLBACK}?code=test&state={cookie_oauth_state}",
-        follow_redirects=False,
-    )
+    return client.get(f"{_GITHUB_CALLBACK}?code=test&state={cookie_oauth_state}")
 
 
 # FIXME: Names of functions must be verbs unless they are conversion functions like to_str()
 def _get_personal_project(db, user_id):
-    return get_db_record(
-        db, Project, _filter={"ext_id": personal_project_ext_id(user_id)}
-    )
+    project_id = generate_linked_id(user_id, namespace="project")
+    return get_db_record(db, Project, _filter={"_id": project_id})

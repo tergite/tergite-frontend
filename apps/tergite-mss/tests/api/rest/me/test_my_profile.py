@@ -29,14 +29,14 @@ def test_view_my_user_profile(user, cookies, client):
         response = client.get("/me/profile", cookies=cookies)
 
         raw_data = response.json()
-        got = {**raw_data, "roles": sorted(raw_data.get("roles", []))}
+        got = {**raw_data, "roles": sorted(raw_data.get("roles"))}
         expected = {
             "id": str(user["_id"]),
             "email": user["email"],
-            "is_active": user.get("is_active", True),
-            "is_verified": user.get("is_verified", False),
-            "is_superuser": user.get("is_superuser", False),
-            "roles": sorted(user.get("roles", [])),
+            "is_active": user.get("is_active"),
+            "is_verified": user.get("is_verified"),
+            "is_superuser": user.get("is_superuser"),
+            "roles": sorted(user.get("roles")),
         }
 
         assert response.status_code == 200

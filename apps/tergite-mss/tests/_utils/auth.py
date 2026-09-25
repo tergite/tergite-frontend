@@ -26,8 +26,6 @@ from utils.config import UserRole
 
 TEST_PROJECT_ID = "bf4876d01e60f05ebc9fac9e"
 TEST_NO_QPU_PROJECT_ID = "fd530427c7141f2693aa850b"
-TEST_PROJECT_EXT_ID = "test-project-1"
-TEST_NO_QPU_PROJECT_EXT_ID = "no-qpu-project-1"
 TEST_USER_ID = "8154077d9cb952b92453d575"
 TEST_SUPERUSER_ID = "de7ddbd2500951be940356a2"
 TEST_SYSTEM_USER_ID = "6431c4a4508205d9d43015fe"
@@ -106,12 +104,11 @@ USER_ID_EMAIL_MAP = {
     TEST_SUPERUSER_ID: TEST_SUPERUSER_EMAIL,
     TEST_SYSTEM_USER_ID: TEST_SYSTEM_USER_EMAIL,
 }
-
+TEST_PROJECT_NAME = "test-project"
 TEST_PROJECT_DICT = dict(
     _id=PydanticObjectId(TEST_PROJECT_ID),
-    name="test-project",
+    name=TEST_PROJECT_NAME,
     description="some default project",
-    ext_id=TEST_PROJECT_EXT_ID,
     admin_id=TEST_USER_ID,
     user_ids=[TEST_USER_ID, TEST_SYSTEM_USER_ID],
     qpu_seconds=108000000000000,
@@ -119,11 +116,11 @@ TEST_PROJECT_DICT = dict(
     updated_at="2024-09-20T09:12:00.733Z",
 )
 
+TEST_NO_QPU_PROJECT_NAME = "test-no-qpu-project"
 TEST_NO_QPU_PROJECT_DICT = dict(
     _id=PydanticObjectId(TEST_NO_QPU_PROJECT_ID),
-    name="test-no-qpu-project",
+    name=TEST_NO_QPU_PROJECT_NAME,
     description="some project without QPU seconds",
-    ext_id=TEST_NO_QPU_PROJECT_EXT_ID,
     admin_id=TEST_USER_ID,
     user_ids=[TEST_USER_ID],
     qpu_seconds=-108000,
@@ -135,7 +132,7 @@ TEST_APP_TOKEN_DICT = dict(
     title="test-token",
     token=TEST_APP_TOKEN_STRING,
     user_id=TEST_USER_DICT["_id"],
-    project_ext_id=TEST_PROJECT_EXT_ID,
+    project_id=TEST_PROJECT_DICT["_id"],
     lifespan_seconds=3600,
 )
 
@@ -143,7 +140,7 @@ TEST_NO_QPU_APP_TOKEN_DICT = dict(
     title="no-qpu-token",
     token=TEST_NO_QPU_APP_TOKEN_STRING,
     user_id=TEST_USER_DICT["_id"],
-    project_ext_id=TEST_NO_QPU_PROJECT_EXT_ID,
+    project_id=TEST_NO_QPU_PROJECT_DICT["_id"],
     lifespan_seconds=3600,
 )
 
@@ -151,7 +148,7 @@ TEST_SYSTEM_USER_TOKEN_DICT = dict(
     title="system-user-token",
     token=TEST_SYSTEM_USER_APP_TOKEN_STRING,
     user_id=TEST_SYSTEM_USER_DICT["_id"],
-    project_ext_id=TEST_PROJECT_EXT_ID,
+    project_id=TEST_PROJECT_DICT["_id"],
     lifespan_seconds=3600,
 )
 

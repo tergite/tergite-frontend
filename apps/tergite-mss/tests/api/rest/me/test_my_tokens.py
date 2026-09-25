@@ -194,7 +194,7 @@ def test_view_own_app_tokens_in_less_detail(
             {
                 "id": str(v["_id"]),
                 "lifespan_seconds": v["lifespan_seconds"],
-                "project_ext_id": v["project_ext_id"],
+                "project_id": v["project_id"],
                 "title": v["title"],
                 "created_at": get_current_timestamp_str(),
             }
@@ -229,7 +229,7 @@ def test_view_my_app_token_in_less_detail(
 
         expected = {
             "id": token_id,
-            "project_ext_id": token["project_ext_id"],
+            "project_id": token["project_id"],
             "title": token["title"],
             "lifespan_seconds": token["lifespan_seconds"],
             "created_at": get_current_timestamp_str(),
@@ -283,7 +283,7 @@ def test_extend_own_token_lifespan(
         "created_at": "1997-11-25T14:25:47.239Z",
         "id": "anot-p",
         "expires_at": get_timestamp_str(expires_at),
-        "project_ext_id": "a-certain-proj",
+        "project_id": "a-certain-proj",
     }
     # using context manager to ensure on_startup runs
     with client as client:
@@ -297,7 +297,7 @@ def test_extend_own_token_lifespan(
         got["lifespan_seconds"] = round(got["lifespan_seconds"])
         expected_response = {
             "id": token_id,
-            "project_ext_id": token["project_ext_id"],
+            "project_id": token["project_id"],
             "title": token["title"],
             "lifespan_seconds": lifespan_secs,
             "created_at": get_current_timestamp_str(),
@@ -335,7 +335,7 @@ def test_extend_own_expired_token_lifespan(
         "created_at": "1997-11-25T14:25:47.239Z",
         "id": "anot-p",
         "expires_at": expires_at.isoformat("T"),
-        "project_ext_id": "a-certain-proj",
+        "project_id": "a-certain-proj",
     }
 
     # using context manager to ensure on_startup runs
@@ -405,7 +405,7 @@ def test_app_token_of_unallocated_projects_fails(
 ):
     """App tokens for projects with qpu_seconds <= 0 raise 403 HTTP error"""
     headers = {"Authorization": f"Bearer {app_token['token']}"}
-    project = unallocated_projects[app_token["project_ext_id"]]
+    project = unallocated_projects[app_token["project_id"]]
 
     # using context manager to ensure on_startup runs
     with client as client:
@@ -413,7 +413,7 @@ def test_app_token_of_unallocated_projects_fails(
 
         got = response.json()
         expected = {
-            "detail": f"{float(project['qpu_seconds'])} QPU seconds left on project {project['ext_id']}"
+            "detail": f"{float(project['qpu_seconds'])} QPU seconds left on project {project['name']}"
         }
 
         assert response.status_code == 403
