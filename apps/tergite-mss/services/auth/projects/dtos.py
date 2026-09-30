@@ -95,6 +95,8 @@ class ProjectUpdate(ProjectCreate):
 class Project(ProjectRead, Document):
     model_config = ConfigDict(extra="ignore")
 
+    # optional like any document's, or no project could be made before inserting it
+    id: Optional[PydanticObjectId] = None
     is_active: bool = True
     user_ids: List[PydanticObjectId] = ()
     is_personal: bool = False
