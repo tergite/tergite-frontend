@@ -16,28 +16,37 @@ from datetime import datetime, timezone
 import pytest
 
 from services.auth import DeletedProject, Project
+from services.notices import NoticeType
 from tests._utils.auth import (
     TEST_NO_QPU_PROJECT_DICT,
+    TEST_OUTSIDER_EMAIL,
+    TEST_OUTSIDER_ID,
     TEST_PROJECT_DICT,
     TEST_PROJECT_ID,
+    TEST_PROJECT_NAME,
+    TEST_SYSTEM_USER_EMAIL,
+    TEST_SYSTEM_USER_ID,
+    TEST_USER_EMAIL,
+    TEST_USER_ID,
     USER_ID_EMAIL_MAP,
     get_db_record,
 )
 from tests._utils.date_time import get_timestamp_str
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mongodb import find_in_collection
+from tests._utils.notices import get_user_notices
 from tests._utils.records import prune
 from tests.conftest import PROJECT_LIST
 
 _PROJECT_CREATE_LIST = load_json_fixture("project_create_list.json")
 _PROJECT_UPDATE_LIST = load_json_fixture("project_update_list.json")
-_EXTRA_PROJECT_DEFAULTS = {
-    "resource_ids": [],
-    "source": "internal",
-    "user_emails": None,
-    "admin_email": None,
-    "is_personal": False,
-    "low_qpu_notified_at": None,
+_EXTRA_PROJECT_DEFAULTS = {"is_personal": False}
+_NOTIFIED_PROJECT = {
+    "admin_email": TEST_USER_EMAIL,
+    "user_emails": [TEST_OUTSIDER_EMAIL],
+    "name": "notified project",
+    "description": "a project whose members hear about it",
+    "qpu_seconds": 100,
 }
 
 
@@ -195,16 +204,16 @@ def test_admin_view_all_projects_in_detail(
             {
                 "id": str(item["_id"]),
                 "qpu_seconds": item["qpu_seconds"],
-                "is_active": item.get("is_active"),
-                "user_ids": item.get("user_ids"),
-                "admin_id": item.get("admin_id"),
-                "admin_email": USER_ID_EMAIL_MAP.get(item.get("admin_id")),
-                "user_emails": [USER_ID_EMAIL_MAP.get(v) for v in item.get("user_ids")],
-                "name": item.get("name"),
-                "description": item.get("description"),
-                "is_personal": item.get("is_personal"),
-                "created_at": item.get("created_at"),
-                "updated_at": item.get("updated_at"),
+                "is_active": item.get("is_active", True),
+                "user_ids": [str(v) for v in item["user_ids"]],
+                "admin_id": str(item["admin_id"]),
+                "admin_email": USER_ID_EMAIL_MAP[str(item["admin_id"])],
+                "user_emails": [USER_ID_EMAIL_MAP[str(v)] for v in item["user_ids"]],
+                "name": item["name"],
+                "description": item["description"],
+                "is_personal": item.get("is_personal", False),
+                "created_at": item["created_at"],
+                "updated_at": item["updated_at"],
             }
             for item in [TEST_PROJECT_DICT, TEST_NO_QPU_PROJECT_DICT] + PROJECT_LIST
         ]
@@ -342,3 +351,116 @@ def test_non_admin_cannot_delete_project(
         assert response.status_code == 403
         assert got == expected
         assert get_db_record(db, Project, _id) is not None
+
+
+def test_admin_create_project_with_existing_name(client, admin_jwt_cookie, db):
+    """POST /admin/projects/ refuses a second project of the same name"""
+    with client as client:
+        response = client.post(
+            "/admin/projects/",
+            json={**_NOTIFIED_PROJECT, "name": TEST_PROJECT_NAME},
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 400
+        assert response.json() == {"detail": "PROJECT_ALREADY_EXISTS"}
+        assert db["auth_projects"].count_documents({"name": TEST_PROJECT_NAME}) == 1
+
+
+def test_project_creation_notifies_the_new_members(client, admin_jwt_cookie, db):
+    """Everyone put on a brand new project is told they were added"""
+    with client as client:
+        response = client.post(
+            "/admin/projects/", json=_NOTIFIED_PROJECT, cookies=admin_jwt_cookie
+        )
+        member_notices = get_user_notices(db, TEST_OUTSIDER_ID)
+
+        assert response.status_code == 201
+        assert [item["type"] for item in member_notices] == [
+            NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
+        ]
+        assert member_notices[0]["body"] == (
+            "jane.doe added you to notified project "
+            f"({response.json()['id']}). You can now create API tokens for it."
+        )
+
+
+def test_project_creation_notifies_the_admin(client, admin_jwt_cookie, db):
+    """The user named as admin hears about that, not only about membership"""
+    with client as client:
+        client.post(
+            "/admin/projects/", json=_NOTIFIED_PROJECT, cookies=admin_jwt_cookie
+        )
+        admin_notice_types = {
+            item["type"] for item in get_user_notices(db, TEST_USER_ID)
+        }
+
+        assert admin_notice_types == {
+            NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
+            NoticeType.PROJECT_ADMIN_ASSIGNED.id,
+        }
+
+
+def test_project_update_notifies_the_added_and_the_removed(
+    client, admin_jwt_cookie, db
+):
+    """Replacing the member list is a grant for some and a revocation for others"""
+    with client as client:
+        response = client.put(
+            f"/admin/projects/{TEST_PROJECT_ID}",
+            json={"user_emails": [TEST_OUTSIDER_EMAIL]},
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 200
+        assert [item["type"] for item in get_user_notices(db, TEST_OUTSIDER_ID)] == [
+            NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
+        ]
+        assert [item["type"] for item in get_user_notices(db, TEST_SYSTEM_USER_ID)] == [
+            NoticeType.PROJECT_MEMBERSHIP_REVOKED.id
+        ]
+        assert get_user_notices(db, TEST_USER_ID) == []
+
+
+def test_project_update_notifies_the_new_admin(client, admin_jwt_cookie, db):
+    """Handing a project to someone else tells them they now run it"""
+    with client as client:
+        response = client.put(
+            f"/admin/projects/{TEST_PROJECT_ID}",
+            json={"admin_email": TEST_SYSTEM_USER_EMAIL},
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 200
+        assert [item["type"] for item in get_user_notices(db, TEST_SYSTEM_USER_ID)] == [
+            NoticeType.PROJECT_ADMIN_ASSIGNED.id
+        ]
+
+
+def test_project_update_that_changes_no_membership_notifies_nobody(
+    client, admin_jwt_cookie, db
+):
+    """A rename must not spam every member"""
+    with client as client:
+        response = client.put(
+            f"/admin/projects/{TEST_PROJECT_ID}",
+            json={"name": "a new name"},
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 200
+        assert db["notices"].count_documents({}) == 0
+
+
+def test_admin_delete_personal_project(client, admin_jwt_cookie, db, personal_project):
+    """An operator must be able to offboard a user without touching the database"""
+    project_id = str(personal_project["_id"])
+
+    with client as client:
+        response = client.delete(
+            f"/admin/projects/{project_id}", cookies=admin_jwt_cookie
+        )
+
+        assert response.status_code == 204
+        assert get_db_record(db, Project, project_id) is None
+        assert get_db_record(db, DeletedProject, project_id) is not None

@@ -11,17 +11,24 @@
 # that they have been altered from the originals.
 
 import pytest
+from beanie import PydanticObjectId
 from pytest_lazyfixture import lazy_fixture
 
 from services.auth import DeletedProject, Project
+from services.notices import NoticeType
 from tests._utils.auth import (
     TEST_NO_QPU_PROJECT_DICT,
+    TEST_OUTSIDER_ID,
     TEST_PROJECT_DICT,
+    TEST_PROJECT_ID,
+    TEST_PROJECT_NAME,
     TEST_SUPERUSER_ID,
+    TEST_SYSTEM_USER_ID,
     TEST_USER_ID,
     get_db_record,
 )
 from tests._utils.date_time import get_current_timestamp_str
+from tests._utils.notices import get_user_notices
 from tests._utils.records import prune
 from tests.conftest import PROJECT_LIST, get_auth_cookie
 
@@ -50,14 +57,10 @@ _USER_ID_COOKIES_FIXTURE = [
     (TEST_USER_ID, lazy_fixture("user_jwt_cookie")),
     (TEST_SUPERUSER_ID, lazy_fixture("admin_jwt_cookie")),
 ]
-_EXTRA_PROJECT_DEFAULTS = {
-    "resource_ids": [],
-    "source": "internal",
-    "user_emails": None,
-    "admin_email": None,
-    "is_personal": False,
-    "low_qpu_notified_at": None,
-}
+_EXTRA_PROJECT_DEFAULTS = {"is_personal": False}
+_SYSTEM_USER_MEMBERSHIP_URL = (
+    f"/me/projects/{TEST_PROJECT_ID}/members/{TEST_SYSTEM_USER_ID}"
+)
 
 
 @pytest.mark.parametrize("user_id, cookies", _USER_ID_COOKIES_FIXTURE)
@@ -77,15 +80,15 @@ def test_view_own_projects_in_less_detail(
                 "name": item.get("name"),
                 "qpu_seconds": item["qpu_seconds"],
                 "description": item.get("description"),
-                "user_ids": item.get("user_ids"),
-                "admin_id": item.get("admin_id"),
-                "is_active": item.get("is_active"),
-                "is_personal": item.get("is_personal"),
+                "user_ids": [str(v) for v in item["user_ids"]],
+                "admin_id": str(item["admin_id"]),
+                "is_active": item.get("is_active", True),
+                "is_personal": item.get("is_personal", False),
                 "created_at": item.get("created_at"),
                 "updated_at": item.get("updated_at"),
             }
             for item in [TEST_PROJECT_DICT, TEST_NO_QPU_PROJECT_DICT] + PROJECT_LIST
-            if user_id in item["user_ids"]
+            if user_id in [str(v) for v in item["user_ids"]]
         ]
 
         assert response.status_code == 200
@@ -191,3 +194,136 @@ def test_delete_others_project_is_not_allowed(
         assert response.status_code == 403
         assert got == expected
         assert get_db_record(db, Project, project_id) is not None
+
+
+def test_owner_cannot_delete_their_own_personal_project(
+    client, user_jwt_cookie, db, personal_project
+):
+    """Deleting one's own personal project would hand out a fresh allowance on the next login"""
+    project_id = personal_project["_id"]
+
+    with client as client:
+        response = client.delete(f"/me/projects/{project_id}", cookies=user_jwt_cookie)
+
+        assert response.status_code == 403
+        assert response.json() == {
+            "detail": "you cannot delete your own personal project"
+        }
+        assert get_db_record(db, Project, str(project_id)) is not None
+
+
+def test_project_admin_removes_a_member(client, user_jwt_cookie, db):
+    """DELETE /me/projects/{id}/members/{member_id} by the project admin removes the member"""
+    with client as client:
+        response = client.delete(_SYSTEM_USER_MEMBERSHIP_URL, cookies=user_jwt_cookie)
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+
+        assert response.status_code == 204
+        assert project["user_ids"] == [PydanticObjectId(TEST_USER_ID)]
+
+
+def test_removing_a_member_revokes_their_tokens(client, user_jwt_cookie, db):
+    """The removed member's app tokens for the project stop existing"""
+    token_filter = {
+        "user_id": PydanticObjectId(TEST_SYSTEM_USER_ID),
+        "project_id": PydanticObjectId(TEST_PROJECT_ID),
+    }
+
+    with client as client:
+        tokens_before = db["auth_app_tokens"].count_documents(token_filter)
+        client.delete(_SYSTEM_USER_MEMBERSHIP_URL, cookies=user_jwt_cookie)
+        tokens_after = db["auth_app_tokens"].count_documents(token_filter)
+
+        assert tokens_before == 1
+        assert tokens_after == 0
+
+
+def test_removing_a_member_notifies_them(client, user_jwt_cookie, db):
+    """The removed member is told, rather than silently losing access"""
+    with client as client:
+        client.delete(_SYSTEM_USER_MEMBERSHIP_URL, cookies=user_jwt_cookie)
+        member_notices = get_user_notices(db, TEST_SYSTEM_USER_ID)
+
+        assert [item["type"] for item in member_notices] == [
+            NoticeType.PROJECT_MEMBERSHIP_REVOKED.id
+        ]
+        assert (
+            member_notices[0]["title"] == f"You were removed from {TEST_PROJECT_NAME}"
+        )
+
+
+def test_superuser_removes_a_member(client, admin_jwt_cookie, db):
+    """A superuser may remove a member from any project, not only ones they administer"""
+    with client as client:
+        response = client.delete(_SYSTEM_USER_MEMBERSHIP_URL, cookies=admin_jwt_cookie)
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+
+        assert response.status_code == 204
+        assert PydanticObjectId(TEST_SYSTEM_USER_ID) not in project["user_ids"]
+
+
+def test_non_admin_cannot_remove_a_member(client, system_user_jwt_cookie, db):
+    """Someone who neither administers the project nor is a superuser is forbidden"""
+    url = f"/me/projects/{TEST_PROJECT_ID}/members/{TEST_USER_ID}"
+
+    with client as client:
+        response = client.delete(url, cookies=system_user_jwt_cookie)
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+
+        assert response.status_code == 403
+        assert PydanticObjectId(TEST_USER_ID) in project["user_ids"]
+
+
+def test_cannot_remove_the_project_admin(client, admin_jwt_cookie, db):
+    """Removing the admin would orphan the project, so it is refused"""
+    url = f"/me/projects/{TEST_PROJECT_ID}/members/{TEST_USER_ID}"
+
+    with client as client:
+        response = client.delete(url, cookies=admin_jwt_cookie)
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+
+        assert response.status_code == 400
+        assert response.json() == {"detail": "the project admin cannot be removed"}
+        assert PydanticObjectId(TEST_USER_ID) in project["user_ids"]
+
+
+def test_remove_a_non_member(client, user_jwt_cookie, db):
+    """Removing someone who is not on the project answers 404 and notifies nobody"""
+    url = f"/me/projects/{TEST_PROJECT_ID}/members/{TEST_OUTSIDER_ID}"
+
+    with client as client:
+        response = client.delete(url, cookies=user_jwt_cookie)
+
+        assert response.status_code == 404
+        assert response.json() == {"detail": "user not a member"}
+        assert db["notices"].count_documents({}) == 0
+
+
+def test_remove_a_member_twice(client, user_jwt_cookie, db):
+    """A repeated removal finds no member and does not notify again"""
+    with client as client:
+        client.delete(_SYSTEM_USER_MEMBERSHIP_URL, cookies=user_jwt_cookie)
+        response = client.delete(_SYSTEM_USER_MEMBERSHIP_URL, cookies=user_jwt_cookie)
+
+        assert response.status_code == 404
+        assert db["notices"].count_documents({}) == 1
+
+
+def test_remove_a_member_from_unknown_project(client, user_jwt_cookie):
+    """Removing a member from a project that does not exist answers 404"""
+    url = f"/me/projects/{PydanticObjectId()}/members/{TEST_SYSTEM_USER_ID}"
+
+    with client as client:
+        response = client.delete(url, cookies=user_jwt_cookie)
+
+        assert response.status_code == 404
+
+
+def test_unauthenticated_remove_a_member(client, db):
+    """Removing a member requires a signed-in user"""
+    with client as client:
+        response = client.delete(_SYSTEM_USER_MEMBERSHIP_URL)
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+
+        assert response.status_code == 401
+        assert PydanticObjectId(TEST_SYSTEM_USER_ID) in project["user_ids"]

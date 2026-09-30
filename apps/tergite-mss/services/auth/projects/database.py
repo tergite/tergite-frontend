@@ -22,6 +22,7 @@ from utils.config import ProjectsConfig
 from utils.crypto import generate_linked_id
 
 from .dtos import Project
+from .exc import ProjectExists
 
 if TYPE_CHECKING:
     from services.auth.users.dtos import User
@@ -106,9 +107,16 @@ class ProjectDatabase:
         ).to_list()
 
     async def create(self, create_dict: Dict[str, Any]) -> Project:
-        """Create a project."""
+        """Create a project.
+
+        Raises:
+            ProjectExists: a project of the same name exists
+        """
         project = Project(**create_dict)
-        await project.create()
+        try:
+            await project.create()
+        except DuplicateKeyError:
+            raise ProjectExists()
         return project
 
     async def update(self, project: Project, update_dict: Dict[str, Any]) -> Project:

@@ -60,13 +60,11 @@ def get_my_projects_router(
     async def get_projects(
         user_id: str = Depends(get_current_user_id),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
-        user_manager: UserManager = Depends(get_user_manager),
         skip: int = Query(0),
         limit: Optional[int] = Query(None),
     ):
-        user = await user_manager.get(PydanticObjectId(user_id))
         projects = await project_manager.get_many(
-            filter_obj={"$or": [{"user_emails": user.email}, {"user_ids": user_id}]},
+            filter_obj={"user_ids": PydanticObjectId(user_id)},
             skip=skip,
             limit=limit,
         )
@@ -84,7 +82,6 @@ def get_my_projects_router(
         id: str,
         user_id: str = Depends(get_current_user_id),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
-        user_manager: UserManager = Depends(get_user_manager),
     ):
         try:
             parsed_id = project_manager.parse_id(id)
@@ -92,15 +89,7 @@ def get_my_projects_router(
         except (exc.ProjectNotExists, exceptions.InvalidID) as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
 
-        user = await user_manager.get(PydanticObjectId(user_id))
-        user_emails: List[str] = (
-            project.user_emails if project.user_emails is not None else []
-        )
-        user_ids: List[str] = project.user_ids if project.user_ids is not None else []
-
-        if user is None or (
-            user.email not in user_emails and str(user.id) not in user_ids
-        ):
+        if PydanticObjectId(user_id) not in project.members:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="the project does not exist.",
@@ -154,6 +143,7 @@ def get_my_projects_router(
             user_ids=[member_id],
             notice_type=NoticeType.PROJECT_MEMBERSHIP_REVOKED.id,
             context=ProjectRequestContext(
+                project_id=str(project.id),
                 project_name=project.name,
                 approver_name=current_user.username,
             ),
@@ -171,7 +161,6 @@ def get_my_projects_router(
     async def destroy(
         _id: PydanticObjectId,
         user_id: str = Depends(get_current_user_id),
-        user_manager: UserManager = Depends(get_user_manager),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
     ):
         try:
@@ -180,9 +169,7 @@ def get_my_projects_router(
         except (exc.ProjectNotExists, exceptions.InvalidID) as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
 
-        user = await user_manager.get(PydanticObjectId(user_id))
-
-        if user is None or str(user.id) != project.admin_id:
+        if PydanticObjectId(user_id) != project.admin_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
         # the manager refuses a personal project unless the caller is a superuser
@@ -266,7 +253,7 @@ def get_projects_router(
         skip: int = Query(0),
         limit: Optional[int] = Query(None),
         ids: Optional[List[PydanticObjectId]] = Query(None, alias="id"),
-        user_ids: Optional[List[str]] = Query(None),
+        user_ids: Optional[List[PydanticObjectId]] = Query(None),
         name: Optional[List[str]] = Query(None),
         is_active: Optional[bool] = Query(None),
         min_qpu_seconds: Optional[int] = Query(None),
@@ -370,14 +357,15 @@ async def _notify_membership_change(
         actor: the superuser who made the change
     """
     context = ProjectRequestContext(
+        project_id=str(final_project.id),
         project_name=final_project.name,
         approver_name=actor.username,
     )
-    old_ids = set(initial_project.user_ids or []) if initial_project else set()
-    new_ids = set(final_project.user_ids or [])
+    old_ids = set(initial_project.user_ids) if initial_project else set()
+    new_ids = set(final_project.user_ids)
 
     await notices.create_system_notice(
-        user_ids=[PydanticObjectId(item) for item in new_ids - old_ids],
+        user_ids=list(new_ids - old_ids),
         notice_type=NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
         context=context,
         ref_type=RefType.PROJECT,
@@ -385,7 +373,7 @@ async def _notify_membership_change(
     )
 
     await notices.create_system_notice(
-        user_ids=[PydanticObjectId(item) for item in old_ids - new_ids],
+        user_ids=list(old_ids - new_ids),
         notice_type=NoticeType.PROJECT_MEMBERSHIP_REVOKED.id,
         context=context,
         ref_type=RefType.PROJECT,
@@ -393,9 +381,9 @@ async def _notify_membership_change(
     )
 
     old_admin = initial_project.admin_id if initial_project else None
-    if final_project.admin_id and final_project.admin_id != old_admin:
+    if final_project.admin_id != old_admin:
         await notices.create_system_notice(
-            user_ids=[PydanticObjectId(final_project.admin_id)],
+            user_ids=[final_project.admin_id],
             notice_type=NoticeType.PROJECT_ADMIN_ASSIGNED.id,
             context=context,
             ref_type=RefType.PROJECT,
@@ -423,9 +411,9 @@ async def _prepare_partial_project(
     user_emails = (payload.user_emails or []) + [payload.admin_email]
     user_emails = [k for k in user_emails if k is not None]
     email_id_map = await _get_user_email_id_map(user_emails)
-    user_ids: Optional[List[str]] = None
+    user_ids: Optional[List[PydanticObjectId]] = None
 
-    admin_id = str(project.admin_id)
+    admin_id = project.admin_id
     if is_admin_id_updating:
         admin_id = email_id_map[payload.admin_email]
 
@@ -464,7 +452,9 @@ async def _prepare_new_project(payload: ProjectCreate) -> Project:
     return Project(**kwargs, user_ids=user_ids, admin_id=admin_id)
 
 
-async def _get_user_email_id_map(user_emails: List[str]) -> Dict[str, str]:
+async def _get_user_email_id_map(
+    user_emails: List[str],
+) -> Dict[str, PydanticObjectId]:
     """Generates a map of user email and their id
 
     It creates any users for emails whose users don't exist
@@ -480,7 +470,7 @@ async def _get_user_email_id_map(user_emails: List[str]) -> Dict[str, str]:
         return {}
 
     users = await User.find({"email": {"$in": user_emails}}).to_list()
-    email_id_map = {v.email: str(v.id) for v in users}
+    email_id_map = {v.email: v.id for v in users}
 
     # create any users who don't exist yet
     new_user_ids = []
@@ -498,7 +488,7 @@ async def _get_user_email_id_map(user_emails: List[str]) -> Dict[str, str]:
 
     # update the email map
     email_id_map.update(
-        {email: str(_id) for email, _id in zip(new_emails, new_user_ids)}
+        {email: PydanticObjectId(_id) for email, _id in zip(new_emails, new_user_ids)}
     )
 
     return email_id_map
@@ -532,17 +522,18 @@ class _TrimmedUser(BaseModel):
     id: PydanticObjectId = Field(alias="_id")
 
 
-async def _get_user_id_email_map(user_ids: List[str]) -> Dict[str, str]:
+async def _get_user_id_email_map(
+    user_ids: List[PydanticObjectId],
+) -> Dict[PydanticObjectId, str]:
     """Gets the user emails for the given user ids as a map
 
     Args:
-        user_ids: the ids of the users in string form
+        user_ids: the ids of the users
 
     Returns:
         the map of the user id and email
     """
-    parsed_user_ids = [PydanticObjectId(v) for v in user_ids]
     users = await User.find(
-        {"_id": {"$in": parsed_user_ids}}, projection_model=_TrimmedUser
+        {"_id": {"$in": user_ids}}, projection_model=_TrimmedUser
     ).to_list()
-    return {str(v.id): v.email for v in users}
+    return {v.id: v.email for v in users}

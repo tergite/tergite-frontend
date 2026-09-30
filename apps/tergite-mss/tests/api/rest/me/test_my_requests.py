@@ -27,9 +27,8 @@ from tests._utils.auth import (
     TEST_USER_EMAIL,
     TEST_USER_ID,
     get_db_record,
-    insert_if_not_exist,
 )
-from utils.crypto import generate_linked_id
+from tests._utils.notices import get_user_notices
 
 _ACCESS_REQUEST = {
     "type": "project-access",
@@ -91,7 +90,7 @@ def test_request_project_access_notifies_the_project_admin(
         request_id = client.post(
             "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
         ).json()["id"]
-        admin_notices = _get_user_notices(db, TEST_USER_ID)
+        admin_notices = get_user_notices(db, TEST_USER_ID)
 
         assert [item["type"] for item in admin_notices] == [
             NoticeType.PROJECT_ACCESS_REQUESTED.id
@@ -102,7 +101,7 @@ def test_request_project_access_notifies_the_project_admin(
         )
         assert admin_notices[0]["ref_type"] == "user_request"
         assert admin_notices[0]["ref_id"] == PydanticObjectId(request_id)
-        assert _get_user_notices(db, TEST_OUTSIDER_ID) == []
+        assert get_user_notices(db, TEST_OUTSIDER_ID) == []
 
 
 def test_request_access_to_unknown_project(client, outsider_jwt_cookie, db):
@@ -121,20 +120,11 @@ def test_request_access_to_unknown_project(client, outsider_jwt_cookie, db):
         assert db["requests"].count_documents({}) == 0
 
 
-def test_request_access_to_personal_project(client, outsider_jwt_cookie, db):
+def test_request_access_to_personal_project(
+    client, outsider_jwt_cookie, personal_project
+):
     """Personal projects answer 404 identically, so they cannot be probed for"""
-    project_id = generate_linked_id(TEST_USER_ID, namespace="project")
-    insert_if_not_exist(
-        db,
-        Project,
-        {
-            "_id": project_id,
-            "name": "john.doe (personal)",
-            "admin_id": PydanticObjectId(TEST_USER_ID),
-            "user_ids": [PydanticObjectId(TEST_USER_ID)],
-            "is_personal": True,
-        },
-    )
+    project_id = personal_project["_id"]
 
     with client as client:
         response = client.post(
@@ -198,7 +188,7 @@ def test_request_qpu_seconds(client, user_jwt_cookie, db):
             "/me/requests/", cookies=user_jwt_cookie, json=_QPU_SECONDS_REQUEST
         )
         got = response.json()
-        superuser_notices = _get_user_notices(db, TEST_SUPERUSER_ID)
+        superuser_notices = get_user_notices(db, TEST_SUPERUSER_ID)
 
         assert response.status_code == 201
         assert got["target"] == "system"
@@ -251,7 +241,7 @@ def test_request_project_creation(client, outsider_jwt_cookie, db):
         assert got["metadata"]["name"] == "thesis project"
         assert got["metadata"]["admin_email"] == TEST_OUTSIDER_EMAIL
         assert got["metadata"]["user_emails"] == [TEST_USER_EMAIL]
-        assert _get_user_notices(db, TEST_SUPERUSER_ID)[0]["title"] == (
+        assert get_user_notices(db, TEST_SUPERUSER_ID)[0]["title"] == (
             "Create request for thesis project"
         )
 
@@ -384,7 +374,7 @@ def test_approve_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db
         )
         got = response.json()
         project = get_db_record(db, Project, TEST_PROJECT_ID)
-        requester_notices = _get_user_notices(db, TEST_OUTSIDER_ID)
+        requester_notices = get_user_notices(db, TEST_OUTSIDER_ID)
 
         assert response.status_code == 200
         assert got["status"] == "approved"
@@ -412,8 +402,8 @@ def test_deciding_a_request_clears_its_prompt(
             cookies=user_jwt_cookie,
             json={"status": "approved"},
         )
-        prompt = _get_user_notices(db, TEST_USER_ID)[0]
-        outcome = _get_user_notices(db, TEST_OUTSIDER_ID)[0]
+        prompt = get_user_notices(db, TEST_USER_ID)[0]
+        outcome = get_user_notices(db, TEST_OUTSIDER_ID)[0]
 
         assert prompt["read_at"] is not None
         assert prompt["dismissed_by"] == [PydanticObjectId(TEST_USER_ID)]
@@ -433,7 +423,7 @@ def test_reject_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db)
         )
         got = response.json()
         project = get_db_record(db, Project, TEST_PROJECT_ID)
-        requester_notices = _get_user_notices(db, TEST_OUTSIDER_ID)
+        requester_notices = get_user_notices(db, TEST_OUTSIDER_ID)
 
         assert response.status_code == 200
         assert got["status"] == "rejected"
@@ -457,7 +447,7 @@ def test_approve_qpu_seconds(client, user_jwt_cookie, admin_jwt_cookie, db):
             json={"status": "approved"},
         )
         project_after = get_db_record(db, Project, TEST_PROJECT_ID)
-        requester_notices = _get_user_notices(db, TEST_USER_ID)
+        requester_notices = get_user_notices(db, TEST_USER_ID)
 
         assert response.status_code == 200
         assert project_after["qpu_seconds"] == project_before["qpu_seconds"] + 120
@@ -637,18 +627,3 @@ def test_unauthenticated_update_request(client, db, inserted_requests):
         assert get_db_record(db, Request, _PENDING_ACCESS_REQUEST_ID)["status"] == (
             "pending"
         )
-
-
-def _get_user_notices(db, user_id: str) -> list:
-    """Gets the notices sent to the given user, oldest first
-
-    Args:
-        db: the mongo database where the notices are stored
-        user_id: the id of the user
-
-    Returns:
-        the notices as stored in the database
-    """
-    return list(
-        db["notices"].find({"user_id": PydanticObjectId(user_id)}).sort("created_at")
-    )

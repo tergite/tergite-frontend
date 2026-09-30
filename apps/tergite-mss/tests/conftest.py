@@ -54,6 +54,7 @@ from tests._utils.auth import (
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mock_backend import CREATED_BOOKINGS
 from tests._utils.records import with_offset_datetimes
+from utils.crypto import generate_linked_id
 
 BACKEND_SLUGS = ("Loke", "Pingu")
 PROJECT_LIST = load_json_fixture("project_list.json")
@@ -183,6 +184,27 @@ def inserted_projects(db) -> Dict[str, Dict[str, Any]]:
 def inserted_project_ids(inserted_projects) -> List[str]:
     """A list of inserted project ids for version 2"""
     yield list(inserted_projects.keys())
+
+
+@pytest.fixture
+def personal_project(db) -> Generator[Dict[str, Any], Any, None]:
+    """The personal project of the test user, as created on their login"""
+    from services.auth import Project
+
+    record = {
+        "_id": generate_linked_id(TEST_USER_ID, namespace="project"),
+        "name": "john.doe (personal)",
+        "description": "john.doe personal project",
+        "admin_id": PydanticObjectId(TEST_USER_ID),
+        "user_ids": [PydanticObjectId(TEST_USER_ID)],
+        "qpu_seconds": 0,
+        "is_active": True,
+        "is_personal": True,
+        "created_at": "2024-09-20T09:12:00.733Z",
+        "updated_at": "2024-09-20T09:12:00.733Z",
+    }
+    insert_if_not_exist(db, Project, record)
+    yield record
 
 
 @pytest.fixture

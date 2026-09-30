@@ -101,5 +101,5 @@ from_name = "Tergite test"
 # timeout = 10
 
 [projects]
-personal_qpu_seconds = 0
+personal_qpu_seconds = 5400
 qpu_seconds_low_threshold = 600
