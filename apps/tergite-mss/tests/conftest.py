@@ -10,18 +10,17 @@ from tests._utils.env import (
     setup_test_env,
 )
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
-from utils.config import EmailConfig
 
 # Set up the test environment before any other imports are made
 setup_test_env()
 # See: https://github.com/pydantic/pydantic/discussions/9343#discussioncomment-10723743
 stub_pydantic_match_type_for_freezegun()
 
-import multiprocessing
 import random
 from datetime import datetime, timezone
 from typing import Any, Dict, Generator, List
 
+import aiosmtplib
 import httpx
 import pymongo.database
 import pytest
@@ -53,11 +52,13 @@ from tests._utils.auth import (
 )
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mock_backend import CREATED_BOOKINGS
+from tests._utils.records import with_offset_datetimes
 
 BACKEND_SLUGS = ("Loke", "Pingu")
 PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
 JOB_LIST = load_json_fixture("job_list.json")
+NOTICE_LIST = load_json_fixture("notices.json")
 TEST_NEXT_COOKIE_URL = "https://testserver/"
 _redis_connection = redis.Redis.from_url(TEST_REDIS_URL)
 
@@ -221,6 +222,34 @@ def inserted_app_tokens(db) -> Generator[List[Dict[str, Any]], Any, None]:
         insert_if_not_exist(db, AppToken, _to_app_token_record(item))
 
     yield tokens
+
+
+@pytest.fixture
+def inserted_notices(db) -> Generator[List[Dict[str, Any]], Any, None]:
+    """A list of inserted notices, starting and expiring relative to now"""
+    from services.notices import Notice
+
+    records = with_offset_datetimes(
+        [_to_notice_record(item) for item in NOTICE_LIST],
+        {
+            "starts_at": "starts_at_offset_hours",
+            "expires_at": "expires_at_offset_hours",
+        },
+    )
+    for record in records:
+        insert_if_not_exist(db, Notice, record)
+
+    yield records
+
+
+@pytest.fixture(autouse=True)
+def smtp(mocker):
+    """Captures the emails handed to the SMTP server instead of sending them"""
+    mocker.patch.object(aiosmtplib.SMTP, "connect", new_callable=mocker.AsyncMock)
+    mocker.patch.object(aiosmtplib.SMTP, "quit", new_callable=mocker.AsyncMock)
+    yield mocker.patch.object(
+        aiosmtplib.SMTP, "send_message", new_callable=mocker.AsyncMock
+    )
 
 
 @pytest.fixture
@@ -454,4 +483,14 @@ def _to_app_token_record(item: Dict[str, Any]) -> Dict[str, Any]:
         "_id": PydanticObjectId(item["_id"]),
         "user_id": PydanticObjectId(item["user_id"]),
         "project_id": PydanticObjectId(item["project_id"]),
+    }
+
+
+def _to_notice_record(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts a notice from the JSON fixtures into the record stored in the db"""
+    object_id_fields = ("_id", "user_id", "created_by", "ref_id")
+    return {
+        **item,
+        **{k: PydanticObjectId(item[k]) for k in object_id_fields if item[k]},
+        "dismissed_by": [PydanticObjectId(v) for v in item["dismissed_by"]],
     }

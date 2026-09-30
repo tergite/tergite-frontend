@@ -10,8 +10,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Data Transfer Objects for the notices service"""
-import importlib
-from contextlib import suppress
 from datetime import datetime
 from enum import Enum, nonmember
 from typing import Any, Dict, List, Literal, NamedTuple, Optional, Self, Type, cast
@@ -27,7 +25,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_core.core_schema import ValidationInfo
 from pymongo import IndexModel
 
 from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
@@ -84,6 +81,7 @@ class ProjectRequestContext(BaseNoticeContext):
     """The context passed to the notice template when anything is requested about a project."""
 
     requester_name: str = ""
+    project_id: str = ""
     project_name: str = ""
     reason: str = ""
     approver_name: str = ""
@@ -349,15 +347,6 @@ class Notice(Document):
         except AttributeError:
             return value
 
-    @field_validator("title", "body", mode="after")
-    @classmethod
-    def compute_template_fields(cls, value: str, info: ValidationInfo) -> str:
-        """Computes the templates of the title and the body using the context"""
-        ctx = info.context
-        if isinstance(ctx, BaseNoticeContext):
-            return value.format_map(ctx.model_dump())
-        return value
-
     @model_validator(mode="after")
     def validate_record(self) -> Self:
         """Validates the notice record
@@ -398,21 +387,29 @@ class Notice(Document):
     def from_template(
         cls,
         template: "NoticeTemplate",
-        context: BaseNoticeContext,
+        context: Optional[BaseNoticeContext] = None,
         **kwargs,
     ) -> Self:
         """Constructs a notice from a template
 
         Args:
             template: The notice template
-            context: The notice context useful for formating the template
+            context: The notice context useful for formating the template;
+                defaults to the template's context class with its defaults
             kwargs: Additional arguments passed to the notice constructor
 
         Returns:
             The notice object
         """
-        data = {**template.model_dump(), **kwargs}
-        return cls.model_validate(data, context=context)
+        # formatted here as beanie documents do not pass a validation context along
+        values = (context or template.context_cls()).model_dump()
+        data = {
+            **template.model_dump(exclude={"id"}),
+            "title": template.title.format_map(values),
+            "body": template.body.format_map(values),
+            **kwargs,
+        }
+        return cls.model_validate(data)
 
 
 class NoticePreferences(Document):
@@ -516,13 +513,14 @@ class CustomNoticeCreate(BaseModel):
             body=self.message,
         )
         users_col = db[USER_DB_COLLECTION]
-        templates_col = db[TEMPLATE_DB_COLLECTION]
 
         if self.target_user_emails:
             cursor = users_col.find(
                 {"email": {"$in": self.target_user_emails}}, {"_id": 1}
             )
-            template = await templates_col.find_one({"type": NoticeType.CUSTOM.id})
+            template = await NoticeTemplate.find_one(
+                NoticeTemplate.type == NoticeType.CUSTOM.id
+            )
 
             return [
                 Notice.from_template(
@@ -531,8 +529,8 @@ class CustomNoticeCreate(BaseModel):
                 for v in await cursor.to_list()
             ]
 
-        template = await templates_col.find_one(
-            {"type": NoticeType.CUSTOM_BROADCAST.id}
+        template = await NoticeTemplate.find_one(
+            NoticeTemplate.type == NoticeType.CUSTOM_BROADCAST.id
         )
         return [Notice.from_template(template=template, context=context, **kwargs)]
 

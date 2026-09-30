@@ -35,7 +35,7 @@ async def publish_notice(
     db: MongoDbDep,
     payload: CustomNoticeCreate,
     current_user: User = CurrentSuperuserDep,
-) -> Notice:
+) -> List[Notice]:
     """Publishes a notice
 
     Only MSS admin users can publish notices
@@ -46,7 +46,7 @@ async def publish_notice(
         current_user: the current user
 
     Returns:
-        the created notice
+        the created notices, one per targeted user or a single broadcast notice
     """
     return await notices_service.publish_custom_notice(
         db, current_user_id=current_user.id, payload=payload

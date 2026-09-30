@@ -10,14 +10,14 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Routes for the current user's notices and their delivery preferences"""
+"""Routes for the current user's notice delivery preferences"""
 from typing import Dict
 
 from fastapi import APIRouter
 
 from api.rest.dependencies import CurrentUserIdDep
 from services import notices as notices_service
-from services.notices import NoticeType
+from services.notices.dtos import NoticeTypeId
 
 router = APIRouter()
 
@@ -37,7 +37,7 @@ async def get_my_email_preferences(user_id: str = CurrentUserIdDep):
 
 @router.put("/")
 async def update_my_email_preferences(
-    body: Dict[NoticeType, bool], user_id: str = CurrentUserIdDep
+    body: Dict[NoticeTypeId, bool], user_id: str = CurrentUserIdDep
 ):
     """Updates the named preferences, leaving the rest untouched
 

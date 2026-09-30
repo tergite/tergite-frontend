@@ -1,6 +1,6 @@
 # This code is part of Tergite
 #
-# (C) Copyright Chalmers Next Labs 2024, 2026
+# (C) Copyright Chalmers Next Labs AB 2026
 #
 # This code is licensed under the Apache License, Version 2.0. You may
 # obtain a copy of this license in the LICENSE.txt file in the root directory
@@ -9,186 +9,214 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-
-from datetime import datetime, timezone
-from typing import Any, Dict, List
-
-from bson import ObjectId
+"""Integration tests for the /admin/notices routes"""
+from beanie import PydanticObjectId
 
 from tests._utils.auth import (
-    TEST_SUPERUSER_EMAIL,
+    TEST_OUTSIDER_EMAIL,
     TEST_SUPERUSER_ID,
     TEST_USER_EMAIL,
     TEST_USER_ID,
 )
-from tests._utils.fixtures import load_json_fixture
 from tests._utils.mongodb import find_in_collection
-from tests._utils.records import with_offset_datetimes
 
 _NOTICES_COLLECTION = "notices"
-_NOTICES_IN_DB_RAW = load_json_fixture("notices.json")
+_ADMIN_NOTICE_ID = "aaaaaaaaaaaaaaaaaaaaaaaa"
+_USER_NOTICE_ID = "bbbbbbbbbbbbbbbbbbbbbbbb"
+_READ_USER_NOTICE_ID = "dddddddddddddddddddddddd"
+_NOTICE_PAYLOAD = {
+    "message": "Important maintenance window",
+    "severity": "warning",
+    "starts_at": "2026-01-01T00:00:00Z",
+    "expires_at": "2027-01-01T00:00:00Z",
+}
 
-# IDs of the notices in the fixture (mirrors the _id fields in notices.json)
-_NOTICE_TARGETING_ADMIN_ID = "aaaaaaaaaaaaaaaaaaaaaaaa"
 
-# Individual raw fixture dicts for tests that need to insert a single notice
-_NOTICE_TARGETING_ADMIN_RAW = next(
-    n for n in _NOTICES_IN_DB_RAW if n["_id"] == _NOTICE_TARGETING_ADMIN_ID
-)
-
-
-def test_admin_publish_notice(admin_jwt_cookie, client, db):
-    """Admin can publish a notice via POST /admin/notices/"""
-    payload = {
-        "message": "Important maintenance window",
-        "severity": "warning",
-        "starts_at": "2026-01-01T00:00:00Z",
-        "expires_at": "2027-01-01T00:00:00Z",
-    }
+def test_admin_publish_broadcast_notice(admin_jwt_cookie, client, db):
+    """POST /admin/notices/ without target emails publishes one notice for everyone"""
     with client as client:
         response = client.post(
-            "/admin/notices/", cookies=admin_jwt_cookie, json=payload
+            "/admin/notices/", cookies=admin_jwt_cookie, json=_NOTICE_PAYLOAD
         )
         got = response.json()
+        notices_in_db = find_in_collection(db, _NOTICES_COLLECTION)
 
         assert response.status_code == 200
-        assert isinstance(got["id"], str)
-        assert got["message"] == payload["message"]
-        assert got["severity"] == payload["severity"]
-        assert got["created_by"] == TEST_SUPERUSER_ID
-        assert got["target_user_ids"] is None
-        assert got["dismissed_by"] == []
-
-        # verify notice was persisted to db
-        notices = find_in_collection(db, _NOTICES_COLLECTION)
-        assert len(notices) == 1
-        assert str(notices[0]["_id"]) == got["id"]
+        assert len(got) == 1
+        assert got[0]["type"] == "custom-broadcast"
+        assert got[0]["title"] == _NOTICE_PAYLOAD["message"]
+        assert got[0]["body"] == _NOTICE_PAYLOAD["message"]
+        assert got[0]["severity"] == _NOTICE_PAYLOAD["severity"]
+        assert got[0]["starts_at"] == "2026-01-01T00:00:00.000Z"
+        assert got[0]["expires_at"] == "2027-01-01T00:00:00.000Z"
+        assert got[0]["created_by"] == TEST_SUPERUSER_ID
+        assert got[0]["user_id"] is None
+        assert got[0]["dismissed_by"] == []
+        assert [str(item["_id"]) for item in notices_in_db] == [got[0]["id"]]
 
 
 def test_admin_publish_notice_with_target_emails(admin_jwt_cookie, client, db):
-    """Admin can publish a targeted notice via POST /admin/notices/ with target_user_emails"""
+    """POST /admin/notices/ with target emails publishes one notice per known user"""
     payload = {
-        "message": "Notice for specific users",
-        "severity": "info",
-        "starts_at": "2026-01-01T00:00:00Z",
-        "expires_at": "2027-01-01T00:00:00Z",
-        "target_user_emails": [TEST_USER_EMAIL, TEST_SUPERUSER_EMAIL],
+        **_NOTICE_PAYLOAD,
+        "target_user_emails": [TEST_USER_EMAIL, TEST_OUTSIDER_EMAIL, "no@such.user"],
     }
+
     with client as client:
         response = client.post(
             "/admin/notices/", cookies=admin_jwt_cookie, json=payload
         )
         got = response.json()
+        notices_in_db = find_in_collection(db, _NOTICES_COLLECTION)
 
         assert response.status_code == 200
-        assert isinstance(got["id"], str)
-        assert got["target_user_ids"] is not None
-        assert len(got["target_user_ids"]) == 2
-        assert TEST_USER_ID in got["target_user_ids"]
-        assert TEST_SUPERUSER_ID in got["target_user_ids"]
+        assert {item["type"] for item in got} == {"custom"}
+        assert {item["user_id"] for item in got} == {
+            TEST_USER_ID,
+            str(_get_user_id(db, TEST_OUTSIDER_EMAIL)),
+        }
+        assert {str(item["_id"]) for item in notices_in_db} == {
+            item["id"] for item in got
+        }
 
 
 def test_non_admin_publish_notice(user_jwt_cookie, client, db):
-    """Non-admin cannot publish a notice via POST /admin/notices/"""
-    payload = {
-        "message": "Should not be created",
-        "severity": "info",
-        "starts_at": "2026-01-01T00:00:00Z",
-        "expires_at": "2027-01-01T00:00:00Z",
-    }
+    """POST /admin/notices/ by a non-admin is forbidden"""
     with client as client:
-        response = client.post("/admin/notices/", cookies=user_jwt_cookie, json=payload)
+        response = client.post(
+            "/admin/notices/", cookies=user_jwt_cookie, json=_NOTICE_PAYLOAD
+        )
+
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
         assert find_in_collection(db, _NOTICES_COLLECTION) == []
 
 
 def test_unauthenticated_publish_notice(client, db):
-    """Unauthenticated users cannot publish a notice via POST /admin/notices/"""
-    payload = {
-        "message": "Should not be created",
-        "severity": "info",
-        "starts_at": "2026-01-01T00:00:00Z",
-        "expires_at": "2027-01-01T00:00:00Z",
-    }
+    """POST /admin/notices/ requires a signed-in user"""
     with client as client:
-        response = client.post("/admin/notices/", json=payload)
+        response = client.post("/admin/notices/", json=_NOTICE_PAYLOAD)
+
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
         assert find_in_collection(db, _NOTICES_COLLECTION) == []
 
 
-def test_admin_delete_notice(admin_jwt_cookie, client, db):
-    """Admin can delete a notice via DELETE /admin/notices/{notice_id}"""
-    _insert_notices(db, [_NOTICE_TARGETING_ADMIN_RAW])
-
+def test_admin_delete_notice(admin_jwt_cookie, client, db, inserted_notices):
+    """DELETE /admin/notices/{notice_id} deletes the notice and returns it"""
     with client as client:
-        assert len(find_in_collection(db, _NOTICES_COLLECTION)) == 1
-
         response = client.delete(
-            f"/admin/notices/{_NOTICE_TARGETING_ADMIN_ID}", cookies=admin_jwt_cookie
+            f"/admin/notices/{_ADMIN_NOTICE_ID}", cookies=admin_jwt_cookie
         )
         got = response.json()
+        ids_in_db = [str(item["_id"]) for item in find_in_collection(db, "notices")]
 
         assert response.status_code == 200
-        assert got["id"] == _NOTICE_TARGETING_ADMIN_ID
-        assert got["message"] == _NOTICE_TARGETING_ADMIN_RAW["message"]
-        assert find_in_collection(db, _NOTICES_COLLECTION) == []
+        assert got["id"] == _ADMIN_NOTICE_ID
+        assert got["title"] == "Notice for admin only"
+        assert _ADMIN_NOTICE_ID not in ids_in_db
+        assert len(ids_in_db) == len(inserted_notices) - 1
 
 
-def test_non_admin_delete_notice(user_jwt_cookie, client, db):
-    """Non-admin cannot delete a notice via DELETE /admin/notices/{notice_id}"""
-    _insert_notices(db, [_NOTICE_TARGETING_ADMIN_RAW])
-
+def test_non_admin_delete_notice(user_jwt_cookie, client, db, inserted_notices):
+    """DELETE /admin/notices/{notice_id} by a non-admin is forbidden"""
     with client as client:
         response = client.delete(
-            f"/admin/notices/{_NOTICE_TARGETING_ADMIN_ID}", cookies=user_jwt_cookie
+            f"/admin/notices/{_USER_NOTICE_ID}", cookies=user_jwt_cookie
         )
+
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
-        assert len(find_in_collection(db, _NOTICES_COLLECTION)) == 1
+        assert len(find_in_collection(db, _NOTICES_COLLECTION)) == len(inserted_notices)
 
 
-def test_delete_non_existent_notice(admin_jwt_cookie, client, db):
+def test_delete_non_existent_notice(admin_jwt_cookie, client):
     """DELETE /admin/notices/{notice_id} returns 404 when the notice does not exist"""
     with client as client:
         response = client.delete(
-            f"/admin/notices/{_NOTICE_TARGETING_ADMIN_ID}", cookies=admin_jwt_cookie
+            f"/admin/notices/{_ADMIN_NOTICE_ID}", cookies=admin_jwt_cookie
         )
+
         assert response.status_code == 404
+        assert response.json() == {
+            "detail": f"notice of ID '{_ADMIN_NOTICE_ID}' not found"
+        }
 
 
-def _insert_notices(
-    db, notices_raw: List[Dict[str, Any]], now: datetime = None
-) -> None:
-    """Inserts notices into the database, converting offset hours to datetimes and IDs to ObjectId
+def test_admin_get_all_notices(admin_jwt_cookie, client, inserted_notices):
+    """GET /admin/notices without a user_id returns every notice"""
+    with client as client:
+        response = client.get("/admin/notices", cookies=admin_jwt_cookie)
+        got = response.json()
+
+        assert response.status_code == 200
+        assert got["skip"] == 0
+        assert got["limit"] is None
+        assert {item["id"] for item in got["data"]} == {
+            str(item["_id"]) for item in inserted_notices
+        }
+
+
+def test_admin_get_notices_of_user(admin_jwt_cookie, client, inserted_notices):
+    """GET /admin/notices?user_id=...&include_dismissed=true returns the user's own and broadcast notices"""
+    expected_ids = {
+        str(item["_id"])
+        for item in inserted_notices
+        if item["user_id"] in (PydanticObjectId(TEST_USER_ID), None)
+    }
+
+    with client as client:
+        response = client.get(
+            f"/admin/notices?user_id={TEST_USER_ID}&include_dismissed=true",
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 200
+        assert {item["id"] for item in response.json()["data"]} == expected_ids
+
+
+def test_admin_get_notices_excludes_dismissed_by_default(
+    admin_jwt_cookie, client, inserted_notices
+):
+    """GET /admin/notices?user_id=... leaves out the notices the user dismissed"""
+    with client as client:
+        response = client.get(
+            f"/admin/notices?user_id={TEST_USER_ID}", cookies=admin_jwt_cookie
+        )
+        returned_ids = {item["id"] for item in response.json()["data"]}
+
+        assert response.status_code == 200
+        assert _USER_NOTICE_ID in returned_ids
+        assert _READ_USER_NOTICE_ID not in returned_ids
+        assert _ADMIN_NOTICE_ID not in returned_ids
+
+
+def test_non_admin_get_notices(user_jwt_cookie, client, inserted_notices):
+    """GET /admin/notices by a non-admin is forbidden"""
+    with client as client:
+        response = client.get("/admin/notices", cookies=user_jwt_cookie)
+
+        assert response.status_code == 403
+        assert response.json() == {"detail": "Forbidden"}
+
+
+def test_unauthenticated_get_notices(client, inserted_notices):
+    """GET /admin/notices requires a signed-in user"""
+    with client as client:
+        response = client.get("/admin/notices")
+
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
+
+
+def _get_user_id(db, email: str) -> PydanticObjectId:
+    """Gets the id of the user of the given email
 
     Args:
-        db: the mongodb database
-        notices_raw: list of raw notice dicts from the fixture (with offset_hours fields)
-        now: reference datetime for offset conversion; defaults to UTC now
+        db: the mongo database where the users are stored
+        email: the email of the user
+
+    Returns:
+        the id of the user
     """
-    if now is None:
-        now = datetime.now(timezone.utc)
-
-    records = with_offset_datetimes(
-        notices_raw,
-        {
-            "starts_at": "starts_at_offset_hours",
-            "expires_at": "expires_at_offset_hours",
-        },
-        now=now,
-    )
-
-    def _convert(k: str, v: Any) -> Any:
-        if v is None:
-            return None
-        if k in ("_id", "created_by"):
-            return ObjectId(v)
-        if k in ("target_user_ids", "dismissed_by") and isinstance(v, list):
-            return [ObjectId(i) for i in v]
-        return v
-
-    db[_NOTICES_COLLECTION].insert_many(
-        [{k: _convert(k, v) for k, v in record.items()} for record in records]
-    )
+    return db["auth_users"].find_one({"email": email})["_id"]

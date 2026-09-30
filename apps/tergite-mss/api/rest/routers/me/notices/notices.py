@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Routes for the current user's notices and their delivery preferences"""
+"""Routes for the current user's notices"""
 from typing import List, Optional
 
 from beanie import PydanticObjectId
@@ -51,12 +51,13 @@ async def get_my_notices(
         db,
         limit=limit,
         skip=skip,
+        sort=("-created_at",),
         user_id=user_id,
         include_dismissed=True,
         types=types,
         is_read=is_read,
     )
-    PaginatedListResponse(skip=skip, limit=limit, data=data).model_dump(
+    return PaginatedListResponse(skip=skip, limit=limit, data=data).model_dump(
         mode="json", exclude_data_none_fields=False
     )
 
