@@ -15,6 +15,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Query
 
 from api.rest.dependencies import CurrentSuperuserDep
+from services.auth import service as auth_service
 
 router = APIRouter()
 
@@ -37,4 +38,4 @@ async def get_user_emails(
     Returns:
         the matched email addresses, alphabetically
     """
-    return await get_user_emails(search=search, limit=limit)
+    return await auth_service.get_user_emails(search=search, limit=limit)

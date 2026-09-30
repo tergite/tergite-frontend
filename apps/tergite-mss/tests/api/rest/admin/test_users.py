@@ -12,11 +12,11 @@
 
 from tests._utils.auth import TEST_USER_EMAIL
 
-_USER_EMAILS_URL = "/admin/user-emails/"
+_USER_EMAILS_URL = "/admin/users/emails/"
 
 
 def test_admin_get_user_emails(client, admin_jwt_cookie):
-    """Admins can look up user emails at /admin/user-emails/, addresses alone"""
+    """Admins can look up user emails at /admin/users/emails/, addresses alone"""
     with client as client:
         response = client.get(_USER_EMAILS_URL, cookies=admin_jwt_cookie)
 
