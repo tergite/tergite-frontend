@@ -101,7 +101,7 @@ async def get_latest_many(
         the list of calibration results
     """
     return await mongodb_utils.find(
-        db[_MAIN_COLLECTION],
+        db[CALIBRATIONS_COLLECTION],
         filters=filters,
         limit=limit,
         skip=skip,

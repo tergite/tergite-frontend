@@ -19,7 +19,6 @@ from pytest_lazyfixture import lazy_fixture
 
 from services.auth import User
 from tests._utils.auth import (
-    TEST_CHALMERS_PROFILE,
     TEST_GITHUB_PROFILE,
     TEST_SUPERUSER_EMAIL,
     TEST_USER_EMAIL,
@@ -215,7 +214,7 @@ def test_already_existing_user_github(client, github_user, db, cookie_oauth_stat
     """GitHub users who already exist under other providers raise OAUTH_USER_ALREADY_EXISTS error"""
     # using context manager to ensure on_startup runs
     with client as client:
-        user = {**TEST_GITHUB_PROFILE, "hashed_password": "password"}
+        user = {"email": TEST_GITHUB_PROFILE["email"], "hashed_password": "password"}
         insert_if_not_exist(db, schema=User, data=user)
 
         github_resp = client.get(
@@ -228,13 +227,12 @@ def test_already_existing_user_github(client, github_user, db, cookie_oauth_stat
         assert got == {"detail": "OAUTH_USER_ALREADY_EXISTS"}
 
 
-def test_already_existing_user_chalmers(client, db, chalmers_user, cookie_oauth_state):
+def test_already_existing_user_chalmers(
+    client, chalmers_user, cookie_oauth_state, insert_chalmers_user
+):
     """Chalmers' users who already exist under other providers can be associated with old records"""
     # using context manager to ensure on_startup runs
     with client as client:
-        user = {**TEST_CHALMERS_PROFILE, "hashed_password": "password"}
-        insert_if_not_exist(db, schema=User, data=user)
-
         chalmers_resp = client.get(
             f"/auth/chalmers/callback?code=test&state={cookie_oauth_state}",
             follow_redirects=False,

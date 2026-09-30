@@ -120,18 +120,6 @@ def system_app_token_header() -> Dict[str, str]:
 
 
 @pytest.fixture
-def user_jwt_header() -> Dict[str, str]:
-    """the auth header for the client when JWT of user is used"""
-    yield get_auth_header(TEST_USER_ID)
-
-
-@pytest.fixture
-def admin_jwt_header() -> Dict[str, str]:
-    """the auth header for the client when JWT of an admin is used"""
-    yield get_auth_header(TEST_SUPERUSER_ID)
-
-
-@pytest.fixture
 def user_jwt_cookie() -> Dict[str, str]:
     """the auth cookie for the client when JWT of user is used"""
     yield get_auth_cookie(TEST_USER_ID)
@@ -177,7 +165,7 @@ def inserted_projects(db) -> Dict[str, Dict[str, Any]]:
     projects = {}
     for item in PROJECT_LIST:
         projects[item["_id"]] = {**item}
-        insert_if_not_exist(db, Project, {**item, "_id": PydanticObjectId(item["_id"])})
+        insert_if_not_exist(db, Project, _to_project_record(item))
 
     yield projects
 
@@ -198,9 +186,7 @@ def unallocated_projects(db) -> Dict[str, Dict[str, Any]]:
         qpu_seconds = int(random.uniform(-54000, 0))
         projects[item["_id"]] = {**item, "qpu_seconds": qpu_seconds}
         insert_if_not_exist(
-            db,
-            Project,
-            {**item, "_id": PydanticObjectId(item["_id"]), "qpu_seconds": qpu_seconds},
+            db, Project, {**_to_project_record(item), "qpu_seconds": qpu_seconds}
         )
 
     yield projects
@@ -217,12 +203,7 @@ def app_tokens_with_timestamps(db) -> Generator[List[Dict[str, Any]], Any, None]
 
         # ensure you don't mutate the original item in APP_TOKEN_LIST
         tokens.append({**item, "created_at": created_at})
-        db_item = {
-            **item,
-            "_id": PydanticObjectId(item["_id"]),
-            "user_id": PydanticObjectId(item["user_id"]),
-            "created_at": created_at,
-        }
+        db_item = {**_to_app_token_record(item), "created_at": created_at}
         insert_if_not_exist(db, AppToken, db_item)
 
     yield tokens
@@ -237,12 +218,7 @@ def inserted_app_tokens(db) -> Generator[List[Dict[str, Any]], Any, None]:
     for item in APP_TOKEN_LIST:
         # ensure you don't mutate the original item in APP_TOKEN_LIST
         tokens.append({**item})
-        db_item = {
-            **item,
-            "_id": PydanticObjectId(item["_id"]),
-            "user_id": PydanticObjectId(item["user_id"]),
-        }
-        insert_if_not_exist(db, AppToken, db_item)
+        insert_if_not_exist(db, AppToken, _to_app_token_record(item))
 
     yield tokens
 
@@ -423,47 +399,9 @@ def mock_timed_out_bcc(respx_mock):
     yield respx_mock
 
 
-def get_auth_header(user_id: str) -> Dict[str, Any]:
-    """Retrieves the authorization header for the given user_id"""
-    return {"Authorization": f"Bearer {get_jwt_token(user_id)}"}
-
-
 def get_auth_cookie(user_id: str) -> Dict[str, str]:
     """Retrieves the authorization cookie for the given user_id"""
     return {"some-cookie": get_jwt_token(user_id)}
-
-
-def get_unauthorized_app_token_post():
-    """Returns the body and headers for unauthorized app token generation POST
-
-    The auth header provided is for a user who does not have access
-    to the given project
-    """
-    admin_only_projects = [
-        project["_id"]
-        for project in PROJECT_LIST
-        if project["user_emails"] == [TEST_SUPERUSER_ID]
-    ]
-
-    user_only_projects = [
-        project["_id"]
-        for project in PROJECT_LIST
-        if project["user_ids"] == [TEST_USER_ID]
-    ]
-
-    admin_only_post_data = [
-        (body, get_auth_header(TEST_USER_ID))
-        for body in APP_TOKEN_LIST
-        if body["project_id"] in admin_only_projects
-    ]
-
-    user_only_post_data = [
-        (body, get_auth_header(TEST_SUPERUSER_ID))
-        for body in APP_TOKEN_LIST
-        if body["project_id"] in user_only_projects
-    ]
-
-    return admin_only_post_data + user_only_post_data
 
 
 def get_unauthorized_app_token_post_with_cookies():
@@ -497,3 +435,23 @@ def get_unauthorized_app_token_post_with_cookies():
     ]
 
     return admin_only_post_data + user_only_post_data
+
+
+def _to_project_record(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts a project from the JSON fixtures into the record stored in the db"""
+    return {
+        **item,
+        "_id": PydanticObjectId(item["_id"]),
+        "admin_id": PydanticObjectId(item["admin_id"]),
+        "user_ids": [PydanticObjectId(v) for v in item["user_ids"]],
+    }
+
+
+def _to_app_token_record(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts an app token from the JSON fixtures into the record stored in the db"""
+    return {
+        **item,
+        "_id": PydanticObjectId(item["_id"]),
+        "user_id": PydanticObjectId(item["user_id"]),
+        "project_id": PydanticObjectId(item["project_id"]),
+    }

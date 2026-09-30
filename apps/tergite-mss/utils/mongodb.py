@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 import asyncio
+from contextlib import suppress
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type
 
 import pymongo
@@ -22,12 +23,54 @@ from motor.motor_asyncio import (
 )
 from pydantic import ValidationError
 from pymongo import ReturnDocument
+from pymongo.errors import CollectionInvalid
 
 from .date_time import get_current_timestamp
 from .exc import NotFoundError
 from .models import ModelOrDict, parse_record
 
 _CONNECTIONS = {}
+# the keywords that mongodb's draft-4 dialect of JSON schema understands
+_MONGO_JSON_SCHEMA_KEYWORDS = {
+    "additionalItems",
+    "additionalProperties",
+    "allOf",
+    "anyOf",
+    "bsonType",
+    "dependencies",
+    "description",
+    "enum",
+    "exclusiveMaximum",
+    "exclusiveMinimum",
+    "items",
+    "maxItems",
+    "maxLength",
+    "maxProperties",
+    "maximum",
+    "minItems",
+    "minLength",
+    "minProperties",
+    "minimum",
+    "not",
+    "oneOf",
+    "pattern",
+    "patternProperties",
+    "properties",
+    "required",
+    "title",
+    "uniqueItems",
+}
+_JSON_TO_BSON_TYPES = {
+    "array": "array",
+    "boolean": "bool",
+    "integer": ["int", "long"],
+    "null": "null",
+    "number": "number",
+    "object": "object",
+    "string": "string",
+}
+# the pattern beanie gives PydanticObjectId in its JSON schema
+_OBJECT_ID_PATTERN = "^[0-9a-f]{24}$"
 
 
 async def init_strict_beanie(
@@ -62,18 +105,9 @@ async def init_strict_beanie(
         multiprocessing_mode=multiprocessing_mode,
         skip_indexes=skip_indexes,
     )
-    tasks = [
-        database.command(
-            {
-                "collMod": model.get_settings().name,
-                "validator": _get_jsonschema_validator(model),
-                "validationLevel": "strict",
-                "validationAction": "error",
-            }
-        )
-        for model in document_models
-    ]
-    await asyncio.gather(*tasks)
+    await asyncio.gather(
+        *(_set_jsonschema_validator(database, model) for model in document_models)
+    )
 
 
 def get_mongodb(url: str, name: str) -> AsyncIOMotorDatabase:
@@ -376,6 +410,31 @@ def _extract_sort_config(sort_fields: List[str]) -> List[Tuple[str, int]]:
     return sort_config
 
 
+async def _set_jsonschema_validator(
+    database: AsyncIOMotorDatabase, model: type[Document]
+):
+    """Makes the collection of the given model reject documents that violate its schema
+
+    Args:
+        database: motor database instance
+        model: model class
+    """
+    name = model.get_settings().name
+    # collMod fails on a collection that does not exist yet e.g. one without indexes
+    if name not in await database.list_collection_names(filter={"name": name}):
+        with suppress(CollectionInvalid):
+            await database.create_collection(name)
+
+    await database.command(
+        {
+            "collMod": name,
+            "validator": _get_jsonschema_validator(model),
+            "validationLevel": "strict",
+            "validationAction": "error",
+        }
+    )
+
+
 def _get_jsonschema_validator(model: type[Document]) -> dict:
     """Gets the JSONSchema validator for the given model.
 
@@ -388,12 +447,71 @@ def _get_jsonschema_validator(model: type[Document]) -> dict:
         the JSONSchema for mongodb collection
     """
     json_schema = model.model_json_schema()
+    definitions = json_schema.get("$defs", {})
     is_extra_allow = model.model_config.get("extra") == "allow"
 
     return {
         "$jsonSchema": {
-            **json_schema,
-            "bsonType": "object",
+            **_to_mongo_json_schema(json_schema, definitions=definitions),
             "additionalProperties": is_extra_allow,
         }
     }
+
+
+def _to_mongo_json_schema(value: Any, definitions: Dict[str, Any]) -> Any:
+    """Converts a pydantic JSON schema to mongodb's dialect of JSON schema
+
+    Mongodb supports neither references nor annotations like 'default' and 'format',
+    and it validates BSON types, so dates and ObjectIds are not the strings JSON sees.
+
+    Args:
+        value: the JSON schema or a part of it
+        definitions: the '$defs' of the root JSON schema, which '$ref's point to
+
+    Returns:
+        the mongodb-ready JSON schema
+    """
+    if isinstance(value, list):
+        return [_to_mongo_json_schema(item, definitions) for item in value]
+
+    if not isinstance(value, dict):
+        return value
+
+    schema = dict(value)
+    ref = schema.pop("$ref", None)
+    if ref is not None:
+        schema = {**definitions[ref.split("/")[-1]], **schema}
+
+    if "const" in schema:
+        schema["enum"] = [schema["const"]]
+
+    if "prefixItems" in schema:
+        schema["items"] = schema["prefixItems"]
+        schema["additionalItems"] = False
+
+    for bound in ("exclusiveMinimum", "exclusiveMaximum"):
+        if not isinstance(schema.get(bound, True), bool):
+            schema[bound.replace("exclusiveM", "m")] = schema[bound]
+            schema[bound] = True
+
+    json_type = schema.get("type")
+    if json_type == "string" and schema.get("format") == "date-time":
+        schema = {"bsonType": "date"}
+    elif json_type == "string" and schema.get("pattern") == _OBJECT_ID_PATTERN:
+        schema = {"bsonType": "objectId"}
+    elif json_type is not None:
+        schema["bsonType"] = _JSON_TO_BSON_TYPES[json_type]
+
+    result = {}
+    for key, item in schema.items():
+        if key not in _MONGO_JSON_SCHEMA_KEYWORDS:
+            continue
+
+        if key in ("properties", "patternProperties"):
+            result[key] = {
+                k: _to_mongo_json_schema(v, definitions) for k, v in item.items()
+            }
+        else:
+            result[key] = _to_mongo_json_schema(item, definitions)
+
+    return result

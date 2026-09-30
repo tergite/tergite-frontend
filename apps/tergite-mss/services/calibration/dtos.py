@@ -130,7 +130,7 @@ class DeviceCalibration(DeviceCalibrationCreate, Document):
     class Settings:
         name = CALIBRATIONS_COLLECTION
         indexes = [
-            IndexModel(("name", pymongo.ASCENDING), unique=True),
+            IndexModel([("name", pymongo.ASCENDING)], unique=True),
         ]
 
     @field_serializer("id", when_used="json")
@@ -145,8 +145,8 @@ class DeviceCalibrationLog(DeviceCalibration):
     class Settings:
         name = CALIBRATION_LOGS_COLLECTION
         indexes = [
-            IndexModel(("name", pymongo.ASCENDING)),
-            IndexModel(("last_calibrated", pymongo.DESCENDING), sparse=True),
+            IndexModel([("name", pymongo.ASCENDING)]),
+            IndexModel([("last_calibrated", pymongo.DESCENDING)], sparse=True),
         ]
 
 
