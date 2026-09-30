@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 from typing import List, Optional
 
+from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query
 
 from api.rest.dependencies import CurrentUserIdDep, MongoDbDep
@@ -46,7 +47,7 @@ async def get_my_jobs(
     """
     filters = query.model_dump()
     # ensure that only jobs for the current user are considered
-    filters["user_id"] = user_id
+    filters["user_id"] = PydanticObjectId(user_id)
 
     data = await get_latest_many(
         db,
