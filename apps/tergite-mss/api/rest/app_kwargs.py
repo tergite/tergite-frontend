@@ -56,14 +56,16 @@ def get_app_kwargs() -> Dict[str, Any]:
 async def lifespan(_app: FastAPI):
     # on startup
     logger.info("Initializing Tergite MSS database connections and client services...")
-    emailer = Emailer(config=settings.CONFIG.email)
+    email_conf = settings.CONFIG.email
+    emailer = Emailer(config=email_conf) if email_conf is not None else None
     await bcc.create_clients(configs=settings.CONFIG.backends)
     db = await get_default_mongodb()
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)
     await notices_service.on_startup(db, emailer, conf=settings.CONFIG.notices)
     await requests_service.on_startup(db)
-    emailer.start()
+    if emailer is not None:
+        emailer.start()
     logger.info("Tergite MSS startup sequence completed successfully.")
 
     yield
@@ -74,5 +76,6 @@ async def lifespan(_app: FastAPI):
     await bcc.close_clients()
     await devices_ws_manager.close_all(reason="server shutting down")
     await devices_service.disconnect_all(db)
-    emailer.close()
+    if emailer is not None:
+        emailer.close()
     logger.info("Tergite MSS shutdown sequence completed.")

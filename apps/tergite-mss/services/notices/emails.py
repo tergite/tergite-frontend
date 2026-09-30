@@ -37,7 +37,8 @@ async def get_email_preferences_map(
     """
     result = NoticePreferences.find({"user_id": {"$in": list(user_ids)}})
     return {
-        record.user_id: record.email_prefs.get(notice_type) async for record in result
+        record.user_id: record.email_prefs.get(notice_type, True)
+        async for record in result
     }
 
 
@@ -56,13 +57,19 @@ async def get_pending_email_batches(
         the Generator of pending email batches
     """
     while True:
-        notices = await _find_notices_pending_email(batch_size)
-        batch = await _to_email_details(
-            notices,
-            dashboard_url=dashboard_url,
-            app_name=app_name,
-            max_attempts=max_attempts,
-        )
+        try:
+            notices = await _find_notices_pending_email(batch_size)
+            batch = await _to_email_details(
+                notices,
+                dashboard_url=dashboard_url,
+                app_name=app_name,
+                max_attempts=max_attempts,
+            )
+        except Exception:
+            # an async generator that raises is finished, and so would be all emailing
+            logger.exception("failed to get the pending notice emails")
+            batch = []
+
         yield batch
         await asyncio.sleep(1)
 
@@ -79,14 +86,14 @@ async def process_email_batch_results(results: Sequence[EmailResult]) -> None:
 
     for result in results:
         if result.is_success:
-            successful_ids.append(result.id)
+            successful_ids.append(result.ref_id)
         elif result.can_retry:
-            retry_ids.append(result.id)
+            retry_ids.append(result.ref_id)
         else:
-            failed_ids.append(result.id)
+            failed_ids.append(result.ref_id)
 
     # update successful
-    now = get_utc_now()
+    now = get_current_timestamp()
     success_task = (
         Notice.find(In(Notice.id, successful_ids))
         .inc({Notice.email_attempts: 1})
@@ -113,7 +120,7 @@ async def process_email_batch_results(results: Sequence[EmailResult]) -> None:
         .set({Notice.updated_at: now})
     )
     if failed_ids:
-        logger.exception(f"failed to email notice ids: {failed_ids}")
+        logger.error(f"failed to email notice ids: {failed_ids}")
 
     resp = await asyncio.gather(
         success_task, failure_task, retry_task, return_exceptions=True
@@ -132,14 +139,14 @@ async def _find_notices_pending_email(limit: int) -> List[Notice]:
     Returns:
         the list of notices that are yet to be sent as emails
     """
-    now = get_current_timestamp()
+    now = get_utc_now()
 
     return (
         await Notice.find(
             {
                 "email_status": EmailStatus.PENDING,
                 "user_id": {"$ne": None},
-                "expires_at": {"$or": [{"$ne": None}, {"$gt": now}]},
+                "$or": [{"expires_at": None}, {"expires_at": {"$gt": now}}],
             },
             limit=limit,
         )
@@ -153,7 +160,8 @@ async def _to_email_details(
 ) -> List[EmailDetails]:
     """Converts a given list of notice objects to a list of EmailDetails
 
-    Each EmailDetails instance is associated with a given notice instance
+    Each EmailDetails instance is associated with a given notice instance.
+    Notices of users without an email address are marked failed, as no retry would help.
 
     Args:
         notices: the list of notice objects
@@ -170,15 +178,26 @@ async def _to_email_details(
     users = await User.find({"_id": {"$in": list(set(user_ids))}}).to_list()
     user_emails_map = {v.id: v.email for v in users}
 
+    unreachable_ids = [v.id for v in notices if v.user_id not in user_emails_map]
+    if unreachable_ids:
+        await process_email_batch_results(
+            [
+                EmailResult(error=KeyError("no such user"), ref_id=v, can_retry=False)
+                for v in unreachable_ids
+            ]
+        )
+
     return [
         EmailDetails(
             to=user_emails_map[v.user_id],
             subject=v.title,
             body=_to_email_body(v, dashboard_url, app_name),
             ref_id=v.id,
-            can_retry=v.email_attempts < max_attempts,
+            # this attempt counts towards the maximum
+            can_retry=v.email_attempts + 1 < max_attempts,
         )
         for v in notices
+        if v.user_id in user_emails_map
     ]
 
 
@@ -193,7 +212,7 @@ def _to_email_body(notice: Notice, dashboard_url: str, app_name: str) -> str:
     Returns:
         the body of the email for the given notice
     """
-    return f""""
+    return f"""
 {notice.title}
 
 {notice.body}

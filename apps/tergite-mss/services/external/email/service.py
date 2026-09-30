@@ -18,6 +18,7 @@ from typing import (
     Coroutine,
     Dict,
     List,
+    Optional,
     Sequence,
 )
 
@@ -99,7 +100,7 @@ class Emailer:
         """
         if self._is_started:
             raise RuntimeError("Cannot register a schedule after emailer is started.")
-        if name in self._tasks:
+        if name in self.__coroutines:
             raise ValueError(f"Email schedule already registered: {name}")
 
         self.__coroutines[name] = _send_on_repeat(
@@ -146,7 +147,8 @@ class Emailer:
 
         message = details.to_email_message(from_value=self.from_value)
         logger.debug(f"Sending email to {details.to}: {details.subject}")
-        return await self._smtp.send_message(message, **kwargs)
+        async with self._smtp:
+            return await self._smtp.send_message(message, **kwargs)
 
 
 async def _send_on_repeat(
@@ -183,21 +185,32 @@ async def _send_on_repeat(
 
     async with aclosing(batch_generator) as email_batches:
         async for batch in email_batches:  # type: Sequence[EmailDetails]
-            results: List[EmailResult] = [
-                EmailResult(ref_id=v.ref_id, can_retry=v.can_retry) for v in batch
-            ]
-            for idx, detail in enumerate(batch):
-                try:
-                    msg = detail.to_email_message(from_value=from_value)
-                    await smtp.send_message(msg, **kwargs)
-                except asyncio.CancelledError:
+            errors: List[Optional[Exception]] = [None] * len(batch)
+            try:
+                if batch:
+                    async with smtp:
+                        for idx, detail in enumerate(batch):
+                            try:
+                                msg = detail.to_email_message(from_value=from_value)
+                                await smtp.send_message(msg, **kwargs)
+                            except Exception as exp:
+                                if not ignore_errors:
+                                    raise
+                                logger.exception(f"sending email on repeat failed")
+                                errors[idx] = exp
+            except Exception as exp:
+                # e.g. connecting to the SMTP server failed, so nothing was sent
+                if not ignore_errors:
                     raise
-                except Exception as exp:
-                    if ignore_errors:
-                        results[idx].error = exp
-                        logger.exception(f"sending email on repeat failed")
-                    else:
-                        raise
+                logger.exception(f"sending email batch on repeat failed")
+                errors = [exp] * len(batch)
+
+            results = [
+                EmailResult(
+                    error=error, ref_id=detail.ref_id, can_retry=detail.can_retry
+                )
+                for detail, error in zip(batch, errors)
+            ]
 
             # close processing for current batch, prepare for the next one
             await batch_callback(results)

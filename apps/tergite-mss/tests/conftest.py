@@ -295,6 +295,22 @@ def smtp(mocker):
 
 
 @pytest.fixture
+def paused_email_sweeper(mocker):
+    """Keeps the pending notice emails unswept, so their queueing can be checked alone"""
+    yield mocker.patch(
+        "services.notices.emails._find_notices_pending_email", return_value=[]
+    )
+
+
+@pytest.fixture
+def unconfigured_email(mocker):
+    """Runs the app without an [email] config, as if the table were omitted"""
+    import settings
+
+    yield mocker.patch.object(settings.CONFIG, "email", None)
+
+
+@pytest.fixture
 def oauth_state() -> Generator[str, Any, None]:
     """The state to use to make oauth2 requests"""
     yield generate_state_token({}, secret=TEST_JWT_SECRET)

@@ -200,8 +200,8 @@ class EmailConfig(BaseModel):
 
     hostname: str = "localhost"
     port: int = 587
-    username: str | bytes | None = (None,)
-    password: str | bytes | None = (None,)
+    username: str | bytes | None = None
+    password: str | bytes | None = None
     timeout: float | None = aiosmtplib.smtp.DEFAULT_TIMEOUT
     use_tls: bool = False
     start_tls: bool | None = True
