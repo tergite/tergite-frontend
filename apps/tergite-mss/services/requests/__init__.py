@@ -13,8 +13,6 @@
 from .dtos import Request, RequestPostBody, RequestStatus, RequestType, RequestUpdate
 from .service import create, get_many, get_one, on_startup, update
 
-_DECIDED_STATUSES = (RequestStatus.APPROVED, RequestStatus.REJECTED)
-
 __all__ = [
     "Request",
     "RequestStatus",

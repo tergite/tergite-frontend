@@ -1,145 +1,90 @@
 [
   {
-    "request": {
-      "seconds": 7200,
-      "reason": "Some reason",
-      "project_id": "7c445113e77284cef9397c5b",
-      "project_name": "Test 1"
-    },
-    "requester_id": "de7ddbd2500951be940356a2",
-    "requester_name": "jane.doe",
-    "updated_at": "2024-10-09T10:37:05.267Z",
+    "_id": "6707c09fd3b66d50e2630b79",
+    "type": "project-access",
+    "resource_id": "bf4876d01e60f05ebc9fac9e",
+    "reason": "I work on this",
+    "metadata": {"resource": "project", "project_name": "test-project"},
+    "requester_id": "9264188e0dc063ea3564e686",
+    "requester_name": "outsider.doe",
+    "target_user_ids": ["8154077d9cb952b92453d575"],
+    "status": "pending",
+    "approver_id": null,
+    "approver_name": null,
+    "rejection_reason": null,
     "created_at": "2024-10-09T10:37:05.267Z",
+    "updated_at": "2024-10-09T10:37:05.267Z"
+  },
+  {
+    "_id": "6707c0bcd3b66d50e2630b7a",
     "type": "project-qpu-seconds",
-    "status": "rejected",
-    "rejection_reason": "It just does not look right",
-    "approver_id": "de7ddbd2500951be940356a2",
-    "approver_name": "jane.doe",
-    "_id": "6707c09fd3b66d50e2630b79"
-  },
-  {
-    "request": {
-      "seconds": 86428,
-      "reason": "Another reason",
-      "project_id": "b1df91c3b796a1d6ddaaa875",
-      "project_name": "Test 2"
-    },
-    "requester_id": "de7ddbd2500951be940356a2",
-    "requester_name": "jane.doe",
-    "updated_at": "2024-10-09T10:37:32.558Z",
-    "created_at": "2024-10-09T10:37:32.558Z",
-    "type": "project-qpu-seconds",
-    "status": "pending",
-    "rejection_reason": null,
-    "approver_id": null,
-    "approver_name": null,
-    "_id": "6707c09267fd50e6f3f38f75"
-  },
-  {
-    "request": {
-      "seconds": 100000,
-      "reason": "Some other reason",
-      "project_id": "377c83700975c99b370adfb8",
-      "project_name": "Test 4"
-    },
-    "requester_id": "6431c4a4508205d9d43015fe",
-    "requester_name": "system.doe",
-    "updated_at": "2024-10-09T10:37:32.558Z",
-    "created_at": "2024-10-09T10:37:32.558Z",
-    "type": "project-qpu-seconds",
-    "status": "pending",
-    "rejection_reason": null,
-    "approver_id": null,
-    "approver_name": null,
-    "_id": "6707c1001609482b7e269459"
-  },
-  {
-    "request": {
-      "seconds": 150000,
-      "reason": "Some other reason again",
-      "project_id": "377c83700975c99b370adfb8",
-      "project_name": "Test 4"
-    },
-    "requester_id": "6431c4a4508205d9d43015fe",
-    "requester_name": "system.doe",
-    "updated_at": "2024-10-09T10:37:32.558Z",
-    "created_at": "2024-10-09T10:37:32.558Z",
-    "type": "project-qpu-seconds",
-    "status": "approved",
-    "rejection_reason": null,
-    "approver_id": "de7ddbd2500951be940356a2",
-    "approver_name": "jane.doe",
-    "_id": "6707dc003a2ff1855912ab4f"
-  },
-  {
-    "request": {
-      "reason": "Just delete",
-      "project_id": "b1df91c3b796a1d6ddaaa875",
-      "project_name": "Test 2"
-    },
-    "requester_id": "de7ddbd2500951be940356a2",
-    "requester_name": "jane.doe",
-    "updated_at": "2024-10-14T10:37:32.558Z",
-    "created_at": "2024-10-14T10:37:32.558Z",
-    "type": "close-project",
-    "status": "pending",
-    "rejection_reason": null,
-    "approver_id": null,
-    "approver_name": null,
-    "_id": "6712361e9016a220a36b4ce7"
-  },
-  {
-    "request": {
-      "reason": "Just delete again",
-      "project_id": "b1df91c3b796a1d6ddaaa875",
-      "project_name": "Test 2"
-    },
-    "requester_id": "de7ddbd2500951be940356a2",
-    "requester_name": "jane.doe",
-    "updated_at": "2024-10-14T10:37:32.558Z",
-    "created_at": "2024-10-14T10:37:32.558Z",
-    "type": "close-project",
-    "status": "rejected",
-    "rejection_reason": "I don't like the reason",
-    "approver_id": "de7ddbd2500951be940356a2",
-    "approver_name": "jane.doe",
-    "_id": "6712362e4d38acc1026e0837"
-  },
-  {
-    "request": {
-      "reason": "Moving on to other projects",
-      "project_id": "b1df91c3b796a1d6ddaaa875",
-      "project_name": "Test 2",
-      "new_admin_id": "8154077d9cb952b92453d575",
-      "new_admin_name": "john.doe"
-    },
-    "requester_id": "de7ddbd2500951be940356a2",
-    "requester_name": "jane.doe",
-    "updated_at": "2024-10-14T10:37:32.558Z",
-    "created_at": "2024-10-14T10:37:32.558Z",
-    "type": "transfer-project",
-    "status": "pending",
-    "rejection_reason": null,
-    "approver_id": null,
-    "approver_name": null,
-    "_id": "671236396944609ab3ea02eb"
-  },
-  {
-    "request": {
-      "name": "New Test 5",
-      "description": "A new test project being created to test out requests",
-      "user_emails": ["jane.doe@example.com", "system.doe@example.com"],
-      "qpu_seconds": 90000
-    },
+    "resource_id": "bf4876d01e60f05ebc9fac9e",
+    "reason": "Some reason",
+    "metadata": {"resource": "project", "project_name": "test-project", "seconds": 7200},
     "requester_id": "8154077d9cb952b92453d575",
     "requester_name": "john.doe",
-    "updated_at": "2024-10-13T10:40:32.558Z",
-    "created_at": "2024-10-13T10:40:32.558Z",
-    "type": "create-project",
-    "status": "pending",
+    "target_user_ids": ["de7ddbd2500951be940356a2"],
+    "status": "rejected",
+    "approver_id": "de7ddbd2500951be940356a2",
+    "approver_name": "jane.doe",
+    "rejection_reason": "It just does not look right",
+    "created_at": "2024-10-09T10:37:32.558Z",
+    "updated_at": "2024-10-09T10:40:32.558Z"
+  },
+  {
+    "_id": "6707c0cad3b66d50e2630b7b",
+    "type": "project-qpu-seconds",
+    "resource_id": "bf4876d01e60f05ebc9fac9e",
+    "reason": "Another reason",
+    "metadata": {"resource": "project", "project_name": "test-project", "seconds": 86428},
+    "requester_id": "6431c4a4508205d9d43015fe",
+    "requester_name": "system.doe",
+    "target_user_ids": ["de7ddbd2500951be940356a2"],
+    "status": "approved",
+    "approver_id": "de7ddbd2500951be940356a2",
+    "approver_name": "jane.doe",
     "rejection_reason": null,
+    "created_at": "2024-10-09T10:38:18.123Z",
+    "updated_at": "2024-10-09T10:41:18.123Z"
+  },
+  {
+    "_id": "6707c0dbd3b66d50e2630b7c",
+    "type": "create-project",
+    "resource_id": "9264188e0dc063ea3564e686",
+    "reason": "For my thesis",
+    "metadata": {
+      "resource": "project",
+      "project_name": null,
+      "name": "thesis project",
+      "qpu_seconds": 3600,
+      "description": "a project for a thesis",
+      "admin_email": "outsider.doe@example.com",
+      "user_emails": ["john.doe@example.com"]
+    },
+    "requester_id": "9264188e0dc063ea3564e686",
+    "requester_name": "outsider.doe",
+    "target_user_ids": ["de7ddbd2500951be940356a2"],
+    "status": "pending",
     "approver_id": null,
     "approver_name": null,
-    "_id": "67123646bc409fb30af2522f"
+    "rejection_reason": null,
+    "created_at": "2024-10-09T10:39:45.000Z",
+    "updated_at": "2024-10-09T10:39:45.000Z"
+  },
+  {
+    "_id": "6707c0ead3b66d50e2630b7d",
+    "type": "project-access",
+    "resource_id": "fd530427c7141f2693aa850b",
+    "reason": "Please add me",
+    "metadata": {"resource": "project", "project_name": "test-no-qpu-project"},
+    "requester_id": "6431c4a4508205d9d43015fe",
+    "requester_name": "system.doe",
+    "target_user_ids": ["8154077d9cb952b92453d575"],
+    "status": "pending",
+    "approver_id": null,
+    "approver_name": null,
+    "rejection_reason": null,
+    "created_at": "2024-10-09T10:42:00.000Z",
+    "updated_at": "2024-10-09T10:42:00.000Z"
   }
 ]

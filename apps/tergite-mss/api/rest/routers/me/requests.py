@@ -22,6 +22,7 @@ from api.rest.dependencies import CurrentUserDep
 from services import requests as requests_service
 from services.auth import User
 from services.requests import (
+    Request,
     RequestPostBody,
     RequestStatus,
     RequestType,
@@ -34,11 +35,11 @@ from utils.exc import NotFoundError
 router = APIRouter()
 
 
-@router.post("/", status_code=http_status.HTTP_201_CREATED)
-async def create(body: RequestPostBody, requester: User = CurrentUserDep):
+@router.post(
+    "/", status_code=http_status.HTTP_201_CREATED, response_model_by_alias=False
+)
+async def create(body: RequestPostBody, requester: User = CurrentUserDep) -> Request:
     """Creates a request of the type named in the body
-
-    Currently only `project-access` is creatable here; RFC 0002 adds `create-project`.
 
     Args:
         body: the request payload, discriminated by its `type` field
@@ -94,18 +95,18 @@ async def get_many(
     )
 
 
-@router.put("/{_id}")
+@router.put("/{_id}", response_model_by_alias=False)
 async def update(
-    pk: PydanticObjectId,
+    _id: PydanticObjectId,
     body: RequestUpdate,
     user: User = CurrentUserDep,
-):
+) -> Request:
     """Updates a request.
 
     Only approvers can update a request, not requesters.
 
     Args:
-        pk: the unique identifier of the request
+        _id: the unique identifier of the request
         body: the payload containing new field values
         user: the current signed-in user
 
@@ -116,9 +117,9 @@ async def update(
         404: {_id} not found
     """
     result = await requests_service.update(
-        {"_id": pk}, payload=body, current_user=user, limit=1
+        {"_id": _id}, payload=body, current_user=user, limit=1
     )
     if len(result) == 0:
-        raise NotFoundError(f"{pk} not found")
+        raise NotFoundError(f"{_id} not found")
 
     return result[0]

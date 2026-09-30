@@ -11,7 +11,6 @@
 # that they have been altered from the originals.
 
 import enum
-from functools import cached_property
 from typing import Any, List, Optional, Self, Tuple, Type
 
 from beanie import Document, PydanticObjectId
@@ -19,6 +18,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    SerializeAsAny,
     ValidationInfo,
     computed_field,
     field_serializer,
@@ -82,7 +82,9 @@ class RequestType(str, enum.Enum):
 class RequestMetadata(BaseModel):
     """The metadata for a given request"""
 
-    resource: RefType
+    resource: RefType = RefType.PROJECT
+    # filled in by the server from the project the request is about, if any
+    project_name: Optional[str] = None
 
 
 class CreateProjectMetadata(RequestMetadata, ProjectCreate):
@@ -102,15 +104,11 @@ class TransferProjectMetadata(RequestMetadata):
 class ProjectQpuSecondsMetadata(RequestMetadata):
     """Metadata for requesting a project qpu seconds"""
 
-    # FIXME: Not sure if project_name is necessary
-    project_name: Optional[str] = None
+    seconds: float = Field(gt=0)
 
 
 class ProjectAccessMetadata(RequestMetadata):
     """Metadata for requesting access to a project"""
-
-    # FIXME: Not sure if project_name is necessary
-    project_name: Optional[str] = None
 
 
 class RequestPostBody(BaseModel):
@@ -119,7 +117,10 @@ class RequestPostBody(BaseModel):
     resource_id: PydanticObjectId
     type: RequestType
     reason: str
-    metadata: Optional[RequestMetadata] = None
+    # SerializeAsAny, or the fields of the subclass are dropped when saving
+    metadata: Optional[SerializeAsAny[RequestMetadata]] = Field(
+        default=None, validate_default=True
+    )
 
     __type_target_map__ = {
         RequestType.CREATE_PROJECT: RequestTarget.SYSTEM,
@@ -130,7 +131,7 @@ class RequestPostBody(BaseModel):
     }
 
     __type_metadata_cls_map__: dict[RequestType, Type[RequestMetadata]] = {
-        RequestType.CREATE_PROJECT: ProjectCreate,
+        RequestType.CREATE_PROJECT: CreateProjectMetadata,
         RequestType.CLOSE_PROJECT: CloseProjectMetadata,
         RequestType.TRANSFER_PROJECT: TransferProjectMetadata,
         RequestType.PROJECT_QPU_SECONDS: ProjectQpuSecondsMetadata,
@@ -138,7 +139,7 @@ class RequestPostBody(BaseModel):
     }
 
     @computed_field
-    @cached_property
+    @property
     def target(self) -> RequestTarget:
         """The target for this request"""
         return self.__type_target_map__[self.type]
@@ -154,7 +155,9 @@ class RequestPostBody(BaseModel):
         except KeyError:
             raise ValueError(f"request type {req_type} not supported")
 
-        return metadata_cls.model_validate(value)
+        if isinstance(value, BaseModel):
+            value = value.model_dump()
+        return metadata_cls.model_validate({} if value is None else value)
 
 
 class Request(RequestPostBody, Document):
@@ -261,32 +264,27 @@ class Request(RequestPostBody, Document):
     @property
     def notice_context(self) -> ProjectRequestContext:
         """The context for the notice that is to be sent out for the given request"""
-        project_name = ""
-        approver_name = ""
+        metadata = self.metadata
+        project_name = metadata.project_name or ""
         seconds = ""
         admin_email = ""
-        metadata = self.metadata
 
         if isinstance(metadata, CreateProjectMetadata):
             project_name = metadata.name
-
-        elif isinstance(metadata, CloseProjectMetadata):
-            pass
 
         elif isinstance(metadata, TransferProjectMetadata):
             admin_email = metadata.admin_email
 
         elif isinstance(metadata, ProjectQpuSecondsMetadata):
-            project_name = metadata.project_name or ""
+            seconds = metadata.seconds
 
-        elif isinstance(metadata, ProjectAccessMetadata):
-            project_name = metadata.project_name or ""
-
+        is_rejected = self.status == RequestStatus.REJECTED
         return ProjectRequestContext(
-            requester_name=self.requester_name,
+            requester_name=self.requester_name or "",
+            project_id=str(self.resource_id),
             project_name=project_name,
-            reason=self.reason,
-            approver_name=approver_name,
+            reason=(self.rejection_reason or "") if is_rejected else self.reason,
+            approver_name=self.approver_name or "",
             seconds=seconds,
             admin_email=admin_email,
         )

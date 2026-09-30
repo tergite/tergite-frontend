@@ -43,6 +43,7 @@ from tests._utils.auth import (
     TEST_PROJECT_ID,
     TEST_SUPERUSER_ID,
     TEST_SYSTEM_USER_APP_TOKEN_STRING,
+    TEST_SYSTEM_USER_ID,
     TEST_USER_DICT,
     TEST_USER_ID,
     get_db_record,
@@ -59,6 +60,7 @@ PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
 JOB_LIST = load_json_fixture("job_list.json")
 NOTICE_LIST = load_json_fixture("notices.json")
+USER_REQUEST_LIST = load_json_fixture("user_requests.json")
 TEST_NEXT_COOKIE_URL = "https://testserver/"
 _redis_connection = redis.Redis.from_url(TEST_REDIS_URL)
 
@@ -130,6 +132,12 @@ def user_jwt_cookie() -> Dict[str, str]:
 def admin_jwt_cookie() -> Dict[str, str]:
     """the auth cookie for the client when JWT of an admin is used"""
     yield get_auth_cookie(TEST_SUPERUSER_ID)
+
+
+@pytest.fixture
+def system_user_jwt_cookie() -> Dict[str, str]:
+    """the auth cookie of the system user, a member but not the admin of the test project"""
+    yield get_auth_cookie(TEST_SYSTEM_USER_ID)
 
 
 @pytest.fixture
@@ -238,6 +246,18 @@ def inserted_notices(db) -> Generator[List[Dict[str, Any]], Any, None]:
     )
     for record in records:
         insert_if_not_exist(db, Notice, record)
+
+    yield records
+
+
+@pytest.fixture
+def inserted_requests(db) -> Generator[List[Dict[str, Any]], Any, None]:
+    """A list of inserted user requests"""
+    from services.requests import Request
+
+    records = [_to_request_record(item) for item in USER_REQUEST_LIST]
+    for record in records:
+        insert_if_not_exist(db, Request, record)
 
     yield records
 
@@ -493,4 +513,14 @@ def _to_notice_record(item: Dict[str, Any]) -> Dict[str, Any]:
         **item,
         **{k: PydanticObjectId(item[k]) for k in object_id_fields if item[k]},
         "dismissed_by": [PydanticObjectId(v) for v in item["dismissed_by"]],
+    }
+
+
+def _to_request_record(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts a user request from the JSON fixtures into the record stored in the db"""
+    object_id_fields = ("_id", "resource_id", "requester_id", "approver_id")
+    return {
+        **item,
+        **{k: PydanticObjectId(item[k]) for k in object_id_fields if item[k]},
+        "target_user_ids": [PydanticObjectId(v) for v in item["target_user_ids"]],
     }

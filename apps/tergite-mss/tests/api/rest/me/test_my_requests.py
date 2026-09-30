@@ -1,6 +1,6 @@
 # This code is part of Tergite
 #
-# (C) Copyright Chalmers Next Labs 2026
+# (C) Copyright Chalmers Next Labs AB 2024, 2026
 #
 # This code is licensed under the Apache License, Version 2.0. You may
 # obtain a copy of this license in the LICENSE.txt file in the root directory
@@ -9,527 +9,646 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-import copy
-from datetime import datetime, timezone
-from typing import Any, Dict
-
+"""Integration tests for the /me/requests routes"""
 import pytest
-from pytest_lazyfixture import lazy_fixture
+from beanie import PydanticObjectId
 
-from services.auth import Project
+from services.auth import DeletedProject, Project
+from services.notices import NoticeType
 from services.requests import Request
 from tests._utils.auth import (
-    TEST_SUPERUSER_DICT,
+    TEST_NO_QPU_PROJECT_ID,
+    TEST_OUTSIDER_EMAIL,
+    TEST_OUTSIDER_ID,
+    TEST_PROJECT_ID,
+    TEST_PROJECT_NAME,
     TEST_SUPERUSER_ID,
-    TEST_SYSTEM_USER_DICT,
-    TEST_SYSTEM_USER_ID,
-    TEST_USER_DICT,
+    TEST_SYSTEM_USER_EMAIL,
+    TEST_USER_EMAIL,
     TEST_USER_ID,
     get_db_record,
+    insert_if_not_exist,
 )
-from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import insert_in_collection
-from tests.conftest import PROJECT_LIST, get_auth_cookie
+from utils.crypto import generate_linked_id
 
-_REQ_STATUSES = ["pending", "rejected", "approved"]
-_USER_REQUEST_COLLECTION = "auth_user_requests"
-_USER_REQUESTS_IN_DB = load_json_fixture("user_requests.json")
-
-_QPU_TIME_USER_REQUESTS_IN_DB = [
-    item for item in _USER_REQUESTS_IN_DB if item["type"] == "project-qpu-seconds"
-]
-_PENDING_QPU_TIME_REQUESTS_IN_DB = [
-    item for item in _QPU_TIME_USER_REQUESTS_IN_DB if item["status"] == "pending"
-]
-
-_USER_ID_COOKIES_FIXTURE = [
-    (TEST_USER_ID, lazy_fixture("user_jwt_cookie")),
-    (TEST_SUPERUSER_ID, lazy_fixture("admin_jwt_cookie")),
-]
-
-_USER_ID_COOKIES_REQ_STATUS_FIXTURE = [
-    (pair[0], pair[1], status)
-    for status in _REQ_STATUSES
-    for pair in _USER_ID_COOKIES_FIXTURE
-]
-
-_USER_ID_COOKIES_REQ_PROJECT_ID_FIXTURE = [
-    (pair[0], pair[1], project["_id"])
-    for project in PROJECT_LIST
-    for pair in _USER_ID_COOKIES_FIXTURE
-]
-_USER_ID_COOKIES_REQ_PROJECT_ID_AND_STATUS_FIXTURE = [
-    (pair[0], pair[1], project["_id"], status)
-    for project in PROJECT_LIST
-    for status in _REQ_STATUSES
-    for pair in _USER_ID_COOKIES_FIXTURE
-]
-_QPU_TIME_REQUEST = {
-    "seconds": 150000.0,
-    "reason": "Some other reason again",
+_ACCESS_REQUEST = {
+    "type": "project-access",
+    "resource_id": TEST_PROJECT_ID,
+    "reason": "let me in",
 }
-
-_USER_MAP = {
-    str(user["_id"]): user
-    for user in [TEST_USER_DICT, TEST_SYSTEM_USER_DICT, TEST_SUPERUSER_DICT]
+_QPU_SECONDS_REQUEST = {
+    "type": "project-qpu-seconds",
+    "resource_id": TEST_PROJECT_ID,
+    "reason": "more please",
+    "metadata": {"seconds": 120},
 }
-_USER_ID_COOKIE_QPU_TIME_REQUESTS = [
-    (
-        user_id,
-        get_auth_cookie(user_id),
-        {**_QPU_TIME_REQUEST, "project_id": project["_id"]},
-        project["name"],
-        _USER_MAP[user_id]["email"].split("@")[0],
-    )
-    for project in PROJECT_LIST
-    for user_id in project["user_ids"]
-]
-
-_NON_MEMBER_ID_COOKIE_QPU_TIME_REQUESTS = [
-    (
-        user_id,
-        get_auth_cookie(user_id),
-        {**_QPU_TIME_REQUEST, "project_id": project["_id"]},
-    )
-    for project in PROJECT_LIST
-    for user_id in [TEST_USER_ID, TEST_SUPERUSER_ID, TEST_SYSTEM_USER_ID]
-    if user_id not in project["user_ids"]
-]
+_CREATE_PROJECT_REQUEST = {
+    "type": "create-project",
+    "resource_id": TEST_OUTSIDER_ID,
+    "reason": "for my thesis",
+    "metadata": {
+        "name": "thesis project",
+        "admin_email": TEST_OUTSIDER_EMAIL,
+        "user_emails": [TEST_USER_EMAIL],
+        "qpu_seconds": 3600,
+    },
+}
+_PENDING_ACCESS_REQUEST_ID = "6707c09fd3b66d50e2630b79"
+_REJECTED_QPU_REQUEST_ID = "6707c0bcd3b66d50e2630b7a"
+_APPROVED_QPU_REQUEST_ID = "6707c0cad3b66d50e2630b7b"
+_PENDING_CREATE_REQUEST_ID = "6707c0dbd3b66d50e2630b7c"
+_PENDING_NO_QPU_ACCESS_REQUEST_ID = "6707c0ead3b66d50e2630b7d"
 
 
-@pytest.mark.parametrize("user_id, cookies", _USER_ID_COOKIES_FIXTURE)
-def test_view_all_qpu_time_user_requests(
-    user_id, cookies, client, inserted_project_ids, db
-):
-    """Any user can view all user requests at /admin/qpu-time-requests"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=_QPU_TIME_USER_REQUESTS_IN_DB,
-    )
-
-    # using context manager to ensure on_startup runs
+def test_request_project_access(client, outsider_jwt_cookie, db):
+    """POST /me/requests/ creates a pending request directed to the project admin"""
     with client as client:
-        response = client.get("/admin/qpu-time-requests/", cookies=cookies)
-
-        got = response.json()
-        user_request_list = [
-            _db_to_http_item(item) for item in _QPU_TIME_USER_REQUESTS_IN_DB
-        ]
-
-        assert response.status_code == 200
-        assert got == {"skip": 0, "limit": None, "data": user_request_list}
-
-
-@pytest.mark.parametrize("user_id", [TEST_USER_ID, TEST_SUPERUSER_ID])
-def test_non_authenticated_qpu_time_user_requests_view(
-    user_id, client, inserted_project_ids, db
-):
-    """Only authenticated users can view user requests at /admin/qpu-time-requests"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=_QPU_TIME_USER_REQUESTS_IN_DB,
-    )
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get("/admin/qpu-time-requests/")
-        got = response.json()
-        assert response.status_code == 401
-        assert got == {"detail": "Unauthorized"}
-
-
-@pytest.mark.parametrize(
-    "user_id, cookies, status", _USER_ID_COOKIES_REQ_STATUS_FIXTURE
-)
-def test_view_qpu_time_user_requests_filtered_by_status(
-    user_id, cookies, status, client, inserted_project_ids, db
-):
-    """Any user can view user requests at /admin/qpu-time-requests?status=... filtered by status"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=_QPU_TIME_USER_REQUESTS_IN_DB,
-    )
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get(
-            f"/admin/qpu-time-requests/?status={status}", cookies=cookies
-        )
-
-        got = response.json()
-        user_request_list = [
-            _db_to_http_item(item)
-            for item in _QPU_TIME_USER_REQUESTS_IN_DB
-            if item["status"] == status
-        ]
-
-        assert response.status_code == 200
-        assert got == {"skip": 0, "limit": None, "data": user_request_list}
-
-
-@pytest.mark.parametrize(
-    "user_id, cookies, project_id", _USER_ID_COOKIES_REQ_PROJECT_ID_FIXTURE
-)
-def test_view_qpu_time_user_requests_filtered_by_project_id(
-    user_id, cookies, project_id, client, inserted_project_ids, db
-):
-    """Any user can view user requests at /admin/qpu-time-requests/?project_id=... filtered by project_id"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=_QPU_TIME_USER_REQUESTS_IN_DB,
-    )
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get(
-            f"/admin/qpu-time-requests/?project_id={project_id}", cookies=cookies
-        )
-
-        got = response.json()
-        user_request_list = [
-            _db_to_http_item(item)
-            for item in _QPU_TIME_USER_REQUESTS_IN_DB
-            if item["request"]["project_id"] == project_id
-        ]
-
-        assert response.status_code == 200
-        assert got == {"skip": 0, "limit": None, "data": user_request_list}
-
-
-@pytest.mark.parametrize(
-    "user_id, cookies, project_id, status",
-    _USER_ID_COOKIES_REQ_PROJECT_ID_AND_STATUS_FIXTURE,
-)
-def test_view_qpu_time_user_requests_filtered_by_project_id_and_status(
-    user_id, cookies, project_id, status, client, inserted_project_ids, db
-):
-    """User can filter user requests /admin/qpu-time-requests/?project_id=...&status=... by project_id and status"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=_QPU_TIME_USER_REQUESTS_IN_DB,
-    )
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get(
-            f"/admin/qpu-time-requests/?project_id={project_id}&status={status}",
-            cookies=cookies,
-        )
-
-        got = response.json()
-        user_request_list = [
-            _db_to_http_item(item)
-            for item in _QPU_TIME_USER_REQUESTS_IN_DB
-            if item["request"]["project_id"] == project_id and item["status"] == status
-        ]
-
-        assert response.status_code == 200
-        assert got == {"skip": 0, "limit": None, "data": user_request_list}
-
-
-@pytest.mark.parametrize(
-    "user_id, cookies, request_body, project_name, requester_name",
-    _USER_ID_COOKIE_QPU_TIME_REQUESTS,
-)
-def test_create_qpu_time_user_request(
-    user_id,
-    cookies,
-    request_body,
-    project_name,
-    requester_name,
-    client,
-    inserted_project_ids,
-    db,
-    freezer,
-):
-    """Any project member can create a user request at /admin/qpu-time-requests/"""
-    timestamp = (
-        datetime.now(timezone.utc)
-        .isoformat("T", timespec="milliseconds")
-        .replace("+00:00", "Z")
-    )
-    # using context manager to ensure on_startup runs
-    with client as client:
-        filter_obj = {"request.project_id": request_body["project_id"]}
-        assert get_db_record(db, Request, _filter=filter_obj) is None
-
         response = client.post(
-            "/admin/qpu-time-requests/", cookies=cookies, json=request_body
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
         )
-
         got = response.json()
-        expected = {
-            "request": {**request_body, "project_name": project_name},
-            "requester_id": user_id,
-            "requester_name": requester_name,
-            "updated_at": timestamp,
-            "created_at": timestamp,
-            "type": "project-qpu-seconds",
-            "status": "pending",
-            "rejection_reason": None,
-            "approver_id": None,
-            "approver_name": None,
-            "approver_scope": "system-admin",
-            "project_id": request_body["project_id"],
-        }
-        assert isinstance(got.pop("id"), str)
+
         assert response.status_code == 201
-        assert got == expected
-        assert get_db_record(db, Request, _filter=filter_obj) is not None
-
-
-@pytest.mark.parametrize(
-    "user_id, cookies, request_body", _NON_MEMBER_ID_COOKIE_QPU_TIME_REQUESTS
-)
-def test_non_member_create_qpu_time_user_request(
-    user_id, cookies, request_body, client, inserted_project_ids, db
-):
-    """Non project members can not create a user request at /admin/qpu-time-requests/"""
-    # using context manager to ensure on_startup runs
-    with client as client:
-        filter_obj = {"request.project_id": request_body["project_id"]}
-        response = client.post(
-            "/admin/qpu-time-requests/", cookies=cookies, json=request_body
-        )
-
-        got = response.json()
-        assert response.status_code == 403
-        assert got == {"detail": "Forbidden"}
-        assert get_db_record(db, Request, _filter=filter_obj) is None
-
-
-@pytest.mark.parametrize("project", PROJECT_LIST)
-def test_unauthenticated_create_qpu_time_user_request(
-    project, client, inserted_project_ids, db
-):
-    """Unauthenticated users can not create a user request at /admin/qpu-time-requests/"""
-    # using context manager to ensure on_startup runs
-    with client as client:
-        request_body = {**_QPU_TIME_REQUEST, "project_id": project["_id"]}
-        filter_obj = {"request.project_id": request_body["project_id"]}
-        assert get_db_record(db, Request, _filter=filter_obj) is None
-
-        response = client.post("/admin/qpu-time-requests/", json=request_body)
-
-        got = response.json()
-        assert response.status_code == 401
-        assert got == {"detail": "Unauthorized"}
-        assert get_db_record(db, Request, _filter=filter_obj) is None
-
-
-def test_view_user_requests(admin_jwt_cookie, client, inserted_project_ids, db):
-    """GET /admin/user-requests/ should return the matched user requests"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=_USER_REQUESTS_IN_DB,
-    )
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get("/admin/user-requests/", cookies=admin_jwt_cookie)
-
-        got = response.json()
-        user_request_list = [_db_to_http_item(item) for item in _USER_REQUESTS_IN_DB]
-
-        assert response.status_code == 200
-        assert got == {"skip": 0, "limit": None, "data": user_request_list}
-
-
-@pytest.mark.parametrize("status", _REQ_STATUSES)
-def test_view_user_requests_filtered_by_status(
-    status, admin_jwt_cookie, client, inserted_project_ids, db
-):
-    """GET /admin/user-requests/?status=... should return the matched user requests"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=_USER_REQUESTS_IN_DB,
-    )
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get(
-            f"/admin/user-requests/?status={status}", cookies=admin_jwt_cookie
-        )
-
-        got = response.json()
-        user_request_list = [
-            _db_to_http_item(item)
-            for item in _USER_REQUESTS_IN_DB
-            if item["status"] == status
-        ]
-
-        assert response.status_code == 200
-        assert got == {"skip": 0, "limit": None, "data": user_request_list}
-
-
-def test_non_admin_view_user_requests(
-    user_jwt_cookie, client, inserted_project_ids, db
-):
-    """GET /admin/user-requests/?status=... should return the matched user requests"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=_USER_REQUESTS_IN_DB,
-    )
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        response = client.get("/admin/user-requests/", cookies=user_jwt_cookie)
-
-        got = response.json()
-        assert response.status_code == 403
-        assert got == {"detail": "Forbidden"}
-
-
-@pytest.mark.parametrize("user_request", _PENDING_QPU_TIME_REQUESTS_IN_DB)
-def test_approve_qpu_seconds_user_requests(
-    user_request, admin_jwt_cookie, client, inserted_projects, db
-):
-    """Approving QPU time request via PUT /admin/user-requests/{_id} increments QPU time on project"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=[user_request],
-    )
-    payload = {"status": "approved"}
-    approver_details = {
-        "approver_id": str(TEST_SUPERUSER_DICT["_id"]),
-        "approver_name": TEST_SUPERUSER_DICT["email"].split("@")[0],
-    }
-    project_id = user_request["request"]["project_id"]
-    additional_seconds = user_request["request"]["seconds"]
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        original_project = get_db_record(db, Project, project_id)
-        response = client.put(
-            f"/admin/user-requests/{user_request['_id']}",
-            cookies=admin_jwt_cookie,
-            json=payload,
-        )
-
-        got = response.json()
-        expected = {**_db_to_http_item(user_request), **payload, **approver_details}
-        updated_project = get_db_record(db, Project, project_id)
-
-        assert response.status_code == 200
-        assert got == expected
-        assert updated_project == {
-            **original_project,
-            "qpu_seconds": original_project["qpu_seconds"] + additional_seconds,
-            "low_qpu_notified_at": None,
+        assert got["type"] == "project-access"
+        assert got["status"] == "pending"
+        assert got["target"] == "project"
+        assert got["resource_id"] == TEST_PROJECT_ID
+        assert got["requester_id"] == TEST_OUTSIDER_ID
+        assert got["requester_name"] == "outsider.doe"
+        assert got["target_user_ids"] == [TEST_USER_ID]
+        assert got["metadata"] == {
+            "resource": "project",
+            "project_name": TEST_PROJECT_NAME,
         }
+        assert get_db_record(db, Request, got["id"]) is not None
 
 
-@pytest.mark.parametrize("user_request", _PENDING_QPU_TIME_REQUESTS_IN_DB)
-def test_reject_qpu_seconds_user_requests(
-    user_request, admin_jwt_cookie, client, inserted_project_ids, db
+def test_request_project_access_notifies_the_project_admin(
+    client, outsider_jwt_cookie, db
 ):
-    """Rejecting QPU time request via PUT /admin/user-requests/{_id} leaves project intact"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=[user_request],
-    )
-    payload = {"status": "rejected"}
-    approver_details = {
-        "approver_id": str(TEST_SUPERUSER_DICT["_id"]),
-        "approver_name": TEST_SUPERUSER_DICT["email"].split("@")[0],
-    }
-    project_id = user_request["request"]["project_id"]
-
-    # using context manager to ensure on_startup runs
+    """Filing an access request reaches the admin of the project, not the requester"""
     with client as client:
-        original_project = get_db_record(db, Project, project_id)
-        response = client.put(
-            f"/admin/user-requests/{user_request['_id']}",
-            cookies=admin_jwt_cookie,
-            json=payload,
+        request_id = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
+        ).json()["id"]
+        admin_notices = _get_user_notices(db, TEST_USER_ID)
+
+        assert [item["type"] for item in admin_notices] == [
+            NoticeType.PROJECT_ACCESS_REQUESTED.id
+        ]
+        assert admin_notices[0]["title"] == f"Access request for {TEST_PROJECT_NAME}"
+        assert admin_notices[0]["body"] == (
+            f"outsider.doe is asking to join {TEST_PROJECT_NAME}: let me in"
         )
-
-        got = response.json()
-        expected = {**_db_to_http_item(user_request), **payload, **approver_details}
-        updated_project = get_db_record(db, Project, project_id)
-
-        assert response.status_code == 200
-        assert got == expected
-        assert updated_project == original_project
+        assert admin_notices[0]["ref_type"] == "user_request"
+        assert admin_notices[0]["ref_id"] == PydanticObjectId(request_id)
+        assert _get_user_notices(db, TEST_OUTSIDER_ID) == []
 
 
-@pytest.mark.parametrize("user_request", _PENDING_QPU_TIME_REQUESTS_IN_DB)
-def test_non_admin_update_user_requests(
-    user_request, user_jwt_cookie, client, inserted_project_ids, db
-):
-    """Non admin users are not allowed to PUT /admin/user-requests/{_id}"""
-    insert_in_collection(
-        database=db,
-        collection_name=_USER_REQUEST_COLLECTION,
-        data=[user_request],
-    )
-    payload = {"status": "approved"}
-    user_request_id = user_request["_id"]
+def test_request_access_to_unknown_project(client, outsider_jwt_cookie, db):
+    """POST /me/requests/ answers 404 for a project that does not exist"""
+    project_id = str(PydanticObjectId())
 
-    # using context manager to ensure on_startup runs
     with client as client:
-        original_user_request = get_db_record(db, Request, user_request_id)
-        response = client.put(
-            f"/admin/user-requests/{user_request_id}",
-            cookies=user_jwt_cookie,
-            json=payload,
+        response = client.post(
+            "/me/requests/",
+            cookies=outsider_jwt_cookie,
+            json={**_ACCESS_REQUEST, "resource_id": project_id},
         )
-
-        got = response.json()
-        updated_user_request = get_db_record(db, Request, user_request_id)
-
-        assert response.status_code == 403
-        assert got == {"detail": "Forbidden"}
-        assert updated_user_request == original_user_request
-
-
-@pytest.mark.parametrize("user_request", _PENDING_QPU_TIME_REQUESTS_IN_DB)
-def test_update_non_existent_user_requests(
-    user_request, admin_jwt_cookie, client, inserted_project_ids, db
-):
-    """PUT /admin/user-requests/{_id} where _id does not exist throws a 404 error"""
-    payload = {"status": "approved"}
-    user_request_id = user_request["_id"]
-
-    # using context manager to ensure on_startup runs
-    with client as client:
-        original_user_request = get_db_record(db, Request, user_request_id)
-        response = client.put(
-            f"/admin/user-requests/{user_request_id}",
-            cookies=admin_jwt_cookie,
-            json=payload,
-        )
-
-        got = response.json()
-        updated_user_request = get_db_record(db, Request, user_request_id)
 
         assert response.status_code == 404
-        assert got == {"detail": f"{user_request_id} not found"}
-        assert updated_user_request == original_user_request
+        assert response.json() == {"detail": f"project {project_id} not found"}
+        assert db["requests"].count_documents({}) == 0
 
 
-def _db_to_http_item(db_item: Dict[str, Any]) -> Dict[str, Any]:
-    """Converts a database item into an item that can be expected to be returned by HTTP server
+def test_request_access_to_personal_project(client, outsider_jwt_cookie, db):
+    """Personal projects answer 404 identically, so they cannot be probed for"""
+    project_id = generate_linked_id(TEST_USER_ID, namespace="project")
+    insert_if_not_exist(
+        db,
+        Project,
+        {
+            "_id": project_id,
+            "name": "john.doe (personal)",
+            "admin_id": PydanticObjectId(TEST_USER_ID),
+            "user_ids": [PydanticObjectId(TEST_USER_ID)],
+            "is_personal": True,
+        },
+    )
+
+    with client as client:
+        response = client.post(
+            "/me/requests/",
+            cookies=outsider_jwt_cookie,
+            json={**_ACCESS_REQUEST, "resource_id": str(project_id)},
+        )
+
+        assert response.status_code == 404
+        assert response.json() == {"detail": f"project {project_id} not found"}
+
+
+def test_request_access_when_already_a_member(client, user_jwt_cookie):
+    """A member of the project gets 409 rather than a redundant request"""
+    with client as client:
+        response = client.post(
+            "/me/requests/", cookies=user_jwt_cookie, json=_ACCESS_REQUEST
+        )
+
+        assert response.status_code == 409
+        assert response.json() == {
+            "detail": f"you are already a member of '{TEST_PROJECT_NAME}'"
+        }
+
+
+def test_request_access_twice(client, outsider_jwt_cookie, db):
+    """A second request for the same project while one is pending is a 409"""
+    with client as client:
+        first = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
+        )
+        second = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
+        )
+
+        assert first.status_code == 201
+        assert second.status_code == 409
+        assert second.json() == {
+            "detail": f"a request for '{TEST_PROJECT_NAME}' is already pending"
+        }
+        assert db["requests"].count_documents({}) == 1
+
+
+def test_request_access_to_second_project(client, outsider_jwt_cookie):
+    """A pending request for one project does not block a request for another"""
+    with client as client:
+        client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
+        response = client.post(
+            "/me/requests/",
+            cookies=outsider_jwt_cookie,
+            json={**_ACCESS_REQUEST, "resource_id": TEST_NO_QPU_PROJECT_ID},
+        )
+
+        assert response.status_code == 201
+
+
+def test_request_qpu_seconds(client, user_jwt_cookie, db):
+    """A project member's request for QPU time goes to the superusers"""
+    with client as client:
+        response = client.post(
+            "/me/requests/", cookies=user_jwt_cookie, json=_QPU_SECONDS_REQUEST
+        )
+        got = response.json()
+        superuser_notices = _get_user_notices(db, TEST_SUPERUSER_ID)
+
+        assert response.status_code == 201
+        assert got["target"] == "system"
+        assert got["target_user_ids"] == [TEST_SUPERUSER_ID]
+        assert got["metadata"]["seconds"] == 120
+        assert [item["type"] for item in superuser_notices] == [
+            NoticeType.QPU_SECONDS_REQUESTED.id
+        ]
+        assert "120.0s" in superuser_notices[0]["body"]
+
+
+def test_non_member_request_qpu_seconds(client, outsider_jwt_cookie, db):
+    """Only members of a project can ask for its QPU time"""
+    with client as client:
+        response = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_QPU_SECONDS_REQUEST
+        )
+
+        assert response.status_code == 403
+        assert response.json() == {
+            "detail": f"operation not permitted on resource {TEST_PROJECT_ID}"
+        }
+        assert db["requests"].count_documents({}) == 0
+
+
+@pytest.mark.parametrize("metadata", [None, {}, {"seconds": 0}])
+def test_request_qpu_seconds_without_seconds(client, user_jwt_cookie, db, metadata):
+    """A request for QPU time must say how many seconds it wants"""
+    with client as client:
+        response = client.post(
+            "/me/requests/",
+            cookies=user_jwt_cookie,
+            json={**_QPU_SECONDS_REQUEST, "metadata": metadata},
+        )
+
+        assert response.status_code == 422
+        assert db["requests"].count_documents({}) == 0
+
+
+def test_request_project_creation(client, outsider_jwt_cookie, db):
+    """Anyone can ask the superusers for a new project"""
+    with client as client:
+        response = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_CREATE_PROJECT_REQUEST
+        )
+        got = response.json()
+
+        assert response.status_code == 201
+        assert got["target_user_ids"] == [TEST_SUPERUSER_ID]
+        assert got["metadata"]["name"] == "thesis project"
+        assert got["metadata"]["admin_email"] == TEST_OUTSIDER_EMAIL
+        assert got["metadata"]["user_emails"] == [TEST_USER_EMAIL]
+        assert _get_user_notices(db, TEST_SUPERUSER_ID)[0]["title"] == (
+            "Create request for thesis project"
+        )
+
+
+@pytest.mark.parametrize("request_type", ["close-project", "transfer-project"])
+def test_request_project_change_by_its_admin(client, user_jwt_cookie, db, request_type):
+    """The admin of a project can ask the superusers to close or transfer it"""
+    with client as client:
+        response = client.post(
+            "/me/requests/",
+            cookies=user_jwt_cookie,
+            json={
+                "type": request_type,
+                "resource_id": TEST_PROJECT_ID,
+                "reason": "we are done",
+                "metadata": {"admin_email": TEST_SYSTEM_USER_EMAIL},
+            },
+        )
+
+        assert response.status_code == 201
+        assert response.json()["target_user_ids"] == [TEST_SUPERUSER_ID]
+
+
+@pytest.mark.parametrize("request_type", ["close-project", "transfer-project"])
+def test_request_project_change_by_non_admin(
+    client, system_user_jwt_cookie, db, request_type
+):
+    """A member who does not administer a project cannot ask to close or transfer it"""
+    with client as client:
+        response = client.post(
+            "/me/requests/",
+            cookies=system_user_jwt_cookie,
+            json={
+                "type": request_type,
+                "resource_id": TEST_PROJECT_ID,
+                "reason": "we are done",
+                "metadata": {"admin_email": TEST_SYSTEM_USER_EMAIL},
+            },
+        )
+
+        assert response.status_code == 403
+        assert db["requests"].count_documents({}) == 0
+
+
+def test_unauthenticated_create_request(client, db):
+    """POST /me/requests/ requires a signed-in user"""
+    with client as client:
+        response = client.post("/me/requests/", json=_ACCESS_REQUEST)
+
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
+        assert db["requests"].count_documents({}) == 0
+
+
+def test_view_requests_as_approver(client, user_jwt_cookie, inserted_requests):
+    """GET /me/requests/ returns the requests awaiting the user, newest first"""
+    with client as client:
+        response = client.get("/me/requests/", cookies=user_jwt_cookie)
+        got = response.json()
+
+        assert response.status_code == 200
+        assert got["skip"] == 0
+        assert got["limit"] is None
+        assert [item["id"] for item in got["data"]] == [
+            _PENDING_NO_QPU_ACCESS_REQUEST_ID,
+            _PENDING_ACCESS_REQUEST_ID,
+        ]
+
+
+def test_view_requests_as_requester(client, user_jwt_cookie, inserted_requests):
+    """GET /me/requests/?role=requester returns the requests the user made"""
+    with client as client:
+        response = client.get("/me/requests/?role=requester", cookies=user_jwt_cookie)
+
+        assert [item["id"] for item in response.json()["data"]] == [
+            _REJECTED_QPU_REQUEST_ID
+        ]
+
+
+def test_view_requests_by_status_and_type(client, admin_jwt_cookie, inserted_requests):
+    """GET /me/requests/?status=...&type=... returns only the matching requests"""
+    with client as client:
+        pending = client.get("/me/requests/?status=pending", cookies=admin_jwt_cookie)
+        decided_qpu = client.get(
+            "/me/requests/?status=approved&status=rejected&type=project-qpu-seconds",
+            cookies=admin_jwt_cookie,
+        )
+
+        assert [item["id"] for item in pending.json()["data"]] == [
+            _PENDING_CREATE_REQUEST_ID
+        ]
+        assert [item["id"] for item in decided_qpu.json()["data"]] == [
+            _APPROVED_QPU_REQUEST_ID,
+            _REJECTED_QPU_REQUEST_ID,
+        ]
+
+
+def test_paginate_requests(client, admin_jwt_cookie, inserted_requests):
+    """GET /me/requests/?skip=...&limit=...&sort=... returns the requested page"""
+    with client as client:
+        response = client.get(
+            "/me/requests/?skip=1&limit=1&sort=created_at", cookies=admin_jwt_cookie
+        )
+        got = response.json()
+
+        assert got["skip"] == 1
+        assert got["limit"] == 1
+        assert [item["id"] for item in got["data"]] == [_APPROVED_QPU_REQUEST_ID]
+
+
+def test_unauthenticated_view_requests(client, inserted_requests):
+    """GET /me/requests/ requires a signed-in user"""
+    with client as client:
+        response = client.get("/me/requests/")
+
+        assert response.status_code == 401
+        assert response.json() == {"detail": "Unauthorized"}
+
+
+def test_approve_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db):
+    """Approving an access request adds the requester to the project and tells them"""
+    with client as client:
+        request_id = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
+        ).json()["id"]
+        response = client.put(
+            f"/me/requests/{request_id}",
+            cookies=user_jwt_cookie,
+            json={"status": "approved"},
+        )
+        got = response.json()
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+        requester_notices = _get_user_notices(db, TEST_OUTSIDER_ID)
+
+        assert response.status_code == 200
+        assert got["status"] == "approved"
+        assert got["approver_id"] == TEST_USER_ID
+        assert got["approver_name"] == "john.doe"
+        assert project["user_ids"].count(PydanticObjectId(TEST_OUTSIDER_ID)) == 1
+        assert [item["type"] for item in requester_notices] == [
+            NoticeType.PROJECT_ACCESS_APPROVED.id
+        ]
+        assert requester_notices[0]["body"] == (
+            f"john.doe approved your request to join {TEST_PROJECT_NAME}."
+        )
+
+
+def test_deciding_a_request_clears_its_prompt(
+    client, outsider_jwt_cookie, user_jwt_cookie, db
+):
+    """Deciding a request marks the approver's 'please decide this' notice read"""
+    with client as client:
+        request_id = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
+        ).json()["id"]
+        client.put(
+            f"/me/requests/{request_id}",
+            cookies=user_jwt_cookie,
+            json={"status": "approved"},
+        )
+        prompt = _get_user_notices(db, TEST_USER_ID)[0]
+        outcome = _get_user_notices(db, TEST_OUTSIDER_ID)[0]
+
+        assert prompt["read_at"] is not None
+        assert prompt["dismissed_by"] == [PydanticObjectId(TEST_USER_ID)]
+        assert outcome["read_at"] is None
+
+
+def test_reject_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db):
+    """Rejecting records the reason, leaves membership untouched and tells the requester why"""
+    with client as client:
+        request_id = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
+        ).json()["id"]
+        response = client.put(
+            f"/me/requests/{request_id}",
+            cookies=user_jwt_cookie,
+            json={"status": "rejected", "rejection_reason": "wrong team"},
+        )
+        got = response.json()
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+        requester_notices = _get_user_notices(db, TEST_OUTSIDER_ID)
+
+        assert response.status_code == 200
+        assert got["status"] == "rejected"
+        assert got["rejection_reason"] == "wrong team"
+        assert PydanticObjectId(TEST_OUTSIDER_ID) not in project["user_ids"]
+        assert requester_notices[0]["type"] == NoticeType.PROJECT_ACCESS_REJECTED.id
+        assert requester_notices[0]["body"].endswith("wrong team")
+
+
+def test_approve_qpu_seconds(client, user_jwt_cookie, admin_jwt_cookie, db):
+    """Approving a QPU request adds the seconds to the project and tells the requester"""
+    project_before = get_db_record(db, Project, TEST_PROJECT_ID)
+
+    with client as client:
+        request_id = client.post(
+            "/me/requests/", cookies=user_jwt_cookie, json=_QPU_SECONDS_REQUEST
+        ).json()["id"]
+        response = client.put(
+            f"/me/requests/{request_id}",
+            cookies=admin_jwt_cookie,
+            json={"status": "approved"},
+        )
+        project_after = get_db_record(db, Project, TEST_PROJECT_ID)
+        requester_notices = _get_user_notices(db, TEST_USER_ID)
+
+        assert response.status_code == 200
+        assert project_after["qpu_seconds"] == project_before["qpu_seconds"] + 120
+        assert [item["type"] for item in requester_notices] == [
+            NoticeType.QPU_SECONDS_GRANTED.id
+        ]
+        assert requester_notices[0]["title"] == (
+            f"120.0s of QPU time added to {TEST_PROJECT_NAME}"
+        )
+
+
+def test_approve_project_creation(client, admin_jwt_cookie, db, inserted_requests):
+    """Approving a create-project request creates the project that was described"""
+    with client as client:
+        response = client.put(
+            f"/me/requests/{_PENDING_CREATE_REQUEST_ID}",
+            cookies=admin_jwt_cookie,
+            json={"status": "approved"},
+        )
+        project = get_db_record(db, Project, _filter={"name": "thesis project"})
+
+        assert response.status_code == 200
+        assert project["admin_id"] == PydanticObjectId(TEST_OUTSIDER_ID)
+        assert project["user_ids"] == [
+            PydanticObjectId(TEST_USER_ID),
+            PydanticObjectId(TEST_OUTSIDER_ID),
+        ]
+        assert project["qpu_seconds"] == 3600
+
+
+def test_approve_project_creation_for_unknown_users(
+    client, outsider_jwt_cookie, admin_jwt_cookie, db
+):
+    """Approval fails and leaves the request pending when a named user does not exist"""
+    payload = {
+        **_CREATE_PROJECT_REQUEST,
+        "metadata": {
+            **_CREATE_PROJECT_REQUEST["metadata"],
+            "user_emails": ["no@such.user"],
+        },
+    }
+
+    with client as client:
+        request_id = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=payload
+        ).json()["id"]
+        response = client.put(
+            f"/me/requests/{request_id}",
+            cookies=admin_jwt_cookie,
+            json={"status": "approved"},
+        )
+
+        assert response.status_code == 404
+        assert response.json() == {"detail": "no users of emails ['no@such.user']"}
+        assert get_db_record(db, Request, request_id)["status"] == "pending"
+        assert get_db_record(db, Project, _filter={"name": "thesis project"}) is None
+
+
+def test_approve_project_close(client, user_jwt_cookie, admin_jwt_cookie, db):
+    """Approving a close-project request deletes the project, keeping a copy"""
+    with client as client:
+        request_id = client.post(
+            "/me/requests/",
+            cookies=user_jwt_cookie,
+            json={
+                "type": "close-project",
+                "resource_id": TEST_PROJECT_ID,
+                "reason": "we are done",
+            },
+        ).json()["id"]
+        response = client.put(
+            f"/me/requests/{request_id}",
+            cookies=admin_jwt_cookie,
+            json={"status": "approved"},
+        )
+
+        assert response.status_code == 200
+        assert get_db_record(db, Project, TEST_PROJECT_ID) is None
+        assert get_db_record(db, DeletedProject, TEST_PROJECT_ID) is not None
+
+
+def test_approve_project_transfer(client, user_jwt_cookie, admin_jwt_cookie, db):
+    """Approving a transfer-project request hands the project to the named user"""
+    with client as client:
+        request_id = client.post(
+            "/me/requests/",
+            cookies=user_jwt_cookie,
+            json={
+                "type": "transfer-project",
+                "resource_id": TEST_PROJECT_ID,
+                "reason": "I am leaving",
+                "metadata": {"admin_email": TEST_OUTSIDER_EMAIL},
+            },
+        ).json()["id"]
+        response = client.put(
+            f"/me/requests/{request_id}",
+            cookies=admin_jwt_cookie,
+            json={"status": "approved"},
+        )
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+
+        assert response.status_code == 200
+        assert project["admin_id"] == PydanticObjectId(TEST_OUTSIDER_ID)
+        assert PydanticObjectId(TEST_OUTSIDER_ID) in project["user_ids"]
+
+
+def test_decide_request_twice(client, user_jwt_cookie, inserted_requests):
+    """A decided request cannot be decided again"""
+    with client as client:
+        client.put(
+            f"/me/requests/{_PENDING_ACCESS_REQUEST_ID}",
+            cookies=user_jwt_cookie,
+            json={"status": "approved"},
+        )
+        response = client.put(
+            f"/me/requests/{_PENDING_ACCESS_REQUEST_ID}",
+            cookies=user_jwt_cookie,
+            json={"status": "rejected"},
+        )
+
+        assert response.status_code == 404
+        assert response.json() == {"detail": "no match found"}
+
+
+def test_non_approver_cannot_decide_request(
+    client, outsider_jwt_cookie, db, inserted_requests
+):
+    """Only the users a request is directed to can decide it, not even its requester"""
+    with client as client:
+        response = client.put(
+            f"/me/requests/{_PENDING_ACCESS_REQUEST_ID}",
+            cookies=outsider_jwt_cookie,
+            json={"status": "approved"},
+        )
+        request = get_db_record(db, Request, _PENDING_ACCESS_REQUEST_ID)
+        project = get_db_record(db, Project, TEST_PROJECT_ID)
+
+        assert response.status_code == 404
+        assert request["status"] == "pending"
+        assert PydanticObjectId(TEST_OUTSIDER_ID) not in project["user_ids"]
+
+
+def test_update_unknown_request(client, user_jwt_cookie):
+    """PUT /me/requests/{id} answers 404 for a request that does not exist"""
+    with client as client:
+        response = client.put(
+            f"/me/requests/{PydanticObjectId()}",
+            cookies=user_jwt_cookie,
+            json={"status": "approved"},
+        )
+
+        assert response.status_code == 404
+
+
+def test_update_request_fields_other_than_the_decision(
+    client, user_jwt_cookie, inserted_requests
+):
+    """Only the status and the rejection reason of a request can be updated"""
+    with client as client:
+        response = client.put(
+            f"/me/requests/{_PENDING_ACCESS_REQUEST_ID}",
+            cookies=user_jwt_cookie,
+            json={"reason": "a better reason"},
+        )
+
+        assert response.status_code == 422
+
+
+def test_unauthenticated_update_request(client, db, inserted_requests):
+    """PUT /me/requests/{id} requires a signed-in user"""
+    with client as client:
+        response = client.put(
+            f"/me/requests/{_PENDING_ACCESS_REQUEST_ID}", json={"status": "approved"}
+        )
+
+        assert response.status_code == 401
+        assert get_db_record(db, Request, _PENDING_ACCESS_REQUEST_ID)["status"] == (
+            "pending"
+        )
+
+
+def _get_user_notices(db, user_id: str) -> list:
+    """Gets the notices sent to the given user, oldest first
 
     Args:
-        db_item: the item in the database
+        db: the mongo database where the notices are stored
+        user_id: the id of the user
 
     Returns:
-        the item as would be seen from an HTTP response
+        the notices as stored in the database
     """
-    item = copy.deepcopy(db_item)
-    item["id"] = str(item.pop("_id"))
-    # fields the server fills in from model defaults
-    item.setdefault("approver_scope", "system-admin")
-    item.setdefault("project_id", None)
-    return item
+    return list(
+        db["notices"].find({"user_id": PydanticObjectId(user_id)}).sort("created_at")
+    )
