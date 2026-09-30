@@ -85,7 +85,7 @@ class ProjectRequestContext(BaseNoticeContext):
     project_name: str = ""
     reason: str = ""
     approver_name: str = ""
-    seconds: float | str = ""
+    seconds: int | float | str = ""
     admin_email: str = ""
 
 

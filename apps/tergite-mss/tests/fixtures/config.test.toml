@@ -102,4 +102,4 @@ from_name = "Tergite test"
 
 [projects]
 personal_qpu_seconds = 5400
-qpu_seconds_low_threshold = 600
+qpu_seconds_low_threshold = 14400

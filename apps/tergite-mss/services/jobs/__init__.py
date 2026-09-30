@@ -216,18 +216,19 @@ async def update_qpu_usage(
             raise NotFoundError(f"project '{project_id}' for job '{job_id}' not found")
         return project
 
-    # trigger alert
-    # if project is below the threshold
-    # if project is below zero
-    was_above_threshold = (project.qpu_seconds + qpu_usage) > qpu_threshold
+    # alert only on crossing the threshold or zero, or every later job would alert again
+    qpu_seconds_before = project.qpu_seconds + qpu_usage
+    was_above_threshold = qpu_seconds_before > qpu_threshold
     is_running_low = project.qpu_seconds < qpu_threshold
-    is_depleted = project.qpu_seconds <= 0
+    is_depleted = project.qpu_seconds <= 0 < qpu_seconds_before
 
     if is_depleted:
         await notices.create_system_notice(
             user_ids=project.user_ids,
             notice_type=NoticeType.QPU_SECONDS_DEPLETED.id,
-            context=ProjectRequestContext(project_name=project.name),
+            context=ProjectRequestContext(
+                project_id=str(project.id), project_name=project.name
+            ),
             ref_type=RefType.PROJECT,
             ref_id=project.id,
         )
@@ -237,7 +238,9 @@ async def update_qpu_usage(
             user_ids=[project.admin_id],
             notice_type=NoticeType.QPU_SECONDS_LOW.id,
             context=ProjectRequestContext(
-                project_name=project.name, seconds=project.qpu_seconds
+                project_id=str(project.id),
+                project_name=project.name,
+                seconds=round(project.qpu_seconds),
             ),
             ref_type=RefType.PROJECT,
             ref_id=project.id,
