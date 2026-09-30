@@ -167,9 +167,9 @@ def test_create_job(
         mocker.stop(base64_b64encode_spy)
 
         expected_job = {
-            "project_id": str(project_id),
+            "project_id": project_id,
             "job_id": new_job_id,
-            "user_id": str(current_user_id),
+            "user_id": current_user_id,
             "device": device,
             "status": "pending",
             "calibration_date": payload["calibration_date"],
