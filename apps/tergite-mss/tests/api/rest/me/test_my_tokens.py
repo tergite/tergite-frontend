@@ -129,7 +129,7 @@ def test_destroy_expired_app_token(
         new_created_at = datetime.now(timezone.utc) - timedelta(
             seconds=token["lifespan_seconds"] + 1
         )
-        update_obj = {"$set": {"created_at": new_created_at.isoformat(sep="T")}}
+        update_obj = {"$set": {"created_at": new_created_at}}
         update_db_record(db, AppToken, _id, update=update_obj)
 
         url = f"/me/tokens/{_id}"
@@ -194,7 +194,7 @@ def test_view_own_app_tokens_in_less_detail(
             {
                 "id": str(v["_id"]),
                 "lifespan_seconds": v["lifespan_seconds"],
-                "project_id": v["project_id"],
+                "project_id": str(v["project_id"]),
                 "title": v["title"],
                 "created_at": get_current_timestamp_str(),
             }
@@ -353,7 +353,7 @@ def test_extend_own_expired_token_lifespan(
             db,
             AppToken,
             token_id,
-            update={"$set": {"created_at": new_created_at.isoformat(sep="T")}},
+            update={"$set": {"created_at": new_created_at}},
         )
 
         response = client.put(url, cookies=cookies, json=payload)
@@ -375,7 +375,7 @@ def test_expired_app_token_fails(
     """Expired app tokens raise 401 HTTP error"""
     token_id = app_token["_id"]
     app_token_ttl = app_token["lifespan_seconds"]
-    cookies = {"some-token": app_token["token"]}
+    headers = {"Authorization": f"Bearer {app_token['token']}"}
 
     # using context manager to ensure on_startup runs
     with client as client:
@@ -387,10 +387,10 @@ def test_expired_app_token_fails(
             db,
             AppToken,
             token_id,
-            update={"$set": {"created_at": new_created_at.isoformat(sep="T")}},
+            update={"$set": {"created_at": new_created_at}},
         )
 
-        response = client.get("/", cookies=cookies)
+        response = client.get("/jobs/", headers=headers)
 
         got = response.json()
         expected = {"detail": "Unauthorized"}
@@ -407,9 +407,11 @@ def test_app_token_of_unallocated_projects_fails(
     headers = {"Authorization": f"Bearer {app_token['token']}"}
     project = unallocated_projects[app_token["project_id"]]
 
+    job = {"device": "Loke", "calibration_date": "2024-05-23T09:12:00.733Z"}
+
     # using context manager to ensure on_startup runs
     with client as client:
-        response = client.get("/", headers=headers)
+        response = client.post("/jobs/", json=job, headers=headers)
 
         got = response.json()
         expected = {
