@@ -14,6 +14,7 @@ import pytest
 
 from tests._utils.auth import TEST_SUPERUSER_DICT, TEST_SYSTEM_USER_DICT, TEST_USER_DICT
 from tests.conftest import get_auth_cookie
+from utils.config import UserRole
 
 _MY_USER_INFO_REQUESTS = [
     (user, get_auth_cookie(str(user["_id"])))
@@ -33,9 +34,9 @@ def test_view_my_user_profile(user, cookies, client):
         expected = {
             "id": str(user["_id"]),
             "email": user["email"],
-            "is_active": user.get("is_active"),
-            "is_verified": user.get("is_verified"),
-            "is_superuser": user.get("is_superuser"),
+            "is_active": True,
+            "is_verified": user["is_verified"],
+            "is_superuser": UserRole.ADMIN in user["roles"],
             "roles": sorted(user.get("roles")),
         }
 

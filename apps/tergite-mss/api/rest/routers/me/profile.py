@@ -23,4 +23,4 @@ router = APIRouter()
 @router.get("", response_model=UserRead)
 async def get_my_user_profile(user: User = CurrentUserDep):
     """Retrieves the information on the current user"""
-    return user.model_dump()
+    return UserRead.model_validate(user)
