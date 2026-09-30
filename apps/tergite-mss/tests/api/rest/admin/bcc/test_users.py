@@ -36,19 +36,19 @@ _BCC_USERS_CREATE_PARAMS = [
 def test_admin_create_bcc_user(
     client, backend, user_payload, user_jwt_cookie, admin_jwt_cookie, mock_bcc
 ):
-    """POST to '/admin/bcc-users' by admins should create the user via MSS"""
+    """POST to '/admin/bcc/users/{backend}' by admins should create the user via MSS"""
     with client as client:
         payload = {**user_payload, "id": TEST_USER_ID}
         # non admins are not allowed
         response = client.post(
-            f"/admin/bcc-users/{backend}", cookies=user_jwt_cookie, json=payload
+            f"/admin/bcc/users/{backend}", cookies=user_jwt_cookie, json=payload
         )
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
 
         # admins are allowed
         response = client.post(
-            f"/admin/bcc-users/{backend}", cookies=admin_jwt_cookie, json=payload
+            f"/admin/bcc/users/{backend}", cookies=admin_jwt_cookie, json=payload
         )
         expected = {
             "id": TEST_USER_ID,
@@ -65,19 +65,19 @@ def test_admin_create_bcc_user(
 def test_admin_view_bcc_users(
     client, admin_jwt_cookie, user_jwt_cookie, backend, pagination, mock_bcc
 ):
-    """GET '/admin/bcc-users/{backend}' should show to an admin the paginated list of user profiles via MSS"""
+    """GET '/admin/bcc/users/{backend}' should show to an admin the paginated list of user profiles via MSS"""
     with client as client:
         params = {k: v for k, v in pagination.items() if v is not None}
         # non admins are not allowed
         response = client.get(
-            f"/admin/bcc-users/{backend}/", cookies=user_jwt_cookie, params=params
+            f"/admin/bcc/users/{backend}", cookies=user_jwt_cookie, params=params
         )
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
 
         # admins are allowed
         response = client.get(
-            f"/admin/bcc-users/{backend}/", cookies=admin_jwt_cookie, params=params
+            f"/admin/bcc/users/{backend}", cookies=admin_jwt_cookie, params=params
         )
         actual_output = response.json()
 
@@ -92,9 +92,9 @@ def test_admin_view_bcc_users(
 
 @pytest.mark.parametrize("backend", BACKEND_SLUGS)
 def test_admin_remove_bcc_user(client, backend, admin_jwt_cookie, mock_bcc):
-    """DELETE '/admin/bcc-users/{backend}/{user_id}' by admin removes the user via MSS"""
+    """DELETE '/admin/bcc/users/{backend}/{user_id}' by admin removes the user via MSS"""
     with client as client:
-        url = f"/admin/bcc-users/{backend}/USER_ID_PLACEHOLDER"
+        url = f"/admin/bcc/users/{backend}/USER_ID_PLACEHOLDER"
         response = client.delete(url, cookies=admin_jwt_cookie)
         assert response.status_code == 200
         assert response.json() == {"status": "success", "detail": f"User deleted"}
@@ -104,7 +104,7 @@ def test_admin_remove_bcc_user(client, backend, admin_jwt_cookie, mock_bcc):
 def test_non_admin_remove_user(client, backend, user_jwt_cookie, mock_bcc):
     """Non admin cannot remove the profile of any user"""
     with client as client:
-        url = f"/admin/bcc-users/{backend}/USER_ID_PLACEHOLDER"
+        url = f"/admin/bcc/users/{backend}/USER_ID_PLACEHOLDER"
         response = client.delete(url, cookies=user_jwt_cookie)
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}

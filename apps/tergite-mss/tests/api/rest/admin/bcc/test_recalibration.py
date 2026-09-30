@@ -21,7 +21,7 @@ from tests.conftest import BACKEND_SLUGS
 def test_admin_init_recalibration(
     client, admin_jwt_cookie, user_jwt_cookie, backend, mock_bcc
 ):
-    """POST '/admin/recalibration/{backend}/init' should start recalibration via MSS"""
+    """POST '/admin/bcc/recalibration/{backend}/init' should start recalibration via MSS"""
     with client as client:
         params = {
             "interval": 3000,
@@ -29,7 +29,7 @@ def test_admin_init_recalibration(
         }
         # non admins are not allowed
         response = client.post(
-            f"/admin/recalibration/{backend}/init",
+            f"/admin/bcc/recalibration/{backend}/init",
             cookies=user_jwt_cookie,
             params=params,
         )
@@ -38,7 +38,7 @@ def test_admin_init_recalibration(
 
         # admins are allowed
         response = client.post(
-            f"/admin/recalibration/{backend}/init",
+            f"/admin/bcc/recalibration/{backend}/init",
             cookies=admin_jwt_cookie,
             params=params,
         )
@@ -56,18 +56,18 @@ def test_admin_get_recalibration_info(
     backend,
     mock_bcc,
 ):
-    """GET '/admin/recalibration/{backend}/info' should get recalibration info via MSS"""
+    """GET '/admin/bcc/recalibration/{backend}/info' should get recalibration info via MSS"""
     with client as client:
         # non admins are not allowed
         response = client.get(
-            f"/admin/recalibration/{backend}/info", cookies=user_jwt_cookie
+            f"/admin/bcc/recalibration/{backend}/info", cookies=user_jwt_cookie
         )
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
 
         # admins are allowed
         response = client.get(
-            f"/admin/recalibration/{backend}/info", cookies=admin_jwt_cookie
+            f"/admin/bcc/recalibration/{backend}/info", cookies=admin_jwt_cookie
         )
         actual_output = response.json()
 
@@ -92,14 +92,14 @@ def test_admin_get_recalibration_info(
 def test_admin_cancel_recalibration(
     client, admin_jwt_cookie, user_jwt_cookie, backend, mock_bcc
 ):
-    """POST '/admin/recalibration/{backend}/cancel' should stop recalibration via MSS"""
+    """POST '/admin/bcc/recalibration/{backend}/cancel' should stop recalibration via MSS"""
     with client as client:
         params = {
             "ignore_errors": True,
         }
         # non admins are not allowed
         response = client.post(
-            f"/admin/recalibration/{backend}/cancel",
+            f"/admin/bcc/recalibration/{backend}/cancel",
             cookies=user_jwt_cookie,
             params=params,
         )
@@ -108,7 +108,7 @@ def test_admin_cancel_recalibration(
 
         # admins are allowed
         response = client.post(
-            f"/admin/recalibration/{backend}/cancel",
+            f"/admin/bcc/recalibration/{backend}/cancel",
             cookies=admin_jwt_cookie,
             params=params,
         )

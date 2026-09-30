@@ -17,15 +17,19 @@ from tests.conftest import BACKEND_SLUGS
 
 @pytest.mark.parametrize("backend", BACKEND_SLUGS)
 def test_admin_switch_off(client, admin_jwt_cookie, user_jwt_cookie, backend, mock_bcc):
-    """POST '/admin/switch/{backend}/off' switches off the backend via MSS"""
+    """POST '/admin/bcc/switch/{backend}/off' switches off the backend via MSS"""
     with client as client:
         # non admins are not allowed
-        response = client.post(f"/admin/switch/{backend}/off", cookies=user_jwt_cookie)
+        response = client.post(
+            f"/admin/bcc/switch/{backend}/off", cookies=user_jwt_cookie
+        )
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
 
         # admins are allowed
-        response = client.post(f"/admin/switch/{backend}/off", cookies=admin_jwt_cookie)
+        response = client.post(
+            f"/admin/bcc/switch/{backend}/off", cookies=admin_jwt_cookie
+        )
         actual_output = response.json()
 
         assert response.status_code == 200
@@ -34,15 +38,19 @@ def test_admin_switch_off(client, admin_jwt_cookie, user_jwt_cookie, backend, mo
 
 @pytest.mark.parametrize("backend", BACKEND_SLUGS)
 def test_admin_switch_on(client, admin_jwt_cookie, user_jwt_cookie, backend, mock_bcc):
-    """POST '/admin/switch/{backend}/on' switches on the backend via MSS"""
+    """POST '/admin/bcc/switch/{backend}/on' switches on the backend via MSS"""
     with client as client:
         # non admins are not allowed
-        response = client.post(f"/admin/switch/{backend}/on", cookies=user_jwt_cookie)
+        response = client.post(
+            f"/admin/bcc/switch/{backend}/on", cookies=user_jwt_cookie
+        )
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
 
         # admins are allowed
-        response = client.post(f"/admin/switch/{backend}/on", cookies=admin_jwt_cookie)
+        response = client.post(
+            f"/admin/bcc/switch/{backend}/on", cookies=admin_jwt_cookie
+        )
         actual_output = response.json()
 
         assert response.status_code == 200
