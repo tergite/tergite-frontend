@@ -9,9 +9,11 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Type
+import asyncio
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type
 
 import pymongo
+from beanie import Document, init_beanie
 from loguru import logger
 from motor.motor_asyncio import (
     AsyncIOMotorClient,
@@ -26,6 +28,52 @@ from .exc import NotFoundError
 from .models import ModelOrDict, parse_record
 
 _CONNECTIONS = {}
+
+
+async def init_strict_beanie(
+    database: AsyncIOMotorDatabase | None = None,
+    connection_string: str | None = None,
+    document_models: Sequence[type[Document]] = (),
+    allow_index_dropping: bool = False,
+    recreate_views: bool = False,
+    multiprocessing_mode: bool = False,
+    skip_indexes: bool = False,
+):
+    """Initializes beanie with strict mongodb schemas.
+
+    This ensures the best of both worlds i.e. flexibility in development
+    and predictability in operation
+
+    Args:
+        database: motor database instance
+        connection_string: MongoDB connection string
+        document_models: model classes
+        allow_index_dropping: if index dropping is allowed. Default False
+        recreate_views: if views should be recreated. Default False
+        multiprocessing_mode: if multiprocessing mode is on it will patch the motor client to use process's event loop. Default False
+        skip_indexes: if you want to skip working with the indexes. Default False
+    """
+    await init_beanie(
+        database=database,
+        connection_string=connection_string,
+        document_models=document_models,
+        allow_index_dropping=allow_index_dropping,
+        recreate_views=recreate_views,
+        multiprocessing_mode=multiprocessing_mode,
+        skip_indexes=skip_indexes,
+    )
+    tasks = [
+        database.command(
+            {
+                "collMod": model.get_settings().name,
+                "validator": _get_jsonschema_validator(model),
+                "validationLevel": "strict",
+                "validationAction": "error",
+            }
+        )
+        for model in document_models
+    ]
+    await asyncio.gather(*tasks)
 
 
 def get_mongodb(url: str, name: str) -> AsyncIOMotorDatabase:
@@ -326,3 +374,26 @@ def _extract_sort_config(sort_fields: List[str]) -> List[Tuple[str, int]]:
             sort_config.append((sort_field, pymongo.ASCENDING))
 
     return sort_config
+
+
+def _get_jsonschema_validator(model: type[Document]) -> dict:
+    """Gets the JSONSchema validator for the given model.
+
+    It cleans up the JSONSchema to be mongoDB validator-ready
+
+    Args:
+        model: model class
+
+    Returns:
+        the JSONSchema for mongodb collection
+    """
+    json_schema = model.model_json_schema()
+    is_extra_allow = model.model_config.get("extra") == "allow"
+
+    return {
+        "$jsonSchema": {
+            **json_schema,
+            "bsonType": "object",
+            "additionalProperties": is_extra_allow,
+        }
+    }

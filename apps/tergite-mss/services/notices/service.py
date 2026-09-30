@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import pymongo
-from beanie import PydanticObjectId, init_beanie
+from beanie import PydanticObjectId
 from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -25,9 +25,11 @@ from utils import mongodb as mongodb_utils
 from utils.config import NoticesConfig
 from utils.date_time import get_current_timestamp, get_utc_now
 from utils.exc import NotFoundError
+from utils.mongodb import init_strict_beanie
 
 from .dtos import (
     NOTICE_DB_COLLECTION,
+    TEMPLATE_DB_COLLECTION,
     BaseNoticeContext,
     CustomNoticeCreate,
     EmailStatus,
@@ -381,7 +383,7 @@ async def count_many(
     min_expires_utc: Optional[datetime] = None,
     max_expires_utc: Optional[datetime] = None,
     include_dismissed: bool = False,
-    types: Optional[Sequence[NoticeType]] = None,
+    types: Optional[Sequence[NoticeTypeId]] = None,
     is_read: Optional[bool] = None,
 ) -> int:
     """Gets the number of notices that match the given query
@@ -491,7 +493,7 @@ async def on_startup(db: AsyncIOMotorDatabase, emailer: Emailer, conf: NoticesCo
         emailer: the emailer instance that sends emails
         conf: the notices configuration
     """
-    await init_beanie(
+    await init_strict_beanie(
         database=db,
         document_models=[
             Notice,
@@ -500,7 +502,7 @@ async def on_startup(db: AsyncIOMotorDatabase, emailer: Emailer, conf: NoticesCo
         ],
     )
 
-    await _init_notice_templates_in_db()
+    await _init_notice_templates_in_db(db)
 
     batch_generator = get_pending_email_batches(
         batch_size=50,
@@ -597,9 +599,9 @@ def _nested_insert(dst: Dict[str, Any], path: Tuple[str, ...], value: Any):
     collection[path[-1]] = value
 
 
-async def _init_notice_templates_in_db():
+async def _init_notice_templates_in_db(db: AsyncIOMotorDatabase):
     """Initializes the notice templates in the database with the default templates"""
-    result = await NoticeTemplate.find(projection={"type": 1}).to_list()
+    result = await db[TEMPLATE_DB_COLLECTION].find(projection={"type": 1}).to_list()
     existing_types = {item.type for item in result}
     new_records = [
         NoticeTemplate.from_notice_type(v)

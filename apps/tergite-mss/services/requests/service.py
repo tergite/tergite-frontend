@@ -20,6 +20,7 @@ from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
 from utils.config import UserRole
 from utils.exc import ForbiddenError, NotFoundError
+from utils.mongodb import init_strict_beanie
 
 from .dtos import (
     Request,
@@ -37,7 +38,7 @@ ALL_REQ_STATUSES = tuple(RequestStatus)
 
 async def on_startup(db: motor.motor_asyncio.AsyncIOMotorDatabase):
     """Runs init operations when the application is starting up"""
-    await init_beanie(
+    await init_strict_beanie(
         database=db,
         document_models=[
             Request,

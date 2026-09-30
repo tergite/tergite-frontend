@@ -19,7 +19,7 @@ from fastapi import APIRouter, Query
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
 from services import notices as notices_service
 from services.auth import User
-from services.notices import NoticeType
+from services.notices.dtos import NoticeTypeId
 from utils.api import GeneralMessage, PaginatedListResponse
 
 router = APIRouter()
@@ -29,7 +29,7 @@ router = APIRouter()
 async def get_my_notices(
     db: MongoDbDep,
     user_id: str = CurrentUserIdDep,
-    types: List[NoticeType] = Query((), alias="type"),
+    types: List[NoticeTypeId] = Query((), alias="type"),
     is_read: Optional[bool] = Query(None),
     skip: int = Query(0),
     limit: Optional[int] = Query(None),

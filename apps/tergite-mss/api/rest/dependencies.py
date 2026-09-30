@@ -34,7 +34,6 @@ from services.external import bcc
 
 from .utils import (
     get_bcc_client,
-    get_current_user_pydantic_id,
     get_default_mongodb,
     get_request_id,
 )

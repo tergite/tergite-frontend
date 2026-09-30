@@ -9,6 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
+import dataclasses
 from email.message import EmailMessage
 from typing import (
     Any,
@@ -33,14 +34,15 @@ BatchEmailGenerator: TypeAlias = AsyncGenerator[Sequence["EmailDetails"], None]
 """The asynchronous generator that yields EmailDetails batches to process"""
 
 
-class EmailResult(BaseModel):
+@dataclasses.dataclass(frozen=True)
+class EmailResult:
     """The result after sending an email"""
 
     error: Optional[Exception] = None
     ref_id: Any = None
     can_retry: bool = True
 
-    @computed_field
+    # @computed_field
     @property
     def is_success(self) -> bool:
         return self.error is None

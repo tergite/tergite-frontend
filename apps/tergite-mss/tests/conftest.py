@@ -30,7 +30,6 @@ from fastapi.testclient import TestClient
 from fastapi_users.router.oauth import generate_state_token
 from httpx_oauth.clients import github, microsoft
 
-from services.auth.projects.dtos import ProjectSource
 from tests._utils import mock_backend
 from tests._utils.auth import (
     INVALID_CHALMERS_PROFILE,

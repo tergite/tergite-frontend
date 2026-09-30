@@ -19,8 +19,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 from uuid import UUID
 
-from beanie import PydanticObjectId
-from beanie.odm.operators.update.general import Set
 from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
@@ -31,7 +29,6 @@ from services.external.bcc import BccClient
 from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils import mongodb as mongodb_utils
 from utils.crypto import decrypt_message
-from utils.date_time import get_current_timestamp
 from utils.exc import NotFoundError
 
 from ..auth import Project
@@ -41,6 +38,9 @@ from .dtos import CreatedJobResponse, Job, JobCreate, JobTimestamps, JobUpdate
 
 if TYPE_CHECKING:
     from ..auth.projects.database import ProjectDatabase
+
+
+# FIXME: Add init_strict_beanie and an on_startup function
 
 
 async def get_one(

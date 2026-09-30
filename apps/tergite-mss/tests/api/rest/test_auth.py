@@ -87,11 +87,12 @@ _STALE_AUTH_COOKIE_REGEX = re.compile(
 )
 
 
-def test_no_auth_root(client):
-    """GET '/' cannot be accessed without authentication"""
+def test_no_auth_health(client):
+    """GET '/health' can be accessed without authentication"""
     with client as client:
-        response = client.get("/")
-        assert response.status_code == 401
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "ok"}
 
 
 def test_github_cookie_authorize(client):

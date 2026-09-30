@@ -10,16 +10,16 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Data Transfer Objects for the notices service"""
-import dataclasses
+import importlib
+from contextlib import suppress
 from datetime import datetime
 from enum import Enum, nonmember
-from typing import Annotated, Any, Dict, List, Optional, Self, Type, TypeAlias
+from typing import Any, Dict, List, Literal, NamedTuple, Optional, Self, Type, cast
 
 from beanie import Document, PydanticObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import (
     BaseModel,
-    BeforeValidator,
     ConfigDict,
     Field,
     computed_field,
@@ -32,6 +32,7 @@ from pymongo import IndexModel
 
 from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
 from utils.models import create_partial_model
+from utils.types import get_class_import_path, load_class
 
 NOTICE_DB_COLLECTION = "notices"
 NOTICE_PREFS_DB_COLLECTION = "notice_preferences"
@@ -97,8 +98,8 @@ class CustomNoticeContext(BaseNoticeContext):
     body: str = ""
 
 
-@dataclasses.dataclass(frozen=True, eq=True)
-class NoticeTypeInfo:
+# @dataclasses.dataclass(frozen=True, eq=True)
+class NoticeTypeInfo(NamedTuple):
     id: str
     title: str
     body: str
@@ -279,21 +280,13 @@ class NoticeType(NoticeTypeInfo, Enum):
             cls.__str_member_map__ = {v.id: v for v in cls}
         return cls.__str_member_map__[value]
 
-    @classmethod
-    def validate_str(cls, value: str) -> str:
-        """Validates a string as a member of this enum"""
-        try:
-            current = cls.from_str(value)
-            return current.id
-        except KeyError:
-            raise ValueError(f"invalid notice type string value {value}")
-
     def __str__(self):
         return self.id
 
 
-NoticeTypeId: TypeAlias = Annotated[str, BeforeValidator(NoticeType.validate_str)]
+type NoticeTypeId = Literal[tuple(v.id for v in NoticeType)]  # type: ignore[valid-type]
 """A kind of NoticeTypes"""
+# FIXME: Maybe find a stronger type for the strings in Notice type or just setup a map of dict[NoticeType, NoticeInfo]
 
 
 class Notice(Document):
@@ -442,7 +435,9 @@ class NoticeTemplate(Document):
     title: str
     body: str
     severity: NoticeSeverity
-    context_cls: Type[BaseNoticeContext] = BaseNoticeContext
+    context_cls_path: str = get_class_import_path(BaseNoticeContext)
+
+    __context_cls: Optional[Type[BaseNoticeContext]] = None
 
     class Settings:
         name = TEMPLATE_DB_COLLECTION
@@ -450,15 +445,27 @@ class NoticeTemplate(Document):
             IndexModel("type", unique=True),
         ]
 
+    @property
+    def context_cls(self) -> Type[BaseNoticeContext]:
+        """The context class for this template"""
+        if self.__context_cls is None:
+            self.__context_cls = cast(
+                Type[BaseNoticeContext], load_class(self.context_cls_path)
+            )
+        return self.__context_cls
+
     @field_serializer("id", when_used="json")
     def serialize_id(self, value: Any):
         """Convert id fields to string when working with JSON"""
         return str(value)
 
-    @field_serializer("context_cls")
-    def serialize_object_fields(self, value: Any):
+    @field_validator("context_cls_path", mode="before")
+    @classmethod
+    def validate_context_cls(cls, value: Any):
         """Convert object fields to string always"""
-        return str(value)
+        if isinstance(value, type):
+            return get_class_import_path(value)
+        return value
 
     @classmethod
     def from_notice_type(cls, value: NoticeType | str) -> Self:
@@ -471,7 +478,7 @@ class NoticeTemplate(Document):
             title=value.title,
             body=value.body,
             severity=value.severity,
-            context_cls=value.context_cls,
+            context_cls_path=get_class_import_path(value.context_cls),
         )
 
 

@@ -15,13 +15,14 @@ import re
 from typing import List, Optional
 
 import motor.motor_asyncio
-from beanie import PydanticObjectId, init_beanie
+from beanie import PydanticObjectId
 from fastapi import APIRouter
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend
 
 import settings
 from utils.config import Oauth2ClientConfig, UserRole
+from utils.mongodb import init_strict_beanie
 
 from . import app_tokens, projects, users
 from .utils import get_oauth2_client
@@ -72,7 +73,7 @@ GET_CURRENT_SYSTEM_USER_PROJECT = APP_TOKEN_AUTH.current_project(
 
 async def on_startup(db: motor.motor_asyncio.AsyncIOMotorDatabase):
     """Runs init operations when the application is starting up"""
-    await init_beanie(
+    await init_strict_beanie(
         database=db,
         document_models=[
             users.dtos.User,

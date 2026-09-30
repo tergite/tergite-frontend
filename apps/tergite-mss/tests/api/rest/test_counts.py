@@ -57,6 +57,7 @@ def test_admin_count_notices_filtered_by_user_id(admin_jwt_cookie, client, db):
 
     Only notices with target_user_ids containing the user_id plus broadcast ones are counted.
     """
+    # FIXME: The schema of notices was changed.
     _insert_notices(db, _NOTICES_IN_DB_RAW)
     # With include_dismissed=True: all notices targeting TEST_USER_ID
     expected_count = sum(
@@ -207,6 +208,7 @@ def _insert_notices(
         now=now,
     )
 
+    # FIXME: notice schema was changed
     def _convert(k: str, v: Any) -> Any:
         if v is None:
             return None

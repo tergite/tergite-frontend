@@ -21,7 +21,7 @@ from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
 from services import notices as notice_service
 from services import notices as notices_service
 from services.auth.users.dtos import User
-from services.notices import NoticeType
+from services.notices.dtos import NoticeTypeId
 from utils.api import CountsResponse
 
 router = APIRouter(prefix="/counts", tags=["counts"])
@@ -70,7 +70,7 @@ async def get_notice_count(
 @router.get("/notices")
 async def get_notification_count(
     db: MongoDbDep,
-    types: List[NoticeType] = Query((), alias="type"),
+    types: List[NoticeTypeId] = Query((), alias="type"),
     is_read: Optional[bool] = Query(None),
     user_id: str = CurrentUserIdDep,
 ) -> CountsResponse:

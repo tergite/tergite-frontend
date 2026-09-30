@@ -64,7 +64,7 @@ class ProjectRead(ProjectBase):
         return str(value)
 
     @field_serializer("user_ids", when_used="json")
-    def serialize_id(self, value: List[PydanticObjectId]):
+    def serialize_user_ids(self, value: List[PydanticObjectId]):
         """Convert list of ids to list of strings when working with JSON"""
         return [str(v) for v in value]
 

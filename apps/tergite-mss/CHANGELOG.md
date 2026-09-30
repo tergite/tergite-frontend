@@ -65,6 +65,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - [BREAKING]: Changed `/admin/switch` to `/admin/bcc/switch` endpoints
 - [BREAKING]: Changed GET `/me` profile endpoint to GET `/me/profile`
 - [BREAKING]: Remove `ext_id`, `source` and `resource_ids` from project schema
+- [BREAKING]: Changed the schema of beanie mongodb's strict even at the database level.
 
 ### Fixed
 

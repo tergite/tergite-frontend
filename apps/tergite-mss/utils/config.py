@@ -203,7 +203,7 @@ class EmailConfig(BaseModel):
     username: str | bytes | None = (None,)
     password: str | bytes | None = (None,)
     timeout: float | None = aiosmtplib.smtp.DEFAULT_TIMEOUT
-    use_tls: bool = True
+    use_tls: bool = False
     start_tls: bool | None = True
 
     from_address: str

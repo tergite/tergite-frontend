@@ -16,9 +16,11 @@ from beanie import PydanticObjectId
 from services.auth import Project
 from services.requests import Request
 from tests._utils.auth import (
+    TEST_NO_QPU_PROJECT_ID,
     TEST_OUTSIDER_EMAIL,
     TEST_OUTSIDER_ID,
     TEST_PROJECT_ID,
+    TEST_PROJECT_NAME,
     TEST_SUPERUSER_ID,
     TEST_USER_ID,
     get_db_record,
@@ -89,7 +91,7 @@ def test_request_access_when_already_a_member(client, user_jwt_cookie):
 
         assert response.status_code == 409
         assert response.json() == {
-            "detail": f"you are already a member of '{TEST_PROJECT_EXT_ID}'"
+            "detail": f"you are already a member of '{TEST_PROJECT_NAME}'"
         }
 
 
@@ -101,7 +103,7 @@ def test_request_access_twice(client, outsider_jwt_cookie):
 
         assert response.status_code == 409
         assert response.json() == {
-            "detail": f"a request for '{TEST_PROJECT_EXT_ID}' is already pending"
+            "detail": f"a request for '{TEST_PROJECT_NAME}' is already pending"
         }
 
 
@@ -110,7 +112,7 @@ def test_request_access_for_second_project(client, outsider_jwt_cookie):
     with client as client:
         assert _request_access(client, outsider_jwt_cookie).status_code == 201
         response = _request_access(
-            client, outsider_jwt_cookie, project_id=TEST_NO_QPU_PROJECT_EXT_ID
+            client, outsider_jwt_cookie, project_id=TEST_NO_QPU_PROJECT_ID
         )
 
         assert response.status_code == 201
