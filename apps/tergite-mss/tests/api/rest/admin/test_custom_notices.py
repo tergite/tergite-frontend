@@ -23,7 +23,9 @@ from tests._utils.mongodb import find_in_collection
 _NOTICES_COLLECTION = "notices"
 _ADMIN_NOTICE_ID = "aaaaaaaaaaaaaaaaaaaaaaaa"
 _USER_NOTICE_ID = "bbbbbbbbbbbbbbbbbbbbbbbb"
+_BROADCAST_NOTICE_ID = "cccccccccccccccccccccccc"
 _READ_USER_NOTICE_ID = "dddddddddddddddddddddddd"
+_SYSTEM_NOTICE_ID = "ffffffffffffffffffffffff"
 _NOTICE_PAYLOAD = {
     "message": "Important maintenance window",
     "severity": "warning",
@@ -189,6 +191,21 @@ def test_admin_get_notices_excludes_dismissed_by_default(
         assert _USER_NOTICE_ID in returned_ids
         assert _READ_USER_NOTICE_ID not in returned_ids
         assert _ADMIN_NOTICE_ID not in returned_ids
+
+
+def test_admin_get_notices_by_type(admin_jwt_cookie, client, inserted_notices):
+    """GET /admin/notices?type=... returns only the notices of the given types"""
+    with client as client:
+        response = client.get(
+            "/admin/notices?type=custom-broadcast&type=project-access-requested",
+            cookies=admin_jwt_cookie,
+        )
+
+        assert response.status_code == 200
+        assert {item["id"] for item in response.json()["data"]} == {
+            _BROADCAST_NOTICE_ID,
+            _SYSTEM_NOTICE_ID,
+        }
 
 
 def test_non_admin_get_notices(user_jwt_cookie, client, inserted_notices):

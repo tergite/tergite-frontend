@@ -19,7 +19,7 @@ from fastapi import APIRouter, Query
 
 from services import notices as notices_service
 from services.auth import User
-from services.notices.dtos import CustomNoticeCreate, Notice
+from services.notices.dtos import CustomNoticeCreate, Notice, NoticeTypeId
 from utils.api import PaginatedListResponse
 
 from ...dependencies import (
@@ -90,6 +90,7 @@ async def get_many_notices(
     min_expires_utc: datetime = Query(None),
     max_expires_utc: datetime = Query(None),
     include_dismissed: bool = Query(False),
+    types: List[NoticeTypeId] = Query((), alias="type"),
 ) -> PaginatedListResponse[Notice]:
     """Gets many notices, filtering them accordingly
 
@@ -104,6 +105,7 @@ async def get_many_notices(
         min_expires_utc: The minimum UTC timestamp the notice should expire
         max_expires_utc: The maximum UTC timestamp the notice should expire
         include_dismissed: whether to include dismissed notices; defaults to False
+        types: the types to filter by; repeat the param for many
 
     Returns:
         a paginated list of notices
@@ -119,5 +121,6 @@ async def get_many_notices(
         min_expires_utc=min_expires_utc,
         max_expires_utc=max_expires_utc,
         include_dismissed=include_dismissed,
+        types=types,
     )
     return PaginatedListResponse(skip=skip, limit=limit, data=data)
