@@ -196,13 +196,13 @@ async def _send_on_repeat(
                             except Exception as exp:
                                 if not ignore_errors:
                                     raise
-                                logger.exception(f"sending email on repeat failed")
+                                logger.exception("sending email on repeat failed")
                                 errors[idx] = exp
             except Exception as exp:
                 # e.g. connecting to the SMTP server failed, so nothing was sent
                 if not ignore_errors:
                     raise
-                logger.exception(f"sending email batch on repeat failed")
+                logger.exception("sending email batch on repeat failed")
                 errors = [exp] * len(batch)
 
             results = [

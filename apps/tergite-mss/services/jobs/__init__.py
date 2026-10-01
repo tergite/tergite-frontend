@@ -34,7 +34,7 @@ from utils.exc import NotFoundError
 from ..auth import Project
 from ..notices import NoticeType
 from ..notices.dtos import ProjectRequestContext, RefType
-from .dtos import CreatedJobResponse, Job, JobCreate, JobTimestamps, JobUpdate
+from .dtos import CreatedJobResponse, Job, JobUpdate
 
 if TYPE_CHECKING:
     from ..auth.projects.database import ProjectDatabase

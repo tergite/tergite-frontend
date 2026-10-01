@@ -32,7 +32,6 @@ from tests._utils.records import (
     filter_by_equality,
     order_by_many,
     pop_field,
-    prune,
 )
 from tests.conftest import TEST_NEXT_COOKIE_URL
 from utils.crypto import generate_linked_id

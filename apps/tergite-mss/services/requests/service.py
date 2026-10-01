@@ -218,7 +218,7 @@ async def update(
         _filter, skip=skip, limit=limit, sort=sort_args
     ).to_list()
     if len(matches) == 0:
-        raise NotFoundError(f"no match found")
+        raise NotFoundError("no match found")
 
     if payload.status == RequestStatus.APPROVED:
         for item in matches:

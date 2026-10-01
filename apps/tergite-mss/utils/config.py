@@ -15,7 +15,7 @@ import enum
 import json
 import socket
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 
 import aiosmtplib
 from pydantic import (
@@ -28,7 +28,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic.main import IncEx
 
 _PROJECT_FOLDER = Path(__file__).parent.parent
 

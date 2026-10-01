@@ -13,7 +13,6 @@
 
 from typing import List, Optional, Set
 
-import pymongo
 from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from pymongo import IndexModel
