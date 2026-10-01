@@ -83,7 +83,6 @@ Find more documentation in the [docs folder](./docs)
 ## TODO
 
 - [ ] Clean up the requests and qpu_grants API
-- [ ] Update the tests that were added for the notices things
 
 ## Contribution Guidelines
 

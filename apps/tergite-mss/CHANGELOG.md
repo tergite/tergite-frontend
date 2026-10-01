@@ -18,9 +18,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added `qpu-seconds-low` and `qpu-seconds-depleted` notifications, raised as a job's usage takes a
   project below `projects.qpu_seconds_low_threshold` (default 600) or to zero. The admin hears about
   running low, admin and members both hear about running out; previously the first sign was a
-  rejected job. Unlike the other types these two can be silenced in-app, since neither awaits action.
+  rejected job.
 - Added an optional email copy of every notification, configured under `[email]` with
-  `notifications.dashboard_url`. Omit `[email]` and nothing changes. Sending is done by a
+  `notices.dashboard_url`. Omit `[email]` and nothing changes. Sending is done by a
   background sweeper reading the notification rows themselves, so an approval is never as slow
   as the mail server and a restart resumes the queue rather than losing it.
 - Personal projects are now named after the owner's email local part, e.g.
@@ -32,13 +32,15 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 - Added DELETE `/me/projects/{_id}/members/{member_id}` so a project admin can remove a member,
   which also revokes that member's app tokens for the project. Previously only a superuser could
   change membership, so a mistaken approval needed an email to an operator.
-- Added in-app notifications: GET/PUT `/me/notifications/`, PUT `/me/notifications/{pk}`,
-  GET/PUT `/me/notification-preferences/` and GET `/counts/notifications`. Requesters are now
-  told when a request of theirs is decided, and approvers when one needs them; previously
-  neither side learned anything without checking the dashboard.
+- Added in-app notifications as notices: GET `/me/notices/`, POST `/me/notices/{id}/dismiss` and
+  `/me/notices/{id}/unread` or, for all at once, `/me/notices/dismiss` and `/me/notices/unread`,
+  GET/PUT `/me/notices/preferences/` for email opt-outs, and `type` filters on GET
+  `/admin/notices` and, with `is_read`, on GET `/counts/notices`. Requesters are now told when a
+  request of theirs is decided, and approvers when one needs them; previously neither side
+  learned anything without checking the dashboard.
 - Added POST `/me/requests/`, GET `/me/requests/` and PUT `/me/requests/{_id}` so users can ask
-  for access to a shared project and its admin can approve or reject. Previously only a superuser
-  could change project membership.
+  to join, create, close or transfer a project, or for QPU time, and whoever may decide can
+  approve or reject. Previously only a superuser could change a project.
 - Integrated `loguru` for clean, structured, and environment-dependent logging.
 - Added flat JSON log formatter in production for seamless Docker and `journalctl` ingestion.
 - Added standard logging `InterceptHandler` to capture and route logs from Uvicorn, FastAPI, and Beanie/Motor to Loguru.
@@ -48,15 +50,13 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Changed
 
-- Spending QPU seconds no longer clears a project's low-QPU latch; only adding time does. The latch
-  was cleared on every write, so once the new low-QPU warning existed the admin would have been
-  notified once per job for the same depletion rather than once.
+- The low and depleted QPU warnings come only from the job that crosses the threshold or zero,
+  so the jobs after it do not repeat them.
 - A superuser can delete a personal project, for offboarding or an erasure request; only the
   owner is refused, since deleting their own would hand them a fresh allowance on next login.
   An earlier iteration refused everyone, leaving no route but editing the database by hand.
-- Project responses now include `is_personal`, and user request responses include
-  `approver_scope` and `project_id`. Clients asserting on exact response bodies will see the
-  new fields.
+- Project responses now include `is_personal`. Clients asserting on exact response bodies will
+  see the new field.
 - Removed puhuri support as this is not in the long term plans for maintenance
 - [BREAKING]: Changed `/admin/qpu-user-requests` to `/me/requests` endpoints; 
   expanding it to handle all types of user requests
@@ -69,6 +69,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Fixed
 
+- Fixed GET `/me/profile` reporting `is_superuser` as false for every user, admins included.
 - An unhandled server error now answers with a 500 carrying the CORS headers. Errors with no
   handler of their own were turned into a response outside the CORS middleware, so a browser
   reported "Failed to fetch" and a CORS violation instead of the error that actually happened.
