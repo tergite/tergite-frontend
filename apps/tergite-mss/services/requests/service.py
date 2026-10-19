@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 import asyncio
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import motor.motor_asyncio
@@ -17,6 +18,7 @@ from beanie import PydanticObjectId, SortDirection
 from beanie.odm.operators.find.comparison import In
 from beanie.odm.operators.update.array import AddToSet
 from beanie.odm.operators.update.general import Set
+from pydantic import BaseModel, Field
 from pymongo.errors import DuplicateKeyError
 
 from services import notices
@@ -26,7 +28,6 @@ from services.auth.projects.dtos import Project
 from services.auth.projects.manager import ProjectAppTokenManager
 from services.auth.users.database import UserDatabase
 from services.auth.users.dtos import User
-from services.notices.dtos import RefType
 from utils.config import UserRole
 from utils.exc import ConflictError, ForbiddenError, NotFoundError
 from utils.mongodb import init_strict_beanie
@@ -70,13 +71,19 @@ async def create(
         the created Request object
 
     Raises:
-        ForbiddenError: if the user does not have permission to perform the request
+        ForbiddenError: operation not permitted on resource {id}
+        NotFoundError: project {id} not found
     """
     # FIXME: Creating a request does not always have to be attached to a project but a resource.
     #   This is supposed to be a general endpoint. What kind of direction do you need from me to
     #   avoid such half-baked design thoughts
-    await _has_resource_access(request_body, user=requester)
-    target_user_ids = await _get_target_user_ids(request_body)
+    if not await _has_resource_access(request_body, user=requester):
+        raise ForbiddenError(
+            f"operation not permitted on resource {request_body.resource_id}"
+        )
+
+    project = await _get_subject_project(request_body)
+    target_user_ids = await _get_target_user_ids(request_body, project=project)
     record = Request.from_post_body(
         request_body, requester=requester, target_user_ids=target_user_ids
     )
@@ -86,9 +93,9 @@ async def create(
     await notices.create_system_notice(
         user_ids=target_user_ids,
         notice_type=record.notice_type.id,
-        ref_id=record.ref_id,
+        ref_id=record.id,
         ref_type=record.metadata.resource,
-        context=record.notice_context,
+        context=record.get_notice_context(project_name=project.name if project else ""),
     )
     return record
 
@@ -216,6 +223,8 @@ async def update(
     if len(matches) == 0:
         raise NotFoundError("no match found")
 
+    # read before approving, as approving may close the project
+    project_name_map = await _get_project_name_map(matches)
     if payload.status == RequestStatus.APPROVED:
         for item in matches:
             await _apply_approval(item)
@@ -233,15 +242,21 @@ async def update(
     result = await Request.find(In(Request.id, ids), sort=sort_args).to_list()
 
     if payload.status in _DECIDED_STATUSES:
-        await notices.clear_notices_by_reference({RefType.USER_REQUEST: ids})
+        ref_type_ids_map = defaultdict(list)
+        for item in result:
+            ref_type_ids_map[item.metadata.resource].append(item.id)
+
+        await notices.clear_notices_by_reference(ref_type_ids_map)
         await asyncio.gather(
             *(
                 notices.create_system_notice(
                     user_ids=(item.requester_id,),
                     notice_type=item.notice_type.id,
                     ref_id=item.id,
-                    ref_type=RefType.USER_REQUEST,
-                    context=item.notice_context,
+                    ref_type=item.metadata.resource,
+                    context=item.get_notice_context(
+                        project_name=project_name_map.get(item.resource_id, "")
+                    ),
                 )
                 for item in result
             )
@@ -288,7 +303,9 @@ async def _get_subject_project(request: RequestPostBody) -> Optional[Project]:
 
     # No one should ask for access to a personal project
     project = await Project.get(request.resource_id)
-    if project is None or (request.type == RequestType.PROJECT_ACCESS and project.is_personal):
+    if project is None or (
+        request.type == RequestType.PROJECT_ACCESS and project.is_personal
+    ):
         raise NotFoundError(f"project {request.resource_id} not found")
 
     return project
@@ -332,21 +349,21 @@ async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
     elif request.type in (RequestType.CLOSE_PROJECT, RequestType.TRANSFER_PROJECT):
         project = await Project.find_one(
             Project.id == request.resource_id,
-            Project.admin_id == str(user.id),
-            projection={"_id": 1},
+            Project.admin_id == user.id,
+            projection_model=_ProjectId,
         )
         return project is not None
     elif request.type == RequestType.PROJECT_QPU_SECONDS:
         project = await Project.find_one(
             Project.id == request.resource_id,
-            Project.user_ids == str(user.id),
-            projection={"_id": 1},
+            Project.user_ids == user.id,
+            projection_model=_ProjectId,
         )
         return project is not None
     elif request.type == RequestType.PROJECT_ACCESS:
         return user is not None
 
-    raise ForbiddenError(f"operation not permitted on resource {request.resource_id}")
+    return False
 
 
 # FIXME: Restored from before the requests were unified, so that approving a request
@@ -432,4 +449,23 @@ async def _create_requested_project(metadata: CreateProjectMetadata):
         raise ConflictError(f"a project named '{metadata.name}' already exists")
 
 
+async def _get_project_name_map(
+    requests: Sequence[Request],
+) -> Dict[PydanticObjectId, str]:
+    """Gets the names of the projects the given requests are about, keyed by project ID
 
+    Args:
+        requests: the requests
+
+    Returns:
+        the map of project ID to project name
+    """
+    project_ids = [item.resource_id for item in requests]
+    projects = await Project.find(In(Project.id, project_ids)).to_list()
+    return {project.id: project.name for project in projects}
+
+
+class _ProjectId(BaseModel):
+    """A project with only its _id"""
+
+    id: PydanticObjectId = Field(alias="_id")

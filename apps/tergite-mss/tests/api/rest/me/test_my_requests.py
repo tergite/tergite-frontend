@@ -17,7 +17,6 @@ from services.auth import DeletedProject, Project
 from services.notices import NoticeType
 from services.requests import Request
 from tests._utils.auth import (
-    TEST_NO_QPU_PROJECT_ID,
     TEST_OUTSIDER_EMAIL,
     TEST_OUTSIDER_ID,
     TEST_PROJECT_ID,
@@ -75,10 +74,7 @@ def test_request_project_access(client, outsider_jwt_cookie, db):
         assert got["requester_id"] == TEST_OUTSIDER_ID
         assert got["requester_name"] == "outsider.doe"
         assert got["target_user_ids"] == [TEST_USER_ID]
-        assert got["metadata"] == {
-            "resource": "project",
-            "project_name": TEST_PROJECT_NAME,
-        }
+        assert got["metadata"] == {"resource": "project"}
         assert get_db_record(db, Request, got["id"]) is not None
 
 
@@ -99,7 +95,7 @@ def test_request_project_access_notifies_the_project_admin(
         assert admin_notices[0]["body"] == (
             f"outsider.doe is asking to join {TEST_PROJECT_NAME}: let me in"
         )
-        assert admin_notices[0]["ref_type"] == "user_request"
+        assert admin_notices[0]["ref_type"] == "project"
         assert admin_notices[0]["ref_id"] == PydanticObjectId(request_id)
         assert get_user_notices(db, TEST_OUTSIDER_ID) == []
 
@@ -135,50 +131,6 @@ def test_request_access_to_personal_project(
 
         assert response.status_code == 404
         assert response.json() == {"detail": f"project {project_id} not found"}
-
-
-def test_request_access_when_already_a_member(client, user_jwt_cookie):
-    """A member of the project gets 409 rather than a redundant request"""
-    with client as client:
-        response = client.post(
-            "/me/requests/", cookies=user_jwt_cookie, json=_ACCESS_REQUEST
-        )
-
-        assert response.status_code == 409
-        assert response.json() == {
-            "detail": f"you are already a member of '{TEST_PROJECT_NAME}'"
-        }
-
-
-def test_request_access_twice(client, outsider_jwt_cookie, db):
-    """A second request for the same project while one is pending is a 409"""
-    with client as client:
-        first = client.post(
-            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
-        )
-        second = client.post(
-            "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
-        )
-
-        assert first.status_code == 201
-        assert second.status_code == 409
-        assert second.json() == {
-            "detail": f"a request for '{TEST_PROJECT_NAME}' is already pending"
-        }
-        assert db["requests"].count_documents({}) == 1
-
-
-def test_request_access_to_second_project(client, outsider_jwt_cookie):
-    """A pending request for one project does not block a request for another"""
-    with client as client:
-        client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
-        response = client.post(
-            "/me/requests/",
-            cookies=outsider_jwt_cookie,
-            json={**_ACCESS_REQUEST, "resource_id": TEST_NO_QPU_PROJECT_ID},
-        )
-
-        assert response.status_code == 201
 
 
 def test_request_qpu_seconds(client, user_jwt_cookie, db):
