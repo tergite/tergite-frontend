@@ -67,16 +67,12 @@ async def create(
         ForbiddenError: operation not permitted on resource {id}
         NotFoundError: project {id} not found
     """
-    # FIXME: Creating a request does not always have to be attached to a project but a resource.
-    #   This is supposed to be a general endpoint. What kind of direction do you need from me to
-    #   avoid such half-baked design thoughts
     if not await _has_resource_access(request_body, user=requester):
         raise ForbiddenError(
             f"operation not permitted on resource {request_body.resource_id}"
         )
 
-    project = await _get_subject_project(request_body)
-    target_user_ids = await _get_target_user_ids(request_body, project=project)
+    target_user_ids = await _get_target_user_ids(request_body)
     record = Request.from_post_body(
         request_body, requester=requester, target_user_ids=target_user_ids
     )
@@ -277,44 +273,28 @@ def _to_sort_pairs(sort_fields: Sequence[str]) -> List[Tuple[str, SortDirection]
     return sort_args
 
 
-async def _get_subject_project(request: RequestPostBody) -> Optional[Project]:
-    """Gets the project that the given request is about
-
-    Args:
-        request: the request post body
-
-    Returns:
-        the project or None if the request is to create one
-
-    Raises:
-        NotFoundError: project {id} not found
-    """
-    if request.type == RequestType.CREATE_PROJECT:
-        return None
-
-    # No one should ask for access to a personal project
-    project = await Project.get(request.resource_id)
-    if project is None or (
-        request.type == RequestType.PROJECT_ACCESS and project.is_personal
-    ):
-        raise NotFoundError(f"project {request.resource_id} not found")
-
-    return project
-
-
-async def _get_target_user_ids(
-    request: RequestPostBody, project: Optional[Project]
-) -> List[PydanticObjectId]:
+async def _get_target_user_ids(request: RequestPostBody) -> List[PydanticObjectId]:
     """Gets the IDs of users to whom this request is directed
 
     Args:
         request: the request post body
-        project: the project the request is about, if any
 
     Returns:
         the IDs of the target users
+
+    Raises:
+        NotFoundError: project {id} not found
     """
     if request.target == RequestTarget.PROJECT:
+        # personal projects answer as missing ones do, so they cannot be probed
+        project = await Project.find_one(
+            Project.id == request.resource_id,
+            Project.is_personal != True,
+            projection_model=_TrimmedProject,
+        )
+        if project is None:
+            raise NotFoundError(f"project {request.resource_id} not found")
+
         return [project.admin_id]
 
     elif request.target == RequestTarget.SYSTEM:
@@ -341,14 +321,14 @@ async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
         project = await Project.find_one(
             Project.id == request.resource_id,
             Project.admin_id == user.id,
-            projection_model=_ProjectId,
+            projection_model=_TrimmedProject,
         )
         return project is not None
     elif request.type == RequestType.PROJECT_QPU_SECONDS:
         project = await Project.find_one(
             Project.id == request.resource_id,
             Project.user_ids == user.id,
-            projection_model=_ProjectId,
+            projection_model=_TrimmedProject,
         )
         return project is not None
     elif request.type == RequestType.PROJECT_ACCESS:
@@ -357,7 +337,8 @@ async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
     return False
 
 
-class _ProjectId(BaseModel):
-    """A project with only its _id"""
+class _TrimmedProject(BaseModel):
+    """A project with only its _id and admin_id"""
 
     id: PydanticObjectId = Field(alias="_id")
+    admin_id: PydanticObjectId
