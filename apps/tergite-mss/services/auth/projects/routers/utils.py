@@ -120,20 +120,6 @@ async def prepare_partial_project(
     return ProjectPartial(**kwargs, user_ids=user_ids, admin_id=admin_id)
 
 
-async def create_project(payload: ProjectCreate) -> Project:
-    """Creates a new project
-
-    Args:
-        payload: the payload from which to create the project
-
-    """
-    project_create = await prepare_new_project(payload)
-    created_project = await project_manager.create(project_create)
-
-    await notify_membership_change(None, created_project, actor)
-    return created_project
-
-
 async def prepare_new_project(payload: ProjectCreate) -> Project:
     """Prepares a new Project instance from a ProjectCreate instance
 

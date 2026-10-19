@@ -38,10 +38,10 @@ from ..dtos import (
     ProjectUpdate,
 )
 from ..manager import ProjectAppTokenManager, ProjectManagerDependency
+from . import handlers
 from .utils import (
     get_full_admin_project,
     notify_membership_change,
-    prepare_new_project,
     prepare_partial_project,
 )
 
@@ -214,17 +214,16 @@ def get_projects_router(
         actor: User = Depends(get_current_superuser),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
     ):
-        # FIXME: Should I move this into its own handler file and reuse it in the actions for requests?
         try:
-            project_create = await prepare_new_project(project_create)
-            created_project = await project_manager.create(project_create)
+            created_project = await handlers.create_project(
+                project_create, project_manager=project_manager, actor=actor
+            )
         except exc.ProjectExists:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=exc.ExtendedErrorCode.PROJECT_ALREADY_EXISTS,
             )
 
-        await notify_membership_change(None, created_project, actor)
         return await get_full_admin_project(created_project)
 
     @router.get(
