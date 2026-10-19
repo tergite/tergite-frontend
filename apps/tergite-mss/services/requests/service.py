@@ -206,8 +206,7 @@ async def update(
     )
     sort_args = _to_sort_pairs(sort)
 
-    # FIXME: This is bad. You have three different db requests just to update the requests.
-    #   Why not do the update with one db request?
+    # found first, as approving needs them, and update_many can neither skip nor limit
     matches = await Request.find(
         _filter, skip=skip, limit=limit, sort=sort_args
     ).to_list()
@@ -228,7 +227,7 @@ async def update(
     )
     ids = [item.id for item in matches]
     await Request.find(In(Request.id, ids)).update({"$set": update_dict})
-    result = await Request.find(In(Request.id, ids), sort=sort_args).to_list()
+    result = [item.model_copy(update=update_dict) for item in matches]
 
     if payload.status in _DECIDED_STATUSES:
         ref_type_ids_map = defaultdict(list)
