@@ -21,8 +21,6 @@ from fastapi.responses import Response
 from fastapi_users import exceptions, schemas
 
 from services import notices
-from services.auth.projects.routers.utils import notify_membership_change, prepare_partial_project, prepare_new_project, \
-    get_full_admin_project
 from services.notices import NoticeType
 from utils.api import PaginatedListResponse
 
@@ -40,6 +38,12 @@ from ..dtos import (
     ProjectUpdate,
 )
 from ..manager import ProjectAppTokenManager, ProjectManagerDependency
+from .utils import (
+    get_full_admin_project,
+    notify_membership_change,
+    prepare_new_project,
+    prepare_partial_project,
+)
 
 
 def get_my_projects_router(
@@ -341,5 +345,3 @@ def get_projects_router(
         return None
 
     return router
-
-

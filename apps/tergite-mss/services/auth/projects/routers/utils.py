@@ -11,18 +11,24 @@
 # that they have been altered from the originals.
 
 """Module containing utilities for the routers"""
-from typing import Optional, List, Dict, Union
+from typing import Dict, List, Optional, Union
 
 from beanie import PydanticObjectId
 from fastapi_users.password import PasswordHelper
 from pydantic import BaseModel, Field
 
 from services import notices
-from services.auth import Project, User, ProjectUpdate, ProjectCreate, ProjectAdminView
-from services.auth.projects.dtos import ProjectPartial
 from services.notices import NoticeType
-from services.notices.dtos import ProjectRequestContext, RefType
-from ..exc import ProjectExists, ExtendedErrorCode
+
+from ....notices.dtos import ProjectRequestContext, RefType
+from ...users.dtos import User
+from ..dtos import (
+    Project,
+    ProjectAdminView,
+    ProjectCreate,
+    ProjectPartial,
+    ProjectUpdate,
+)
 
 _password_helper = PasswordHelper()
 
@@ -113,6 +119,7 @@ async def prepare_partial_project(
     kwargs = payload.model_dump(exclude={"admin_email", "user_emails"})
     return ProjectPartial(**kwargs, user_ids=user_ids, admin_id=admin_id)
 
+
 async def create_project(payload: ProjectCreate) -> Project:
     """Creates a new project
 
@@ -125,6 +132,7 @@ async def create_project(payload: ProjectCreate) -> Project:
 
     await notify_membership_change(None, created_project, actor)
     return created_project
+
 
 async def prepare_new_project(payload: ProjectCreate) -> Project:
     """Prepares a new Project instance from a ProjectCreate instance
