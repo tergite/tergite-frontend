@@ -23,16 +23,13 @@ from tests._utils.auth import (
     TEST_NO_QPU_APP_TOKEN_DICT,
     TEST_SUPERUSER_ID,
     TEST_USER_ID,
+    get_auth_cookie,
     get_db_record,
     get_jwt_token,
     update_db_record,
 )
 from tests._utils.date_time import get_current_timestamp_str, get_timestamp_str
-from tests.conftest import (
-    APP_TOKEN_LIST,
-    get_auth_cookie,
-    get_unauthorized_app_token_post_with_cookies,
-)
+from tests.conftest import APP_TOKEN_LIST, PROJECT_LIST
 
 _USER_ID_COOKIES_FIXTURE = [
     (TEST_USER_ID, lazy_fixture("user_jwt_cookie")),
@@ -48,6 +45,15 @@ _OTHERS_TOKENS_REQUESTS = [
     for token in APP_TOKEN_LIST
     for user_id in [TEST_USER_ID, TEST_SUPERUSER_ID]
     if user_id != token["user_id"]
+]
+_PROJECT_USER_IDS_MAP = {
+    project["_id"]: project["user_ids"] for project in PROJECT_LIST
+}
+_UNAUTHORIZED_TOKEN_REQUESTS = [
+    (token, get_auth_cookie(user_id))
+    for token in APP_TOKEN_LIST
+    for user_id in [TEST_USER_ID, TEST_SUPERUSER_ID]
+    if user_id not in _PROJECT_USER_IDS_MAP[token["project_id"]]
 ]
 
 
@@ -81,9 +87,7 @@ def test_unauthenticated_app_token_generation(payload, inserted_projects, client
         assert got == expected
 
 
-@pytest.mark.parametrize(
-    "body, cookies", get_unauthorized_app_token_post_with_cookies()
-)
+@pytest.mark.parametrize("body, cookies", _UNAUTHORIZED_TOKEN_REQUESTS)
 def test_unauthorized_app_token_generation(body, cookies, inserted_projects, client):
     """403 error raised at /me/tokens/, for a project to which a user is not attached"""
     # using context manager to ensure on_startup runs
@@ -160,9 +164,7 @@ def test_unauthenticated_app_token_deletion(
         assert get_db_record(db, AppToken, _id) is not None
 
 
-@pytest.mark.parametrize(
-    "payload, cookies", get_unauthorized_app_token_post_with_cookies()
-)
+@pytest.mark.parametrize("payload, cookies", _UNAUTHORIZED_TOKEN_REQUESTS)
 def test_unauthorized_app_token_deletion(
     payload, cookies, db, client, inserted_projects, inserted_app_tokens
 ):

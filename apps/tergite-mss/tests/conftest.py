@@ -46,6 +46,7 @@ from tests._utils.auth import (
     TEST_SYSTEM_USER_ID,
     TEST_USER_DICT,
     TEST_USER_ID,
+    get_auth_cookie,
     get_db_record,
     get_jwt_token,
     init_test_auth,
@@ -484,44 +485,6 @@ def mock_timed_out_bcc(respx_mock):
         )
 
     yield respx_mock
-
-
-def get_auth_cookie(user_id: str) -> Dict[str, str]:
-    """Retrieves the authorization cookie for the given user_id"""
-    return {"some-cookie": get_jwt_token(user_id)}
-
-
-def get_unauthorized_app_token_post_with_cookies():
-    """Returns the body and cookies for unauthorized app token generation POST
-
-    The auth cookie provided is for a user who does not have access
-    to the given project
-    """
-    admin_only_projects = [
-        project["_id"]
-        for project in PROJECT_LIST
-        if project["user_ids"] == [TEST_SUPERUSER_ID]
-    ]
-
-    user_only_projects = [
-        project["_id"]
-        for project in PROJECT_LIST
-        if project["user_ids"] == [TEST_USER_ID]
-    ]
-
-    admin_only_post_data = [
-        (body, get_auth_cookie(TEST_USER_ID))
-        for body in APP_TOKEN_LIST
-        if body["project_id"] in admin_only_projects
-    ]
-
-    user_only_post_data = [
-        (body, get_auth_cookie(TEST_SUPERUSER_ID))
-        for body in APP_TOKEN_LIST
-        if body["project_id"] in user_only_projects
-    ]
-
-    return admin_only_post_data + user_only_post_data
 
 
 def _to_project_record(item: Dict[str, Any]) -> Dict[str, Any]:

@@ -227,6 +227,11 @@ def get_jwt_token(
     )
 
 
+def get_auth_cookie(user_id: str) -> Dict[str, str]:
+    """Generates the authorization cookie for the given user_id"""
+    return {"some-cookie": get_jwt_token(user_id)}
+
+
 def is_valid_jwt(token: str, secret: str = TEST_JWT_SECRET) -> bool:
     """Checks that the given JWT is a valid JWT
 

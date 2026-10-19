@@ -25,12 +25,13 @@ from tests._utils.auth import (
     TEST_SUPERUSER_ID,
     TEST_SYSTEM_USER_ID,
     TEST_USER_ID,
+    get_auth_cookie,
     get_db_record,
 )
 from tests._utils.date_time import get_current_timestamp_str
 from tests._utils.notices import get_user_notices
 from tests._utils.records import prune
-from tests.conftest import PROJECT_LIST, get_auth_cookie
+from tests.conftest import PROJECT_LIST
 
 _MY_PROJECT_REQUESTS = [
     (user_id, get_auth_cookie(user_id), project)
