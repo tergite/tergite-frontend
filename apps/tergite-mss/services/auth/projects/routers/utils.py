@@ -142,48 +142,6 @@ async def prepare_new_project(payload: ProjectCreate) -> Project:
     return Project(**kwargs, user_ids=user_ids, admin_id=admin_id)
 
 
-async def _get_user_email_id_map(
-    user_emails: List[str],
-) -> Dict[str, PydanticObjectId]:
-    """Generates a map of user email and their id
-
-    It creates any users for emails whose users don't exist
-
-    Args:
-        user_emails: the emails of the users
-
-    Returns:
-        the map of the user emails and their corresponding user ids
-    """
-    if len(user_emails) == 0:
-        # return without doing any db requests
-        return {}
-
-    users = await User.find({"email": {"$in": user_emails}}).to_list()
-    email_id_map = {v.email: v.id for v in users}
-
-    # create any users who don't exist yet
-    new_user_ids = []
-    new_emails = [email for email in user_emails if email_id_map.get(email) is None]
-    new_users = [
-        User(
-            email=email,
-            hashed_password=_password_helper.hash(_password_helper.generate()),
-        )
-        for email in new_emails
-    ]
-    if len(new_users) > 0:
-        inserted_users = await User.insert_many(new_users, ordered=True)
-        new_user_ids = inserted_users.inserted_ids
-
-    # update the email map
-    email_id_map.update(
-        {email: PydanticObjectId(_id) for email, _id in zip(new_emails, new_user_ids)}
-    )
-
-    return email_id_map
-
-
 async def get_full_admin_project(
     project: Union[ProjectAdminView, Project],
 ) -> ProjectAdminView:
@@ -227,3 +185,45 @@ async def _get_user_id_email_map(
         {"_id": {"$in": user_ids}}, projection_model=_TrimmedUser
     ).to_list()
     return {v.id: v.email for v in users}
+
+
+async def _get_user_email_id_map(
+    user_emails: List[str],
+) -> Dict[str, PydanticObjectId]:
+    """Generates a map of user email and their id
+
+    It creates any users for emails whose users don't exist
+
+    Args:
+        user_emails: the emails of the users
+
+    Returns:
+        the map of the user emails and their corresponding user ids
+    """
+    if len(user_emails) == 0:
+        # return without doing any db requests
+        return {}
+
+    users = await User.find({"email": {"$in": user_emails}}).to_list()
+    email_id_map = {v.email: v.id for v in users}
+
+    # create any users who don't exist yet
+    new_user_ids = []
+    new_emails = [email for email in user_emails if email_id_map.get(email) is None]
+    new_users = [
+        User(
+            email=email,
+            hashed_password=_password_helper.hash(_password_helper.generate()),
+        )
+        for email in new_emails
+    ]
+    if len(new_users) > 0:
+        inserted_users = await User.insert_many(new_users, ordered=True)
+        new_user_ids = inserted_users.inserted_ids
+
+    # update the email map
+    email_id_map.update(
+        {email: PydanticObjectId(_id) for email, _id in zip(new_emails, new_user_ids)}
+    )
+
+    return email_id_map
