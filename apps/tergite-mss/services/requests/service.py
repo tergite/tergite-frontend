@@ -162,8 +162,6 @@ async def update(
     payload: RequestUpdate,
     current_user: User,
     sort: tuple[str, ...] = ("-created_at",),
-    skip: int = 0,
-    limit: Optional[int] = None,
 ) -> List[Request]:
     """Updates the matched requests.
 
@@ -185,9 +183,6 @@ async def update(
         payload: the update payload for the requests
         current_user: the logged-in user
         sort: the sort order of the returned results
-        skip: the number of matched records to skip
-        limit: the maximum number of records to match.
-                If None, all possible records are matched.
 
     Returns:
         Returns all updated requests
@@ -206,10 +201,8 @@ async def update(
     )
     sort_args = _to_sort_pairs(sort)
 
-    # found first, as approving needs them, and update_many can neither skip nor limit
-    matches = await Request.find(
-        _filter, skip=skip, limit=limit, sort=sort_args
-    ).to_list()
+    # found first, as approving needs them
+    matches = await Request.find(_filter, sort=sort_args).to_list()
     if len(matches) == 0:
         raise NotFoundError("no match found")
 

@@ -117,7 +117,7 @@ async def update(
         404: {_id} not found
     """
     result = await requests_service.update(
-        {"_id": _id}, payload=body, current_user=user, limit=1
+        {"_id": _id}, payload=body, current_user=user
     )
     if len(result) == 0:
         raise NotFoundError(f"{_id} not found")
