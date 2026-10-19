@@ -88,7 +88,7 @@ async def create(
         notice_type=record.notice_type.id,
         ref_id=record.id,
         ref_type=record.metadata.resource,
-        context=record.get_notice_context(project_name=project.name if project else ""),
+        context=record.notice_context,
     )
     return record
 
@@ -218,8 +218,6 @@ async def update(
     if len(matches) == 0:
         raise NotFoundError("no match found")
 
-    # read before approving, as approving may close the project
-    project_name_map = await _get_project_name_map(matches)
     if payload.status == RequestStatus.APPROVED:
         for item in matches:
             await actions.do_action(item, approver=current_user)
@@ -249,9 +247,7 @@ async def update(
                     notice_type=item.notice_type.id,
                     ref_id=item.id,
                     ref_type=item.metadata.resource,
-                    context=item.get_notice_context(
-                        project_name=project_name_map.get(item.resource_id, "")
-                    ),
+                    context=item.notice_context,
                 )
                 for item in result
             )
@@ -359,22 +355,6 @@ async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
         return user is not None
 
     return False
-
-
-async def _get_project_name_map(
-    requests: Sequence[Request],
-) -> Dict[PydanticObjectId, str]:
-    """Gets the names of the projects the given requests are about, keyed by project ID
-
-    Args:
-        requests: the requests
-
-    Returns:
-        the map of project ID to project name
-    """
-    project_ids = [item.resource_id for item in requests]
-    projects = await Project.find(In(Project.id, project_ids)).to_list()
-    return {project.id: project.name for project in projects}
 
 
 class _ProjectId(BaseModel):

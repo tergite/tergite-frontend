@@ -528,6 +528,33 @@ def test_approve_project_close(client, user_jwt_cookie, admin_jwt_cookie, db):
         assert get_db_record(db, DeletedProject, TEST_PROJECT_ID) is not None
 
 
+def test_approve_project_close_names_the_closed_project(
+    client, user_jwt_cookie, admin_jwt_cookie, db
+):
+    """The requester is told which project was closed, though it no longer exists"""
+    with client as client:
+        request_id = client.post(
+            "/me/requests/",
+            cookies=user_jwt_cookie,
+            json={
+                "type": "close-project",
+                "resource_id": TEST_PROJECT_ID,
+                "reason": "we are done",
+            },
+        ).json()["id"]
+        client.put(
+            f"/me/requests/{request_id}",
+            cookies=admin_jwt_cookie,
+            json={"status": "approved"},
+        )
+        requester_notices = get_user_notices(db, TEST_USER_ID)
+
+        assert requester_notices[-1]["type"] == NoticeType.PROJECT_CLOSE_APPROVED.id
+        assert requester_notices[-1]["title"] == (
+            f"Your project {TEST_PROJECT_NAME} was closed"
+        )
+
+
 def test_approve_project_transfer(client, user_jwt_cookie, admin_jwt_cookie, db):
     """Approving a transfer-project request hands the project to the named user"""
     with client as client:

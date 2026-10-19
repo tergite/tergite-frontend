@@ -259,16 +259,11 @@ class Request(RequestPostBody, Document):
         """The notice type for this request given current status"""
         return self.__type_status_notice_map__[(self.type, self.status)]
 
-    def get_notice_context(self, project_name: str = "") -> ProjectRequestContext:
-        """Gets the context for the notice that is to be sent out for this request
-
-        Args:
-            project_name: the name of the existing project this request is about, if any
-
-        Returns:
-            the context for the notice of the current status of this request
-        """
+    @property
+    def notice_context(self) -> ProjectRequestContext:
+        """The context for the notice that is to be sent out for this request"""
         metadata = self.metadata
+        project_name = ""
         seconds = ""
         admin_email = ""
 

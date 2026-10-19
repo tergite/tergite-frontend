@@ -18,6 +18,7 @@ import pymongo
 from beanie import PydanticObjectId
 from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import BaseModel
 
 import settings
 from services.external.email.service import Emailer
@@ -38,6 +39,7 @@ from .dtos import (
     NoticeTemplate,
     NoticeType,
     NoticeTypeId,
+    ProjectRequestContext,
     RefType,
 )
 from .emails import (
@@ -242,7 +244,8 @@ async def create_system_notice(
     Args:
         user_ids: the recipients; one document is written per user
         notice_type: the notice type, which selects the copy and the channel policy
-        context: values for generating the notice content
+        context: values for generating the notice content; a project request context
+            without a project name gets the name of the project of its project_id
         ref_type: the reference type that is associated with this notice, e.g. a user_request
         ref_id: the unique identifier of the reference in the collection of the given ref_type
         retention_days: the number of days this notice should be retained
@@ -254,6 +257,7 @@ async def create_system_notice(
         return []
 
     try:
+        context = await _with_project_name(context)
         template = await NoticeTemplate.find_one(NoticeTemplate.type == notice_type)
         email_prefs_map = await get_email_preferences_map(
             notice_type, user_ids=user_ids
@@ -640,3 +644,45 @@ def _with_default_email_preferences(
         a full map of notice type to email preference
     """
     return {v.id: prefs.get(v.id, True) for v in NoticeType}
+
+
+async def _with_project_name(
+    context: Optional[BaseNoticeContext],
+) -> Optional[BaseNoticeContext]:
+    """Fills in the project name of a project request context that has only a project_id
+
+    Deleted projects are searched too, as approving a close-project request deletes
+    the project before its requester is told.
+
+    Args:
+        context: the context of the notice
+
+    Returns:
+        the context, with the project name filled in if it was missing and could be found
+    """
+    is_name_missing = (
+        isinstance(context, ProjectRequestContext)
+        and not context.project_name
+        and PydanticObjectId.is_valid(context.project_id)
+    )
+    if not is_name_missing:
+        return context
+
+    # imported here to avoid a circular import, as the auth service imports this one
+    from services.auth.projects.dtos import DeletedProject, Project
+
+    project_id = PydanticObjectId(context.project_id)
+    for document_cls in (Project, DeletedProject):
+        project = await document_cls.find_one(
+            document_cls.id == project_id, projection_model=_ProjectName
+        )
+        if project is not None:
+            return context.model_copy(update={"project_name": project.name})
+
+    return context
+
+
+class _ProjectName(BaseModel):
+    """A project with only its name"""
+
+    name: str
