@@ -70,32 +70,24 @@ async def create(
         the created Request object
 
     Raises:
-        NotFoundError: project {id} not found
         ForbiddenError: if the user does not have permission to perform the request
-        ConflictError: if the request is redundant
     """
-    project = await _get_project(request_body)
-    if not _has_resource_access(request_body, user=requester, project=project):
-        raise ForbiddenError(
-            f"operation not permitted on resource {request_body.resource_id}"
-        )
-
-    await _raise_if_redundant(request_body, requester=requester, project=project)
-    target_user_ids = await _get_target_user_ids(request_body, project=project)
+    # FIXME: Creating a request does not always have to be attached to a project but a resource.
+    #   This is supposed to be a general endpoint. What kind of direction do you need from me to
+    #   avoid such half-baked design thoughts
+    await _has_resource_access(request_body, user=requester)
+    target_user_ids = await _get_target_user_ids(request_body)
     record = Request.from_post_body(
         request_body, requester=requester, target_user_ids=target_user_ids
     )
-    if project is not None:
-        record.metadata.project_name = project.name
-
     await record.create()
     # NOTE: We explicitly notify here instead of in a beanie hook because:
     #   - hooks would have hidden the logic to a reader/maintainer in future
     await notices.create_system_notice(
         user_ids=target_user_ids,
         notice_type=record.notice_type.id,
-        ref_id=record.id,
-        ref_type=RefType.USER_REQUEST,
+        ref_id=record.ref_id,
+        ref_type=record.metadata.resource,
         context=record.notice_context,
     )
     return record
@@ -213,7 +205,11 @@ async def update(
     _filter.update(
         {"target_user_ids": current_user.id, "status": RequestStatus.PENDING}
     )
+    # FIXME: Figure out how to do the approval if is to be approved to cleanup the patchy code
     sort_args = _to_sort_pairs(sort)
+
+    # FIXME: This is bad. You have three different db requests just to update the requests.
+    #   Why not do the update with one db request?
     matches = await Request.find(
         _filter, skip=skip, limit=limit, sort=sort_args
     ).to_list()
@@ -275,7 +271,7 @@ def _to_sort_pairs(sort_fields: Sequence[str]) -> List[Tuple[str, SortDirection]
     return sort_args
 
 
-async def _get_project(request: RequestPostBody) -> Optional[Project]:
+async def _get_subject_project(request: RequestPostBody) -> Optional[Project]:
     """Gets the project that the given request is about
 
     Args:
@@ -290,11 +286,9 @@ async def _get_project(request: RequestPostBody) -> Optional[Project]:
     if request.type == RequestType.CREATE_PROJECT:
         return None
 
+    # No one should ask for access to a personal project
     project = await Project.get(request.resource_id)
-    # FIXME: Restored from before the requests were unified: personal projects answer
-    #   404 identically to missing ones, so they cannot be probed for access.
-    is_hidden = project is not None and project.is_personal
-    if project is None or (request.type == RequestType.PROJECT_ACCESS and is_hidden):
+    if project is None or (request.type == RequestType.PROJECT_ACCESS and project.is_personal):
         raise NotFoundError(f"project {request.resource_id} not found")
 
     return project
@@ -322,62 +316,37 @@ async def _get_target_user_ids(
     return []
 
 
-def _has_resource_access(
-    request: RequestPostBody, user: User, project: Optional[Project]
-) -> bool:
+async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
     """Checks if the user has access to the resource they are requesting on
 
     Args:
         request: the request post body
         user: the user to check
-        project: the project the request is about, if any
 
     Returns:
         True if the user has access to the resource
     """
-    if request.type in (RequestType.CREATE_PROJECT, RequestType.PROJECT_ACCESS):
+    if request.type == RequestType.CREATE_PROJECT:
         return user is not None
 
     elif request.type in (RequestType.CLOSE_PROJECT, RequestType.TRANSFER_PROJECT):
-        return project.admin_id == user.id
-
+        project = await Project.find_one(
+            Project.id == request.resource_id,
+            Project.admin_id == str(user.id),
+            projection={"_id": 1},
+        )
+        return project is not None
     elif request.type == RequestType.PROJECT_QPU_SECONDS:
-        return user.id in project.members
+        project = await Project.find_one(
+            Project.id == request.resource_id,
+            Project.user_ids == str(user.id),
+            projection={"_id": 1},
+        )
+        return project is not None
+    elif request.type == RequestType.PROJECT_ACCESS:
+        return user is not None
 
-    return False
-
-
-async def _raise_if_redundant(
-    request: RequestPostBody, requester: User, project: Optional[Project]
-):
-    """Raises an error if the given request would change nothing
-
-    FIXME: Restored from before the requests were unified. Reconsider these guards
-      when refactoring the requests to match the rest of the code base.
-
-    Args:
-        request: the request post body
-        requester: the user making the request
-        project: the project the request is about, if any
-
-    Raises:
-        ConflictError: you are already a member of '{project_name}'
-        ConflictError: a request for '{name}' is already pending
-    """
-    if request.type == RequestType.PROJECT_ACCESS and requester.id in project.members:
-        raise ConflictError(f"you are already a member of '{project.name}'")
-
-    pending_duplicate = await Request.find_one(
-        {
-            "type": request.type,
-            "resource_id": request.resource_id,
-            "requester_id": requester.id,
-            "status": RequestStatus.PENDING,
-        }
-    )
-    if pending_duplicate is not None:
-        name = project.name if project else request.metadata.name
-        raise ConflictError(f"a request for '{name}' is already pending")
+    raise ForbiddenError(f"operation not permitted on resource {request.resource_id}")
 
 
 # FIXME: Restored from before the requests were unified, so that approving a request
@@ -395,6 +364,7 @@ async def _apply_approval(request: Request):
         ConflictError: a project named '{name}' already exists
     """
     metadata = request.metadata
+    # FIXME: Stop assuming every resource is a project
     project_id = request.resource_id
 
     if request.type == RequestType.CREATE_PROJECT:
@@ -406,6 +376,8 @@ async def _apply_approval(request: Request):
         raise NotFoundError(f"project {project_id} not found")
 
     if request.type == RequestType.PROJECT_ACCESS:
+        # FIXME: Maybe move these methods to the RequestType enum or something such that each type of RequestType
+        #   has its own ActionFunction / callback or something
         await Project.find_one(Project.id == project_id).update(
             AddToSet({Project.user_ids: request.requester_id})
         )
@@ -460,24 +432,4 @@ async def _create_requested_project(metadata: CreateProjectMetadata):
         raise ConflictError(f"a project named '{metadata.name}' already exists")
 
 
-async def _get_user_email_id_map(
-    emails: Sequence[str],
-) -> Dict[str, PydanticObjectId]:
-    """Gets the IDs of the users of the given emails, keyed by email
 
-    Args:
-        emails: the emails of the users
-
-    Returns:
-        the map of email to user ID
-
-    Raises:
-        NotFoundError: no users of emails {emails}
-    """
-    users = await User.find(In(User.email, list(emails))).to_list()
-    email_id_map = {user.email: user.id for user in users}
-    missing_emails = [email for email in emails if email not in email_id_map]
-    if missing_emails:
-        raise NotFoundError(f"no users of emails {missing_emails}")
-
-    return email_id_map
