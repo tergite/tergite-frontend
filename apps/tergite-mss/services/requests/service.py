@@ -16,24 +16,17 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import motor.motor_asyncio
 from beanie import PydanticObjectId, SortDirection
 from beanie.odm.operators.find.comparison import In
-from beanie.odm.operators.update.array import AddToSet
-from beanie.odm.operators.update.general import Set
 from pydantic import BaseModel, Field
-from pymongo.errors import DuplicateKeyError
 
 from services import notices
-from services.auth.app_tokens.database import AppTokenDatabase
-from services.auth.projects import get_project_db
 from services.auth.projects.dtos import Project
-from services.auth.projects.manager import ProjectAppTokenManager
-from services.auth.users.database import UserDatabase
 from services.auth.users.dtos import User
 from utils.config import UserRole
-from utils.exc import ConflictError, ForbiddenError, NotFoundError
+from utils.exc import ForbiddenError, NotFoundError
 from utils.mongodb import init_strict_beanie
 
+from . import actions
 from .dtos import (
-    CreateProjectMetadata,
     Request,
     RequestPostBody,
     RequestStatus,
@@ -205,6 +198,9 @@ async def update(
 
     Raises:
         NotFoundError: no match found
+        NotFoundError: project {id} not found
+        NotFoundError: no users of emails {emails}
+        ConflictError: a project named '{name}' already exists
     """
     _filter = {} if filter_obj is None else {**filter_obj}
     # only requests that are pending can be updated
@@ -212,7 +208,6 @@ async def update(
     _filter.update(
         {"target_user_ids": current_user.id, "status": RequestStatus.PENDING}
     )
-    # FIXME: Figure out how to do the approval if is to be approved to cleanup the patchy code
     sort_args = _to_sort_pairs(sort)
 
     # FIXME: This is bad. You have three different db requests just to update the requests.
@@ -227,7 +222,7 @@ async def update(
     project_name_map = await _get_project_name_map(matches)
     if payload.status == RequestStatus.APPROVED:
         for item in matches:
-            await _apply_approval(item)
+            await actions.do_action(item, approver=current_user)
 
     # add approver_id, approver_name to the update
     update_dict = payload.model_dump(exclude_unset=True)
@@ -364,89 +359,6 @@ async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
         return user is not None
 
     return False
-
-
-# FIXME: Restored from before the requests were unified, so that approving a request
-#   does what was asked for. Reconsider where these side effects belong, e.g. with the
-#   projects service, when refactoring the requests to match the rest of the code base.
-async def _apply_approval(request: Request):
-    """Does what the given request asks for, as it is being approved
-
-    Args:
-        request: the request being approved
-
-    Raises:
-        NotFoundError: project {id} not found
-        NotFoundError: no users of emails {emails}
-        ConflictError: a project named '{name}' already exists
-    """
-    metadata = request.metadata
-    # FIXME: Stop assuming every resource is a project
-    project_id = request.resource_id
-
-    if request.type == RequestType.CREATE_PROJECT:
-        await _create_requested_project(metadata)
-        return
-
-    project = await Project.get(project_id)
-    if project is None:
-        raise NotFoundError(f"project {project_id} not found")
-
-    if request.type == RequestType.PROJECT_ACCESS:
-        # FIXME: Maybe move these methods to the RequestType enum or something such that each type of RequestType
-        #   has its own ActionFunction / callback or something
-        await Project.find_one(Project.id == project_id).update(
-            AddToSet({Project.user_ids: request.requester_id})
-        )
-
-    elif request.type == RequestType.PROJECT_QPU_SECONDS:
-        project_db = await get_project_db()
-        await project_db.increment_qpu_seconds(project_id, metadata.seconds)
-
-    elif request.type == RequestType.TRANSFER_PROJECT:
-        email_id_map = await _get_user_email_id_map([metadata.admin_email])
-        new_admin_id = email_id_map[metadata.admin_email]
-        await Project.find_one(Project.id == project_id).update(
-            Set({Project.admin_id: new_admin_id}),
-            AddToSet({Project.user_ids: new_admin_id}),
-        )
-
-    elif request.type == RequestType.CLOSE_PROJECT:
-        project_manager = ProjectAppTokenManager(
-            await get_project_db(),
-            app_token_db=AppTokenDatabase(),
-            user_db=UserDatabase(),
-        )
-        await project_manager.delete(project, is_superuser=True)
-
-
-async def _create_requested_project(metadata: CreateProjectMetadata):
-    """Creates the project described in the metadata of a create-project request
-
-    Args:
-        metadata: the metadata of the create-project request
-
-    Raises:
-        NotFoundError: no users of emails {emails}
-        ConflictError: a project named '{name}' already exists
-    """
-    email_id_map = await _get_user_email_id_map(
-        [metadata.admin_email, *metadata.user_emails]
-    )
-    admin_id = email_id_map[metadata.admin_email]
-    user_ids = [email_id_map[email] for email in metadata.user_emails]
-    project = Project(
-        name=metadata.name,
-        description=metadata.description,
-        qpu_seconds=metadata.qpu_seconds,
-        admin_id=admin_id,
-        user_ids=list(dict.fromkeys([*user_ids, admin_id])),
-    )
-
-    try:
-        await project.create()
-    except DuplicateKeyError:
-        raise ConflictError(f"a project named '{metadata.name}' already exists")
 
 
 async def _get_project_name_map(

@@ -13,8 +13,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   admin project forms.
 - Added an unlogged `GET /health` for the container healthcheck.
 - Added `project-membership-granted` and `project-admin-assigned` notifications, emitted when an
-  admin creates or edits a project. Being added to a project, or handed one to administer, was
-  silent; only removal was announced.
+  admin creates or edits a project, or approves a request to create one. Being added to a project,
+  or handed one to administer, was silent; only removal was announced.
 - Added `qpu-seconds-low` and `qpu-seconds-depleted` notifications, raised as a job's usage takes a
   project below `projects.qpu_seconds_low_threshold` (default 600) or to zero. The admin hears about
   running low, admin and members both hear about running out; previously the first sign was a

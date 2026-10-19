@@ -1,65 +1,212 @@
-"""A collection of actions that corresponds to the requests sent"""
-from typing import Callable, Any, Coroutine, cast
+# This code is part of Tergite
+#
+# (C) Copyright Chalmers Next Labs AB 2026
+#
+# This code is licensed under the Apache License, Version 2.0. You may
+# obtain a copy of this license in the LICENSE.txt file in the root directory
+# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
 
-from utils.exc import BaseMssException
-from .dtos import Request, RequestType, CreateProjectMetadata
-from ..auth.projects.dtos import Project
-from ..auth.projects.routers import prepare_new_project
+"""The actions that approving each type of request does"""
+from typing import Any, Callable, Coroutine, Dict, Sequence, cast
 
-type Action = Callable[[Request], Coroutine[Any, Any, Any]]
-"""An action that can be done given a request"""
+from beanie import PydanticObjectId
+from beanie.odm.operators.find.comparison import In
+from beanie.odm.operators.update.array import AddToSet
+from beanie.odm.operators.update.general import Set
 
-class _ActionMismatch(BaseMssException):
-    """Exception when the action mismatches the request"""
+from services.auth.app_tokens.database import AppTokenDatabase
+from services.auth.projects import get_project_db
+from services.auth.projects.dtos import Project
+from services.auth.projects.exc import ProjectExists
+from services.auth.projects.manager import ProjectAppTokenManager
+from services.auth.projects.routers import handlers as project_handlers
+from services.auth.users.database import UserDatabase
+from services.auth.users.dtos import User
+from utils.exc import ConflictError, NotFoundError
 
-def do_action(request: Request):
-    """Does the action for the given request, ignoring those that don't match
+from .dtos import (
+    CreateProjectMetadata,
+    ProjectQpuSecondsMetadata,
+    Request,
+    RequestType,
+    TransferProjectMetadata,
+)
+
+type Action = Callable[[Request, User], Coroutine[Any, Any, None]]
+"""An action that approving a request does, given the request and its approver"""
+
+
+async def do_action(request: Request, approver: User) -> None:
+    """Does what the given request asks for, as it is being approved
 
     Args:
-        request: the request
+        request: the request being approved
+        approver: the user approving the request
 
     Raises:
-        ValueError: No action found for request
-    """
-
-async def create_project(request: Request):
-    """Creates the project described in the metadata of a create-project request
-
-    Args:
-        request: the request sent to create a project
-
-    Raises:
+        ValueError: no action for request type {type}
+        NotFoundError: project {id} not found
         NotFoundError: no users of emails {emails}
         ConflictError: a project named '{name}' already exists
     """
-    if request.type != RequestType.CREATE_PROJECT:
-        raise _ActionMismatch(f"expected request {RequestType.CREATE_PROJECT}, got {request.type}")
-
-    metadata = cast(CreateProjectMetadata, request.metadata)
-    project = await prepare_new_project(metadata)
     try:
-        await project.create()
-    except DuplicateKeyError:
+        action = _ACTION_MAP[request.type]
+    except KeyError:
+        raise ValueError(f"no action for request type {request.type}")
+
+    await action(request, approver)
+
+
+async def create_project(request: Request, approver: User) -> None:
+    """Creates the project described in the metadata of a create-project request
+
+    Users of any emails that do not exist yet are created, as when a superuser
+    creates the project directly.
+
+    Args:
+        request: the create-project request
+        approver: the user approving the request
+
+    Raises:
+        ConflictError: a project named '{name}' already exists
+    """
+    metadata = cast(CreateProjectMetadata, request.metadata)
+    try:
+        await project_handlers.create_project(
+            metadata, project_manager=await _get_project_manager(), actor=approver
+        )
+    except ProjectExists:
         raise ConflictError(f"a project named '{metadata.name}' already exists")
 
+
+async def close_project(request: Request, approver: User) -> None:
+    """Closes the project of a close-project request, keeping a copy of it
+
+    Args:
+        request: the close-project request
+        approver: the user approving the request
+
+    Raises:
+        NotFoundError: project {id} not found
+    """
+    project = await _get_project(request.resource_id)
+    project_manager = await _get_project_manager()
+    await project_manager.delete(project, is_superuser=True)
+
+
+async def transfer_project(request: Request, approver: User) -> None:
+    """Makes the user named in a transfer-project request the admin of its project
+
+    Args:
+        request: the transfer-project request
+        approver: the user approving the request
+
+    Raises:
+        NotFoundError: project {id} not found
+        NotFoundError: no users of emails {emails}
+    """
+    metadata = cast(TransferProjectMetadata, request.metadata)
+    project = await _get_project(request.resource_id)
+    email_id_map = await _get_user_email_id_map([metadata.admin_email])
+    new_admin_id = email_id_map[metadata.admin_email]
+    await Project.find_one(Project.id == project.id).update(
+        Set({Project.admin_id: new_admin_id}),
+        AddToSet({Project.user_ids: new_admin_id}),
+    )
+
+
+async def add_qpu_seconds(request: Request, approver: User) -> None:
+    """Adds the seconds asked for in a project-qpu-seconds request to its project
+
+    Args:
+        request: the project-qpu-seconds request
+        approver: the user approving the request
+
+    Raises:
+        NotFoundError: project {id} not found
+    """
+    metadata = cast(ProjectQpuSecondsMetadata, request.metadata)
+    project = await _get_project(request.resource_id)
+    project_db = await get_project_db()
+    await project_db.increment_qpu_seconds(project.id, metadata.seconds)
+
+
+async def add_project_member(request: Request, approver: User) -> None:
+    """Adds the requester of a project-access request to its project
+
+    Args:
+        request: the project-access request
+        approver: the user approving the request
+
+    Raises:
+        NotFoundError: project {id} not found
+    """
+    project = await _get_project(request.resource_id)
+    await Project.find_one(Project.id == project.id).update(
+        AddToSet({Project.user_ids: request.requester_id})
+    )
+
+
+_ACTION_MAP: Dict[RequestType, Action] = {
+    RequestType.CREATE_PROJECT: create_project,
+    RequestType.CLOSE_PROJECT: close_project,
+    RequestType.TRANSFER_PROJECT: transfer_project,
+    RequestType.PROJECT_QPU_SECONDS: add_qpu_seconds,
+    RequestType.PROJECT_ACCESS: add_project_member,
+}
+"""A map of the actions for each type of request"""
+
+
+async def _get_project(project_id: PydanticObjectId) -> Project:
+    """Gets the project of the given ID
+
+    Args:
+        project_id: the ID of the project
+
+    Returns:
+        the project
+
+    Raises:
+        NotFoundError: project {id} not found
+    """
+    project = await Project.get(project_id)
+    if project is None:
+        raise NotFoundError(f"project {project_id} not found")
+
+    return project
+
+
+async def _get_project_manager() -> ProjectAppTokenManager:
+    """Gets the manager of the projects"""
+    return ProjectAppTokenManager(
+        await get_project_db(),
+        app_token_db=AppTokenDatabase(),
+        user_db=UserDatabase(),
+    )
+
+
 async def _get_user_email_id_map(
-            emails: Sequence[str],
-    ) -> Dict[str, PydanticObjectId]:
-        """Gets the IDs of the users of the given emails, keyed by email
+    emails: Sequence[str],
+) -> Dict[str, PydanticObjectId]:
+    """Gets the IDs of the users of the given emails, keyed by email
 
-        Args:
-            emails: the emails of the users
+    Args:
+        emails: the emails of the users
 
-        Returns:
-            the map of email to user ID
+    Returns:
+        the map of email to user ID
 
-        Raises:
-            NotFoundError: no users of emails {emails}
-        """
-        users = await User.find(In(User.email, list(emails))).to_list()
-        email_id_map = {user.email: user.id for user in users}
-        missing_emails = [email for email in emails if email not in email_id_map]
-        if missing_emails:
-            raise NotFoundError(f"no users of emails {missing_emails}")
+    Raises:
+        NotFoundError: no users of emails {emails}
+    """
+    users = await User.find(In(User.email, list(emails))).to_list()
+    email_id_map = {user.email: user.id for user in users}
+    missing_emails = [email for email in emails if email not in email_id_map]
+    if missing_emails:
+        raise NotFoundError(f"no users of emails {missing_emails}")
 
-        return email_id_map
+    return email_id_map

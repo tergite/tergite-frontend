@@ -13,7 +13,7 @@
 import pytest
 from beanie import PydanticObjectId
 
-from services.auth import DeletedProject, Project
+from services.auth import DeletedProject, Project, User
 from services.notices import NoticeType
 from services.requests import Request
 from tests._utils.auth import (
@@ -433,7 +433,7 @@ def test_approve_project_creation(client, admin_jwt_cookie, db, inserted_request
 def test_approve_project_creation_for_unknown_users(
     client, outsider_jwt_cookie, admin_jwt_cookie, db
 ):
-    """Approval fails and leaves the request pending when a named user does not exist"""
+    """Approval creates the users named in the request who do not exist yet"""
     payload = {
         **_CREATE_PROJECT_REQUEST,
         "metadata": {
@@ -451,11 +451,58 @@ def test_approve_project_creation_for_unknown_users(
             cookies=admin_jwt_cookie,
             json={"status": "approved"},
         )
+        user = get_db_record(db, User, _filter={"email": "no@such.user"})
+        project = get_db_record(db, Project, _filter={"name": "thesis project"})
 
-        assert response.status_code == 404
-        assert response.json() == {"detail": "no users of emails ['no@such.user']"}
+        assert response.status_code == 200
+        assert project["user_ids"] == [
+            user["_id"],
+            PydanticObjectId(TEST_OUTSIDER_ID),
+        ]
+
+
+def test_approve_project_creation_with_existing_name(
+    client, outsider_jwt_cookie, admin_jwt_cookie, db
+):
+    """Approval fails and leaves the request pending when the project name is taken"""
+    payload = {
+        **_CREATE_PROJECT_REQUEST,
+        "metadata": {**_CREATE_PROJECT_REQUEST["metadata"], "name": TEST_PROJECT_NAME},
+    }
+
+    with client as client:
+        request_id = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=payload
+        ).json()["id"]
+        response = client.put(
+            f"/me/requests/{request_id}",
+            cookies=admin_jwt_cookie,
+            json={"status": "approved"},
+        )
+
+        assert response.status_code == 409
+        assert response.json() == {
+            "detail": f"a project named '{TEST_PROJECT_NAME}' already exists"
+        }
         assert get_db_record(db, Request, request_id)["status"] == "pending"
-        assert get_db_record(db, Project, _filter={"name": "thesis project"}) is None
+
+
+def test_approve_project_creation_notifies_the_members(
+    client, admin_jwt_cookie, db, inserted_requests
+):
+    """The members of a project created by approval hear that they were added"""
+    with client as client:
+        client.put(
+            f"/me/requests/{_PENDING_CREATE_REQUEST_ID}",
+            cookies=admin_jwt_cookie,
+            json={"status": "approved"},
+        )
+        member_notices = get_user_notices(db, TEST_USER_ID)
+
+        assert [item["type"] for item in member_notices] == [
+            NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
+        ]
+        assert member_notices[0]["title"] == "You were added to thesis project"
 
 
 def test_approve_project_close(client, user_jwt_cookie, admin_jwt_cookie, db):
