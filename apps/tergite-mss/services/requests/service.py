@@ -217,12 +217,13 @@ async def update(
         for item in matches:
             await actions.do_action(item, approver=current_user)
 
-    # add approver_id, approver_name to the update
+    # updated_at is never set by the client, so exclude_unset would drop its default
     update_dict = payload.model_dump(exclude_unset=True)
     update_dict.update(
         {
             "approver_id": current_user.id,
             "approver_name": current_user.username,
+            "updated_at": payload.updated_at,
         }
     )
     ids = [item.id for item in matches]

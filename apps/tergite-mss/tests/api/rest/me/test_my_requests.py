@@ -27,6 +27,7 @@ from tests._utils.auth import (
     TEST_USER_ID,
     get_db_record,
 )
+from tests._utils.date_time import get_current_timestamp_str
 from tests._utils.notices import get_user_notices
 
 _ACCESS_REQUEST = {
@@ -360,6 +361,24 @@ def test_deciding_a_request_clears_its_prompt(
         assert prompt["read_at"] is not None
         assert prompt["dismissed_by"] == [PydanticObjectId(TEST_USER_ID)]
         assert outcome["read_at"] is None
+
+
+def test_deciding_a_request_stamps_when(
+    client, user_jwt_cookie, db, inserted_requests, freezer
+):
+    """Deciding a request sets its updated_at to the time of the decision"""
+    now = get_current_timestamp_str()
+
+    with client as client:
+        response = client.put(
+            f"/me/requests/{_PENDING_ACCESS_REQUEST_ID}",
+            cookies=user_jwt_cookie,
+            json={"status": "approved"},
+        )
+        request = get_db_record(db, Request, _PENDING_ACCESS_REQUEST_ID)
+
+        assert response.json()["updated_at"] == now
+        assert request["updated_at"] == now
 
 
 def test_reject_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db):
