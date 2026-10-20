@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 """Module containing utilities for the routers"""
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from beanie import PydanticObjectId
 from fastapi_users.password import PasswordHelper
@@ -22,6 +22,7 @@ from services.notices import NoticeType
 
 from ....notices.dtos import ProjectRequestContext, RefType
 from ...users.dtos import User
+from ...utils import MAX_LIST_QUERY_LEN, TooManyListQueryParams
 from ..dtos import (
     Project,
     ProjectAdminView,
@@ -161,6 +162,70 @@ async def get_full_admin_project(
     user_emails = [id_email_map[v] for v in project.user_ids]
     admin_email = id_email_map[project.admin_id]
     return ProjectAdminView(**props, user_emails=user_emails, admin_email=admin_email)
+
+
+def get_projects_filter(
+    ids: Optional[List[PydanticObjectId]] = None,
+    user_ids: Optional[List[PydanticObjectId]] = None,
+    name: Optional[List[str]] = None,
+    is_active: Optional[bool] = None,
+    min_qpu_seconds: Optional[int] = None,
+    max_qpu_seconds: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Gets the mongodb filter for the projects that match the given query params
+
+    Args:
+        ids: the IDs of the projects
+        user_ids: the IDs of users any of whom is a member
+        name: the names of the projects
+        is_active: whether the projects are active
+        min_qpu_seconds: the least QPU seconds the projects have
+        max_qpu_seconds: the most QPU seconds the projects have
+
+    Returns:
+        the filter of the projects
+
+    Raises:
+        TooManyListQueryParams: a list query param has more than MAX_LIST_QUERY_LEN items
+    """
+    filter_obj = {}
+    if ids is not None:
+        if len(ids) > MAX_LIST_QUERY_LEN:
+            raise TooManyListQueryParams(
+                "id", expected=MAX_LIST_QUERY_LEN, got=len(ids)
+            )
+
+        filter_obj["_id"] = {"$in": ids}
+
+    if user_ids is not None:
+        if len(user_ids) > MAX_LIST_QUERY_LEN:
+            raise TooManyListQueryParams(
+                "user_ids", expected=MAX_LIST_QUERY_LEN, got=len(user_ids)
+            )
+
+        filter_obj["user_ids"] = {"$in": user_ids}
+
+    if name is not None:
+        if len(name) > MAX_LIST_QUERY_LEN:
+            raise TooManyListQueryParams(
+                "name", expected=MAX_LIST_QUERY_LEN, got=len(name)
+            )
+
+        filter_obj["name"] = {"$in": name}
+
+    if is_active is not None:
+        filter_obj["is_active"] = is_active
+
+    if min_qpu_seconds is not None:
+        filter_obj["qpu_seconds"] = {"$gte": min_qpu_seconds}
+
+    if max_qpu_seconds is not None:
+        if "qpu_seconds" not in filter_obj:
+            filter_obj["qpu_seconds"] = {}
+
+        filter_obj["qpu_seconds"].update({"$lte": max_qpu_seconds})
+
+    return filter_obj
 
 
 class _TrimmedUser(BaseModel):

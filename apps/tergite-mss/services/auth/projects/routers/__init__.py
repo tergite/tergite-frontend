@@ -27,7 +27,6 @@ from utils.api import PaginatedListResponse
 from ....notices.dtos import ProjectRequestContext, RefType
 from ...users.dtos import CurrentSuperUserDependency, CurrentUserIdDependency, User
 from ...users.manager import UserManager, UserManagerDependency
-from ...utils import MAX_LIST_QUERY_LEN, TooManyListQueryParams
 from .. import exc
 from ..dtos import (
     Project,
@@ -41,6 +40,7 @@ from ..manager import ProjectAppTokenManager, ProjectManagerDependency
 from . import handlers
 from .utils import (
     get_full_admin_project,
+    get_projects_filter,
     notify_membership_change,
     prepare_partial_project,
 )
@@ -262,43 +262,14 @@ def get_projects_router(
         min_qpu_seconds: Optional[int] = Query(None),
         max_qpu_seconds: Optional[int] = Query(None),
     ):
-        filter_obj = {}
-        if ids is not None:
-            if len(ids) > MAX_LIST_QUERY_LEN:
-                raise TooManyListQueryParams(
-                    "id", expected=MAX_LIST_QUERY_LEN, got=len(ids)
-                )
-
-            filter_obj["_id"] = {"$in": ids}
-
-        if user_ids is not None:
-            if len(user_ids) > MAX_LIST_QUERY_LEN:
-                raise TooManyListQueryParams(
-                    "user_ids", expected=MAX_LIST_QUERY_LEN, got=len(user_ids)
-                )
-
-            filter_obj["user_ids"] = {"$in": user_ids}
-
-        if name is not None:
-            if len(name) > MAX_LIST_QUERY_LEN:
-                raise TooManyListQueryParams(
-                    "name", expected=MAX_LIST_QUERY_LEN, got=len(name)
-                )
-
-            filter_obj["name"] = {"$in": name}
-
-        if is_active is not None:
-            filter_obj["is_active"] = is_active
-
-        if min_qpu_seconds is not None:
-            filter_obj["qpu_seconds"] = {"$gte": min_qpu_seconds}
-
-        if max_qpu_seconds is not None:
-            if "qpu_seconds" not in filter_obj:
-                filter_obj["qpu_seconds"] = {}
-
-            filter_obj["qpu_seconds"].update({"$lte": max_qpu_seconds})
-
+        filter_obj = get_projects_filter(
+            ids=ids,
+            user_ids=user_ids,
+            name=name,
+            is_active=is_active,
+            min_qpu_seconds=min_qpu_seconds,
+            max_qpu_seconds=max_qpu_seconds,
+        )
         projects = await project_manager.get_many(
             filter_obj=filter_obj, skip=skip, limit=limit
         )
