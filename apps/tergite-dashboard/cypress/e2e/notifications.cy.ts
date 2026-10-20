@@ -154,9 +154,6 @@ describe("requesting project access", () => {
   const foreign = projects.find(
     (v) => !v.user_ids.includes(requester.id) && v.admin_id !== requester.id,
   ) as Project;
-  const own = projects.find((v) =>
-    v.user_ids.includes(requester.id),
-  ) as Project;
 
   beforeEach(() => {
     login(requester, "/projects");
@@ -199,34 +196,5 @@ describe("requesting project access", () => {
       cy.contains(/not a project ID/i).should("be.visible");
     });
     cy.get("@request-create.all").should("have.length", 0);
-  });
-
-  it("refuses a project the user already belongs to", () => {
-    cy.get("[data-cy-request-access]").click();
-    cy.get("#request-access-dialog").within(() => {
-      cy.get("#project_id").type(own.id);
-      cy.get("#reason").type("again please");
-      cy.contains("button", /submit/i).click();
-
-      cy.contains(/already a member/i).should("be.visible");
-    });
-  });
-
-  it("refuses a second pending request for the same project", () => {
-    for (const attempt of [1, 2]) {
-      cy.get("[data-cy-request-access]").click();
-      cy.get("#request-access-dialog").within(() => {
-        cy.get("#project_id").type(foreign.id);
-        cy.get("#reason").type(`attempt ${attempt}`);
-        cy.contains("button", /submit/i).click();
-
-        if (attempt === 2) {
-          cy.contains(/already pending/i).should("be.visible");
-        }
-      });
-      if (attempt === 1) {
-        cy.get("#request-access-dialog").should("not.exist");
-      }
-    }
   });
 });

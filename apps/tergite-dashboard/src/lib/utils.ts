@@ -11,6 +11,7 @@ import {
   type CalibrationValue,
   type DeviceCalibration,
   type ExtendedAppToken,
+  type ExtendedUserRequest,
   type Project,
   type UserRequest,
   NoticeSeverity,
@@ -185,6 +186,19 @@ export function extendAppToken(
 }
 
 /**
+ * Converts a UserRequest instance to an ExtendedUserRequest instance
+ *
+ * @param request - the UserRequest instance
+ * @param project - the project the request is about, if the viewer can see it
+ */
+export function extendUserRequest(
+  request: UserRequest,
+  project?: Project,
+): ExtendedUserRequest {
+  return { ...request, project_name: project?.name };
+}
+
+/**
  * Converts a string into an integer or undefined if it has no equivalent
  *
  * @param value - the string value to parse to integer
@@ -256,22 +270,22 @@ export function timeAsString({
 /**
  * Generates an user-friendly title for the request
  *
- * @param request - the request instance as returned from the API
+ * @param request - the request, with the name of its project where known
  * @returns - the title for the given request
  */
-export function getUserRequestTitle(request: UserRequest): string {
-  const { metadata } = request;
+export function getUserRequestTitle(request: ExtendedUserRequest): string {
+  const projectName = request.project_name ?? request.resource_id;
   switch (request.type) {
     case "close-project":
-      return `Close project '${metadata.project_name}'`;
+      return `Close project '${projectName}'`;
     case "create-project":
-      return `Create new project '${metadata.name}'`;
+      return `Create new project '${request.metadata.name}'`;
     case "project-qpu-seconds":
-      return `Add QPU time on project: '${metadata.project_name}'`;
+      return `Add QPU time on project: '${projectName}'`;
     case "project-access":
-      return `Join project '${metadata.project_name ?? request.resource_id}'`;
+      return `Join project '${projectName}'`;
     case "transfer-project":
-      return `Transfer project '${metadata.project_name}'`;
+      return `Transfer project '${projectName}'`;
     default:
       return "User request";
   }

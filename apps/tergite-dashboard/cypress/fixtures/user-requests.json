@@ -6,7 +6,6 @@
     "reason": "Some reason",
     "metadata": {
       "resource": "project",
-      "project_name": "Test 1",
       "seconds": 7200
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
@@ -29,7 +28,6 @@
     "reason": "Another reason",
     "metadata": {
       "resource": "project",
-      "project_name": "Test 2",
       "seconds": 86428
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
@@ -51,8 +49,7 @@
     "resource_id": "653a8f19e736d76276597a6c",
     "reason": "Just delete",
     "metadata": {
-      "resource": "project",
-      "project_name": "Test 2"
+      "resource": "project"
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
     "requester_name": "jane.doe",
@@ -73,8 +70,7 @@
     "resource_id": "653a8f19e736d76276597a6c",
     "reason": "Just delete again",
     "metadata": {
-      "resource": "project",
-      "project_name": "Test 2"
+      "resource": "project"
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
     "requester_name": "jane.doe",
@@ -96,7 +92,6 @@
     "reason": "Moving on to other projects",
     "metadata": {
       "resource": "project",
-      "project_name": "Test 2",
       "admin_email": "paul.doe@example.com"
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
@@ -119,7 +114,6 @@
     "reason": "For a new line of research",
     "metadata": {
       "resource": "project",
-      "project_name": null,
       "name": "New Test 5",
       "description": "A new test project being created to test out requests",
       "user_emails": [
@@ -148,8 +142,7 @@
     "resource_id": "653aabd880cd1f9fab6196d2",
     "reason": "joining this collaboration",
     "metadata": {
-      "resource": "project",
-      "project_name": "BTest 3"
+      "resource": "project"
     },
     "requester_id": "0558648bbf51b16948e818d3",
     "requester_name": "julie.doe",

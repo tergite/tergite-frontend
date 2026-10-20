@@ -21,6 +21,7 @@ import {
   UserRequestStatus,
   UserRequestType,
   UserRequest,
+  type ExtendedUserRequest,
   UserRole,
   AdminProject,
   UpdateProjectPutBody,
@@ -41,6 +42,7 @@ import {
 import {
   normalizeCalibrationData,
   extendAppToken,
+  extendUserRequest,
   toClientSideBooking,
 } from "./utils";
 import { DateTime } from "luxon";
@@ -192,6 +194,7 @@ export const myActiveProjectsQuery = queryOptions({
  * the react query for getting all the user requests awaiting an admin
  * @param options - extra options for filtering the requests
  *            - currentUser - the current user
+ *            - projectList - the projects the user can see, to name those requested on
  *            - baseUrl - the base URL of the API
  *            - status - the status of the requests
  *            - skip - the number of records to skip
@@ -200,6 +203,7 @@ export const myActiveProjectsQuery = queryOptions({
 export function allUserRequestsQuery(options: {
   status?: UserRequestStatus;
   currentUser: User;
+  projectList?: Project[];
   baseUrl?: string;
   skip?: number;
   limit?: number;
@@ -210,15 +214,24 @@ export function allUserRequestsQuery(options: {
     skip = 0,
     limit,
     currentUser,
+    projectList = [],
   } = options;
+  const projectIds = projectList.map((v) => v.id).sort();
   const queryKey = [baseUrl, "me", "requests", "approver", status, limit, skip];
   // run only for admins
   const enabled = currentUser.roles.includes(UserRole.ADMIN);
 
   return queryOptions({
-    queryKey,
-    queryFn: async () =>
-      await getMyRequests(baseUrl, { role: "approver", status, limit, skip }),
+    queryKey: [...queryKey, projectIds],
+    queryFn: async () => {
+      const requests = await getMyRequests(baseUrl, {
+        role: "approver",
+        status,
+        limit,
+        skip,
+      });
+      return toExtendedUserRequests(requests, projectList);
+    },
     refetchInterval,
     enabled,
     throwOnError: true,
@@ -1497,6 +1510,7 @@ export function noticePreferencesQuery(options: { baseUrl?: string } = {}) {
  *          - role - whether to return the user's own requests or ones they may react to
  *          - status - the status to filter by
  *          - types - the request types to filter by
+ *          - projectList - the projects the user can see, to name those requested on
  */
 export function myRequestsQuery(
   options: {
@@ -1504,13 +1518,18 @@ export function myRequestsQuery(
     role?: "requester" | "approver";
     status?: UserRequestStatus;
     types?: UserRequestType[];
+    projectList?: Project[];
   } = {},
 ) {
-  const { baseUrl = apiBaseUrl, ...rest } = options;
+  const { baseUrl = apiBaseUrl, projectList = [], ...rest } = options;
   const { role = "requester", status, types } = rest;
+  const projectIds = projectList.map((v) => v.id).sort();
   return queryOptions({
-    queryKey: [baseUrl, "me", "requests", role, status, types],
-    queryFn: async () => await getMyRequests(baseUrl, { ...rest, role }),
+    queryKey: [baseUrl, "me", "requests", role, status, types, projectIds],
+    queryFn: async () => {
+      const requests = await getMyRequests(baseUrl, { ...rest, role });
+      return toExtendedUserRequests(requests, projectList);
+    },
     refetchInterval,
     throwOnError: true,
   });
@@ -1733,6 +1752,20 @@ async function getMyRequests(
     `${baseUrl}/me/requests/?${queryString}`,
   );
   return data;
+}
+
+/**
+ * Extends the given requests with the names of their projects, where in the given list
+ *
+ * @param requests - the requests as returned from the API
+ * @param projectList - the projects whose names are known
+ */
+function toExtendedUserRequests(
+  requests: UserRequest[],
+  projectList: Project[],
+): ExtendedUserRequest[] {
+  const projectMap = Object.fromEntries(projectList.map((v) => [v.id, v]));
+  return requests.map((v) => extendUserRequest(v, projectMap[v.resource_id]));
 }
 
 /**

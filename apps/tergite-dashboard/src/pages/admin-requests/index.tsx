@@ -5,6 +5,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import {
+  allAdminProjectsQuery,
   allUserRequestsQuery,
   currentUserQuery,
   refreshMyRequests,
@@ -29,10 +30,14 @@ import { Row, RowSelectionState } from "@tanstack/react-table";
 export function AdminRequests() {
   const queryClient = useQueryClient();
   const { currentUser } = useLoaderData() as AdminRequestsData;
+  const { data: projects = [] } = useQuery(
+    allAdminProjectsQuery({ currentUser })
+  );
   const { data: requests = [] } = useQuery(
     allUserRequestsQuery({
       status: UserRequestStatus.PENDING,
       currentUser,
+      projectList: projects,
     })
   );
 

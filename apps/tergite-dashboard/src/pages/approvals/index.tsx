@@ -5,6 +5,9 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import {
+  allAdminProjectsQuery,
+  currentUserQuery,
+  myProjectsQuery,
   myRequestsQuery,
   refreshMyNotices,
   refreshMyProjectsQueries,
@@ -14,14 +17,30 @@ import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
-import { type AppState, type UserRequest } from "types";
+import { useLoaderData } from "react-router-dom";
+import {
+  UserRole,
+  type AppState,
+  type User,
+  type UserRequest,
+} from "../../../types";
 import { ApprovalsSidebar } from "./components/approvals-sidebar";
 import { ApprovalsTable } from "./components/approvals-table";
 
 export function Approvals() {
   const queryClient = useQueryClient();
+  const { currentUser } = useLoaderData() as ApprovalsData;
+  const { data: myProjects = [] } = useQuery(myProjectsQuery);
+  // a superuser decides requests on projects they are not in, so sees them all
+  const { data: adminProjects = [] } = useQuery(
+    allAdminProjectsQuery({ currentUser }),
+  );
+  const projectList = useMemo(
+    () => [...myProjects, ...adminProjects],
+    [myProjects, adminProjects],
+  );
   const { data: requests = [] } = useQuery(
-    myRequestsQuery({ role: "approver" }),
+    myRequestsQuery({ role: "approver", projectList }),
   );
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -76,10 +95,24 @@ export function Approvals() {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(_appState: AppState, queryClient: QueryClient) {
-  return loadOrRedirectIfAuthErr(async () => {
+  return loadOrRedirectIfAuthErr(async (): Promise<ApprovalsData> => {
     // no role gate: the API returns only what this user may act on, which is the
     // empty list for most people
-    await queryClient.ensureQueryData(myRequestsQuery({ role: "approver" }));
-    return {};
+    const currentUser = await queryClient.ensureQueryData(currentUserQuery);
+    const myProjects = await queryClient.ensureQueryData(myProjectsQuery);
+    const adminProjects = currentUser.roles.includes(UserRole.ADMIN)
+      ? await queryClient.ensureQueryData(allAdminProjectsQuery({ currentUser }))
+      : [];
+    await queryClient.ensureQueryData(
+      myRequestsQuery({
+        role: "approver",
+        projectList: [...myProjects, ...adminProjects],
+      }),
+    );
+    return { currentUser };
   });
+}
+
+interface ApprovalsData {
+  currentUser: User;
 }

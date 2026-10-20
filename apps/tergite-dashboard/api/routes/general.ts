@@ -467,23 +467,7 @@ router.post(
     const allEmails = [...new Set(user_emails.concat([admin_email]))].filter(
       (v) => v != undefined,
     );
-    const users = mockDb.getMany<User>("users");
-    const userEmailIdMap = Object.fromEntries(
-      users.map((v) => [v.email, v.id]),
-    );
-
-    // Create the users if the emails don't exist
-    for (const email of allEmails) {
-      if (!userEmailIdMap[email]) {
-        const newUser = mockDb.create<User>("users", {
-          email,
-          id: randomUUID(),
-          roles: [UserRole.USER],
-        });
-
-        userEmailIdMap[email] = newUser.id;
-      }
-    }
+    const userEmailIdMap = getUserEmailIdMap(allEmails as string[]);
 
     const timestamp = new Date().toISOString();
     const newProject = {
@@ -522,23 +506,7 @@ router.put(
     const allEmails = [...new Set(user_emails.concat([admin_email]))].filter(
       (v) => v != undefined,
     );
-    const users = mockDb.getMany<User>("users");
-    const userEmailIdMap = Object.fromEntries(
-      users.map((v) => [v.email, v.id]),
-    );
-
-    // Create the users if the emails don't exist
-    for (const email of allEmails) {
-      if (!userEmailIdMap[email]) {
-        const newUser = mockDb.create<User>("users", {
-          email,
-          id: randomUUID(),
-          roles: [UserRole.USER],
-        });
-
-        userEmailIdMap[email] = newUser.id;
-      }
-    }
+    const userEmailIdMap = getUserEmailIdMap(allEmails as string[]);
 
     const newUpdate = {
       ...restOfBody,
@@ -1304,30 +1272,19 @@ router.post(
 
     const requester = mockDb.getOne<User>("users", (v) => v.id === userId)!;
     const body = req.body as UserRequestPostBody;
-    const metadata = { resource: "project", ...(body.metadata ?? {}) };
+    const metadata = {
+      resource: NoticeRefType.PROJECT,
+      ...(body.metadata ?? {}),
+    };
     if (body.type === UserRequestType.PROJECT_QPU_SECONDS && !metadata.seconds) {
       res.status(422).json({ detail: "seconds are required" });
       return;
     }
 
-    let project: Project | undefined;
-    if (body.type !== UserRequestType.CREATE_PROJECT) {
-      project = mockDb.getOne<Project>(
-        "projects",
-        (v) => v.id === body.resource_id,
-      );
-      // personal projects answer 404 to access requests, like missing ones
-      const isHidden =
-        body.type === UserRequestType.PROJECT_ACCESS && !!project?.is_personal;
-      if (!project || isHidden) {
-        res
-          .status(404)
-          .json({ detail: `project ${body.resource_id} not found` });
-        return;
-      }
-      metadata.project_name = project.name;
-    }
-
+    const project = mockDb.getOne<Project>(
+      "projects",
+      (v) => v.id === body.resource_id,
+    );
     if (!hasRequestAccess(body.type, userId, project)) {
       res.status(403).json({
         detail: `operation not permitted on resource ${body.resource_id}`,
@@ -1335,33 +1292,13 @@ router.post(
       return;
     }
 
-    if (
-      body.type === UserRequestType.PROJECT_ACCESS &&
-      project!.user_ids.includes(userId)
-    ) {
-      res.status(409).json({
-        detail: `you are already a member of '${project!.name}'`,
-      });
-      return;
-    }
-
-    const duplicate = mockDb.getOne<UserRequest>(
-      "user_requests",
-      (v) =>
-        v.requester_id === userId &&
-        v.type === body.type &&
-        v.resource_id === body.resource_id &&
-        v.status === UserRequestStatus.PENDING,
-    );
-    if (duplicate) {
-      const name = project?.name ?? metadata.name;
-      res.status(409).json({
-        detail: `a request for '${name}' is already pending`,
-      });
-      return;
-    }
-
     const isForProject = body.type === UserRequestType.PROJECT_ACCESS;
+    // personal projects answer 404 to access requests, like missing ones
+    if (isForProject && (!project || project.is_personal)) {
+      res.status(404).json({ detail: `project ${body.resource_id} not found` });
+      return;
+    }
+
     const targetUserIds = isForProject
       ? [project!.admin_id]
       : mockDb
@@ -1742,8 +1679,13 @@ function applyApproval(request: UserRequest) {
       archiveDb.create<Project>("projects", { ...project! });
       break;
     case UserRequestType.CREATE_PROJECT: {
-      const adminId = userIdOf(metadata.admin_email)!;
-      const memberIds = (metadata.user_emails ?? []).map((v) => userIdOf(v)!);
+      // like the API, users are created for the emails that have none
+      const emails = [...(metadata.user_emails ?? []), metadata.admin_email!];
+      const userEmailIdMap = getUserEmailIdMap(emails);
+      const adminId = userEmailIdMap[metadata.admin_email!];
+      const memberIds = (metadata.user_emails ?? []).map(
+        (v) => userEmailIdMap[v],
+      );
       mockDb.create<Project>("projects", {
         name: metadata.name,
         description: metadata.description ?? "",
@@ -1759,12 +1701,42 @@ function applyApproval(request: UserRequest) {
 }
 
 /**
+ * Gets the IDs of the users of the given emails, creating the users that do not exist
+ *
+ * @param emails - the emails of the users
+ * @returns the map of email to user ID
+ */
+function getUserEmailIdMap(emails: string[]): Record<string, string> {
+  const userEmailIdMap: Record<string, string> = Object.fromEntries(
+    mockDb.getMany<User>("users").map((v) => [v.email, v.id]),
+  );
+
+  for (const email of emails) {
+    if (!userEmailIdMap[email]) {
+      const newUser = mockDb.create<User>("users", {
+        email,
+        id: randomUUID(),
+        roles: [UserRole.USER],
+      });
+      userEmailIdMap[email] = newUser.id;
+    }
+  }
+
+  return userEmailIdMap;
+}
+
+/**
  * Describes the given request in a few words, for the notices about it
  *
  * @param request - the request to describe
  */
 function describeRequest(request: UserRequest): string {
-  const name = request.metadata.project_name ?? request.metadata.name;
+  // like the API, the project is looked up even after it has been closed
+  const isOfRequest = (v: Project) => v.id === request.resource_id;
+  const project =
+    mockDb.getOne<Project>("projects", isOfRequest) ??
+    archiveDb.getOne<Project>("projects", isOfRequest);
+  const name = project?.name ?? request.metadata.name ?? request.resource_id;
   return `${request.type} for ${name}`;
 }
 

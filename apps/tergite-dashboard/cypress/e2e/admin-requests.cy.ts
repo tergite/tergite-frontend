@@ -637,12 +637,14 @@ users.forEach((user) => {
  * @param userRequest - the request whose title is to be obtained
  */
 function getTitle(userRequest: UserRequest): string {
-  const { metadata } = userRequest;
+  // an admin sees every project, so knows the name of the one requested on
+  const project = projects[projectsIndex[userRequest.resource_id]];
+  const projectName = project?.name ?? userRequest.resource_id;
   return {
-    [UserRequestType.CLOSE_PROJECT]: `Close project '${metadata.project_name}'`,
-    [UserRequestType.CREATE_PROJECT]: `Create new project '${metadata.name}'`,
-    [UserRequestType.PROJECT_QPU_SECONDS]: `Add QPU time on project: '${metadata.project_name}'`,
-    [UserRequestType.TRANSFER_PROJECT]: `Transfer project '${metadata.project_name}'`,
-    [UserRequestType.PROJECT_ACCESS]: `Join project '${metadata.project_name}'`,
+    [UserRequestType.CLOSE_PROJECT]: `Close project '${projectName}'`,
+    [UserRequestType.CREATE_PROJECT]: `Create new project '${userRequest.metadata.name}'`,
+    [UserRequestType.PROJECT_QPU_SECONDS]: `Add QPU time on project: '${projectName}'`,
+    [UserRequestType.TRANSFER_PROJECT]: `Transfer project '${projectName}'`,
+    [UserRequestType.PROJECT_ACCESS]: `Join project '${projectName}'`,
   }[userRequest.type];
 }

@@ -191,8 +191,6 @@ export enum UserRequestType {
 // what a request asks for, beyond its type and the project it concerns
 export interface UserRequestMetadata {
   resource: NoticeRefType;
-  // filled in by the API from the project the request concerns, if any
-  project_name?: string | null;
   // for project-qpu-seconds
   seconds?: number;
   // for transfer-project, and the admin of the project in create-project
@@ -230,6 +228,11 @@ export interface UserRequest extends DbRecord {
   approver_id?: string | null; // id of the user who has decided it
   approver_name?: string | null;
   rejection_reason?: string | null;
+}
+
+// a request with the name of its project, where the viewer can see that project
+export interface ExtendedUserRequest extends UserRequest {
+  project_name?: string;
 }
 
 // the HTTP request body sent when creating a project.
