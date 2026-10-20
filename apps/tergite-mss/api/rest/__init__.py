@@ -20,7 +20,7 @@ from fastapi import FastAPI
 import settings
 from api.rest.middleware import RequestIDMiddleware, TergiteCORSMiddleware
 from services.auth.utils import TooManyListQueryParams
-from utils.api import to_http_error
+from utils.api import to_http_error, unwrap_exception_group
 from utils.exc import (
     ConflictError,
     DbValidationError,
@@ -75,6 +75,9 @@ app.add_exception_handler(ForbiddenError, to_http_error(403))
 app.add_exception_handler(ConflictError, to_http_error(409))
 app.add_exception_handler(TooManyRequestsError, to_http_error(429))
 app.add_exception_handler(Exception, to_http_error(500, "Unexpected server error"))
+app.add_exception_handler(
+    ExceptionGroup, unwrap_exception_group(app.exception_handlers)
+)
 
 # routes
 include_auth_router(app)

@@ -42,7 +42,7 @@ type Action = Callable[[Request, User], Coroutine[Any, Any, None]]
 
 
 async def do_many_actions(requests: List[Request], approver: User) -> None:
-    """Does an actions on multiple requests for each request type
+    """Does the actions of multiple requests, each according to its type
 
     Args:
         requests: The requests to do that are to be acted on
@@ -58,7 +58,7 @@ async def do_many_actions(requests: List[Request], approver: User) -> None:
     tasks = [_do_action(req, approver) for req in requests]
 
     resp = await asyncio.gather(*tasks, return_exceptions=True)
-    errors = [item for item in resp if isinstance(resp, Exception)]
+    errors = [item for item in resp if isinstance(item, Exception)]
 
     if errors:
         raise ExceptionGroup("errors doing bulk action", errors)
