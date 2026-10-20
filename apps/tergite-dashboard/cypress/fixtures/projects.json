@@ -1,7 +1,6 @@
 [
   {
     "id": "653a81b2e736d76276597a6b",
-    "version": 2,
     "name": "Test 1",
     "admin_id": "5ddc8d9fb69602723cd3c38f",
     "user_ids": [
@@ -17,7 +16,6 @@
   },
   {
     "id": "653a8f19e736d76276597a6c",
-    "version": 2,
     "name": "ATest 2",
     "admin_id": "5ddc8d9fb69602723cd3c38f",
     "user_ids": [
@@ -33,7 +31,6 @@
   },
   {
     "id": "653aabd880cd1f9fab6196d2",
-    "version": 2,
     "name": "BTest 3",
     "admin_id": "858877267fe722a38619fa2e",
     "user_ids": [
@@ -49,7 +46,6 @@
   },
   {
     "id": "67c86e891c7d5e0b2a43733d",
-    "version": 2,
     "name": "Test 4",
     "admin_id": "858877267fe722a38619fa2e",
     "user_ids": [
