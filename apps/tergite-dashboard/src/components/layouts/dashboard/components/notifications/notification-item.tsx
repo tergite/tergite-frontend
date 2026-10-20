@@ -3,7 +3,7 @@ import { cn, toRelative } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useCallback } from "react";
-import { Notice, NoticeRefType } from "../../../../../../types";
+import { Notice } from "../../../../../../types";
 import {
   approveMyRequest,
   dismissNotice,
@@ -20,8 +20,8 @@ export function NotificationItem({ notice }: Props) {
   const { Icon, label, iconClassName, isActionable } = getNotificationMeta(
     notice.type,
   );
-  const requestId =
-    notice.ref_type === NoticeRefType.USER_REQUEST ? notice.ref_id : undefined;
+  // what can be acted on are the prompts to decide a request, which they refer to
+  const requestId = isActionable ? notice.ref_id : undefined;
   const canAct = isActionable && !!requestId;
 
   const refreshAll = useCallback(async () => {

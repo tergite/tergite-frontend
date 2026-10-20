@@ -13,7 +13,6 @@ interface StoredNotice {
   user_id: string | null;
   type: string;
   title: string;
-  ref_type: string | null;
   dismissed_by: string[];
   expires_at_offset_hours: number | null;
 }
@@ -65,7 +64,8 @@ users.forEach((user) => {
       !v.dismissed_by.includes(user.id) &&
       (v.expires_at_offset_hours === null || v.expires_at_offset_hours >= 0),
   );
-  const actionable = unread.filter((v) => v.ref_type === "user_request");
+  // the prompts to decide a request are the only ones that can be acted on
+  const actionable = unread.filter((v) => v.type.endsWith("-requested"));
 
   describe(`notifications for ${username}`, () => {
     beforeEach(() => {
@@ -99,7 +99,7 @@ users.forEach((user) => {
         for (const item of unread) {
           cy.contains("li", item.title).within(() => {
             const assertion =
-              item.ref_type === "user_request" ? "be.visible" : "not.exist";
+              actionable.includes(item) ? "be.visible" : "not.exist";
             cy.contains("button", /approve/i).should(assertion);
             cy.contains("button", /reject/i).should(assertion);
           });

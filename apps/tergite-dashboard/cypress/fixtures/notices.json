@@ -263,7 +263,7 @@
     "severity": "info",
     "severity_number": 3,
     "created_by": null,
-    "ref_type": "user_request",
+    "ref_type": "project",
     "ref_id": "67c5a85529fa218e5fb635d7",
     "read_at": null,
     "dismissed_by": [],

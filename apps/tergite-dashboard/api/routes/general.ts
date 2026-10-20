@@ -1389,7 +1389,7 @@ router.post(
         title: `${describeRequest(created)}?`,
         body: `${getUsername(requester)} is asking: ${body.reason}`,
         severity: NoticeSeverity.INFO,
-        ref_type: NoticeRefType.USER_REQUEST,
+        ref_type: created.metadata.resource,
         ref_id: created.id,
       });
     }
@@ -1497,7 +1497,7 @@ router.put(
         title: `${describeRequest(request)}: ${body.status}`,
         body: `${getUsername(actor)} ${isApproved ? "approved" : "declined"} your request. ${body.rejection_reason ?? ""}`,
         severity: isApproved ? NoticeSeverity.INFO : NoticeSeverity.WARNING,
-        ref_type: NoticeRefType.USER_REQUEST,
+        ref_type: request.metadata.resource,
         ref_id: request.id,
       });
     }

@@ -190,7 +190,7 @@ export enum UserRequestType {
 
 // what a request asks for, beyond its type and the project it concerns
 export interface UserRequestMetadata {
-  resource: "project";
+  resource: NoticeRefType;
   // filled in by the API from the project the request concerns, if any
   project_name?: string | null;
   // for project-qpu-seconds
