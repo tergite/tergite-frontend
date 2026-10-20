@@ -7,7 +7,7 @@ import {
 import {
   allUserRequestsQuery,
   currentUserQuery,
-  refreshAllAdminQueries,
+  refreshMyRequests,
   refreshMyProjectsQueries,
 } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
@@ -58,7 +58,7 @@ export function AdminRequests() {
   );
 
   const handleRequestReaction = useCallback(async () => {
-    await refreshAllAdminQueries(queryClient);
+    await refreshMyRequests(queryClient);
     await refreshMyProjectsQueries(queryClient);
     // clear selected rows
     setRowSelection({});

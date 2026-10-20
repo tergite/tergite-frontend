@@ -120,7 +120,8 @@ export default function NoticeForm() {
     async onSuccess(data) {
       await refreshAllNotices(queryClient);
       await refreshAllNoticeCounts(queryClient);
-      const description = `Visible to ${data.target_user_ids?.length ?? "all"} users.`;
+      const isBroadcast = data.length === 1 && !data[0].user_id;
+      const description = `Visible to ${isBroadcast ? "all" : data.length} users.`;
       toast({ title: "Notice posted", description });
     },
     throwOnError: true,

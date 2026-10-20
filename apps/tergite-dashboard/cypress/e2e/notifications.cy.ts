@@ -1,31 +1,26 @@
 /// <reference types="cypress" />
 /// <reference types="cypress-real-events" />
 
-import notificationList from "../fixtures/notifications.json";
+import noticeList from "../fixtures/notices.json";
 import projectList from "../fixtures/projects.json";
 import userList from "../fixtures/users.json";
 import { generateJwt } from "../../api/utils";
 import { type Project, type User } from "../../types";
 
-// the fixture carries the stored shape, which includes the recipient; the API only
-// ever returns the caller's own notifications, so NotificationRead has no user_id
-interface StoredNotification {
+// the fixture carries the stored shape, with relative offsets for the timestamps
+interface StoredNotice {
   id: string;
-  user_id: string;
+  user_id: string | null;
   type: string;
   title: string;
-  read_at: string | null;
-  action: { kind: string; request_id: string } | null;
+  ref_type: string | null;
+  dismissed_by: string[];
+  expires_at_offset_hours: number | null;
 }
 
 const users = [...userList] as User[];
 const projects = [...projectList] as Project[];
-const notifications = [...notificationList] as StoredNotification[];
-
-// only the users the fixture actually gives notifications to are worth iterating
-const recipients = users.filter((user) =>
-  notifications.some((v) => v.user_id === user.id),
-);
+const notices = [...noticeList] as StoredNotice[];
 
 function login(user: User, path: string) {
   const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
@@ -37,12 +32,10 @@ function login(user: User, path: string) {
   const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
 
   cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
-  cy.intercept("GET", `${apiBaseUrl}/me`).as("my-user-info");
+  cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
   cy.intercept("GET", `${apiBaseUrl}/me/projects/?*`).as("my-project-list");
-  cy.intercept("GET", `${apiBaseUrl}/me/notifications/*`).as("my-notifications");
-  cy.intercept("GET", `${apiBaseUrl}/counts/notifications*`).as(
-    "notification-count",
-  );
+  cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("my-notices");
+  cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
   cy.intercept("POST", `${apiBaseUrl}/me/requests/`).as("request-create");
   cy.intercept("PUT", `${apiBaseUrl}/me/requests/*`).as("request-react");
 
@@ -63,19 +56,25 @@ function login(user: User, path: string) {
   cy.wait("@my-user-info");
 }
 
-recipients.forEach((user) => {
+users.forEach((user) => {
   const username = user.email.split("@")[0];
-  const mine = notifications.filter((v) => v.user_id === user.id);
-  const unread = mine.filter((v) => !v.read_at);
-  const actionable = mine.filter((v) => !!v.action);
+  // the bell lists the unread notices only; expired ones no longer exist
+  const unread = notices.filter(
+    (v) =>
+      (v.user_id === null || v.user_id === user.id) &&
+      !v.dismissed_by.includes(user.id) &&
+      (v.expires_at_offset_hours === null || v.expires_at_offset_hours >= 0),
+  );
+  const actionable = unread.filter((v) => v.ref_type === "user_request");
 
   describe(`notifications for ${username}`, () => {
     beforeEach(() => {
       login(user, "/");
-      cy.wait("@my-notifications");
+      cy.wait("@my-notices");
     });
 
     it("shows the unread count on the bell", () => {
+      cy.wait("@notice-count");
       if (unread.length > 0) {
         cy.get("[data-cy-unread-count]").should("contain.text", unread.length);
       } else {
@@ -83,12 +82,13 @@ recipients.forEach((user) => {
       }
     });
 
-    it("lists only this user's notifications", () => {
+    it("lists only this user's unread notices", () => {
       cy.get("[data-cy-notifications-bell]").click();
       cy.get("#notifications-panel").within(() => {
-        cy.get("li").should("have.length", mine.length);
-        for (const item of mine) {
-          cy.contains("li", item.title).should("be.visible");
+        cy.get("li").should("have.length", unread.length);
+        for (const item of unread) {
+          // the panel scrolls, so the later ones are out of sight until scrolled to
+          cy.contains("li", item.title).scrollIntoView().should("be.visible");
         }
       });
     });
@@ -96,9 +96,10 @@ recipients.forEach((user) => {
     it("shows approve and reject only where the recipient can act", () => {
       cy.get("[data-cy-notifications-bell]").click();
       cy.get("#notifications-panel").within(() => {
-        for (const item of mine) {
+        for (const item of unread) {
           cy.contains("li", item.title).within(() => {
-            const assertion = item.action ? "be.visible" : "not.exist";
+            const assertion =
+              item.ref_type === "user_request" ? "be.visible" : "not.exist";
             cy.contains("button", /approve/i).should(assertion);
             cy.contains("button", /reject/i).should(assertion);
           });
@@ -107,28 +108,28 @@ recipients.forEach((user) => {
     });
 
     unread.length > 0 &&
-      it("marks one notification read", () => {
+      it("marks one notice read", () => {
         cy.get("[data-cy-notifications-bell]").click();
         cy.get("#notifications-panel [data-cy-mark-read]").first().click();
-        cy.wait("@my-notifications");
+        cy.wait("@my-notices");
 
-        cy.get("#notifications-panel [data-cy-unread='true']").should(
+        cy.get("#notifications-panel li").should(
           "have.length",
           unread.length - 1,
         );
       });
 
     unread.length > 0 &&
-      it("marks every notification read", () => {
+      it("marks every notice read", () => {
         cy.get("[data-cy-notifications-bell]").click();
         cy.get("[data-cy-mark-all-read]").click();
-        cy.wait("@my-notifications");
+        cy.wait("@my-notices");
 
         cy.get("[data-cy-unread-count]").should("not.exist");
       });
 
     actionable.length > 0 &&
-      it("approving from the bell clears the actionable notification", () => {
+      it("approving from the bell clears the actionable notice", () => {
         cy.get("[data-cy-notifications-bell]").click();
         cy.contains("#notifications-panel li", actionable[0].title).within(
           () => {
@@ -165,7 +166,7 @@ describe("requesting project access", () => {
   it("submits a request for a project the user is not on", () => {
     cy.get("[data-cy-request-access]").click();
     cy.get("#request-access-dialog").within(() => {
-      cy.get("#project_ext_id").type(foreign.ext_id);
+      cy.get("#project_id").type(foreign.id);
       cy.get("#reason").type("joining this collaboration");
       cy.contains("button", /submit/i).click();
     });
@@ -178,18 +179,32 @@ describe("requesting project access", () => {
   it("reports an unknown project id on the field rather than as a toast", () => {
     cy.get("[data-cy-request-access]").click();
     cy.get("#request-access-dialog").within(() => {
-      cy.get("#project_ext_id").type("no-such-project-anywhere");
+      cy.get("#project_id").type("ffffffffffffffffffffffff");
       cy.get("#reason").type("please");
       cy.contains("button", /submit/i).click();
 
-      cy.contains(/no project with ID/i).should("be.visible");
+      cy.contains(/project ffffffffffffffffffffffff not found/i).should(
+        "be.visible",
+      );
     });
+  });
+
+  it("refuses what cannot be a project id before asking the API", () => {
+    cy.get("[data-cy-request-access]").click();
+    cy.get("#request-access-dialog").within(() => {
+      cy.get("#project_id").type("no-such-project-anywhere");
+      cy.get("#reason").type("please");
+      cy.contains("button", /submit/i).click();
+
+      cy.contains(/not a project ID/i).should("be.visible");
+    });
+    cy.get("@request-create.all").should("have.length", 0);
   });
 
   it("refuses a project the user already belongs to", () => {
     cy.get("[data-cy-request-access]").click();
     cy.get("#request-access-dialog").within(() => {
-      cy.get("#project_ext_id").type(own.ext_id);
+      cy.get("#project_id").type(own.id);
       cy.get("#reason").type("again please");
       cy.contains("button", /submit/i).click();
 
@@ -201,7 +216,7 @@ describe("requesting project access", () => {
     for (const attempt of [1, 2]) {
       cy.get("[data-cy-request-access]").click();
       cy.get("#request-access-dialog").within(() => {
-        cy.get("#project_ext_id").type(foreign.ext_id);
+        cy.get("#project_id").type(foreign.id);
         cy.get("#reason").type(`attempt ${attempt}`);
         cy.contains("button", /submit/i).click();
 

@@ -1,7 +1,7 @@
 import { SortHeader } from "@/components/ui/data-table";
 import { HealthStatus } from "@/components/ui/health-status";
 import { ColumnDef } from "@tanstack/table-core";
-import { QpuTimeExtensionUserRequest, User, type Project } from "types";
+import { UserRequest, User, type Project } from "types";
 import { QpuTimeDialog } from "./qpu-time-dialog";
 import { Duration } from "luxon";
 
@@ -10,7 +10,7 @@ export function getColumns({
   qpuTimeRequests,
 }: {
   currentUser: User;
-  qpuTimeRequests: QpuTimeExtensionUserRequest[];
+  qpuTimeRequests: UserRequest[];
 }): ColumnDef<Project>[] {
   return [
     {
@@ -21,10 +21,8 @@ export function getColumns({
       ),
     },
     {
-      accessorKey: "ext_id",
-      header: ({ column }) => (
-        <SortHeader label="External ID" column={column} />
-      ),
+      accessorKey: "id",
+      header: ({ column }) => <SortHeader label="ID" column={column} />,
     },
     {
       accessorKey: "is_active",

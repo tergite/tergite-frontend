@@ -11,13 +11,12 @@ import { ProgressStatus } from "@/components/ui/progress-status";
 import { Separator } from "@/components/ui/separator";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { approveMyRequest, rejectMyRequest } from "@/lib/api-client";
-import { cn, getUserRequestTitle } from "@/lib/utils";
+import { cn, getUserRequestDetails, getUserRequestTitle } from "@/lib/utils";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import {
-  AnyFlatRecord,
   AnyValue,
   UserRequestStatus,
   type UserRequest,
@@ -66,7 +65,7 @@ function RequestSummary({
         <div data-cy-request-body className="grid gap-3">
           <div className="font-semibold">Request</div>
           <ul className="grid gap-3">
-            {Object.entries(request.request as AnyFlatRecord).map(
+            {Object.entries(getUserRequestDetails(request)).map(
               ([key, value]) => (
                 <DetailItem key={key} label={toUserFriendlyProp(key)}>
                   {toString(value)}

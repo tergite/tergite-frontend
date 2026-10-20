@@ -6,10 +6,10 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
-import { approveUserRequest, rejectUserRequest } from "@/lib/api-client";
-import { cn, getUserRequestTitle } from "@/lib/utils";
+import { approveMyRequest, rejectMyRequest } from "@/lib/api-client";
+import { cn, getUserRequestDetails, getUserRequestTitle } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
-import { AnyFlatRecord, AnyValue, type UserRequest } from "types";
+import { AnyValue, type UserRequest } from "types";
 import { Separator } from "@/components/ui/separator";
 import { ProgressStatus } from "@/components/ui/progress-status";
 import { DateTime } from "luxon";
@@ -38,7 +38,7 @@ function RequestSummary({
   onRejection,
 }: RequestSummaryProps) {
   const requestApproval = useMutation({
-    mutationFn: approveUserRequest,
+    mutationFn: approveMyRequest,
     onSuccess: async () => {
       await onApproval(request.id);
     },
@@ -46,7 +46,7 @@ function RequestSummary({
   });
 
   const requestRejection = useMutation({
-    mutationFn: rejectUserRequest,
+    mutationFn: rejectMyRequest,
     onSuccess: async () => {
       await onRejection(request.id);
     },
@@ -70,7 +70,7 @@ function RequestSummary({
         <div data-cy-request-body className="grid gap-3">
           <div className="font-semibold">Request</div>
           <ul className="grid gap-3">
-            {Object.entries(request.request as AnyFlatRecord).map(
+            {Object.entries(getUserRequestDetails(request)).map(
               ([key, value]) => (
                 <DetailItem label={toUserFriendlyProp(key)}>
                   {toString(value)}
@@ -129,7 +129,7 @@ function RequestSummary({
             type="button"
             variant="outline"
             className="text-destructive border-destructive"
-            onClick={() => requestRejection.mutate(request.id)}
+            onClick={() => requestRejection.mutate({ id: request.id })}
             disabled={isResponsePending}
           >
             {requestRejection.isPending && (

@@ -32,7 +32,11 @@ import { z } from "zod";
 import { toast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
-  project_ext_id: z.string().min(1, "required"),
+  // the API answers 422 rather than 404 for anything that cannot be an ID at all
+  project_id: z
+    .string()
+    .min(1, "required")
+    .regex(/^[0-9a-f]{24}$/, "not a project ID"),
   reason: z.string().min(1, "required"),
 });
 
@@ -41,7 +45,7 @@ export function RequestAccessDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const requestForm = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { project_ext_id: "", reason: "" },
+    defaultValues: { project_id: "", reason: "" },
   });
 
   const accessRequest = useMutation({
@@ -64,7 +68,7 @@ export function RequestAccessDialog() {
         // a 404 means no such project, which is the common case of a mistyped ID;
         // surface it on the field so the user can correct it themselves
         const field =
-          (error as ErrorInfo)?.status === 404 ? "project_ext_id" : "reason";
+          (error as ErrorInfo)?.status === 404 ? "project_id" : "reason";
         requestForm.setError(field, {
           type: "custom",
           message: error?.message ?? String(error),
@@ -85,8 +89,7 @@ export function RequestAccessDialog() {
         <DialogHeader>
           <DialogTitle>Request access to a project</DialogTitle>
           <DialogDescription className="py-2">
-            Enter the external ID of a project you already know about. Its admin
-            decides.
+            Enter the ID of a project you already know about. Its admin decides.
           </DialogDescription>
         </DialogHeader>
         <Form {...requestForm}>
@@ -97,12 +100,12 @@ export function RequestAccessDialog() {
           >
             <FormField
               control={requestForm.control}
-              name="project_ext_id"
+              name="project_id"
               render={({ field }) => (
                 <FormItem className="grid gap-2 my-2">
-                  <Label htmlFor="project_ext_id">Project External ID</Label>
+                  <Label htmlFor="project_id">Project ID</Label>
                   <FormControl>
-                    <Input id="project_ext_id" type="text" {...field} />
+                    <Input id="project_id" type="text" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

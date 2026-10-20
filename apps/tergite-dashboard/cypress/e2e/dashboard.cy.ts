@@ -25,14 +25,16 @@ users.forEach((user) => {
   );
   const username = getUsername(user);
   const isAdmin = user.roles.includes(UserRole.ADMIN);
+  // the admin badge counts the pending requests awaiting this user's decision
   const pendingUserRequests = userRequests.filter(
-    (v) => v.status === UserRequestStatus.PENDING,
+    (v) =>
+      v.status === UserRequestStatus.PENDING &&
+      v.target_user_ids.includes(user.id),
   );
   const requestsCount = pendingUserRequests.length;
   let currentDateStr: string;
   let currentDate: Date;
-  let activeNotices: NoticeFixture[];
-  let activeNoticeCount: number;
+  let unreadNoticeCount: number;
 
   describe(`dashboard-layout for ${username}`, () => {
     const dashboardUrl = Cypress.config("baseUrl");
@@ -47,16 +49,19 @@ users.forEach((user) => {
       const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
       currentDateStr = Cypress.env("CURRENT_DATE");
       currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
-      activeNotices = getActiveNoticesForUser(user.id, rawNotices, currentDate);
-      activeNoticeCount = activeNotices.length;
+      unreadNoticeCount = getUnreadNoticesForUser(
+        user.id,
+        rawNotices,
+        currentDate,
+      ).length;
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
       cy.intercept("GET", `${apiBaseUrl}/me/projects/*`).as("my-project-list");
       cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
       cy.intercept("POST", `${apiBaseUrl}/auth/logout`).as("logout");
-      cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
+      cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("notices");
       cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
-      cy.intercept("POST", `${apiBaseUrl}/admin/notices/*/dismiss`).as(
+      cy.intercept("POST", `${apiBaseUrl}/me/notices/*/dismiss`).as(
         "dismiss-notice",
       );
 
@@ -148,22 +153,22 @@ users.forEach((user) => {
 
       cy.get('[data-testid="mobile-menu"]').within(() => {
           cy.get("a[href='/']")
-          .contains(/dashboard/i)
-          .should("be.visible");
+            .contains(/dashboard/i)
+            .should("be.visible");
 
           cy.get("a[href='/devices']")
-          .contains(/devices/i)
-          .should("be.visible");
+            .contains(/devices/i)
+            .should("be.visible");
 
         cy.get('nav [data-testid="access-submenu"]').within(() => {
           cy.get("a[href='/projects']")
             .scrollIntoView()
-          .contains(/projects/i)
-          .should("be.visible");
+            .contains(/projects/i)
+            .should("be.visible");
           cy.get("a[href='/tokens']")
             .scrollIntoView()
-          .contains(/tokens/i)
-          .should("be.visible");
+            .contains(/tokens/i)
+            .should("be.visible");
 
           cy.get("a[href='/requests']")
             .scrollIntoView()
@@ -176,13 +181,13 @@ users.forEach((user) => {
           cy.get('nav [data-testid="admin-submenu"]').within(() => {
             cy.get("a[href='/admin-requests']")
               .scrollIntoView()
-            .contains(/requests/i)
-            .should("be.visible");
+              .contains(/requests/i)
+              .should("be.visible");
 
             cy.get("a[href='/admin-projects']")
               .scrollIntoView()
-            .contains(/projects/i)
-            .should("be.visible");
+              .contains(/projects/i)
+              .should("be.visible");
 
             cy.get("a[href='/admin-control']")
               .scrollIntoView()
@@ -197,97 +202,97 @@ users.forEach((user) => {
       cy.viewport(1080, 750);
       cy.get("[data-testid='sidebar']").within(() => {
         const assertIsUncollapsed = () => {
-        cy.get("nav a[href='/']")
-          .contains("div", /dashboard/i)
-          .should("have.text", "DashboardDashboard");
-        cy.get("nav a[href='/devices']")
-          .contains("div", /devices/i)
-          .should("have.text", "DevicesDevices");
+          cy.get("nav a[href='/']")
+            .contains("div", /dashboard/i)
+            .should("have.text", "DashboardDashboard");
+          cy.get("nav a[href='/devices']")
+            .contains("div", /devices/i)
+            .should("have.text", "DevicesDevices");
 
           cy.get("nav [data-testid='access-submenu']").within(() => {
-          cy.get("button")
-            .contains(/access/i)
-            .should("be.visible");
+            cy.get("button")
+              .contains(/access/i)
+              .should("be.visible");
 
             cy.get("a[href='/projects']")
-            .contains("div", /projects/i)
-            .should("have.text", "ProjectsProjects");
+              .contains("div", /projects/i)
+              .should("have.text", "ProjectsProjects");
 
             cy.get("a[href='/tokens']")
-            .contains("div", /tokens/i)
-            .should("have.text", "TokensTokens");
+              .contains("div", /tokens/i)
+              .should("have.text", "TokensTokens");
 
             cy.get("a[href='/requests']")
-            .contains("div", /requests/i)
-            .should("have.text", "RequestsRequests");
-        });
+              .contains("div", /requests/i)
+              .should("have.text", "RequestsRequests");
+          });
 
-        if (isAdmin) {
+          if (isAdmin) {
             cy.get("nav [data-testid='admin-submenu']").within(() => {
-            cy.get("button").contains(/admin/i).should("be.visible");
+              cy.get("button").contains(/admin/i).should("be.visible");
 
               cy.get("a[href='/admin-requests']").should(
-              "have.text",
-              `RequestsRequests ${requestsCount}`
-            );
+                "have.text",
+                `RequestsRequests ${requestsCount}`
+              );
 
               cy.get("a[href='/admin-projects']").should(
-              "have.text",
-              "ProjectsProjects"
-            );
+                "have.text",
+                "ProjectsProjects"
+              );
 
               cy.get("a[href='/admin-control']").should(
-              "have.text",
-              "ControlControl"
-            );
-          });
-        }
-        cy.get("[aria-label='PanelLeftClose']").should("be.visible");
-        cy.get("[aria-label='PanelRightClose']").should("not.exist");
+                "have.text",
+                "ControlControl"
+              );
+            });
+          }
+          cy.get("[aria-label='PanelLeftClose']").should("be.visible");
+          cy.get("[aria-label='PanelRightClose']").should("not.exist");
         };
 
         const assertIsCollapsed = () => {
-        cy.get("[aria-label='PanelLeftClose']").should("not.exist");
-        cy.get("[aria-label='PanelRightClose']").should("be.visible");
+          cy.get("[aria-label='PanelLeftClose']").should("not.exist");
+          cy.get("[aria-label='PanelRightClose']").should("be.visible");
 
-        cy.get("nav [aria-label='Home']").should("be.visible");
-        cy.get("nav [aria-label='Cpu']").should("be.visible");
+          cy.get("nav [aria-label='Home']").should("be.visible");
+          cy.get("nav [aria-label='Cpu']").should("be.visible");
           cy.get("nav [aria-label='FolderKanban']").should("be.visible");
           cy.get("nav [aria-label='KeySquare']").should("be.visible");
           cy.get("nav [aria-label='ClipboardList']").should("be.visible");
-        if (isAdmin) {
+          if (isAdmin) {
             // cy.get("nav [aria-label='HelpingHand']").should("be.visible");
-          cy.get("nav [aria-label='HardHat']").should("be.visible");
-          cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
-        }
+            cy.get("nav [aria-label='HardHat']").should("be.visible");
+            cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
+          }
 
-        cy.get("nav")
-          .contains("div", /dashboard/i)
-          .should("have.text", "Dashboard");
-        cy.get("nav")
-          .contains("div", /devices/i)
-          .should("have.text", "Devices");
+          cy.get("nav")
+            .contains("div", /dashboard/i)
+            .should("have.text", "Dashboard");
+          cy.get("nav")
+            .contains("div", /devices/i)
+            .should("have.text", "Devices");
 
           cy.get("nav a[href='/projects']").should("have.text", "Projects");
           cy.get("nav a[href='/tokens']").should("have.text", "Tokens");
           cy.get("nav a[href='/requests']").should("have.text", "Requests");
 
-        if (isAdmin) {
-          cy.get("nav a[href='/admin-requests']").should(
-            "have.text",
-            "Requests "
-          );
+          if (isAdmin) {
+            cy.get("nav a[href='/admin-requests']").should(
+              "have.text",
+              "Requests "
+            );
 
-          cy.get("nav a[href='/admin-projects']").should(
-            "have.text",
-            "Projects"
-          );
+            cy.get("nav a[href='/admin-projects']").should(
+              "have.text",
+              "Projects"
+            );
 
             cy.get("nav a[href='/admin-control']").should(
               "have.text",
               "Control"
             );
-        }
+          }
         };
 
         // run
@@ -331,28 +336,28 @@ users.forEach((user) => {
         cy.get("[aria-label='RefreshCcw']").should("be.visible");
         cy.get("[aria-label='Copy']").should("be.visible");
         // Notice count badge (bell icon) is always visible in the banner
-        cy.get('[data-icon="inline-end"]').should("exist");
+        cy.get('[data-testid="notices-bell-icon"]').should("exist");
       });
     });
 
-    it(`displays the correct notice count badge (expected: ${activeNoticeCount}) in the top banner`, () => {
+    it(`displays the correct notice count badge in the top banner`, () => {
       cy.wait("@notices");
       cy.wait("@notice-count");
       cy.wait(100);
 
-      // The badge renders: <count><BellIcon data-icon="inline-end" />
-      cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
-        .parent()
+      cy.get('[data-testid="top-banner"] [data-testid="notices-bell-icon"]')
+        .siblings()
+        .first()
         .invoke("text")
         .then((text) => {
           const count = parseInt(text.trim(), 10);
-          expect(count).to.equal(activeNoticeCount);
+          expect(count).to.equal(unreadNoticeCount);
         });
     });
 
     it("shows an active notice banner in the top banner", () => {
-      // Every user in the fixture has at least two active notices visible to them
-      // (ntc_007 and ntc_009 target all users and fall within the test date range)
+      // Every user in the fixture has at least two announcements in force
+      // (ntc_007 and ntc_009 are broadcast and fall within the test date range)
       cy.wait("@notices");
       cy.wait("@notice-count");
 
@@ -369,8 +374,9 @@ users.forEach((user) => {
       cy.wait(100);
 
       // Capture the initial badge count before any dismissal
-      cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
-        .parent()
+      cy.get('[data-testid="top-banner"] [data-testid="notices-bell-icon"]')
+        .siblings()
+        .first()
         .invoke("text")
         .then((before) => {
           const initialCount = parseInt(before.trim(), 10);
@@ -388,8 +394,9 @@ users.forEach((user) => {
           cy.wait(100);
 
           // Badge must now show exactly one less than before
-          cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
-            .parent()
+          cy.get('[data-testid="top-banner"] [data-testid="notices-bell-icon"]')
+            .siblings()
+            .first()
             .invoke("text")
             .then((after) => {
               const newCount = parseInt(after.trim(), 10);
@@ -496,37 +503,35 @@ users.forEach((user) => {
  */
 interface NoticeFixture {
   id: string;
-  starts_at_offset_hours: number;
-  expires_at_offset_hours: number;
-  target_user_ids: string[] | null;
+  user_id: string | null;
+  expires_at_offset_hours: number | null;
   dismissed_by: string[];
 }
 
 /**
- * Returns the subset of notices that are active for the given user at the
+ * Returns the notices the bell counts as unread for the given user at the
  * supplied reference time, mirroring the server-side getUserNoticesFilter logic.
  *
- * A notice is active when:
- *  - it has already started  (starts_at <= now)
+ * A notice is unread when:
  *  - it has not yet expired  (expires_at >= now, or expires_at is null = permanent)
- *  - it targets this user    (target_user_ids is null = everyone, or includes userId)
- *  - it has not been dismissed by this user (dismissed_by excludes userId)
+ *  - it is for this user     (user_id is null = everyone, or is userId)
+ *  - this user has not read it (dismissed_by excludes userId)
  */
-function getActiveNoticesForUser(
+function getUnreadNoticesForUser(
   userId: string,
   notices: NoticeFixture[],
   currentDate: Date,
 ): NoticeFixture[] {
   const now = currentDate.getTime();
   return notices.filter((n) => {
-    const startsAt = now + n.starts_at_offset_hours * 3_600_000;
-    const expiresAt = now + n.expires_at_offset_hours * 3_600_000;
+    const expiresAt =
+      n.expires_at_offset_hours === null
+        ? Infinity
+        : now + n.expires_at_offset_hours * 3_600_000;
 
-    if (startsAt > now) return false; // not yet started
     if (expiresAt < now) return false; // already expired
-    if (n.target_user_ids !== null && !n.target_user_ids.includes(userId))
-      return false; // not targeted at this user
-    if (n.dismissed_by.includes(userId)) return false; // dismissed
+    if (n.user_id !== null && n.user_id !== userId) return false; // not for this user
+    if (n.dismissed_by.includes(userId)) return false; // read
 
     return true;
   });

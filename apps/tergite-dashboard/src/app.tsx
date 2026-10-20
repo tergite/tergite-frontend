@@ -24,8 +24,8 @@ export function App({ routerConstructor = createBrowserRouter }: Props) {
     setApiToken,
     isDark,
     toggleIsDark,
-    currentProjectExtId: currentProject,
-    setCurrentProjectExtId: setCurrentProject,
+    currentProjectId: currentProject,
+    setCurrentProjectId: setCurrentProject,
   };
 
   useEffect(() => {

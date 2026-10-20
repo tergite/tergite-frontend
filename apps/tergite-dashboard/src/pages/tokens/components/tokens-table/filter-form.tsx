@@ -21,14 +21,6 @@ export const filterFormProps: DataTableFormConfig = {
       <Input {...field} className="" />
     ),
   },
-  project_ext_id: {
-    validation: z.string(),
-    defaultValue: "",
-    label: "Project external ID",
-    getFormElement: (field: DataTableFilterField) => (
-      <Input {...field} className="" />
-    ),
-  },
   project_name: {
     validation: z.string(),
     defaultValue: "",

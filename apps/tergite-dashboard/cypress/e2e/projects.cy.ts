@@ -8,18 +8,18 @@ import userRequestList from "../fixtures/user-requests.json";
 import { bulkUpdate, generateJwt, getUsername } from "../../api/utils";
 import { Duration } from "luxon";
 import {
-  type QpuTimeExtensionUserRequest,
   type Project,
   type User,
+  type UserRequest,
   UserRequestType,
 } from "../../types";
 
 const projects = [...projectList] as Project[];
-const qpuTimeRequests = userRequestList.filter(
+const qpuTimeRequests = (userRequestList as UserRequest[]).filter(
   (v) => v.type === UserRequestType.PROJECT_QPU_SECONDS
-) as QpuTimeExtensionUserRequest[];
+);
 const qpuTimeRequestsProjectsMap = Object.fromEntries(
-  qpuTimeRequests.map((v) => [v.request.project_id, { ...v }])
+  qpuTimeRequests.map((v) => [v.resource_id, { ...v }])
 );
 
 const updatedTokenList = bulkUpdate(tokenList, {
@@ -30,14 +30,14 @@ const users = userList.filter((v) => userIds.includes(v.id)) as User[];
 
 const projectsTableHeaders = [
   "Name",
-  "External ID",
+  "ID",
   "Status",
   "Available QPU time",
   "Requests",
 ];
 const projectsTableDataProps = [
   "name",
-  "ext_id",
+  "id",
   "is_active",
   "qpu_seconds",
   "requests",
@@ -64,15 +64,12 @@ users.forEach((user) => {
         "my-active-project-list"
       );
       cy.intercept("GET", `${apiBaseUrl}/me/projects/?*`).as("my-project-list");
-      cy.intercept("GET", `${apiBaseUrl}/me`).as("my-user-info");
-      cy.intercept("GET", `${apiBaseUrl}/admin/qpu-time-requests/*`).as(
+      cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
+      cy.intercept("GET", `${apiBaseUrl}/me/requests/?*`).as(
         "my-qpu-requests-list"
       );
-      cy.intercept("POST", `${apiBaseUrl}/admin/qpu-time-requests/*`).as(
+      cy.intercept("POST", `${apiBaseUrl}/me/requests/`).as(
         "qpu-requests-create"
-      );
-      cy.intercept("DELETE", `${apiBaseUrl}/admin/qpu-time-requests/*`).as(
-        "qpu-requests-delete"
       );
 
       if (user.id) {
@@ -159,7 +156,7 @@ users.forEach((user) => {
                               "button",
                               Duration.fromObject({
                                 seconds:
-                                  qpuTimeRequestsProjectsMap[project.id].request
+                                  qpuTimeRequestsProjectsMap[project.id].metadata
                                     .seconds,
                               }).toHuman()
                             );
@@ -198,8 +195,8 @@ users.forEach((user) => {
           result: userProjects.filter((v) => /te/i.test(v.name) && v.is_active),
         },
         {
-          input: { ext_id: "est1" },
-          result: userProjects.filter((v) => /est1/i.test(v.ext_id)),
+          input: { id: "653a81b2" },
+          result: userProjects.filter((v) => /653a81b2/i.test(v.id)),
         },
         {
           input: { name: "te", is_active: false },
@@ -216,9 +213,9 @@ users.forEach((user) => {
           result: userProjects.filter((v) => v.is_active),
         },
         {
-          input: { name: "te", is_active: true, ext_id: "test2" },
-          result: projects.filter(
-            (v) => /te/i.test(v.name) && v.is_active && /test2/i.test(v.ext_id)
+          input: { name: "te", is_active: true, id: "653a8f19" },
+          result: userProjects.filter(
+            (v) => /te/i.test(v.name) && v.is_active && /653a8f19/i.test(v.id)
           ),
         },
       ];
@@ -231,7 +228,7 @@ users.forEach((user) => {
         .click()
         .then(() => {
           cy.get("[data-cy-filter-form] input[name='name']").as("nameInput");
-          cy.get("[data-cy-filter-form] input[name='ext_id']").as("extIdInput");
+          cy.get("[data-cy-filter-form] input[name='id']").as("idInput");
           cy.get("[data-cy-filter-form] button[role='combobox']").as(
             "isActiveSelect"
           );
@@ -241,7 +238,7 @@ users.forEach((user) => {
           for (const filterMap of filterMaps) {
             cy.wrap(filterMap).then(({ input, result }) => {
               input.name && cy.get("@nameInput").type(input.name);
-              input.ext_id && cy.get("@extIdInput").type(input.ext_id);
+              input.id && cy.get("@idInput").type(input.id);
               input.is_active !== undefined &&
                 cy
                   .get("@isActiveSelect")
@@ -328,8 +325,8 @@ users.forEach((user) => {
               "be.visible"
             );
 
-            cy.contains("#project-summary div", /external id/i).within(() => {
-              cy.contains(project.ext_id).should("be.visible");
+            cy.contains("#project-summary div", /^ID/).within(() => {
+              cy.contains(project.id).should("be.visible");
             });
 
             cy.contains("#project-summary div", /status/i).within(() => {
@@ -442,7 +439,7 @@ users.forEach((user) => {
             cy.get("#qpu-time-dialog").should("not.exist");
 
             cy.wait("@qpu-requests-create")
-              .its("request.body.seconds")
+              .its("request.body.metadata.seconds")
               .should("eq", 86_400 + 20 * 3_600 + 3 * 60 + 10);
 
             // table updated

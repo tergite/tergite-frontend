@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import {
   myRequestsQuery,
-  refreshMyNotifications,
+  refreshMyNotices,
   refreshMyProjectsQueries,
   refreshMyRequests,
 } from "@/lib/api-client";
@@ -44,7 +44,7 @@ export function Approvals() {
 
   const handleReaction = useCallback(async () => {
     await refreshMyRequests(queryClient);
-    await refreshMyNotifications(queryClient);
+    await refreshMyNotices(queryClient);
     await refreshMyProjectsQueries(queryClient);
     setRowSelection({});
   }, [queryClient]);

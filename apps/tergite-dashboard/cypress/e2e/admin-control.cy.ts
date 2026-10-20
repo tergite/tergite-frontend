@@ -13,23 +13,23 @@ import { type Device, type User, UserRole } from "../../types";
  */
 interface NoticeFixture {
   id: string;
-  starts_at_offset_hours: number;
-  expires_at_offset_hours: number;
-  target_user_ids: string[] | null;
-  dismissed_by: string[];
+  type: string;
+  starts_at_offset_hours: number | null;
+  expires_at_offset_hours: number | null;
 }
 
 /**
- * Returns every notice that is temporally active at the supplied reference
+ * Returns every custom notice that is temporally active at the supplied reference
  * time, mirroring the admin NoticesCard query which omits user_id and sets
  * include_dismissed: true.
  *
  * A notice is active when:
+ *  - it is a custom one      (type is custom or custom-broadcast)
  *  - it has already started  (starts_at <= now)
  *  - it has not yet expired  (expires_at >= now)
  *
- * No target_user_ids or dismissed_by filtering is applied because the admin
- * panel shows all system notices regardless of audience.
+ * No user_id or dismissed_by filtering is applied because the admin panel
+ * shows every custom notice regardless of audience, one per recipient.
  */
 function getAllActiveNotices(
   notices: NoticeFixture[],
@@ -37,9 +37,9 @@ function getAllActiveNotices(
 ): NoticeFixture[] {
   const now = currentDate.getTime();
   return notices.filter((n) => {
-    const startsAt = now + n.starts_at_offset_hours * 3_600_000;
-    const expiresAt = now + n.expires_at_offset_hours * 3_600_000;
-    return startsAt <= now && expiresAt >= now;
+    const startsAt = now + (n.starts_at_offset_hours ?? 0) * 3_600_000;
+    const expiresAt = now + (n.expires_at_offset_hours ?? 0) * 3_600_000;
+    return n.type.startsWith("custom") && startsAt <= now && expiresAt >= now;
   });
 }
 
@@ -84,17 +84,22 @@ users.forEach((user) => {
         "my-project-list"
       );
       cy.intercept("GET", `${apiBaseUrl}/calibrations/*`).as("calibration");
-      cy.intercept("GET", `${apiBaseUrl}/admin/recalibration/**/info**`).as(
-        "recalib-info"
+      cy.intercept(
+        "GET",
+        `${apiBaseUrl}/admin/bcc/recalibration/**/info**`
+      ).as("recalib-info");
+      cy.intercept(
+        "POST",
+        `${apiBaseUrl}/admin/bcc/recalibration/**/init**`
+      ).as("start-recalib");
+      cy.intercept(
+        "POST",
+        `${apiBaseUrl}/admin/bcc/recalibration/**/cancel**`
+      ).as("stop-recalib");
+      cy.intercept("POST", `${apiBaseUrl}/admin/bcc/switch/**/on`).as(
+        "switch-on"
       );
-      cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/**/init**`).as(
-        "start-recalib"
-      );
-      cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/**/cancel**`).as(
-        "stop-recalib"
-      );
-      cy.intercept("POST", `${apiBaseUrl}/admin/switch/**/on`).as("switch-on");
-      cy.intercept("POST", `${apiBaseUrl}/admin/switch/**/off`).as(
+      cy.intercept("POST", `${apiBaseUrl}/admin/bcc/switch/**/off`).as(
         "switch-off"
       );
       cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
@@ -103,6 +108,7 @@ users.forEach((user) => {
         "delete-notice"
       );
       cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
+      cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("my-notices");
 
       // for the home page
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
@@ -149,7 +155,7 @@ users.forEach((user) => {
         // Just make sure the online device is online because the tests change this sometimes
         cy.request(
           "POST",
-          `${apiBaseUrl}/admin/switch/${onlineDevice.name}/on`
+          `${apiBaseUrl}/admin/bcc/switch/${onlineDevice.name}/on`
         );
 
         cy.wait("@my-project-list");
@@ -397,11 +403,11 @@ users.forEach((user) => {
       });
 
       it("shows the active notice banner on an admin screen too", () => {
-        cy.wait("@notices");
+        cy.wait("@my-notices");
         // the banner used to be suppressed under /admin-*, so an admin never saw a
         // notice until they navigated back out
         cy.get('[data-testid="top-banner"]').should("be.visible");
-        cy.get('[data-testid="top-banner"] [data-cy-notice-count]').should(
+        cy.get('[data-testid="top-banner"] [aria-label="Dismiss notice"]').should(
           "be.visible"
         );
         // the API token widget stays off: no project is selected here

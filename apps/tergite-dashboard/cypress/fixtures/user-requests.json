@@ -1,105 +1,167 @@
 [
   {
-    "request": {
-      "seconds": 7200,
-      "reason": "Some reason",
-      "project_id": "653a81b2e736d76276597a6b",
-      "project_name": "Test 1"
+    "id": "67c5a84f4156aeb9e4ad783a",
+    "type": "project-qpu-seconds",
+    "resource_id": "653a81b2e736d76276597a6b",
+    "reason": "Some reason",
+    "metadata": {
+      "resource": "project",
+      "project_name": "Test 1",
+      "seconds": 7200
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
     "requester_name": "jane.doe",
-    "updated_at": "2024-10-09T10:37:05.267Z",
-    "created_at": "2024-10-09T10:37:05.267Z",
-    "type": "project-qpu-seconds",
+    "target_user_ids": [
+      "5ddc8d9fb69602723cd3c38f"
+    ],
+    "target": "system",
     "status": "rejected",
-    "rejection_reason": "It just does not look right",
     "approver_id": "5ddc8d9fb69602723cd3c38f",
-    "id": "67c5a84f4156aeb9e4ad783a"
+    "approver_name": null,
+    "rejection_reason": "It just does not look right",
+    "created_at": "2024-10-09T10:37:05.267Z",
+    "updated_at": "2024-10-09T10:37:05.267Z"
   },
   {
-    "request": {
-      "seconds": 86428,
-      "reason": "Another reason",
-      "project_id": "653a8f19e736d76276597a6c",
-      "project_name": "Test 2"
-    },
-    "requester_id": "5ddc8d9fb69602723cd3c38f",
-    "requester_name": "jane.doe",
-    "updated_at": "2024-10-09T10:37:32.558Z",
-    "created_at": "2024-10-09T10:37:32.558Z",
+    "id": "67c5a85529fa218e5fb635d7",
     "type": "project-qpu-seconds",
+    "resource_id": "653a8f19e736d76276597a6c",
+    "reason": "Another reason",
+    "metadata": {
+      "resource": "project",
+      "project_name": "Test 2",
+      "seconds": 86428
+    },
+    "requester_id": "5ddc8d9fb69602723cd3c38f",
+    "requester_name": "jane.doe",
+    "target_user_ids": [
+      "5ddc8d9fb69602723cd3c38f"
+    ],
+    "target": "system",
     "status": "pending",
-    "rejection_reason": null,
     "approver_id": null,
-    "id": "67c5a85529fa218e5fb635d7"
+    "approver_name": null,
+    "rejection_reason": null,
+    "created_at": "2024-10-09T10:37:32.558Z",
+    "updated_at": "2024-10-09T10:37:32.558Z"
   },
   {
-    "request": {
-      "reason": "Just delete",
-      "project_id": "653a8f19e736d76276597a6c",
+    "id": "67c5a85f5a09a01b3155a5db",
+    "type": "close-project",
+    "resource_id": "653a8f19e736d76276597a6c",
+    "reason": "Just delete",
+    "metadata": {
+      "resource": "project",
       "project_name": "Test 2"
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
     "requester_name": "jane.doe",
-    "updated_at": "2024-10-14T10:37:32.558Z",
-    "created_at": "2024-10-14T10:37:32.558Z",
-    "type": "close-project",
+    "target_user_ids": [
+      "5ddc8d9fb69602723cd3c38f"
+    ],
+    "target": "system",
     "status": "pending",
-    "rejection_reason": null,
     "approver_id": null,
-    "id": "67c5a85f5a09a01b3155a5db"
+    "approver_name": null,
+    "rejection_reason": null,
+    "created_at": "2024-10-14T10:37:32.558Z",
+    "updated_at": "2024-10-14T10:37:32.558Z"
   },
   {
-    "request": {
-      "reason": "Just delete again",
-      "project_id": "653a8f19e736d76276597a6c",
+    "id": "67c5a869afa0846800553a35",
+    "type": "close-project",
+    "resource_id": "653a8f19e736d76276597a6c",
+    "reason": "Just delete again",
+    "metadata": {
+      "resource": "project",
       "project_name": "Test 2"
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
     "requester_name": "jane.doe",
-    "updated_at": "2024-10-14T10:37:32.558Z",
-    "created_at": "2024-10-14T10:37:32.558Z",
-    "type": "close-project",
+    "target_user_ids": [
+      "5ddc8d9fb69602723cd3c38f"
+    ],
+    "target": "system",
     "status": "rejected",
-    "rejection_reason": "I do not like the reason",
     "approver_id": "5ddc8d9fb69602723cd3c38f",
     "approver_name": "jane.doe",
-    "id": "67c5a869afa0846800553a35"
+    "rejection_reason": "I do not like the reason",
+    "created_at": "2024-10-14T10:37:32.558Z",
+    "updated_at": "2024-10-14T10:37:32.558Z"
   },
   {
-    "request": {
-      "reason": "Moving on to other projects",
-      "project_id": "653a8f19e736d76276597a6c",
+    "id": "67c5a87116da9c6c54a76189",
+    "type": "transfer-project",
+    "resource_id": "653a8f19e736d76276597a6c",
+    "reason": "Moving on to other projects",
+    "metadata": {
+      "resource": "project",
       "project_name": "Test 2",
-      "new_admin_id": "40fbb5de7422a04fabd8d22a",
-      "new_admin_name": "paul.doe"
+      "admin_email": "paul.doe@example.com"
     },
     "requester_id": "5ddc8d9fb69602723cd3c38f",
     "requester_name": "jane.doe",
-    "updated_at": "2024-10-14T10:37:32.558Z",
-    "created_at": "2024-10-14T10:37:32.558Z",
-    "type": "transfer-project",
+    "target_user_ids": [
+      "5ddc8d9fb69602723cd3c38f"
+    ],
+    "target": "system",
     "status": "pending",
-    "rejection_reason": null,
     "approver_id": null,
-    "id": "67c5a87116da9c6c54a76189"
+    "approver_name": null,
+    "rejection_reason": null,
+    "created_at": "2024-10-14T10:37:32.558Z",
+    "updated_at": "2024-10-14T10:37:32.558Z"
   },
   {
-    "request": {
+    "id": "67c5a879997577eafcd0646c",
+    "type": "create-project",
+    "resource_id": "40fbb5de7422a04fabd8d22a",
+    "reason": "For a new line of research",
+    "metadata": {
+      "resource": "project",
+      "project_name": null,
       "name": "New Test 5",
-      "ext_id": "new-test-5",
       "description": "A new test project being created to test out requests",
-      "user_emails": ["john.doe@example.com", "david.doe@example.com"],
-      "qpu_seconds": 90000
+      "user_emails": [
+        "john.doe@example.com",
+        "david.doe@example.com"
+      ],
+      "qpu_seconds": 90000,
+      "admin_email": "paul.doe@example.com"
     },
     "requester_id": "40fbb5de7422a04fabd8d22a",
     "requester_name": "paul.doe",
-    "updated_at": "2024-10-13T10:40:32.558Z",
-    "created_at": "2024-10-13T10:40:32.558Z",
-    "type": "create-project",
+    "target_user_ids": [
+      "5ddc8d9fb69602723cd3c38f"
+    ],
+    "target": "system",
     "status": "pending",
-    "rejection_reason": null,
     "approver_id": null,
-    "id": "67c5a879997577eafcd0646c"
+    "approver_name": null,
+    "rejection_reason": null,
+    "created_at": "2024-10-13T10:40:32.558Z",
+    "updated_at": "2024-10-13T10:40:32.558Z"
+  },
+  {
+    "id": "67c5a8813c9a5b1e2f4d6a70",
+    "type": "project-access",
+    "resource_id": "653aabd880cd1f9fab6196d2",
+    "reason": "joining this collaboration",
+    "metadata": {
+      "resource": "project",
+      "project_name": "BTest 3"
+    },
+    "requester_id": "0558648bbf51b16948e818d3",
+    "requester_name": "julie.doe",
+    "target_user_ids": [
+      "858877267fe722a38619fa2e"
+    ],
+    "target": "project",
+    "status": "pending",
+    "approver_id": null,
+    "approver_name": null,
+    "rejection_reason": null,
+    "created_at": "2025-03-05T10:00:00.000Z",
+    "updated_at": "2025-03-05T10:00:00.000Z"
   }
 ]

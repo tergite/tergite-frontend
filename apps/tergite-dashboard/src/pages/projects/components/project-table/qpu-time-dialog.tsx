@@ -16,20 +16,14 @@ import {
 } from "@/components/ui/form";
 import {
   apiBaseUrl,
-  refreshAllRequestsQueries,
-  refreshMyProjectsQpuTimeRequestsQueries,
+  refreshMyRequests,
   requestQpuTimeExtension,
 } from "@/lib/api-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import {
-  Project,
-  QpuTimeExtensionPostBody,
-  QpuTimeExtensionUserRequest,
-  User,
-} from "types";
+import { Project, QpuTimeExtensionPostBody, User, UserRequest } from "types";
 import { z } from "zod";
 import { Duration } from "luxon";
 import { Textarea } from "@/components/ui/textarea";
@@ -85,7 +79,7 @@ function _QpuTimeDialog({
   const pendingRequest = useMemo(
     () =>
       qpuTimeRequests.find(
-        (v) => v.request.project_id === project.id && v.status === "pending"
+        (v) => v.resource_id === project.id && v.status === "pending"
       ),
     [qpuTimeRequests, project]
   );
@@ -107,8 +101,7 @@ function _QpuTimeDialog({
           project_id: project.id,
         };
         const response = await requestQpuTimeExtension(payload);
-        refreshMyProjectsQpuTimeRequestsQueries(queryClient);
-        refreshAllRequestsQueries(queryClient);
+        refreshMyRequests(queryClient);
         return response;
       },
       [project, queryClient]
@@ -131,7 +124,7 @@ function _QpuTimeDialog({
               Request Pending
               <Badge variant="outline" className="ml-2">
                 {Duration.fromObject({
-                  seconds: pendingRequest.request.seconds,
+                  seconds: pendingRequest.metadata.seconds,
                 }).toHuman()}
               </Badge>
             </>
@@ -222,6 +215,6 @@ interface Props {
   project: Project;
   currentUser: User;
   className?: string;
-  qpuTimeRequests: QpuTimeExtensionUserRequest[];
-  onSubmit?: (data: QpuTimeExtensionUserRequest) => Promise<void>;
+  qpuTimeRequests: UserRequest[];
+  onSubmit?: (data: UserRequest) => Promise<void>;
 }

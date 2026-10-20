@@ -17,7 +17,6 @@ import {
   type AppToken,
   type AppTokenUpdateRequest,
   QpuTimeExtensionPostBody,
-  QpuTimeExtensionUserRequest,
   User,
   UserRequestStatus,
   UserRequestType,
@@ -35,14 +34,9 @@ import {
   Notice,
   NoticePostRequest,
   CountResponse,
-  Notification,
-  NotificationPreferences,
-  NotificationType,
-  ChannelPrefs,
-  ProjectAccessPostBody,
-  ProjectAccessUserRequest,
-  QpuSecondsGrantPostBody,
-  QpuSecondsGrantReport,
+  NoticePreferences,
+  NoticeType,
+  UserRequestPostBody,
 } from "../../types";
 import {
   normalizeCalibrationData,
@@ -142,30 +136,30 @@ export function myJobsQuery(
  * the my tokens query for using with react query
  * @param options - extra options for filtering the tokens
  *            - baseUrl - the base URL of the API
- *            - project_ext_id - the external ID of the tokens' project
+ *            - project_id - the ID of the tokens' project
  *            - projectList - List of all available projects
  */
 export function myTokensQuery(options: {
-  project_ext_id?: string;
+  project_id?: string;
   projectList: Project[];
   baseUrl?: string;
 }) {
-  const { project_ext_id, projectList, baseUrl = apiBaseUrl } = options;
-  const queryKey = [baseUrl, "me", "tokens", project_ext_id];
+  const { project_id, projectList, baseUrl = apiBaseUrl } = options;
+  const queryKey = [baseUrl, "me", "tokens", project_id];
 
   return queryOptions({
     queryKey,
     queryFn: async () => {
-      const rawTokens = await getMyTokens({ project_ext_id });
+      const rawTokens = await getMyTokens({ project_id });
       const projectMap: { [k: string]: Project } = Object.fromEntries(
-        projectList.map((v) => [v.ext_id, { ...v }]),
+        projectList.map((v) => [v.id, { ...v }]),
       );
 
       return rawTokens
         .map(
           (v) =>
-            projectMap[v.project_ext_id] &&
-            extendAppToken(v, projectMap[v.project_ext_id]),
+            projectMap[v.project_id] &&
+            extendAppToken(v, projectMap[v.project_id]),
         )
         .filter((v) => !!v);
     },
@@ -195,7 +189,7 @@ export const myActiveProjectsQuery = queryOptions({
 });
 
 /**
- * the react query for getting all user requests
+ * the react query for getting all the user requests awaiting an admin
  * @param options - extra options for filtering the requests
  *            - currentUser - the current user
  *            - baseUrl - the base URL of the API
@@ -217,14 +211,14 @@ export function allUserRequestsQuery(options: {
     limit,
     currentUser,
   } = options;
-  const queryKey = [baseUrl, "admin", "user-requests", status, limit, skip];
+  const queryKey = [baseUrl, "me", "requests", "approver", status, limit, skip];
   // run only for admins
   const enabled = currentUser.roles.includes(UserRole.ADMIN);
 
   return queryOptions({
     queryKey,
     queryFn: async () =>
-      await getUserRequests(baseUrl, { status, limit, skip }),
+      await getMyRequests(baseUrl, { role: "approver", status, limit, skip }),
     refetchInterval,
     enabled,
     throwOnError: true,
@@ -253,7 +247,7 @@ export function allAdminProjectsQuery(options: {
     limit,
     currentUser,
   } = options;
-  const queryKey = [baseUrl, "admin", "user-requests", status, limit, skip];
+  const queryKey = [baseUrl, "admin", "projects", is_active, limit, skip];
   // run only for admins
   const enabled = currentUser.roles.includes(UserRole.ADMIN);
 
@@ -268,7 +262,7 @@ export function allAdminProjectsQuery(options: {
 }
 
 /**
- * the query for getting the qpu time requests for my projects using with react query
+ * the query for getting the current user's qpu time requests for my projects using with react query
  * @param options - extra options for filtering the tokens
  *            - baseUrl - the base URL of the API
  *            - projectList - List of all available projects
@@ -281,12 +275,19 @@ export function myProjectsQpuTimeRequestsQuery(options: {
 }) {
   const { status, projects, baseUrl = apiBaseUrl } = options;
   const projectIds = projects.map((v) => v.id).sort();
-  const queryKey = [baseUrl, "admin", "qpu-time-requests", projectIds, status];
+  const types = [UserRequestType.PROJECT_QPU_SECONDS];
+  const queryKey = [baseUrl, "me", "requests", "requester", status, types];
 
   return queryOptions({
-    queryKey,
-    queryFn: async () =>
-      await getProjectQpuTimeRequests(baseUrl, projectIds, status),
+    queryKey: [...queryKey, projectIds],
+    queryFn: async () => {
+      const data = await getMyRequests(baseUrl, {
+        role: "requester",
+        status,
+        types,
+      });
+      return data.filter((v) => projectIds.includes(v.resource_id));
+    },
     refetchInterval,
     throwOnError: true,
   });
@@ -444,6 +445,7 @@ export function bookingsConfigQuery(
 export function noticesQuery(
   options: {
     baseUrl?: string;
+    types?: NoticeType[];
     user_id?: string;
     min_start_utc?: string;
     max_start_utc?: string;
@@ -457,6 +459,7 @@ export function noticesQuery(
 ) {
   const { baseUrl = apiBaseUrl, ...rest } = options;
   const {
+    types,
     user_id,
     min_start_utc,
     max_start_utc,
@@ -471,6 +474,7 @@ export function noticesQuery(
     baseUrl,
     "admin",
     "notices",
+    types,
     user_id,
     min_start_utc,
     max_start_utc,
@@ -494,6 +498,8 @@ export function noticesQuery(
  * the notice count query
  * @param options - extra options for filtering
  *          - baseUrl - the base URL of the API
+ *          - types: the notice types to count
+ *          - is_read: filter on read state; omit for either
  *          - user_id: The IDs of the users to retrieve notices for
  *          - min_start_utc: The minimum UTC timestamp the notice should start
  *          - max_start_utc: The maximum UTC timestamp the notice should start
@@ -504,6 +510,8 @@ export function noticesQuery(
 export function noticeCountQuery(
   options: {
     baseUrl?: string;
+    types?: NoticeType[];
+    is_read?: boolean;
     user_id?: string;
     min_start_utc?: string;
     max_start_utc?: string;
@@ -514,6 +522,8 @@ export function noticeCountQuery(
 ) {
   const { baseUrl = apiBaseUrl, ...rest } = options;
   const {
+    types,
+    is_read,
     user_id,
     min_start_utc,
     max_start_utc,
@@ -525,6 +535,8 @@ export function noticeCountQuery(
     baseUrl,
     "counts",
     "notices",
+    types,
+    is_read,
     user_id,
     min_start_utc,
     max_start_utc,
@@ -592,44 +604,6 @@ export async function refreshMyProjectsQueries(
   const { baseUrl = apiBaseUrl } = options;
   await queryClient.invalidateQueries({
     queryKey: [baseUrl, "me", "projects"],
-  });
-}
-
-/**
- * Refreshes the queries for the QPU time requests from the API
- *
- * @param queryClient - the query client for making queries
- * @param options - the options including:
- *          - baseUrl - the base URL of the API
- */
-export async function refreshMyProjectsQpuTimeRequestsQueries(
-  queryClient: QueryClient,
-  options: {
-    baseUrl?: string;
-  } = {},
-) {
-  const { baseUrl = apiBaseUrl } = options;
-  await queryClient.invalidateQueries({
-    queryKey: [baseUrl, "admin", "qpu-time-requests"],
-  });
-}
-
-/**
- * Refreshes the queries for the user requests from the API
- *
- * @param queryClient - the query client for making queries
- * @param options - the options including:
- *          - baseUrl - the base URL of the API
- */
-export async function refreshAllRequestsQueries(
-  queryClient: QueryClient,
-  options: {
-    baseUrl?: string;
-  } = {},
-) {
-  const { baseUrl = apiBaseUrl } = options;
-  await queryClient.invalidateQueries({
-    queryKey: [baseUrl, "admin", "user-requests"],
   });
 }
 
@@ -840,11 +814,18 @@ export async function requestQpuTimeExtension(
   options: {
     baseUrl?: string;
   } = {},
-): Promise<QpuTimeExtensionUserRequest> {
+): Promise<UserRequest> {
   const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/admin/qpu-time-requests/`, {
+  const { project_id, seconds, reason } = payload;
+  const body: UserRequestPostBody = {
+    type: UserRequestType.PROJECT_QPU_SECONDS,
+    resource_id: project_id,
+    reason,
+    metadata: { seconds },
+  };
+  return await authenticatedFetch(`${baseUrl}/me/requests/`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
     headers: { "Content-Type": "application/json" },
   });
 }
@@ -992,44 +973,6 @@ export async function createAdminProject(
 }
 
 /**
- * Approves a user request
- *
- * @param id - the unique identifier of the user request
- * @param options - extra options e.g.
- *             - baseUrl - the API base URL; default apiBaseUrl
- */
-export async function approveUserRequest(
-  id: string,
-  options: { baseUrl?: string } = {},
-): Promise<UserRequest> {
-  const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/admin/user-requests/${id}`, {
-    method: "PUT",
-    body: JSON.stringify({ status: UserRequestStatus.APPROVED }),
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Rejects a user request
- *
- * @param id - the unique identifier of the user request
- * @param options - extra options e.g.
- *             - baseUrl - the API base URL; default apiBaseUrl
- */
-export async function rejectUserRequest(
-  id: string,
-  options: { baseUrl?: string } = {},
-): Promise<UserRequest> {
-  const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/admin/user-requests/${id}`, {
-    method: "PUT",
-    body: JSON.stringify({ status: UserRequestStatus.REJECTED }),
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
  * Starts a recalibration cycle
  *
  * @param backend - the name of the backend
@@ -1049,7 +992,7 @@ export async function startRecalibration(
   const { baseUrl = apiBaseUrl, ...rest } = options;
   const query = getQueryString(rest);
   return await authenticatedFetch(
-    `${baseUrl}/admin/recalibration/${backend}/init?${query}`,
+    `${baseUrl}/admin/bcc/recalibration/${backend}/init?${query}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1071,7 +1014,7 @@ export async function getRecalibrationInfo(
   const { baseUrl = apiBaseUrl, ...rest } = options;
   const query = getQueryString(rest);
   return await authenticatedFetch(
-    `${baseUrl}/admin/recalibration/${backend}/info?${query}`,
+    `${baseUrl}/admin/bcc/recalibration/${backend}/info?${query}`,
     {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -1094,7 +1037,7 @@ export async function stopRecalibration(
   const { baseUrl = apiBaseUrl, ...rest } = options;
   const query = getQueryString(rest);
   return await authenticatedFetch(
-    `${baseUrl}/admin/recalibration/${backend}/cancel?${query}`,
+    `${baseUrl}/admin/bcc/recalibration/${backend}/cancel?${query}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1113,7 +1056,7 @@ export async function switchBackendOn(
   options: { baseUrl?: string } = {},
 ): Promise<GeneralMessage> {
   const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/admin/switch/${backend}/on`, {
+  return await authenticatedFetch(`${baseUrl}/admin/bcc/switch/${backend}/on`, {
     method: "POST",
   });
 }
@@ -1129,7 +1072,7 @@ export async function switchBackendOff(
   options: { baseUrl?: string } = {},
 ): Promise<GeneralMessage> {
   const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/admin/switch/${backend}/off`, {
+  return await authenticatedFetch(`${baseUrl}/admin/bcc/switch/${backend}/off`, {
     method: "POST",
     body: JSON.stringify({ is_online: false }),
     headers: { "Content-Type": "application/json" },
@@ -1141,6 +1084,7 @@ export async function switchBackendOff(
  *
  * @param options - extra options e.g.
  *          - baseUrl: The base URL of the API
+ *          - types: the notice types to retrieve
  *          - user_id: The IDs of the users to retrieve notices for
  *          - min_start_utc: The minimum UTC timestamp the notice should start
  *          - max_start_utc: The maximum UTC timestamp the notice should start
@@ -1154,6 +1098,7 @@ export async function switchBackendOff(
 export async function getNotices(
   baseUrl: string = apiBaseUrl,
   options: {
+    types?: NoticeType[];
     user_id?: string;
     min_start_utc?: string;
     max_start_utc?: string;
@@ -1165,7 +1110,8 @@ export async function getNotices(
     sort?: string[];
   } = {},
 ): Promise<Notice[]> {
-  const queryString = getQueryString(options);
+  const { types, ...rest } = options;
+  const queryString = getQueryString({ ...rest, type: types });
   const { data } = await authenticatedFetch<PaginatedData<Notice[]>>(
     `${baseUrl}/admin/notices?${queryString}`,
   );
@@ -1177,6 +1123,8 @@ export async function getNotices(
  *
  * @param options - extra options e.g.
  *          - baseUrl: The base URL of the API
+ *          - types: the notice types to count
+ *          - is_read: filter on read state; omit for either
  *          - user_id: The IDs of the users to retrieve notices for
  *          - min_start_utc: The minimum UTC timestamp the notice should start
  *          - max_start_utc: The maximum UTC timestamp the notice should start
@@ -1187,6 +1135,8 @@ export async function getNotices(
 export async function getNoticeCount(
   baseUrl: string = apiBaseUrl,
   options: {
+    types?: NoticeType[];
+    is_read?: boolean;
     user_id?: string;
     min_start_utc?: string;
     max_start_utc?: string;
@@ -1195,7 +1145,8 @@ export async function getNoticeCount(
     include_dismissed?: boolean;
   } = {},
 ): Promise<number> {
-  const queryString = getQueryString(options);
+  const { types, ...rest } = options;
+  const queryString = getQueryString({ ...rest, type: types });
   const { count } = await authenticatedFetch<CountResponse>(
     `${baseUrl}/counts/notices?${queryString}`,
   );
@@ -1207,11 +1158,12 @@ export async function getNoticeCount(
  *
  * @param payload - the notice fields
  * @param options - extra options e.g. baseUrl
+ * @returns one notice per targeted user, or the one notice for all users
  */
 export async function createNotice(
   payload: NoticePostRequest,
   options: { baseUrl?: string } = {},
-): Promise<Notice> {
+): Promise<Notice[]> {
   const { baseUrl = apiBaseUrl } = options;
   return await authenticatedFetch(`${baseUrl}/admin/notices/`, {
     method: "POST",
@@ -1241,7 +1193,7 @@ export async function deleteNotice(
 }
 
 /**
- * Dismisses a notice for the current user
+ * Marks one of the current user's notices read
  *
  * @param id - the notice ID
  * @param options - extra options e.g. baseUrl
@@ -1251,9 +1203,22 @@ export async function dismissNotice(
   options: { baseUrl?: string } = {},
 ): Promise<GeneralMessage> {
   const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/admin/notices/${id}/dismiss`, {
+  return await authenticatedFetch(`${baseUrl}/me/notices/${id}/dismiss`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/**
+ * Marks every one of the current user's notices read
+ *
+ * @param options - extra options e.g. baseUrl
+ */
+export async function dismissAllMyNotices(
+  options: { baseUrl?: string } = {},
+): Promise<GeneralMessage> {
+  const { baseUrl = apiBaseUrl } = options;
+  return await authenticatedFetch(`${baseUrl}/me/notices/dismiss`, {
+    method: "POST",
   });
 }
 
@@ -1304,7 +1269,7 @@ async function getBookingsConfig(
  * @param baseUrl - the API base URL
  */
 async function getCurrentUser(baseUrl: string = apiBaseUrl): Promise<User> {
-  return await authenticatedFetch(`${baseUrl}/me`);
+  return await authenticatedFetch(`${baseUrl}/me/profile`);
 }
 
 /**
@@ -1365,14 +1330,14 @@ async function getMyJobs(
 /**
  * Retrieves the app tokens for the current user on the system
  * @param options - extra options for querying the app tokens
- *      e.g. - project external id
+ *      e.g. - project id
  *           - baseUrl - the API base URL; default apiBaseUrl
  */
 async function getMyTokens(
-  options: { project_ext_id?: string; baseUrl?: string } = {},
+  options: { project_id?: string; baseUrl?: string } = {},
 ): Promise<AppToken[]> {
-  const { project_ext_id, baseUrl = apiBaseUrl } = options;
-  const query = getQueryString({ project_ext_id });
+  const { project_id, baseUrl = apiBaseUrl } = options;
+  const query = getQueryString({ project_id });
   const { data } = await authenticatedFetch<PaginatedData<AppToken[]>>(
     `${baseUrl}/me/tokens/?${query}`,
   );
@@ -1392,48 +1357,6 @@ async function getMyProjects(
   const { data } = await authenticatedFetch<PaginatedData<Project[]>>(
     `${baseUrl}/me/projects/?${queryString}`,
   );
-  return data;
-}
-
-/**
- * Retrieves the QPU time user requests for given project ID's
- * @param baseUrl - the API base URL
- * @param [projectIds=[]] - the ids of the projects whose requests are to be returned
- */
-async function getProjectQpuTimeRequests(
-  baseUrl: string = apiBaseUrl,
-  projectIds: string[] = [],
-  status?: UserRequestStatus,
-): Promise<QpuTimeExtensionUserRequest[]> {
-  const queryString = getQueryString({ status, projectIds });
-  const { data } = await authenticatedFetch<
-    PaginatedData<QpuTimeExtensionUserRequest[]>
-  >(`${baseUrl}/admin/qpu-time-requests/?${queryString}`);
-
-  return data;
-}
-
-/**
- * Retrieves the QPU time user requests
- * @param baseUrl - the API base URL
- * @param options - extra options for filtering the requests
- *            - status - the status of the requests
- *            - skip - the number of records to skip
- *            - limit - the maximum number of records to return
- */
-async function getUserRequests(
-  baseUrl: string = apiBaseUrl,
-  options: {
-    status?: UserRequestStatus;
-    skip?: number;
-    limit?: number;
-  },
-): Promise<UserRequest[]> {
-  const queryString = getQueryString(options);
-  const { data } = await authenticatedFetch<PaginatedData<UserRequest[]>>(
-    `${baseUrl}/admin/user-requests/?${queryString}`,
-  );
-
   return data;
 }
 
@@ -1522,19 +1445,19 @@ async function getBookingsOfBackend(
 
 
 /**
- * the query for the current user's notifications
+ * the query for the current user's notices, newest first
  *
  * @param options - extra options for filtering
  *          - baseUrl - the base URL of the API
- *          - types - the notification types to include
+ *          - types - the notice types to include
  *          - is_read - filter on read state; omit for either
  *          - skip - the number of records to skip
  *          - limit - the maximum number of records to return
  */
-export function myNotificationsQuery(
+export function myNoticesQuery(
   options: {
     baseUrl?: string;
-    types?: NotificationType[];
+    types?: NoticeType[];
     is_read?: boolean;
     skip?: number;
     limit?: number;
@@ -1543,8 +1466,8 @@ export function myNotificationsQuery(
   const { baseUrl = apiBaseUrl, ...rest } = options;
   const { types, is_read, skip, limit } = rest;
   return queryOptions({
-    queryKey: [baseUrl, "me", "notifications", types, is_read, skip, limit],
-    queryFn: async () => await getMyNotifications(baseUrl, rest),
+    queryKey: [baseUrl, "me", "notices", types, is_read, skip, limit],
+    queryFn: async () => await getMyNotices(baseUrl, rest),
     // no polling: the count badge below is what needs to stay fresh, and the list
     // refetches when the panel opens and after any reaction
     throwOnError: true,
@@ -1553,41 +1476,15 @@ export function myNotificationsQuery(
 }
 
 /**
- * the query for the number of the current user's notifications
- *
- * @param options - extra options for filtering
- *          - baseUrl - the base URL of the API
- *          - types - the notification types to include
- *          - is_read - filter on read state; omit for either
- */
-export function notificationCountQuery(
-  options: {
-    baseUrl?: string;
-    types?: NotificationType[];
-    is_read?: boolean;
-  } = {},
-) {
-  const { baseUrl = apiBaseUrl, ...rest } = options;
-  return queryOptions({
-    queryKey: [baseUrl, "counts", "notifications", rest.types, rest.is_read],
-    queryFn: async () => await getNotificationCount(baseUrl, rest),
-    refetchInterval,
-    throwOnError: true,
-  });
-}
-
-/**
- * the query for the current user's notification delivery preferences
+ * the query for which notice types the current user also gets by email
  *
  * @param options - extra options e.g. baseUrl
  */
-export function notificationPreferencesQuery(
-  options: { baseUrl?: string } = {},
-) {
+export function noticePreferencesQuery(options: { baseUrl?: string } = {}) {
   const { baseUrl = apiBaseUrl } = options;
   return queryOptions({
-    queryKey: [baseUrl, "me", "notification-preferences"],
-    queryFn: async () => await getNotificationPreferences(baseUrl),
+    queryKey: [baseUrl, "me", "notices", "preferences"],
+    queryFn: async () => await getNoticePreferences(baseUrl),
     throwOnError: true,
   });
 }
@@ -1620,22 +1517,18 @@ export function myRequestsQuery(
 }
 
 /**
- * Refreshes the queries for the current user's notifications and their count
+ * Refreshes the queries for the current user's notices and all notice counts
  *
  * @param queryClient - the query client for making queries
  * @param options - the options including baseUrl
  */
-export async function refreshMyNotifications(
+export async function refreshMyNotices(
   queryClient: QueryClient,
   options: { baseUrl?: string } = {},
 ) {
   const { baseUrl = apiBaseUrl } = options;
-  await queryClient.invalidateQueries({
-    queryKey: [baseUrl, "me", "notifications"],
-  });
-  await queryClient.invalidateQueries({
-    queryKey: [baseUrl, "counts", "notifications"],
-  });
+  await queryClient.invalidateQueries({ queryKey: [baseUrl, "me", "notices"] });
+  await refreshAllNoticeCounts(queryClient, { baseUrl });
 }
 
 /**
@@ -1653,19 +1546,24 @@ export async function refreshMyRequests(
 }
 
 /**
- * Requests access to an existing shared project, by its external ID
+ * Requests access to an existing shared project, by its ID
  *
- * @param payload - the project external ID and the reason for asking
+ * @param payload - the project ID and the reason for asking
  * @param options - extra options e.g. baseUrl
  */
 export async function requestProjectAccess(
-  payload: Omit<ProjectAccessPostBody, "type">,
+  payload: { project_id: string; reason: string },
   options: { baseUrl?: string } = {},
-): Promise<ProjectAccessUserRequest> {
+): Promise<UserRequest> {
   const { baseUrl = apiBaseUrl } = options;
+  const body: UserRequestPostBody = {
+    type: UserRequestType.PROJECT_ACCESS,
+    resource_id: payload.project_id,
+    reason: payload.reason,
+  };
   return await authenticatedFetch(`${baseUrl}/me/requests/`, {
     method: "POST",
-    body: JSON.stringify({ ...payload, type: UserRequestType.PROJECT_ACCESS }),
+    body: JSON.stringify(body),
     headers: { "Content-Type": "application/json" },
   });
 }
@@ -1710,51 +1608,17 @@ export async function rejectMyRequest(
 }
 
 /**
- * Marks one of the current user's notifications read or unread
+ * Updates whether the named notice types are also emailed, leaving the rest untouched
  *
- * @param args - the notification id and the wanted read state
+ * @param payload - the types to change and whether to email them
  * @param options - extra options e.g. baseUrl
  */
-export async function setNotificationRead(
-  args: { id: string; isRead: boolean },
+export async function updateNoticePreferences(
+  payload: Partial<NoticePreferences>,
   options: { baseUrl?: string } = {},
-): Promise<Notification> {
+): Promise<NoticePreferences> {
   const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/me/notifications/${args.id}`, {
-    method: "PUT",
-    body: JSON.stringify({ is_read: args.isRead }),
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Marks every one of the current user's notifications read
- *
- * @param options - extra options e.g. baseUrl
- */
-export async function markAllNotificationsRead(
-  options: { baseUrl?: string } = {},
-): Promise<GeneralMessage> {
-  const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/me/notifications/`, {
-    method: "PUT",
-    body: JSON.stringify({ is_read: true }),
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-/**
- * Updates the named notification delivery preferences, leaving the rest untouched
- *
- * @param payload - the types to change and their wanted preferences
- * @param options - extra options e.g. baseUrl
- */
-export async function updateNotificationPreferences(
-  payload: Partial<Record<NotificationType, ChannelPrefs>>,
-  options: { baseUrl?: string } = {},
-): Promise<NotificationPreferences> {
-  const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/me/notification-preferences/`, {
+  return await authenticatedFetch(`${baseUrl}/me/notices/preferences/`, {
     method: "PUT",
     body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json" },
@@ -1777,29 +1641,6 @@ export async function removeProjectMember(
     { method: "DELETE" },
     { isJsonOutput: false },
   );
-}
-
-/**
- * Grants QPU seconds to many personal projects at once
- *
- * @param payload - how many seconds, to whom, and why
- * @param idempotencyKey - makes a retried grant a no-op rather than a second grant
- * @param options - extra options e.g. baseUrl
- */
-export async function grantQpuSeconds(
-  payload: QpuSecondsGrantPostBody,
-  idempotencyKey: string,
-  options: { baseUrl?: string } = {},
-): Promise<QpuSecondsGrantReport> {
-  const { baseUrl = apiBaseUrl } = options;
-  return await authenticatedFetch(`${baseUrl}/admin/qpu-seconds-grants/`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-    headers: {
-      "Content-Type": "application/json",
-      "Idempotency-Key": idempotencyKey,
-    },
-  });
 }
 
 /**
@@ -1834,58 +1675,41 @@ async function getUserEmails(
   search?: string,
 ): Promise<string[]> {
   const query = search ? `?search=${encodeURIComponent(search)}` : "";
-  return await authenticatedFetch(`${baseUrl}/admin/user-emails/${query}`, {
+  return await authenticatedFetch(`${baseUrl}/admin/users/emails/${query}`, {
     method: "GET",
   });
 }
 
 /**
- * Retrieves the current user's notifications
+ * Retrieves the current user's notices, newest first
  * @param baseUrl - the API base URL
  * @param options - extra options for filtering
  */
-async function getMyNotifications(
+async function getMyNotices(
   baseUrl: string = apiBaseUrl,
   options: {
-    types?: NotificationType[];
+    types?: NoticeType[];
     is_read?: boolean;
     skip?: number;
     limit?: number;
   } = {},
-): Promise<Notification[]> {
+): Promise<Notice[]> {
   const { types, ...rest } = options;
   const queryString = getQueryString({ ...rest, type: types });
-  const { data } = await authenticatedFetch<PaginatedData<Notification[]>>(
-    `${baseUrl}/me/notifications/?${queryString}`,
+  const { data } = await authenticatedFetch<PaginatedData<Notice[]>>(
+    `${baseUrl}/me/notices/?${queryString}`,
   );
   return data;
 }
 
 /**
- * Retrieves the number of the current user's notifications
- * @param baseUrl - the API base URL
- * @param options - extra options for filtering
- */
-async function getNotificationCount(
-  baseUrl: string = apiBaseUrl,
-  options: { types?: NotificationType[]; is_read?: boolean } = {},
-): Promise<number> {
-  const { types, ...rest } = options;
-  const queryString = getQueryString({ ...rest, type: types });
-  const { count } = await authenticatedFetch<CountResponse>(
-    `${baseUrl}/counts/notifications?${queryString}`,
-  );
-  return count;
-}
-
-/**
- * Retrieves the current user's notification delivery preferences
+ * Retrieves which notice types the current user also gets by email
  * @param baseUrl - the API base URL
  */
-async function getNotificationPreferences(
+async function getNoticePreferences(
   baseUrl: string = apiBaseUrl,
-): Promise<NotificationPreferences> {
-  return await authenticatedFetch(`${baseUrl}/me/notification-preferences/`);
+): Promise<NoticePreferences> {
+  return await authenticatedFetch(`${baseUrl}/me/notices/preferences/`);
 }
 
 /**
@@ -1899,6 +1723,8 @@ async function getMyRequests(
     role?: "requester" | "approver";
     status?: UserRequestStatus;
     types?: UserRequestType[];
+    skip?: number;
+    limit?: number;
   } = {},
 ): Promise<UserRequest[]> {
   const { types, ...rest } = options;

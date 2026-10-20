@@ -1,7 +1,7 @@
 import { DataTable } from "@/components/ui/data-table";
 
 import {
-  type QpuTimeExtensionUserRequest,
+  type UserRequest,
   type User,
   type Project,
 } from "types";
@@ -41,7 +41,7 @@ export function ProjectsTable({
 interface Props {
   data: Project[];
   currentUser: User;
-  qpuTimeRequests: QpuTimeExtensionUserRequest[];
+  qpuTimeRequests: UserRequest[];
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   rowSelection?: RowSelectionState;
   onRowClick: (row: Row<Project>) => void;

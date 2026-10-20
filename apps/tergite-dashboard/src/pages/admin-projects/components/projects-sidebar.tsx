@@ -152,8 +152,8 @@ function AdminProjectSummary({
                   )}
                 />
 
-                <DetailItem label="External ID" className="flex-col">
-                  {project.ext_id}
+                <DetailItem label="ID" className="flex-col">
+                  {project.id}
                 </DetailItem>
 
                 <FormField

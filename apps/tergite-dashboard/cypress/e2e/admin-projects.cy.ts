@@ -48,11 +48,11 @@ users.forEach((user) => {
       cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`).as(
         "my-project-list"
       );
-      cy.intercept("GET", `${apiBaseUrl}/me`).as("my-user-info");
-      cy.intercept("GET", `${apiBaseUrl}/admin/user-emails/*`).as(
+      cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
+      cy.intercept("GET", `${apiBaseUrl}/admin/users/emails/*`).as(
         "user-emails"
       );
-      cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
+      cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("notices");
       cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
       cy.intercept("GET", `${apiBaseUrl}/admin/projects/*`).as("projects-list");
       cy.intercept("POST", `${apiBaseUrl}/admin/projects/`).as(
@@ -323,8 +323,8 @@ users.forEach((user) => {
                 cy.get("input").should("have.value", project.name);
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id).should("be.visible");
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                cy.contains(project.id).should("be.visible");
               });
 
               cy.contains("#project-summary div", /description/i).within(() => {
@@ -458,8 +458,8 @@ users.forEach((user) => {
                 updates.name && cy.get("input").clear().type(updates.name);
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id).should("be.visible");
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                cy.contains(project.id).should("be.visible");
               });
 
               cy.contains("#project-summary div", /description/i).within(() => {
@@ -523,8 +523,8 @@ users.forEach((user) => {
                 cy.get("input").should("have.value", expected.name);
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id).should("be.visible");
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                cy.contains(project.id).should("be.visible");
               });
 
               cy.contains("#project-summary div", /description/i).within(() => {
@@ -622,7 +622,6 @@ users.forEach((user) => {
         const now = new Date();
         const defaultValues: ProjectFormData = {
           name: `${now.toLocaleDateString()} project`,
-          ext_id: `project-${now.getTime()}`,
           description: `Project created on ${now.toLocaleDateString()}`,
           is_active: true,
           qpu_seconds: 0,
@@ -634,7 +633,6 @@ users.forEach((user) => {
           {
             admin_email: "david.doe@example.com",
             user_emails: undefined,
-            ext_id: undefined,
             is_active: true,
             name: "fooo bar",
             description: "fancy description",
@@ -643,7 +641,6 @@ users.forEach((user) => {
           {
             admin_email: "david.doe@example.com",
             user_emails: ["tom.doe@example.com", "jane.doe@example.com"],
-            ext_id: "ebyaheru",
             is_active: true,
             name: "fenecansi owenyini",
             description: "Musa yateeza amajju",
@@ -652,7 +649,6 @@ users.forEach((user) => {
           {
             admin_email: "john.doe@example.com",
             user_emails: ["paul.doe@example.com"],
-            ext_id: "default project",
             is_active: true,
             name: undefined,
             description: "Bulyomu akajunwa hwabwembazi za Ruhanga",
@@ -661,7 +657,6 @@ users.forEach((user) => {
           {
             admin_email: "new.user@xample.com",
             user_emails: [],
-            ext_id: "some-other-ext-id-5",
             is_active: true,
             name: "Mukama ahaisibwe",
             description: undefined,
@@ -715,10 +710,6 @@ users.forEach((user) => {
 
               cy.contains("#create-project div", /name/i).within(() => {
                 project.name && cy.get("input").clear().type(project.name);
-              });
-
-              cy.contains("#create-project div", /external id/i).within(() => {
-                project.ext_id && cy.get("input").clear().type(project.ext_id);
               });
 
               cy.contains("#create-project div", /description/i).within(() => {
@@ -835,8 +826,9 @@ users.forEach((user) => {
                   );
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id ?? /project-\d+/i).should(
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                // the id is given by the API, so only that there is one is known
+                cy.contains(/\w+/).should(
                   "be.visible"
                 );
               });
@@ -994,8 +986,8 @@ users.forEach((user) => {
                 cy.get("input").should("have.value", project.name);
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id).should("be.visible");
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                cy.contains(project.id).should("be.visible");
               });
 
               cy.contains("#project-summary div", /description/i).within(() => {

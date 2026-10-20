@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, type Request as ExpressRequest } from "express";
+import { type ParsedQs } from "qs";
 import cors from "cors";
 import {
   archiveDb,
@@ -16,6 +17,7 @@ import {
   use,
   randomUUID,
   getUserNoticesFilter,
+  getReadStatusUpdate,
   getSeverityNumber,
 } from "../utils";
 import {
@@ -29,9 +31,9 @@ import {
   AppToken,
   AppTokenCreationResponse,
   PaginatedData,
-  QpuTimeExtensionUserRequest,
   UserRequest,
   UserRequestType,
+  UserRequestPostBody,
   UserRequestStatus,
   UserRole,
   AdminProject,
@@ -46,16 +48,11 @@ import {
   GeneralMessage,
   CountResponse,
   DbRecord,
-  Notification,
-  NotificationType,
-  NotificationPreferences,
-  ChannelPrefs,
-  ApproverScope,
+  NoticePostRequest,
+  NoticePreferences,
+  NoticeRefType,
+  NoticeType,
   NoticeSeverity,
-  GrantTarget,
-  QpuSecondsGrantPostBody,
-  QpuSecondsGrantReport,
-  SkippedTarget,
 } from "../../types";
 import { DateTime } from "luxon";
 
@@ -78,12 +75,6 @@ const _initialRecalibrationInfo: RecalibrationInfo = {
   next_job_status: RqJobStatus.SCHEDULED,
 };
 const recalibrationInfoDb: { [key: string]: RecalibrationInfo } = {};
-// the types MSS's channel policy does not mark in_app_mandatory: informational alerts
-// that await no action from the reader
-const IN_APP_SILENCEABLE_TYPES = new Set<NotificationType>([
-  NotificationType.QPU_SECONDS_LOW,
-  NotificationType.QPU_SECONDS_DEPLETED,
-]);
 
 router.use(
   cors({
@@ -98,7 +89,7 @@ router.options("*", (req, res, next) => {
 });
 
 router.get(
-  "/me",
+  "/me/profile",
   use(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
@@ -201,7 +192,7 @@ router.post(
     const project = mockDb.getOne<Project>(
       "projects",
       (v) =>
-        v.ext_id == (payload as AppToken).project_ext_id &&
+        v.id === (payload as AppToken).project_id &&
         v.user_ids.includes(user_id),
     );
     if (!project) {
@@ -228,9 +219,9 @@ router.get(
       return respond401(res);
     }
 
-    const { project_ext_id } = req.query as { [k: string]: string };
+    const { project_id } = req.query as { [k: string]: string };
     const data = mockDb.getMany<AppToken>("tokens", (v) =>
-      conformsToFilter(v, { user_id: currentUserId, project_ext_id }),
+      conformsToFilter(v, { user_id: currentUserId, project_id }),
     );
 
     res.json({ skip: 0, limit: null, data } as PaginatedData<AppToken[]>);
@@ -409,169 +400,6 @@ router.post(
     }
 
     res.json({ message: "logged out" });
-  }),
-);
-
-router.get(
-  "/admin/qpu-time-requests/",
-  use(async (req, res) => {
-    const user_id = await getAuthenticatedUserId(req.cookies);
-    if (!user_id) {
-      return respond401(res);
-    }
-
-    const { status, project_id: projectIds } = req.query;
-
-    const data = mockDb.getMany<QpuTimeExtensionUserRequest>(
-      "user_requests",
-      (v) => {
-        return (
-          (status === undefined || v.status === status) &&
-          (projectIds === undefined ||
-            projectIds === v.request.project_id ||
-            // @ts-ignore
-            projectIds.includes(v.request.project_id))
-        );
-      },
-    );
-    res.json({ skip: 0, limit: null, data } as PaginatedData<
-      QpuTimeExtensionUserRequest[]
-    >);
-  }),
-);
-
-router.post(
-  "/admin/qpu-time-requests/",
-  use(async (req, res) => {
-    const requester_id = await getAuthenticatedUserId(req.cookies);
-    if (!requester_id) {
-      return respond401(res);
-    }
-
-    const project = mockDb.getOne<Project>(
-      "projects",
-      (v) => v.id === req.body.project_id,
-    );
-    const requester = mockDb.getOne<User>(
-      "users",
-      (v) => v.id === requester_id,
-    );
-    if (!project || !requester) {
-      res.status(404).json({ detail: `Not Found` });
-      return;
-    }
-
-    if (!project.user_ids.includes(requester_id)) {
-      res.status(403).json({ detail: `Forbidden` });
-      return;
-    }
-
-    const currentTimestamp = new Date().toISOString();
-    const userRequest: QpuTimeExtensionUserRequest = {
-      request: { ...req.body, project_name: project.name },
-      requester_id,
-      requester_name: getUsername(requester),
-      updated_at: currentTimestamp,
-      created_at: currentTimestamp,
-      type: UserRequestType.PROJECT_QPU_SECONDS,
-      status: UserRequestStatus.PENDING,
-      id: randomUUID(),
-    };
-
-    mockDb.create<QpuTimeExtensionUserRequest>("user_requests", userRequest);
-    res.status(201);
-    res.json(userRequest);
-  }),
-);
-
-router.get(
-  "/admin/user-requests/",
-  use(async (req, res) => {
-    const userId = await getAuthenticatedUserId(req.cookies);
-    if (!userId) {
-      return respond401(res);
-    }
-
-    // Only admins are permitted here
-    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
-      res.status(403).json({ detail: `Forbidden` });
-      return;
-    }
-
-    const { status, skip: skipAsString, limit: limitAsString } = req.query;
-    const skip = skipAsString ? parseInt(skipAsString as string) : undefined;
-    const limit = limitAsString ? parseInt(limitAsString as string) : undefined;
-
-    const data = mockDb.getMany<UserRequest>(
-      "user_requests",
-      (v) => status === undefined || v.status === status,
-      skip,
-      limit,
-    );
-
-    res.json({ skip, limit, data } as PaginatedData<UserRequest[]>);
-  }),
-);
-
-router.put(
-  "/admin/user-requests/:id",
-  use(async (req, res) => {
-    const userId = await getAuthenticatedUserId(req.cookies);
-    if (!userId) {
-      return respond401(res);
-    }
-
-    const approver = mockDb.getOne<User>("users", (v) => v.id === userId);
-    // Only admins are permitted here
-    if (!approver || !approver.roles.includes(UserRole.ADMIN)) {
-      res.status(403).json({ detail: `Forbidden` });
-      return;
-    }
-
-    const userReqId = req.params.id;
-    const body = req.body as Partial<UserRequest>;
-
-    const newUpdate = { ...body, updated_at: new Date().toISOString() };
-    // only update approver details when status is being updated
-    if (body.status !== undefined) {
-      newUpdate.approver_name = getUsername(approver);
-      newUpdate.approver_id = userId;
-    }
-    const userRequest = mockDb.update<UserRequest>(
-      "user_requests",
-      (v) => v.id === userReqId,
-      newUpdate,
-    );
-    if (!userRequest) {
-      res.status(404).json({ detail: `Not Found` });
-      return;
-    }
-
-    if (body.status === UserRequestStatus.APPROVED) {
-      // update qpu seconds if it is a QpuTimeExtensionUserRequest
-      if (userRequest.type === UserRequestType.PROJECT_QPU_SECONDS) {
-        const record = userRequest as QpuTimeExtensionUserRequest;
-        const original = mockDb.getOne<Project>(
-          "projects",
-          (v) => v.id === record.request.project_id,
-        );
-        if (!original) {
-          res.status(404).json({ detail: `Project not found` });
-          return;
-        }
-
-        const qpu_seconds = original.qpu_seconds + record.request.seconds;
-        mockDb.update<Project>(
-          "projects",
-          (v) => v.id === record.request.project_id,
-          { qpu_seconds },
-        );
-      }
-
-      // TODO: add more branches for other user request types
-    }
-
-    res.json(userRequest);
   }),
 );
 
@@ -775,7 +603,7 @@ router.delete(
 );
 
 router.get(
-  "/admin/bcc-users/:backend/",
+  "/admin/bcc/users/:backend",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -810,7 +638,7 @@ router.get(
 );
 
 router.post(
-  "/admin/bcc-users/:backend",
+  "/admin/bcc/users/:backend",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -845,7 +673,7 @@ router.post(
 );
 
 router.delete(
-  "/admin/bcc-users/:backend/:id",
+  "/admin/bcc/users/:backend/:id",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -1048,7 +876,7 @@ router.get(
 );
 
 router.post(
-  "/admin/recalibration/:backend/init",
+  "/admin/bcc/recalibration/:backend/init",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -1085,7 +913,7 @@ router.post(
 );
 
 router.get(
-  "/admin/recalibration/:backend/info",
+  "/admin/bcc/recalibration/:backend/info",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -1110,7 +938,7 @@ router.get(
 );
 
 router.post(
-  "/admin/recalibration/:backend/cancel",
+  "/admin/bcc/recalibration/:backend/cancel",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -1133,7 +961,7 @@ router.post(
 );
 
 router.post(
-  "/admin/switch/:backend/on",
+  "/admin/bcc/switch/:backend/on",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -1162,7 +990,7 @@ router.post(
 );
 
 router.post(
-  "/admin/switch/:backend/off",
+  "/admin/bcc/switch/:backend/off",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -1205,51 +1033,43 @@ router.post(
       return;
     }
 
-    const payload = { ...req.body, created_by: userId, dismissed_by: [] };
-    let target_user_ids = null;
-    const user_emails = payload.target_user_emails;
+    const { message, severity, starts_at, expires_at, target_user_emails } =
+      req.body as NoticePostRequest;
+    const fields = {
+      title: message,
+      body: message,
+      severity,
+      severity_number: getSeverityNumber(severity),
+      created_by: userId,
+      ref_type: null,
+      ref_id: null,
+      read_at: null,
+      dismissed_by: [],
+      starts_at,
+      expires_at,
+    };
 
-    if (user_emails) {
-      const users = mockDb.getMany<User>("users", (user) =>
-        user_emails.includes(user.email),
-      );
-      target_user_ids = users.map((v) => v.id);
-    }
-
-    payload["target_user_ids"] = target_user_ids;
-    payload["id"] = randomUUID();
-    payload["severity_number"] = getSeverityNumber(payload.severity);
-
-    mockDb.create<Notice>("notices", payload);
-    res.status(201);
-    res.json(payload as Notice);
-  }),
-);
-
-router.post(
-  "/admin/notices/:id/dismiss",
-  use(async (req, res) => {
-    const userId = await getAuthenticatedUserId(req.cookies);
-    if (!userId) {
-      return respond401(res);
-    }
-
-    const { id } = req.params;
-
-    const notice = mockDb.getOne<Notice>("notices", (v) =>
-      conformsToFilter(v, { id }),
-    );
-    if (!notice) {
-      res.status(404).json({ detail: `NotFound` });
-      return;
-    }
-
-    mockDb.update<Notice>("notices", (v) => v.id === id, {
-      dismissed_by: [...notice.dismissed_by, userId],
-    });
+    // one notice per targeted user, like the API, or one for everyone
+    const data = target_user_emails
+      ? mockDb
+          .getMany<User>("users", (v) => target_user_emails.includes(v.email))
+          .map((user) =>
+            mockDb.create<Notice>("notices", {
+              ...fields,
+              type: NoticeType.CUSTOM,
+              user_id: user.id,
+            }),
+          )
+      : [
+          mockDb.create<Notice>("notices", {
+            ...fields,
+            type: NoticeType.CUSTOM_BROADCAST,
+            user_id: null,
+          }),
+        ];
 
     res.status(200);
-    res.json({ status: "success" } as GeneralMessage);
+    res.json(data);
   }),
 );
 
@@ -1259,6 +1079,11 @@ router.get(
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
+    }
+
+    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
+      res.status(403).json({ detail: `Forbidden` });
+      return;
     }
 
     const {
@@ -1272,16 +1097,10 @@ router.get(
       ? parseInt(limitAsString as string, 10)
       : undefined;
     const sort = sortQuery
-      ? Array.isArray(sortQuery)
-        ? (sortQuery as string[])
-        : [sortQuery as string]
-      : undefined;
+      ? ([] as string[]).concat(sortQuery as string | string[])
+      : ["starts_at"];
 
-    const isAdmin = hasAnyOfRoles(userId, [UserRole.ADMIN]);
-    // ensure that ordinary users only query their own notices
-    const noticesUserId = isAdmin ? (user_id as string | undefined) : userId;
-
-    const filterFunc = getUserNoticesFilter(req, noticesUserId);
+    const filterFunc = getUserNoticesFilter(req, user_id as string | undefined);
     const data = mockDb.getMany<Notice>(
       "notices",
       filterFunc,
@@ -1291,8 +1110,7 @@ router.get(
     );
 
     res.status(200);
-    res.json({ skip, limit, data } as PaginatedData<Notice[]>);
-    // prettier-ignore
+    res.json({ skip, limit: limit ?? null, data } as PaginatedData<Notice[]>);
   }),
 );
 
@@ -1310,10 +1128,16 @@ router.delete(
       return;
     }
 
-    mockDb.del("notices", req.params.id);
+    const { id } = req.params;
+    const notice = mockDb.getOne<Notice>("notices", (v) => v.id === id);
+    if (!notice) {
+      res.status(404).json({ detail: `notice of ID '${id}' not found` });
+      return;
+    }
 
+    mockDb.del("notices", id);
     res.status(200);
-    res.json({ status: "success" } as GeneralMessage);
+    res.json(notice);
   }),
 );
 
@@ -1340,31 +1164,22 @@ router.get(
 );
 
 router.get(
-  "/me/notifications/",
+  "/me/notices/",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
     }
 
-    const {
-      type,
-      is_read,
-      skip = "0",
-      limit,
-    } = req.query as ParsedQs & {
-      type?: string | string[];
-      is_read?: string;
+    const { skip = "0", limit } = req.query as ParsedQs & {
       skip?: string;
       limit?: string;
     };
-    const types = type ? ([] as string[]).concat(type) : [];
-    const data = mockDb.getMany<Notification>(
-      "notifications",
-      (v) =>
-        v.user_id === userId &&
-        (types.length === 0 || types.includes(v.type)) &&
-        (is_read === undefined || !!v.read_at === (is_read === "true")),
+    // the API includes the read notices here, unless is_read says otherwise
+    req.query.include_dismissed = "true";
+    const data = mockDb.getMany<Notice>(
+      "notices",
+      getUserNoticesFilter(req, userId),
       parseInt(skip),
       limit ? parseInt(limit) : undefined,
       ["-created_at"],
@@ -1374,85 +1189,80 @@ router.get(
       skip: parseInt(skip),
       limit: limit ? parseInt(limit) : null,
       data,
-    });
+    } as PaginatedData<Notice[]>);
   }),
 );
 
-router.put(
-  "/me/notifications/",
+router.post(
+  "/me/notices/dismiss",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
     }
 
-    const isRead = (req.body as { is_read?: boolean }).is_read ?? true;
-    const readAt = isRead ? new Date().toISOString() : null;
-    const mine = mockDb.getMany<Notification>(
-      "notifications",
-      (v) => v.user_id === userId && !!v.read_at !== isRead,
-    );
-    for (const item of mine) {
-      mockDb.update<Notification>("notifications", (v) => v.id === item.id, {
-        read_at: readAt,
-      });
-    }
-
+    const count = setReadStatusOfMyNotices(req, userId, true);
     res.json({
       status: "success",
-      detail: `${mine.length} notifications updated`,
-    });
+      detail: `${count} notices updated`,
+    } as GeneralMessage);
   }),
 );
 
-router.put(
-  "/me/notifications/:pk",
+router.post(
+  "/me/notices/unread",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
     }
 
-    const isRead = (req.body as { is_read?: boolean }).is_read ?? true;
-    const existing = mockDb.getOne<Notification>(
-      "notifications",
-      (v) => v.id === req.params.pk && v.user_id === userId,
-    );
-    if (!existing) {
-      res.status(404).json({ detail: "Not Found" });
+    const count = setReadStatusOfMyNotices(req, userId, false);
+    res.json({
+      status: "success",
+      detail: `${count} notices updated`,
+    } as GeneralMessage);
+  }),
+);
+
+router.post(
+  "/me/notices/:id/dismiss",
+  use(async (req, res) => {
+    const userId = await getAuthenticatedUserId(req.cookies);
+    if (!userId) {
+      return respond401(res);
+    }
+
+    if (!setReadStatusOfMyNotice(req.params.id, userId, true)) {
+      res
+        .status(404)
+        .json({ detail: `notice of ID '${req.params.id}' not found` });
       return;
     }
-
-    const updated = mockDb.update<Notification>(
-      "notifications",
-      (v) => v.id === req.params.pk,
-      { read_at: isRead ? new Date().toISOString() : null },
-    );
-    res.json(updated);
+    res.json({ status: "success" } as GeneralMessage);
   }),
 );
 
-router.get(
-  "/counts/notifications",
+router.post(
+  "/me/notices/:id/unread",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
     }
 
-    const { is_read } = req.query as ParsedQs & { is_read?: string };
-    const data = mockDb.getMany<Notification>(
-      "notifications",
-      (v) =>
-        v.user_id === userId &&
-        (is_read === undefined || !!v.read_at === (is_read === "true")),
-    );
-    res.json({ count: data.length } as CountResponse);
+    if (!setReadStatusOfMyNotice(req.params.id, userId, false)) {
+      res
+        .status(404)
+        .json({ detail: `notice of ID '${req.params.id}' not found` });
+      return;
+    }
+    res.json({ status: "success" } as GeneralMessage);
   }),
 );
 
 router.get(
-  "/me/notification-preferences/",
+  "/me/notices/preferences/",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -1464,26 +1274,22 @@ router.get(
 );
 
 router.put(
-  "/me/notification-preferences/",
+  "/me/notices/preferences/",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
     }
 
-    const wanted = req.body as Partial<Record<NotificationType, ChannelPrefs>>;
-    const current = getEffectivePrefs(userId);
-    for (const [key, value] of Object.entries(wanted)) {
-      const type = key as NotificationType;
-      current[type] = {
-        // mirrors the server, which silently forces in-app back on for the types its
-        // channel policy marks mandatory instead of rejecting the update
-        in_app: IN_APP_SILENCEABLE_TYPES.has(type) ? value.in_app : true,
-        email: value.email,
-      };
+    const wanted = req.body as Partial<NoticePreferences>;
+    const knownTypes = Object.values(NoticeType) as string[];
+    if (Object.keys(wanted).some((v) => !knownTypes.includes(v))) {
+      res.status(422).json({ detail: "unknown notice type" });
+      return;
     }
-    savePrefs(userId, current);
 
+    const current = { ...getEffectivePrefs(userId), ...wanted };
+    savePrefs(userId, current);
     res.json(current);
   }),
 );
@@ -1496,25 +1302,46 @@ router.post(
       return respond401(res);
     }
 
-    const requester = mockDb.getOne<User>("users", (v) => v.id === userId);
-    const body = req.body as { project_ext_id: string; reason: string };
-    const project = mockDb.getOne<Project>(
-      "projects",
-      (v) => v.ext_id === body.project_ext_id && !v.is_personal,
-    );
-    if (!requester || !project) {
-      res
-        .status(404)
-        .json({ detail: `no project with ID '${body.project_ext_id}'` });
+    const requester = mockDb.getOne<User>("users", (v) => v.id === userId)!;
+    const body = req.body as UserRequestPostBody;
+    const metadata = { resource: "project", ...(body.metadata ?? {}) };
+    if (body.type === UserRequestType.PROJECT_QPU_SECONDS && !metadata.seconds) {
+      res.status(422).json({ detail: "seconds are required" });
       return;
     }
 
-    if (project.user_ids.includes(userId)) {
-      res
-        .status(409)
-        .json({
-          detail: `you are already a member of '${body.project_ext_id}'`,
-        });
+    let project: Project | undefined;
+    if (body.type !== UserRequestType.CREATE_PROJECT) {
+      project = mockDb.getOne<Project>(
+        "projects",
+        (v) => v.id === body.resource_id,
+      );
+      // personal projects answer 404 to access requests, like missing ones
+      const isHidden =
+        body.type === UserRequestType.PROJECT_ACCESS && !!project?.is_personal;
+      if (!project || isHidden) {
+        res
+          .status(404)
+          .json({ detail: `project ${body.resource_id} not found` });
+        return;
+      }
+      metadata.project_name = project.name;
+    }
+
+    if (!hasRequestAccess(body.type, userId, project)) {
+      res.status(403).json({
+        detail: `operation not permitted on resource ${body.resource_id}`,
+      });
+      return;
+    }
+
+    if (
+      body.type === UserRequestType.PROJECT_ACCESS &&
+      project!.user_ids.includes(userId)
+    ) {
+      res.status(409).json({
+        detail: `you are already a member of '${project!.name}'`,
+      });
       return;
     }
 
@@ -1522,37 +1349,48 @@ router.post(
       "user_requests",
       (v) =>
         v.requester_id === userId &&
-        v.type === UserRequestType.PROJECT_ACCESS &&
-        v.project_id === project.id &&
+        v.type === body.type &&
+        v.resource_id === body.resource_id &&
         v.status === UserRequestStatus.PENDING,
     );
     if (duplicate) {
+      const name = project?.name ?? metadata.name;
       res.status(409).json({
-        detail: `a request for '${body.project_ext_id}' is already pending`,
+        detail: `a request for '${name}' is already pending`,
       });
       return;
     }
 
+    const isForProject = body.type === UserRequestType.PROJECT_ACCESS;
+    const targetUserIds = isForProject
+      ? [project!.admin_id]
+      : mockDb
+          .getMany<User>("users", (v) => v.roles.includes(UserRole.ADMIN))
+          .map((v) => v.id);
     const created = mockDb.create<UserRequest>("user_requests", {
-      type: UserRequestType.PROJECT_ACCESS,
-      status: UserRequestStatus.PENDING,
+      type: body.type,
+      resource_id: body.resource_id,
+      reason: body.reason,
+      metadata,
       requester_id: userId,
       requester_name: getUsername(requester),
-      approver_scope: ApproverScope.PROJECT_ADMIN,
-      project_id: project.id,
-      request: { ...body, project_name: project.name },
+      target_user_ids: targetUserIds,
+      target: isForProject ? "project" : "system",
+      status: UserRequestStatus.PENDING,
+      approver_id: null,
+      approver_name: null,
+      rejection_reason: null,
     });
 
-    if (project.admin_id !== userId) {
-      mockDb.create<Notification>("notifications", {
-        user_id: project.admin_id,
-        type: NotificationType.PROJECT_ACCESS_REQUESTED,
-        title: `Access request for ${project.name}`,
-        body: `${getUsername(requester)} is asking to join ${project.name}: ${body.reason}`,
+    for (const targetUserId of targetUserIds) {
+      createSystemNotice({
+        user_id: targetUserId,
+        type: REQUESTED_NOTICE_TYPES[body.type],
+        title: `${describeRequest(created)}?`,
+        body: `${getUsername(requester)} is asking: ${body.reason}`,
         severity: NoticeSeverity.INFO,
-        action: { kind: "user-request", request_id: created.id },
-        context: { project_name: project.name },
-        read_at: null,
+        ref_type: NoticeRefType.USER_REQUEST,
+        ref_id: created.id,
       });
     }
 
@@ -1568,45 +1406,40 @@ router.get(
       return respond401(res);
     }
 
-    const user = mockDb.getOne<User>("users", (v) => v.id === userId);
     const {
-      role = "requester",
+      role = "approver",
       status,
       type,
+      skip = "0",
+      limit,
     } = req.query as ParsedQs & {
       role?: string;
-      status?: string;
+      status?: string | string[];
       type?: string | string[];
+      skip?: string;
+      limit?: string;
     };
+    const statuses = status ? ([] as string[]).concat(status) : [];
     const types = type ? ([] as string[]).concat(type) : [];
-    const isAdmin = !!user?.roles.includes(UserRole.ADMIN);
-    const administered = mockDb
-      .getMany<Project>(
-        "projects",
-        (v) => v.admin_id === userId && !v.is_personal,
-      )
-      .map((v) => v.id);
 
     const data = mockDb.getMany<UserRequest>(
       "user_requests",
-      (v) => {
-        if (status && v.status !== status) return false;
-        if (types.length > 0 && !types.includes(v.type)) return false;
-        if (role !== "approver") return v.requester_id === userId;
-        if (isAdmin) return true;
-        return (
-          v.approver_scope === ApproverScope.PROJECT_ADMIN &&
-          !!v.project_id &&
-          administered.includes(v.project_id) &&
-          v.requester_id !== userId
-        );
-      },
-      0,
-      undefined,
+      (v) =>
+        (statuses.length === 0 || statuses.includes(v.status)) &&
+        (types.length === 0 || types.includes(v.type)) &&
+        (role === "approver"
+          ? v.target_user_ids.includes(userId)
+          : v.requester_id === userId),
+      parseInt(skip),
+      limit ? parseInt(limit) : undefined,
       ["-created_at"],
     );
 
-    res.json({ skip: 0, limit: null, data });
+    res.json({
+      skip: parseInt(skip),
+      limit: limit ? parseInt(limit) : null,
+      data,
+    } as PaginatedData<UserRequest[]>);
   }),
 );
 
@@ -1618,88 +1451,54 @@ router.put(
       return respond401(res);
     }
 
-    const actor = mockDb.getOne<User>("users", (v) => v.id === userId);
+    const actor = mockDb.getOne<User>("users", (v) => v.id === userId)!;
+    // only the users a pending request is directed to can decide it
     const request = mockDb.getOne<UserRequest>(
       "user_requests",
-      (v) => v.id === req.params.id,
+      (v) =>
+        v.id === req.params.id &&
+        v.target_user_ids.includes(userId) &&
+        v.status === UserRequestStatus.PENDING,
     );
-    if (!actor || !request) {
-      res.status(404).json({ detail: "Not Found" });
+    if (!request) {
+      res.status(404).json({ detail: "no match found" });
       return;
     }
 
-    if (!isEligibleApprover(actor, request)) {
-      res
-        .status(403)
-        .json({ detail: "you are not entitled to react to this request" });
-      return;
-    }
-
-    const body = req.body as Partial<UserRequest>;
-    if (
-      body.status !== undefined &&
-      request.status !== UserRequestStatus.PENDING
-    ) {
-      res
-        .status(409)
-        .json({ detail: `request has already been ${request.status}` });
-      return;
-    }
-
-    if (
-      body.status === UserRequestStatus.APPROVED &&
-      request.type === UserRequestType.PROJECT_ACCESS &&
-      request.project_id
-    ) {
-      const project = mockDb.getOne<Project>(
-        "projects",
-        (v) => v.id === request.project_id,
-      );
-      const member = mockDb.getOne<User>(
-        "users",
-        (v) => v.id === request.requester_id,
-      );
-      if (project && member) {
-        mockDb.update<Project>("projects", (v) => v.id === project.id, {
-          user_ids: [...new Set([...project.user_ids, member.id])],
-          user_emails: [
-            ...new Set([...(project.user_emails ?? []), member.email]),
-          ],
-        } as Partial<Project>);
-      }
+    const body = req.body as Pick<UserRequest, "status" | "rejection_reason">;
+    if (body.status === UserRequestStatus.APPROVED) {
+      applyApproval(request);
     }
 
     const updated = mockDb.update<UserRequest>(
       "user_requests",
-      (v) => v.id === req.params.id,
-      {
-        ...body,
-        approver_id: body.status !== undefined ? userId : request.approver_id,
-        approver_name:
-          body.status !== undefined
-            ? getUsername(actor)
-            : request.approver_name,
-      },
+      (v) => v.id === request.id,
+      { ...body, approver_id: userId, approver_name: getUsername(actor) },
     );
 
-    if (body.status !== undefined) {
+    if (body.status !== undefined && body.status !== UserRequestStatus.PENDING) {
       const isApproved = body.status === UserRequestStatus.APPROVED;
-      const projectName =
-        (updated.request as { project_name?: string })?.project_name ??
-        "your project";
-      mockDb.create<Notification>("notifications", {
+      // the prompts to decide it are no longer of any consequence
+      for (const notice of mockDb.getMany<Notice>(
+        "notices",
+        (v) => v.ref_id === request.id && !v.read_at,
+      )) {
+        mockDb.update<Notice>(
+          "notices",
+          (v) => v.id === notice.id,
+          getReadStatusUpdate(notice, notice.user_id!, true),
+        );
+      }
+      createSystemNotice({
         user_id: request.requester_id,
-        type: isApproved
-          ? NotificationType.PROJECT_ACCESS_APPROVED
-          : NotificationType.PROJECT_ACCESS_REJECTED,
-        title: isApproved
-          ? `You were added to ${projectName}`
-          : `Access to ${projectName} was declined`,
-        body: `${getUsername(actor)} ${isApproved ? "approved" : "declined"} your request to join ${projectName}. ${body.rejection_reason ?? ""}`,
+        type: (isApproved ? APPROVED_NOTICE_TYPES : REJECTED_NOTICE_TYPES)[
+          request.type
+        ],
+        title: `${describeRequest(request)}: ${body.status}`,
+        body: `${getUsername(actor)} ${isApproved ? "approved" : "declined"} your request. ${body.rejection_reason ?? ""}`,
         severity: isApproved ? NoticeSeverity.INFO : NoticeSeverity.WARNING,
-        action: null,
-        context: { project_name: projectName },
-        read_at: null,
+        ref_type: NoticeRefType.USER_REQUEST,
+        ref_id: request.id,
       });
     }
 
@@ -1747,20 +1546,16 @@ router.delete(
 
     mockDb.update<Project>("projects", (v) => v.id === project.id, {
       user_ids: project.user_ids.filter((v) => v !== member.id),
-      user_emails: (project.user_emails ?? []).filter(
-        (v) => v !== member.email,
-      ),
-    } as Partial<Project>);
+    });
 
-    mockDb.create<Notification>("notifications", {
+    createSystemNotice({
       user_id: member.id,
-      type: NotificationType.PROJECT_MEMBERSHIP_REVOKED,
+      type: NoticeType.PROJECT_MEMBERSHIP_REVOKED,
       title: `You were removed from ${project.name}`,
       body: `${getUsername(actor)} removed you from ${project.name}. Any API tokens you held for it no longer work.`,
       severity: NoticeSeverity.WARNING,
-      action: null,
-      context: { project_name: project.name },
-      read_at: null,
+      ref_type: NoticeRefType.PROJECT,
+      ref_id: project.id,
     });
 
     res.status(204).send();
@@ -1768,18 +1563,18 @@ router.delete(
 );
 
 /**
- * The user's effective notification preferences, defaults filled in for every type
+ * The notice types the user also gets by email, defaults filled in for every type
  *
  * @param userId - the id of the user whose preferences are wanted
  */
-function getEffectivePrefs(userId: string): NotificationPreferences {
-  const stored = mockDb.getOne<NotificationPrefsInDb>(
-    "notification_prefs",
+function getEffectivePrefs(userId: string): NoticePreferences {
+  const stored = mockDb.getOne<NoticePrefsInDb>(
+    "notice_prefs",
     (v) => v.user_id === userId,
   );
-  const prefs = {} as NotificationPreferences;
-  for (const type of Object.values(NotificationType)) {
-    prefs[type] = stored?.prefs?.[type] ?? { in_app: true, email: true };
+  const prefs = {} as NoticePreferences;
+  for (const type of Object.values(NoticeType)) {
+    prefs[type] = stored?.prefs?.[type] ?? true;
   }
   return prefs;
 }
@@ -1790,163 +1585,220 @@ function getEffectivePrefs(userId: string): NotificationPreferences {
  * @param userId - the id of the user whose preferences are saved
  * @param prefs - the full effective preference map
  */
-function savePrefs(userId: string, prefs: NotificationPreferences) {
-  const existing = mockDb.getOne<NotificationPrefsInDb>(
-    "notification_prefs",
+function savePrefs(userId: string, prefs: NoticePreferences) {
+  const existing = mockDb.getOne<NoticePrefsInDb>(
+    "notice_prefs",
     (v) => v.user_id === userId,
   );
   if (existing) {
-    mockDb.update<NotificationPrefsInDb>(
-      "notification_prefs",
+    mockDb.update<NoticePrefsInDb>(
+      "notice_prefs",
       (v) => v.id === existing.id,
       { prefs },
     );
     return;
   }
-  mockDb.create<NotificationPrefsInDb>("notification_prefs", {
-    user_id: userId,
-    prefs,
+  mockDb.create<NoticePrefsInDb>("notice_prefs", { user_id: userId, prefs });
+}
+
+/**
+ * Creates a notice the system emits on some event, for one user
+ *
+ * @param fields - the fields that differ between such notices
+ */
+function createSystemNotice(
+  fields: Pick<
+    Notice,
+    "user_id" | "type" | "title" | "body" | "severity" | "ref_type" | "ref_id"
+  >,
+) {
+  mockDb.create<Notice>("notices", {
+    ...fields,
+    severity_number: getSeverityNumber(fields.severity),
+    created_by: null,
+    read_at: null,
+    dismissed_by: [],
+    starts_at: null,
+    expires_at: null,
   });
 }
 
 /**
- * Whether the given user may react to the given request.
+ * Marks one notice addressed to the given user read or unread
  *
- * Mirrors the MSS rule: superusers may react to anything, project admins only to
- * project-admin-scoped requests for projects they administer, and nobody to their own.
- *
- * @param actor - the user who wants to react
- * @param request - the request to react to
+ * @param noticeId - the id of the notice
+ * @param userId - the id of the user
+ * @param isRead - whether to mark it read or unread
+ * @returns whether the notice was found
  */
-function isEligibleApprover(actor: User, request: UserRequest): boolean {
-  if (actor.roles.includes(UserRole.ADMIN)) {
-    return true;
-  }
-  if (request.approver_scope !== ApproverScope.PROJECT_ADMIN) {
+function setReadStatusOfMyNotice(
+  noticeId: string,
+  userId: string,
+  isRead: boolean,
+): boolean {
+  const notice = mockDb.getOne<Notice>(
+    "notices",
+    (v) => v.id === noticeId && (!v.user_id || v.user_id === userId),
+  );
+  if (!notice) {
     return false;
   }
-  if (request.requester_id === actor.id) {
-    return false;
+
+  mockDb.update<Notice>(
+    "notices",
+    (v) => v.id === noticeId,
+    getReadStatusUpdate(notice, userId, isRead),
+  );
+  return true;
+}
+
+/**
+ * Marks every notice of the given user read or unread
+ *
+ * @param req - the request, whose query can narrow down the notices
+ * @param userId - the id of the user
+ * @param isRead - whether to mark them read or unread
+ * @returns the number of notices updated
+ */
+function setReadStatusOfMyNotices(
+  req: ExpressRequest,
+  userId: string,
+  isRead: boolean,
+): number {
+  req.query.include_dismissed = "true";
+  req.query.is_read = `${!isRead}`;
+  const notices = mockDb.getMany<Notice>(
+    "notices",
+    getUserNoticesFilter(req, userId),
+  );
+  for (const notice of notices) {
+    mockDb.update<Notice>(
+      "notices",
+      (v) => v.id === notice.id,
+      getReadStatusUpdate(notice, userId, isRead),
+    );
   }
+  return notices.length;
+}
+
+/**
+ * Whether the given user may make a request of the given type, like the API
+ *
+ * @param type - the type of the request
+ * @param userId - the id of the user making the request
+ * @param project - the project the request is about, if any
+ */
+function hasRequestAccess(
+  type: UserRequestType,
+  userId: string,
+  project?: Project,
+): boolean {
+  switch (type) {
+    case UserRequestType.CLOSE_PROJECT:
+    case UserRequestType.TRANSFER_PROJECT:
+      return project?.admin_id === userId;
+    case UserRequestType.PROJECT_QPU_SECONDS:
+      return !!project?.user_ids.includes(userId);
+    default:
+      return true;
+  }
+}
+
+/**
+ * Does what the given request asks for, as the API does on approving it
+ *
+ * @param request - the request being approved
+ */
+function applyApproval(request: UserRequest) {
+  const { metadata } = request;
   const project = mockDb.getOne<Project>(
     "projects",
-    (v) => v.id === request.project_id,
+    (v) => v.id === request.resource_id,
   );
-  return !!project && project.admin_id === actor.id;
-}
+  const users = mockDb.getMany<User>("users");
+  const userIdOf = (email?: string) => users.find((v) => v.email === email)?.id;
 
-interface NotificationPrefsInDb extends DbRecord {
-  user_id: string;
-  prefs: NotificationPreferences;
-}
-
-router.post(
-  "/admin/qpu-seconds-grants/",
-  use(async (req, res) => {
-    const userId = await getAuthenticatedUserId(req.cookies);
-    if (!userId) {
-      return respond401(res);
-    }
-
-    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
-      res.status(403).json({ detail: `Forbidden` });
-      return;
-    }
-
-    const key = req.headers["idempotency-key"] as string | undefined;
-    if (!key) {
-      res.status(422).json({ detail: "Idempotency-Key header is required" });
-      return;
-    }
-
-    const body = req.body as QpuSecondsGrantPostBody;
-    if (!body.seconds || body.seconds <= 0) {
-      res.status(422).json({ detail: "seconds must be more than zero" });
-      return;
-    }
-    if (body.target === GrantTarget.EMAILS && !body.target_emails?.length) {
-      res
-        .status(422)
-        .json({ detail: "target_emails is required when target is 'emails'" });
-      return;
-    }
-
-    const replay = mockDb.getOne<GrantInDb>(
-      "qpu_grants",
-      (v) => v.idempotency_key === key,
-    );
-    if (replay) {
-      res.status(201).json(replay.report);
-      return;
-    }
-
-    const personal = mockDb.getMany<Project>(
-      "projects",
-      (v) => !!v.is_personal,
-    );
-    const skipped: SkippedTarget[] = [];
-    let targets: Project[] = [];
-
-    if (body.target === GrantTarget.ALL_PERSONAL_PROJECTS) {
-      targets = personal;
-    } else {
-      for (const email of [...new Set(body.target_emails ?? [])]) {
-        const user = mockDb.getOne<User>("users", (v) => v.email === email);
-        if (!user) {
-          skipped.push({ email, why: "no such user" });
-          continue;
-        }
-        const project = personal.find((v) => v.admin_id === user.id);
-        if (!project) {
-          skipped.push({
-            email,
-            why: "no personal project yet — user has never logged in",
-          });
-          continue;
-        }
-        targets.push(project);
-      }
-    }
-
-    for (const project of targets) {
-      mockDb.update<Project>("projects", (v) => v.id === project.id, {
-        qpu_seconds: project.qpu_seconds + body.seconds,
-        // every top-up clears the latch, matching the API
-        low_qpu_notified_at: null,
-      } as Partial<Project>);
-
-      mockDb.create<Notification>("notifications", {
-        user_id: project.admin_id,
-        type: NotificationType.QPU_SECONDS_GRANTED,
-        title: `${body.seconds}s of QPU time added to ${project.name}`,
-        body: `An admin granted ${body.seconds}s of QPU time on ${project.name}.`,
-        severity: NoticeSeverity.INFO,
-        action: null,
-        context: { project_name: project.name, reason: "admin-grant" },
-        read_at: null,
+  switch (request.type) {
+    case UserRequestType.PROJECT_ACCESS:
+      mockDb.update<Project>("projects", (v) => v.id === project!.id, {
+        user_ids: [...new Set([...project!.user_ids, request.requester_id])],
       });
+      break;
+    case UserRequestType.PROJECT_QPU_SECONDS:
+      mockDb.update<Project>("projects", (v) => v.id === project!.id, {
+        qpu_seconds: project!.qpu_seconds + (metadata.seconds ?? 0),
+      });
+      break;
+    case UserRequestType.TRANSFER_PROJECT: {
+      const adminId = userIdOf(metadata.admin_email)!;
+      mockDb.update<Project>("projects", (v) => v.id === project!.id, {
+        admin_id: adminId,
+        user_ids: [...new Set([...project!.user_ids, adminId])],
+      });
+      break;
     }
+    case UserRequestType.CLOSE_PROJECT:
+      mockDb.del("projects", project!.id);
+      archiveDb.create<Project>("projects", { ...project! });
+      break;
+    case UserRequestType.CREATE_PROJECT: {
+      const adminId = userIdOf(metadata.admin_email)!;
+      const memberIds = (metadata.user_emails ?? []).map((v) => userIdOf(v)!);
+      mockDb.create<Project>("projects", {
+        name: metadata.name,
+        description: metadata.description ?? "",
+        qpu_seconds: metadata.qpu_seconds ?? 0,
+        admin_id: adminId,
+        user_ids: [...new Set([...memberIds, adminId])],
+        is_active: true,
+        is_personal: false,
+      });
+      break;
+    }
+  }
+}
 
-    const report: QpuSecondsGrantReport = {
-      seconds: body.seconds,
-      granted: targets.length,
-      skipped,
-    };
-    mockDb.create<GrantInDb>("qpu_grants", {
-      idempotency_key: key,
-      granted_by: userId,
-      reason: body.reason,
-      seconds: body.seconds,
-      target: body.target,
-      report,
-    });
+/**
+ * Describes the given request in a few words, for the notices about it
+ *
+ * @param request - the request to describe
+ */
+function describeRequest(request: UserRequest): string {
+  const name = request.metadata.project_name ?? request.metadata.name;
+  return `${request.type} for ${name}`;
+}
 
-    res.status(201).json(report);
-  }),
-);
+const REQUESTED_NOTICE_TYPES: Record<UserRequestType, NoticeType> = {
+  [UserRequestType.PROJECT_ACCESS]: NoticeType.PROJECT_ACCESS_REQUESTED,
+  [UserRequestType.PROJECT_QPU_SECONDS]: NoticeType.QPU_SECONDS_REQUESTED,
+  [UserRequestType.CREATE_PROJECT]: NoticeType.PROJECT_CREATE_REQUESTED,
+  [UserRequestType.CLOSE_PROJECT]: NoticeType.PROJECT_CLOSE_REQUESTED,
+  [UserRequestType.TRANSFER_PROJECT]: NoticeType.PROJECT_TRANSFER_REQUESTED,
+};
+
+const APPROVED_NOTICE_TYPES: Record<UserRequestType, NoticeType> = {
+  [UserRequestType.PROJECT_ACCESS]: NoticeType.PROJECT_ACCESS_APPROVED,
+  [UserRequestType.PROJECT_QPU_SECONDS]: NoticeType.QPU_SECONDS_GRANTED,
+  [UserRequestType.CREATE_PROJECT]: NoticeType.PROJECT_CREATE_APPROVED,
+  [UserRequestType.CLOSE_PROJECT]: NoticeType.PROJECT_CLOSE_APPROVED,
+  [UserRequestType.TRANSFER_PROJECT]: NoticeType.PROJECT_TRANSFER_APPROVED,
+};
+
+const REJECTED_NOTICE_TYPES: Record<UserRequestType, NoticeType> = {
+  [UserRequestType.PROJECT_ACCESS]: NoticeType.PROJECT_ACCESS_REJECTED,
+  [UserRequestType.PROJECT_QPU_SECONDS]: NoticeType.QPU_SECONDS_DENIED,
+  [UserRequestType.CREATE_PROJECT]: NoticeType.PROJECT_CREATE_REJECTED,
+  [UserRequestType.CLOSE_PROJECT]: NoticeType.PROJECT_CLOSE_REJECTED,
+  [UserRequestType.TRANSFER_PROJECT]: NoticeType.PROJECT_TRANSFER_REJECTED,
+};
+
+interface NoticePrefsInDb extends DbRecord {
+  user_id: string;
+  prefs: NoticePreferences;
+}
 
 router.get(
-  "/admin/user-emails/",
+  "/admin/users/emails/",
   use(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -1973,39 +1825,6 @@ router.get(
     res.json(emails);
   }),
 );
-
-router.get(
-  "/admin/qpu-seconds-grants/",
-  use(async (req, res) => {
-    const userId = await getAuthenticatedUserId(req.cookies);
-    if (!userId) {
-      return respond401(res);
-    }
-
-    if (!hasAnyOfRoles(userId, [UserRole.ADMIN])) {
-      res.status(403).json({ detail: `Forbidden` });
-      return;
-    }
-
-    const data = mockDb.getMany<GrantInDb>(
-      "qpu_grants",
-      () => true,
-      0,
-      undefined,
-      ["-created_at"],
-    );
-    res.json({ skip: 0, limit: null, data });
-  }),
-);
-
-interface GrantInDb extends DbRecord {
-  idempotency_key: string;
-  granted_by: string;
-  reason: string;
-  seconds: number;
-  target: GrantTarget;
-  report: QpuSecondsGrantReport;
-}
 
 // NOTE: this mutates the database. I am using GET to avoid CORS issues
 router.get("/refreshed-db", (req, res) => {

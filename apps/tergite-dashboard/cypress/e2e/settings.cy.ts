@@ -3,14 +3,14 @@
 
 import userList from "../fixtures/users.json";
 import { generateJwt } from "../../api/utils";
-import { NotificationType, type User } from "../../types";
+import { NoticeType, type User } from "../../types";
 
 // preferences behave identically for everyone, so one representative user is enough
 const [user] = [...userList] as User[];
 // one type the recipient can act on, one that only reports an outcome
 const SAMPLE_TYPES = [
-  NotificationType.PROJECT_ACCESS_REQUESTED,
-  NotificationType.QPU_SECONDS_GRANTED,
+  NoticeType.PROJECT_ACCESS_REQUESTED,
+  NoticeType.QPU_SECONDS_GRANTED,
 ];
 
 function login(user: User, path: string) {
@@ -22,9 +22,9 @@ function login(user: User, path: string) {
   const audience = Cypress.env("AUTH_AUDIENCE");
   const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
 
-  cy.intercept("GET", `${apiBaseUrl}/me`).as("my-user-info");
-  cy.intercept("GET", `${apiBaseUrl}/me/notification-preferences/`).as("prefs");
-  cy.intercept("PUT", `${apiBaseUrl}/me/notification-preferences/`).as(
+  cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
+  cy.intercept("GET", `${apiBaseUrl}/me/notices/preferences/`).as("prefs");
+  cy.intercept("PUT", `${apiBaseUrl}/me/notices/preferences/`).as(
     "prefs-update",
   );
 
@@ -62,10 +62,10 @@ describe(`settings for ${user.email.split("@")[0]}`, () => {
     cy.contains("Email notifications").should("be.visible");
   });
 
-  it("shows an email switch for every notification type", () => {
+  it("shows an email switch for every notice type", () => {
     cy.get("[data-cy-email-switch]").should(
       "have.length",
-      Object.values(NotificationType).length,
+      Object.values(NoticeType).length,
     );
     cy.get("[data-cy-email-switch]").each((element) => {
       cy.wrap(element).should("have.attr", "data-state", "checked");

@@ -19,12 +19,14 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { noticeCountQuery, noticesQuery } from "@/lib/api-client";
 import { AdminNoticeBanner } from "./banner";
+import { CUSTOM_NOTICE_TYPES } from "../../../../../types";
 
 export function NoticesCard() {
   const [page, setPage] = useState(1);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const currentTimestamp = useMemo(() => DateTime.now().toISO(), [page]);
   const filters = {
+    types: CUSTOM_NOTICE_TYPES,
     max_start_utc: currentTimestamp,
     min_expires_utc: currentTimestamp,
     include_dismissed: true,

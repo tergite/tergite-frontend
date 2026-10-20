@@ -27,8 +27,8 @@ export function AdminNoticeBanner({ notice }: Props) {
   const queryClient = useQueryClient();
   const severityClass = SEVERITY_BADGE_CLASSES[notice.severity];
   const title = useMemo(
-    () => (notice.target_user_ids ? "" : " · All users"),
-    [notice.target_user_ids],
+    () => (notice.user_id ? "" : " · All users"),
+    [notice.user_id],
   );
 
   const noticeDeletion = useMutation({
@@ -51,7 +51,7 @@ export function AdminNoticeBanner({ notice }: Props) {
           <p className="text-xs font-medium uppercase tracking-wide mb-1 opacity-70">
             {SEVERITY_LABELS[notice.severity]} {title}
           </p>
-          <p className="text-sm">{notice.message}</p>
+          <p className="text-sm">{notice.body}</p>
         </div>
 
 

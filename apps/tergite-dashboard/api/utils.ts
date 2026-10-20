@@ -11,7 +11,6 @@ import bookingsFixture from "../cypress/fixtures/bookings.json";
 import bookingsConfigList from "../cypress/fixtures/bookings-configs.json";
 import userRequestList from "../cypress/fixtures/user-requests.json";
 import rawNoticeList from "../cypress/fixtures/notices.json";
-import notificationList from "../cypress/fixtures/notifications.json";
 import { type ParsedQs } from "qs";
 import {
   type NextFunction,
@@ -35,7 +34,9 @@ import {
   UserRequest,
   UserRole,
   Notice,
-  Notification,
+  NoticeRefType,
+  NoticeSeverity,
+  NoticeType,
 } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { DateTime } from "luxon";
@@ -144,9 +145,7 @@ class MockDb {
     auth_providers: [...(authProviderList as AuthProvider[])],
     bcc_users: [...(bccUserList as BccUserInDb[])],
     notices: [...processedNoticeList],
-    notifications: [...(notificationList as unknown as Notification[])],
-    notification_prefs: [],
-    qpu_grants: [],
+    notice_prefs: [],
   };
   deleted: { [k: string | ItemType]: DeletedIndex } = {
     projects: {},
@@ -161,9 +160,7 @@ class MockDb {
     auth_providers: {},
     bcc_users: {},
     notices: {},
-    notifications: {},
-    notification_prefs: {},
-    qpu_grants: {},
+    notice_prefs: {},
   };
 
   constructor() {
@@ -197,10 +194,7 @@ class MockDb {
       auth_providers: [...(authProviderList as AuthProvider[])],
       bcc_users: [...(bccUserList as BccUserInDb[])],
       notices: [...processedNoticeList],
-      notifications: [...(notificationList as unknown as Notification[])],
-      notification_prefs: [],
-      qpu_grants: [],
-    qpu_grants: [],
+      notice_prefs: [],
     };
     this.deleted = {
       projects: {},
@@ -215,10 +209,7 @@ class MockDb {
       auth_providers: {},
       bcc_users: {},
       notices: {},
-      notifications: {},
-      notification_prefs: {},
-      qpu_grants: {},
-    qpu_grants: {},
+      notice_prefs: {},
     };
   }
 
@@ -557,9 +548,7 @@ type ItemType =
   | "bookings_configs"
   | "user_requests"
   | "notices"
-  | "notifications"
-  | "notification_prefs"
-  | "qpu_grants"
+  | "notice_prefs"
   | "auth_providers";
 
 type DeletedIndex = { [k: string]: boolean };
@@ -660,22 +649,35 @@ function toBccUserInDb(
  * @returns - the Notice object with absolute ISO timestamps
  */
 function toNoticeInDb(record: NoticeFixtureInfo, currentDate: Date): Notice {
-  const now = currentDate.getTime();
-  const startsAt = new Date(now + record.starts_at_offset_hours * 3_600_000);
-  const expiresAt = new Date(now + record.expires_at_offset_hours * 3_600_000);
+  const {
+    starts_at_offset_hours,
+    expires_at_offset_hours,
+    created_at_offset_hours,
+    ...rest
+  } = record;
+  const createdAt = offsetDateTime(currentDate, created_at_offset_hours);
   return {
-    id: record.id,
-    message: record.message,
-    severity: record.severity,
-    severity_number: record.severity_number,
-    starts_at: startsAt.toISOString(),
-    expires_at: expiresAt.toISOString(),
-    created_at: startsAt.toISOString(),
-    updated_at: startsAt.toISOString(),
-    created_by: record.created_by,
-    target_user_ids: record.target_user_ids,
+    ...rest,
+    starts_at: offsetDateTime(currentDate, starts_at_offset_hours),
+    expires_at: offsetDateTime(currentDate, expires_at_offset_hours),
+    created_at: createdAt,
+    updated_at: createdAt,
     dismissed_by: [...record.dismissed_by],
-  } as unknown as Notice;
+  } as Notice;
+}
+
+/**
+ * Offsets the given date by the given number of hours
+ *
+ * @param date - the date to offset
+ * @param offsetHours - the hours to offset by; null for no date at all
+ * @returns - the offset date as an ISO string, or null
+ */
+function offsetDateTime(date: Date, offsetHours: number | null): string | null {
+  if (offsetHours === null) {
+    return null;
+  }
+  return new Date(date.getTime() + offsetHours * 3_600_000).toISOString();
 }
 
 /**
@@ -756,22 +758,28 @@ export interface BookingsConfigInDb extends BookingsConfig, DbRecord {}
  */
 interface NoticeFixtureInfo {
   id: string;
-  message: string;
-  severity: string;
+  type: NoticeType;
+  title: string;
+  body: string;
+  severity: NoticeSeverity;
   severity_number: number;
-  starts_at_offset_hours: number;
-  expires_at_offset_hours: number;
-  created_by: string;
-  target_user_ids: string[] | null;
+  user_id: string | null;
+  created_by: string | null;
+  ref_type: NoticeRefType | null;
+  ref_id: string | null;
+  read_at: string | null;
   dismissed_by: string[];
+  starts_at_offset_hours: number | null;
+  expires_at_offset_hours: number | null;
+  created_at_offset_hours: number;
 }
 
 /**
- * Generates a notices filter for a given user request
- * 
+ * Generates a notices filter for a given user request, mirroring the API's
+ *
  * @param req - the request object
  * @param user_id - the ID of the user whose notices are to be retrieved
- * @returns 
+ * @returns the function that matches the notices
  */
 export function getUserNoticesFilter(req: ExpressRequest, user_id?: string) {
   const {
@@ -780,53 +788,69 @@ export function getUserNoticesFilter(req: ExpressRequest, user_id?: string) {
     min_expires_utc,
     max_expires_utc,
     include_dismissed: includeDismissedAsStr,
-  } = req.query;
-
-  const include_dismissed =
-    `${includeDismissedAsStr}`?.toLowerCase() === "true";
+    type,
+    is_read,
+  } = req.query as ParsedQs & { type?: string | string[]; is_read?: string };
+  const includeDismissed = `${includeDismissedAsStr}`.toLowerCase() === "true";
+  const types = type ? ([] as string[]).concat(type) : [];
+  const now = currentDateFromEnv.toISOString();
 
   return (v: Notice) => {
-    let isMatch = true;
+    // the API's TTL index deletes notices once they expire
+    if (v.expires_at && v.expires_at < now) return false;
+    if (types.length > 0 && !types.includes(v.type)) return false;
+
     if (user_id) {
-      // admins should always see all notices even if they dismissed
-      // them in the past
-      isMatch =
-        isMatch &&
-        (!v.target_user_ids ||
-          v.target_user_ids?.includes(user_id as string)) &&
-        (!v.dismissed_by.includes(user_id as string) || include_dismissed);
+      const isRead = v.dismissed_by.includes(user_id);
+      if (v.user_id && v.user_id !== user_id) return false;
+      if (isRead && !includeDismissed) return false;
+      if (is_read !== undefined && isRead !== (is_read === "true")) return false;
     }
 
-    if (min_start_utc) {
-      isMatch =
-        isMatch &&
-        DateTime.fromISO(v.starts_at) >=
-          DateTime.fromISO(min_start_utc as string);
-    }
-
-    if (max_start_utc) {
-      isMatch =
-        isMatch &&
-        DateTime.fromISO(v.starts_at) <=
-          DateTime.fromISO(max_start_utc as string);
-    }
-
-    if (min_expires_utc) {
-      isMatch =
-        isMatch &&
-        DateTime.fromISO(v.expires_at) >=
-          DateTime.fromISO(min_expires_utc as string);
-    }
-
-    if (max_expires_utc) {
-      isMatch =
-        isMatch &&
-        DateTime.fromISO(v.expires_at) <=
-          DateTime.fromISO(max_expires_utc as string);
-    }
-
-    return isMatch;
+    return (
+      isInTimeRange(v.starts_at, min_start_utc, max_start_utc) &&
+      isInTimeRange(v.expires_at, min_expires_utc, max_expires_utc)
+    );
   };
+}
+
+/**
+ * Marks the given notice read or unread for the given user, as the API does
+ *
+ * @param notice - the notice to mark
+ * @param userId - the ID of the user reading it
+ * @param isRead - whether to mark it read or unread
+ * @returns the fields of the notice to update
+ */
+export function getReadStatusUpdate(
+  notice: Notice,
+  userId: string,
+  isRead: boolean
+): Partial<Notice> {
+  const isBroadcast = notice.type === NoticeType.CUSTOM_BROADCAST;
+  const readers = notice.dismissed_by.filter((v) => v !== userId);
+  return {
+    read_at: isRead && !isBroadcast ? new Date().toISOString() : null,
+    dismissed_by: isRead ? [...readers, userId] : readers,
+  };
+}
+
+/**
+ * Checks whether a timestamp lies within the given range, inclusive
+ *
+ * @param timestamp - the ISO timestamp to check
+ * @param min - the minimum ISO timestamp, if any
+ * @param max - the maximum ISO timestamp, if any
+ */
+function isInTimeRange(
+  timestamp: string | null | undefined,
+  min: unknown,
+  max: unknown
+): boolean {
+  const value = timestamp ? DateTime.fromISO(timestamp) : undefined;
+  if (min && !(value && value >= DateTime.fromISO(min as string))) return false;
+  if (max && !(value && value <= DateTime.fromISO(max as string))) return false;
+  return true;
 }
 
 /**

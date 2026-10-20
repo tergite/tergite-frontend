@@ -3,29 +3,29 @@ import { cn, toRelative } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useCallback } from "react";
-import { Notification } from "types";
+import { Notice, NoticeRefType } from "../../../../../../types";
 import {
   approveMyRequest,
+  dismissNotice,
   rejectMyRequest,
-  refreshMyNotifications,
+  refreshMyNotices,
   refreshMyRequests,
   refreshMyProjectsQueries,
-  setNotificationRead,
 } from "@/lib/api-client";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { getNotificationMeta } from "./meta";
 
-export function NotificationItem({ notification }: Props) {
+export function NotificationItem({ notice }: Props) {
   const queryClient = useQueryClient();
   const { Icon, label, iconClassName, isActionable } = getNotificationMeta(
-    notification.type,
+    notice.type,
   );
-  const isUnread = !notification.read_at;
-  const requestId = notification.action?.request_id;
+  const requestId =
+    notice.ref_type === NoticeRefType.USER_REQUEST ? notice.ref_id : undefined;
   const canAct = isActionable && !!requestId;
 
   const refreshAll = useCallback(async () => {
-    await refreshMyNotifications(queryClient);
+    await refreshMyNotices(queryClient);
     await refreshMyRequests(queryClient);
     await refreshMyProjectsQueries(queryClient);
   }, [queryClient]);
@@ -42,9 +42,9 @@ export function NotificationItem({ notification }: Props) {
     throwOnError: true,
   });
 
-  const readToggle = useMutation({
-    mutationFn: setNotificationRead,
-    onSuccess: async () => await refreshMyNotifications(queryClient),
+  const dismissal = useMutation({
+    mutationFn: dismissNotice,
+    onSuccess: async () => await refreshMyNotices(queryClient),
     throwOnError: true,
   });
 
@@ -52,24 +52,22 @@ export function NotificationItem({ notification }: Props) {
 
   return (
     <li
-      data-cy-notification={notification.type}
-      data-cy-unread={isUnread}
+      data-cy-notification={notice.type}
       className={cn(
-        "flex gap-3 px-4 py-3 text-sm border-b last:border-b-0",
+        "flex gap-3 px-4 py-3 text-sm border-b last:border-b-0 bg-muted/50",
         // an accent border marks the ones the reader can do something about
         canAct && "border-l-2 border-l-primary",
-        isUnread && "bg-muted/50",
       )}
     >
       <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", iconClassName)} />
       <div className="grid gap-1 w-full">
         <div className="flex items-start justify-between gap-2">
-          <span className="font-medium">{notification.title}</span>
+          <span className="font-medium">{notice.title}</span>
           <span className="text-xs text-muted-foreground shrink-0">
-            {toRelative(DateTime.fromISO(notification.created_at))}
+            {toRelative(DateTime.fromISO(notice.created_at))}
           </span>
         </div>
-        <span className="text-muted-foreground">{notification.body}</span>
+        <span className="text-muted-foreground">{notice.body}</span>
         <span className="text-xs text-muted-foreground">{label}</span>
 
         {canAct && (
@@ -101,23 +99,21 @@ export function NotificationItem({ notification }: Props) {
           </div>
         )}
 
-        {isUnread && (
-          <button
-            type="button"
-            data-cy-mark-read
-            className="text-xs text-left underline text-muted-foreground w-fit"
-            onClick={() =>
-              readToggle.mutate({ id: notification.id, isRead: true })
-            }
-          >
-            Mark as read
-          </button>
-        )}
+        <button
+          type="button"
+          data-cy-mark-read
+          className="text-xs text-left underline text-muted-foreground w-fit"
+          onClick={() => dismissal.mutate(notice.id)}
+          disabled={dismissal.isPending}
+        >
+          Mark as read
+        </button>
       </div>
     </li>
   );
 }
 
 interface Props {
-  notification: Notification;
+  // one of the reader's unread notices, as the bell lists no others
+  notice: Notice;
 }

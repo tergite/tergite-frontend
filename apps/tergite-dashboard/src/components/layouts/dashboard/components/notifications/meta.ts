@@ -1,17 +1,21 @@
 import {
+  ArrowRightLeft,
   BatteryLow,
   BatteryWarning,
   BellRing,
   CheckCircle2,
   Clock,
+  FolderPlus,
+  FolderX,
   HelpingHand,
+  Megaphone,
   UserCog,
   UserMinus,
   UserPlus,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import { NotificationType } from "../../../../../../types";
+import { NoticeType } from "../../../../../../types";
 
 interface NotificationMeta {
   Icon: LucideIcon;
@@ -28,73 +32,136 @@ interface NotificationMeta {
  * Kept in one map so the bell, the list item and any future surface agree, rather
  * than each re-deriving the look from the type.
  */
-export const NOTIFICATION_TYPE_META: Record<
-  NotificationType,
-  NotificationMeta
-> = {
-  [NotificationType.PROJECT_ACCESS_REQUESTED]: {
+export const NOTIFICATION_TYPE_META: Record<NoticeType, NotificationMeta> = {
+  [NoticeType.PROJECT_ACCESS_REQUESTED]: {
     Icon: HelpingHand,
     label: "Access request",
     iconClassName: "text-primary",
     isActionable: true,
   },
-  [NotificationType.PROJECT_ACCESS_APPROVED]: {
+  [NoticeType.PROJECT_ACCESS_APPROVED]: {
     Icon: CheckCircle2,
     label: "Access granted",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NotificationType.PROJECT_ACCESS_REJECTED]: {
+  [NoticeType.PROJECT_ACCESS_REJECTED]: {
     Icon: XCircle,
     label: "Access declined",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NotificationType.QPU_SECONDS_REQUESTED]: {
+  [NoticeType.PROJECT_CREATE_REQUESTED]: {
+    Icon: FolderPlus,
+    label: "Project request",
+    iconClassName: "text-primary",
+    isActionable: true,
+  },
+  [NoticeType.PROJECT_CREATE_APPROVED]: {
+    Icon: CheckCircle2,
+    label: "Project created",
+    iconClassName: "text-green-600",
+    isActionable: false,
+  },
+  [NoticeType.PROJECT_CREATE_REJECTED]: {
+    Icon: XCircle,
+    label: "Project declined",
+    iconClassName: "text-destructive",
+    isActionable: false,
+  },
+  [NoticeType.PROJECT_CLOSE_REQUESTED]: {
+    Icon: FolderX,
+    label: "Closure request",
+    iconClassName: "text-primary",
+    isActionable: true,
+  },
+  [NoticeType.PROJECT_CLOSE_APPROVED]: {
+    Icon: CheckCircle2,
+    label: "Project closed",
+    iconClassName: "text-green-600",
+    isActionable: false,
+  },
+  [NoticeType.PROJECT_CLOSE_REJECTED]: {
+    Icon: XCircle,
+    label: "Closure declined",
+    iconClassName: "text-destructive",
+    isActionable: false,
+  },
+  [NoticeType.PROJECT_TRANSFER_REQUESTED]: {
+    Icon: ArrowRightLeft,
+    label: "Transfer request",
+    iconClassName: "text-primary",
+    isActionable: true,
+  },
+  [NoticeType.PROJECT_TRANSFER_APPROVED]: {
+    Icon: CheckCircle2,
+    label: "Project transferred",
+    iconClassName: "text-green-600",
+    isActionable: false,
+  },
+  [NoticeType.PROJECT_TRANSFER_REJECTED]: {
+    Icon: XCircle,
+    label: "Transfer declined",
+    iconClassName: "text-destructive",
+    isActionable: false,
+  },
+  [NoticeType.QPU_SECONDS_REQUESTED]: {
     Icon: Clock,
     label: "QPU time request",
     iconClassName: "text-primary",
     isActionable: true,
   },
-  [NotificationType.QPU_SECONDS_GRANTED]: {
+  [NoticeType.QPU_SECONDS_GRANTED]: {
     Icon: CheckCircle2,
     label: "QPU time granted",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NotificationType.QPU_SECONDS_DENIED]: {
+  [NoticeType.QPU_SECONDS_DENIED]: {
     Icon: XCircle,
     label: "QPU time declined",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NotificationType.QPU_SECONDS_LOW]: {
+  [NoticeType.QPU_SECONDS_LOW]: {
     Icon: BatteryLow,
     label: "QPU time low",
     iconClassName: "text-amber-600",
     isActionable: false,
   },
-  [NotificationType.QPU_SECONDS_DEPLETED]: {
+  [NoticeType.QPU_SECONDS_DEPLETED]: {
     Icon: BatteryWarning,
     label: "QPU time exhausted",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NotificationType.PROJECT_MEMBERSHIP_GRANTED]: {
+  [NoticeType.PROJECT_MEMBERSHIP_GRANTED]: {
     Icon: UserPlus,
     label: "Added to project",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NotificationType.PROJECT_MEMBERSHIP_REVOKED]: {
+  [NoticeType.PROJECT_MEMBERSHIP_REVOKED]: {
     Icon: UserMinus,
     label: "Removed from project",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NotificationType.PROJECT_ADMIN_ASSIGNED]: {
+  [NoticeType.PROJECT_ADMIN_ASSIGNED]: {
     Icon: UserCog,
     label: "Made project admin",
+    iconClassName: "text-primary",
+    isActionable: false,
+  },
+  [NoticeType.CUSTOM]: {
+    Icon: Megaphone,
+    label: "Announcement",
+    iconClassName: "text-primary",
+    isActionable: false,
+  },
+  [NoticeType.CUSTOM_BROADCAST]: {
+    Icon: Megaphone,
+    label: "Announcement to all",
     iconClassName: "text-primary",
     isActionable: false,
   },
@@ -115,6 +182,6 @@ export const FALLBACK_NOTIFICATION_META: NotificationMeta = {
  *
  * @param type - the notification type as returned by the API
  */
-export function getNotificationMeta(type: NotificationType): NotificationMeta {
+export function getNotificationMeta(type: NoticeType): NotificationMeta {
   return NOTIFICATION_TYPE_META[type] ?? FALLBACK_NOTIFICATION_META;
 }

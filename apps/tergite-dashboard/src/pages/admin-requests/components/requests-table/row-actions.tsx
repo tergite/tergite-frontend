@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import {
-  approveUserRequest,
-  refreshAllAdminQueries,
+  approveMyRequest,
+  refreshMyRequests,
   refreshMyProjectsQueries,
-  rejectUserRequest,
+  rejectMyRequest,
 } from "@/lib/api-client";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,18 +16,18 @@ import {
 export function RowActions({ request }: Props) {
   const queryClient = useQueryClient();
   const refreshAll = useCallback(async () => {
-    await refreshAllAdminQueries(queryClient);
+    await refreshMyRequests(queryClient);
     await refreshMyProjectsQueries(queryClient);
   }, [queryClient]);
 
   const approval = useMutation({
-    mutationFn: approveUserRequest,
+    mutationFn: approveMyRequest,
     onSuccess: refreshAll,
     throwOnError: true,
   });
 
   const rejection = useMutation({
-    mutationFn: rejectUserRequest,
+    mutationFn: rejectMyRequest,
     onSuccess: refreshAll,
     throwOnError: true,
   });
@@ -60,7 +60,7 @@ export function RowActions({ request }: Props) {
         className="text-destructive border-destructive"
         data-cy-row-reject
         disabled={isPending}
-        onClick={() => rejection.mutate(request.id)}
+        onClick={() => rejection.mutate({ id: request.id })}
       >
         {rejection.isPending && (
           <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />

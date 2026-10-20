@@ -12,8 +12,7 @@ vi.mock("@/lib/api-client", () => ({
   apiBaseUrl: "http://testing",
   requestQpuTimeExtension: (...args: unknown[]) =>
     requestQpuTimeExtension(...args),
-  refreshAllRequestsQueries: vi.fn(),
-  refreshMyProjectsQpuTimeRequestsQueries: vi.fn(),
+  refreshMyRequests: vi.fn(),
 }));
 
 const currentUser = { id: "user-1" } as User;

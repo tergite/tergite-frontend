@@ -72,8 +72,8 @@ export function Dashboard() {
           className={`flex flex-col sm:gap-4 h-full sm:pt-4 ${contentAreaPaddingCls}`}
         >
           <Topbar
-            currentProject={appState.currentProjectExtId}
-            onProjectChange={appState.setCurrentProjectExtId}
+            currentProject={appState.currentProjectId}
+            onProjectChange={appState.setCurrentProjectId}
             projects={projects}
             onLogout={handleLogout}
             currentUser={currentUser}

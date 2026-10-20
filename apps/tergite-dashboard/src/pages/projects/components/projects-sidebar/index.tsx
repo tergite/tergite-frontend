@@ -66,7 +66,7 @@ function ProjectSummary({
         <div className="grid gap-3">
           <div className="font-semibold">Details</div>
           <ul className="grid gap-3">
-            <DetailItem label="External ID">{project.ext_id}</DetailItem>
+            <DetailItem label="ID">{project.id}</DetailItem>
             <DetailItem label="Description">{project.description}</DetailItem>
             <DetailItem label="Status">
               <HealthStatus isHealthy={project.is_active} />

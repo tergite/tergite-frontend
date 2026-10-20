@@ -19,7 +19,6 @@ import {
   UserRole,
   type AppState,
   type AdminProject,
-  QpuSecondsGrantReport,
 } from "../../../types";
 import { AdminProjectsTable } from "./components/projects-table";
 import { AdminProjectsSidebar } from "./components/projects-sidebar";
@@ -27,13 +26,11 @@ import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useLoaderData } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreateProjectForm } from "./components/create-project-form";
-import { GrantQpuSecondsForm } from "./components/grant-qpu-seconds-form";
 
 export function AdminProjects() {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<OperationMode>(OperationMode.EDIT);
   // const [isCreating, setIsCreating] = useState(false);
-  // const [isGranting, setIsGranting] = useState(false);
   // const [isEditing, setIsEditing] = useState(false);
   const { currentUser } = useLoaderData() as AdminProjectsData;
   const { data: projects = [] } = useQuery(
@@ -42,11 +39,6 @@ export function AdminProjects() {
     })
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [qpuSecondsGrantReport, setQpuSecondsGrantReport] =
-    useState<QpuSecondsGrantReport>();
-  const [idempotencyKey, setIdempotencyKey] = useState(() =>
-    crypto.randomUUID()
-  );
   const selectedProjectIdx = useMemo(() => {
     const selectedEntries = Object.entries(rowSelection).filter(
       ([_k, v]) => v === true
@@ -88,18 +80,6 @@ export function AdminProjects() {
     setRowSelection({});
   }, [queryClient, setMode, setRowSelection]);
 
-  const handleQpuSecondsGrant = useCallback(
-    async (report: QpuSecondsGrantReport) => {
-      setMode(OperationMode.GRANT_QPU_SECONDS);
-      setQpuSecondsGrantReport(report);
-      setIdempotencyKey(crypto.randomUUID());
-      await refreshMyProjectsQueries(queryClient);
-      await refreshAllAdminQueries(queryClient);
-      setRowSelection({});
-    },
-    [queryClient, setMode, setRowSelection]
-  );
-
   const handleSidebarClose = useCallback(async () => {
     setMode(OperationMode.EDIT);
     setRowSelection({});
@@ -112,15 +92,6 @@ export function AdminProjects() {
           <div className="flex justify-between">
             <CardDescription>Projects</CardDescription>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                data-cy-grant-qpu-time
-                onClick={() => {
-                  setMode(OperationMode.GRANT_QPU_SECONDS);
-                }}
-              >
-                Grant QPU time
-              </Button>
               <Button
                 variant="default"
                 onClick={() => {
@@ -142,17 +113,6 @@ export function AdminProjects() {
           />
         </CardContent>
       </Card>
-
-      {mode === OperationMode.GRANT_QPU_SECONDS && (
-        <GrantQpuSecondsForm
-          className="order-first xl:order-none col-span-1"
-          onClose={handleSidebarClose}
-          onGrant={handleQpuSecondsGrant}
-          onCancel={handleSidebarClose}
-          grantReport={qpuSecondsGrantReport}
-          idempotencyKey={idempotencyKey}
-        />
-      )}
 
       {mode === OperationMode.EDIT && (
         <AdminProjectsSidebar
@@ -202,5 +162,4 @@ interface AdminProjectsData {
 enum OperationMode {
   EDIT = "edit",
   CREATE = "create",
-  GRANT_QPU_SECONDS = "grant_qpu_seconds",
 }

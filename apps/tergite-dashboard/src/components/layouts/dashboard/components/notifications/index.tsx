@@ -6,27 +6,28 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  markAllNotificationsRead,
-  myNotificationsQuery,
-  notificationCountQuery,
-  refreshMyNotifications,
+  dismissAllMyNotices,
+  myNoticesQuery,
+  noticeCountQuery,
+  refreshMyNotices,
 } from "@/lib/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellIcon } from "lucide-react";
 import { NotificationItem } from "./notification-item";
 
-export function NotificationsBell() {
+export function NotificationsBell({ userId }: Props) {
   const queryClient = useQueryClient();
-  const { data: notifications = [] } = useQuery(
-    myNotificationsQuery({ limit: 20 }),
+  const { data: notices = [] } = useQuery(
+    myNoticesQuery({ limit: 20, is_read: false })
   );
+  // user_id, or a superuser would count everyone's notices
   const { data: unreadCount = 0 } = useQuery(
-    notificationCountQuery({ is_read: false }),
+    noticeCountQuery({ user_id: userId, is_read: false }),
   );
 
   const markAll = useMutation({
-    mutationFn: markAllNotificationsRead,
-    onSuccess: async () => await refreshMyNotifications(queryClient),
+    mutationFn: dismissAllMyNotices,
+    onSuccess: async () => await refreshMyNotices(queryClient),
     throwOnError: true,
   });
 
@@ -41,7 +42,7 @@ export function NotificationsBell() {
           size="icon"
           className="relative"
         >
-          <BellIcon className="h-4 w-4" />
+          <BellIcon className="h-4 w-4" data-testid="notices-bell-icon" />
           {unreadCount > 0 && (
             <Badge
               data-cy-unread-count
@@ -75,21 +76,22 @@ export function NotificationsBell() {
           )}
         </div>
 
-        {notifications.length === 0 ? (
+        {notices.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted-foreground text-center">
             Nothing to show yet
           </p>
         ) : (
           <ul>
-            {notifications.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-              />
+            {notices.map((notice) => (
+              <NotificationItem key={notice.id} notice={notice} />
             ))}
           </ul>
         )}
       </PopoverContent>
     </Popover>
   );
+}
+
+interface Props {
+  userId: string;
 }

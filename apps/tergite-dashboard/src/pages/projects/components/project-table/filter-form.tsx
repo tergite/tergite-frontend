@@ -21,10 +21,10 @@ export const filterFormProps: DataTableFormConfig = {
       <Input {...field} className="" />
     ),
   },
-  ext_id: {
+  id: {
     validation: z.string(),
     defaultValue: "",
-    label: "External ID",
+    label: "ID",
     getFormElement: (field: DataTableFilterField) => (
       <Input {...field} className="" />
     ),

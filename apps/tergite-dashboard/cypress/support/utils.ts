@@ -1,5 +1,11 @@
 import { DateTime } from "luxon";
-import { AppToken, ExtendedAppToken, Project } from "../../types";
+import {
+  AnyFlatRecord,
+  AppToken,
+  ExtendedAppToken,
+  Project,
+  UserRequest,
+} from "../../types";
 
 /**
  * Converts an AppToken instance to an ExtendedAppToken instance
@@ -20,4 +26,19 @@ export function extendAppToken(
   const project_name = project.name;
 
   return { ...token, expires_at, is_expired, project_name };
+}
+
+/**
+ * Gets the details of the user request shown in its summary, i.e. its reason and
+ * its non-empty metadata other than the resource
+ *
+ * @param request - the request whose details are to be obtained
+ */
+export function getUserRequestDetails(request: UserRequest): AnyFlatRecord {
+  const { resource: _resource, ...metadata } = request.metadata;
+  return Object.fromEntries(
+    Object.entries({ reason: request.reason, ...metadata }).filter(
+      ([_k, v]) => v != null
+    )
+  );
 }

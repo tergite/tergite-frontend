@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { notificationPreferencesQuery } from "@/lib/api-client";
+import { noticePreferencesQuery } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient } from "@tanstack/react-query";
 import { type AppState } from "types";
@@ -33,7 +33,7 @@ export function Settings() {
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(_appState: AppState, queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async () => {
-    await queryClient.ensureQueryData(notificationPreferencesQuery());
+    await queryClient.ensureQueryData(noticePreferencesQuery());
     return {};
   });
 }

@@ -11,7 +11,7 @@ import { DateTime } from "luxon";
 
 const projects = [...projectList] as Project[];
 const projectsMap = Object.fromEntries(
-  projects.map((v) => [v.ext_id, { ...v }])
+  projects.map((v) => [v.id, { ...v }])
 );
 const updatedTokenList = bulkUpdate(tokenList, {
   created_at: new Date().toISOString(),
@@ -19,18 +19,16 @@ const updatedTokenList = bulkUpdate(tokenList, {
 const userIds = updatedTokenList.map((v) => v.user_id);
 const users = userList.filter((v) => userIds.includes(v.id)) as User[];
 const extendedTokens = updatedTokenList
-  .filter((v) => projectsMap[v.project_ext_id])
-  .map((v) => extendAppToken(v, projectsMap[v.project_ext_id]));
+  .filter((v) => projectsMap[v.project_id])
+  .map((v) => extendAppToken(v, projectsMap[v.project_id]));
 const tokensTableHeaders = [
   "Title",
-  "Project Ext ID",
   "Project",
   "Expires",
   "Status",
 ];
 const tokensTableDataProps = [
   "title",
-  "project_ext_id",
   "project_name",
   "expires_at",
   "is_expired",
@@ -157,7 +155,6 @@ users.forEach((user) => {
             title: "work",
             is_expired: undefined,
             project_name: undefined,
-            project_ext_id: undefined,
           },
           result: allUserTokens.filter((v) => /work/i.test(v.title)),
         },
@@ -168,8 +165,8 @@ users.forEach((user) => {
           ),
         },
         {
-          input: { project_ext_id: "est1" },
-          result: allUserTokens.filter((v) => /est1/i.test(v.project_ext_id)),
+          input: { project_name: "est 1" },
+          result: allUserTokens.filter((v) => /est 1/i.test(v.project_name)),
         },
         {
           input: { project_name: "test" },
@@ -193,14 +190,12 @@ users.forEach((user) => {
           input: {
             project_name: "te",
             is_expired: true,
-            project_ext_id: "test2",
             title: "home",
           },
           result: allUserTokens.filter(
             (v) =>
               /te/i.test(v.project_name) &&
               v.is_expired &&
-              /test2/i.test(v.project_ext_id) &&
               /home/i.test(v.title)
           ),
         },
@@ -214,9 +209,6 @@ users.forEach((user) => {
         .click()
         .then(() => {
           cy.get("[data-cy-filter-form] input[name='title']").as("titleInput");
-          cy.get("[data-cy-filter-form] input[name='project_ext_id']").as(
-            "projectExtIdInput"
-          );
           cy.get("[data-cy-filter-form] input[name='project_name']").as(
             "projectNameInput"
           );
@@ -229,8 +221,6 @@ users.forEach((user) => {
           for (const filterMap of filterMaps) {
             cy.wrap(filterMap).then(({ input, result }) => {
               input.title && cy.get("@titleInput").type(input.title);
-              input.project_ext_id &&
-                cy.get("@projectExtIdInput").type(input.project_ext_id);
               input.project_name &&
                 cy.get("@projectNameInput").type(input.project_name);
               input.is_expired !== undefined &&
@@ -334,9 +324,9 @@ users.forEach((user) => {
               ).should("be.visible");
             });
 
-            cy.contains("#token-summary div", /project external id/i).within(
+            cy.contains("#token-summary div", /^Project/).within(
               () => {
-                cy.contains(token.project_ext_id).should("be.visible");
+                cy.contains(token.project_name).should("be.visible");
               }
             );
           }
@@ -356,7 +346,7 @@ users.forEach((user) => {
           }).click();
 
           const tokensForProject = allUserTokens.filter(
-            (v) => v.project_ext_id === project.ext_id
+            (v) => v.project_id === project.id
           );
           cy.wrap({ tokens: tokensForProject, project }).then((params) => {
             cy.contains(
@@ -428,7 +418,7 @@ users.forEach((user) => {
           }).click();
 
           const tokensForProject = allUserTokens.filter(
-            (v) => v.project_ext_id === project.ext_id
+            (v) => v.project_id === project.id
           );
           cy.wrap({ tokens: tokensForProject, project }).then((params) => {
             const filterMaps = [
@@ -443,9 +433,9 @@ users.forEach((user) => {
                 ),
               },
               {
-                input: { project_ext_id: "est1" },
+                input: { project_name: "est 1" },
                 result: params.tokens.filter((v) =>
-                  /est1/i.test(v.project_ext_id)
+                  /est 1/i.test(v.project_name)
                 ),
               },
               {
@@ -472,14 +462,12 @@ users.forEach((user) => {
                 input: {
                   project_name: "te",
                   is_expired: true,
-                  project_ext_id: "test2",
                   title: "home",
                 },
                 result: params.tokens.filter(
                   (v) =>
                     /te/i.test(v.project_name) &&
                     v.is_expired &&
-                    /test2/i.test(v.project_ext_id) &&
                     /home/i.test(v.title)
                 ),
               },
@@ -493,9 +481,6 @@ users.forEach((user) => {
               .then(() => {
                 cy.get("[data-cy-filter-form] input[name='title']").as(
                   "titleInput"
-                );
-                cy.get("[data-cy-filter-form] input[name='project_ext_id']").as(
-                  "projectExtIdInput"
                 );
                 cy.get("[data-cy-filter-form] input[name='project_name']").as(
                   "projectNameInput"
@@ -513,8 +498,6 @@ users.forEach((user) => {
                 for (const filterMap of filterMaps) {
                   cy.wrap(filterMap).then(({ input, result }) => {
                     input.title && cy.get("@titleInput").type(input.title);
-                    input.project_ext_id &&
-                      cy.get("@projectExtIdInput").type(input.project_ext_id);
                     input.project_name &&
                       cy.get("@projectNameInput").type(input.project_name);
                     input.is_expired !== undefined &&
@@ -614,7 +597,7 @@ users.forEach((user) => {
           }).click();
 
           const tokensForProject = allUserTokens.filter(
-            (v) => v.project_ext_id === project.ext_id
+            (v) => v.project_id === project.id
           );
           cy.wrap({ tokens: tokensForProject, project }).then((params) => {
             cy.get(".bg-card tbody tr").each((el, idx) => {
@@ -649,8 +632,8 @@ users.forEach((user) => {
                       ).should("be.visible");
                     });
 
-                    cy.contains("div", /project external id/i).within(() => {
-                      cy.contains(token.project_ext_id).should("be.visible");
+                    cy.contains("div", /^Project/).within(() => {
+                      cy.contains(token.project_name).should("be.visible");
                     });
                   });
                 }
@@ -677,7 +660,7 @@ users.forEach((user) => {
 
           cy.wrap({ project }).then(({ project }) => {
             const tokensForProject = allUserTokens.filter(
-              (v) => v.project_ext_id === project.ext_id
+              (v) => v.project_id === project.id
             );
             if (tokensForProject[0]) {
               // click on the first row
@@ -706,7 +689,7 @@ users.forEach((user) => {
           }).click();
 
           cy.wrap({ project }).then(({ project }) => {
-            const tokenNameRegex = new RegExp(`${project.ext_id}-(\\d+)`, "i");
+            const tokenNameRegex = new RegExp(`${project.id}-(\\d+)`, "i");
 
             cy.get("@newTokenBtn")
               .click()
@@ -767,7 +750,7 @@ users.forEach((user) => {
 
           cy.wrap({ project }).then(({ project }) => {
             const projectsTokens = allUserTokens.filter(
-              (v) => v.project_ext_id === project.ext_id
+              (v) => v.project_id === project.id
             );
             if (projectsTokens.length < 10) {
               cy.get("@newPageBtn").should("have.attr", "disabled");
@@ -879,7 +862,7 @@ users.forEach((user) => {
           }).click();
 
           const tokensForProject = allUserTokens.filter(
-            (v) => v.project_ext_id === project.ext_id
+            (v) => v.project_id === project.id
           );
           cy.wrap(tokensForProject).then((tokensForProject) => {
             for (let index = 0; index < tokensForProject.length; index++) {
@@ -969,7 +952,7 @@ users.forEach((user) => {
           }).click();
 
           const tokensForProject = allUserTokens.filter(
-            (v) => v.project_ext_id === project.ext_id
+            (v) => v.project_id === project.id
           );
           cy.wrap(tokensForProject).then((tokensForProject) => {
             for (let index = 0; index < tokensForProject.length; index++) {

@@ -4,6 +4,7 @@
 import userRequestList from "../fixtures/user-requests.json";
 import userList from "../fixtures/users.json";
 import { generateJwt } from "../../api/utils";
+import { getUserRequestDetails } from "../support/utils";
 import { type User, type UserRequest } from "../../types";
 
 const users = [...userList] as User[];
@@ -24,7 +25,7 @@ function login(user: User) {
   const audience = Cypress.env("AUTH_AUDIENCE");
   const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
 
-  cy.intercept("GET", `${apiBaseUrl}/me`).as("my-user-info");
+  cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
   cy.intercept("GET", `${apiBaseUrl}/me/requests/?*`).as("my-requests");
 
   cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then((jwt) => {
@@ -76,7 +77,7 @@ requesters.forEach((user) => {
       cy.get("#request-summary").within(() => {
         cy.contains(newest.status).should("be.visible");
         for (const [key, value] of Object.entries(
-          newest.request as Record<string, unknown>
+          getUserRequestDetails(newest)
         )) {
           // DetailItem capitalises the label, so match without regard to case
           cy.contains(new RegExp(key.replace(/_/g, " "), "i")).should("exist");

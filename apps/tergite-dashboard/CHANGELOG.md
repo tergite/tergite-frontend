@@ -28,8 +28,6 @@ and this project follows versions of format {year}.{month}.{patch_number}.
   running out of time is visible before a job is rejected for it.
 - Added a `/settings` page, reached from the user menu, with a switch per notification type
   for the email copy. In-app delivery of anything awaiting the reader stays on regardless.
-- Added a "Grant QPU time" form on the admin projects page, targeting either a list of
-  users or every personal project, and reporting which targets were skipped and why.
 - Added a notifications bell reporting the outcome of project-access and QPU-time requests,
   with approve and reject inline on the ones awaiting the reader. Previously neither
   requester nor approver learned anything without hunting for it.
@@ -51,19 +49,22 @@ and this project follows versions of format {year}.{month}.{patch_number}.
   API token control stays off those screens, where no project is selected.
 - Submitting an access request now confirms with a toast. The dialog simply closed, which
   was indistinguishable from it having been dismissed.
-- The access-request form now asks for the "Project External ID", the identifier a user
-  actually has, rather than the ambiguous "Project ID".
+- [BREAKING]: Projects are known by their ID alone, as MSS dropped `ext_id`: the projects
+  tables show and filter by it, the access-request form asks for it, and tokens refer to it.
 - The projects page's access-request button is now a primary button reading "Request
   access". As a long outline button it neither stood out nor fitted a phone screen.
 - The projects page no longer offers Delete on the reader's own personal project, matching
   the API, which refuses it. The admin projects page still offers it, for offboarding.
-- Renamed 'all-personal' QPU seconds grant mode to 'all-personal-projects'
 - Made sidebar and mobile menu scrollable
+- [BREAKING]: Notifications and notices are one thing, as in MSS: the bell lists and counts
+  the unread ones from `/me/notices/`, the top banner shows the announcements among them, and
+  the settings page has one email switch per notice type at `/me/notices/preferences/`.
+- [BREAKING]: Requests of every kind, including the admin requests page and QPU time, go
+  through `/me/requests/`; the profile, backend control and email lookup moved to
+  `/me/profile`, `/admin/bcc/*` and `/admin/users/emails/` along with MSS.
 
 ### Fixed
 
-- Fixed the 'Grant to all' confirmation not closing on Confirm, so every further click
-  granted the seconds again. The form now stays disabled until it is edited afresh.
 - Fixed the days box of the QPU-time request form counting a day as 24 seconds, so 2 days
   asked for 48 seconds on top of the default hour.
 - Fixed the QPU-time request form sending a duration other than the one displayed: days,

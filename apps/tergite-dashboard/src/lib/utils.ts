@@ -260,21 +260,36 @@ export function timeAsString({
  * @returns - the title for the given request
  */
 export function getUserRequestTitle(request: UserRequest): string {
-  const requestBody = request.request as AnyFlatRecord;
+  const { metadata } = request;
   switch (request.type) {
     case "close-project":
-      return `Close project '${requestBody.project_name}'`;
+      return `Close project '${metadata.project_name}'`;
     case "create-project":
-      return `Create new project '${requestBody.name}'`;
+      return `Create new project '${metadata.name}'`;
     case "project-qpu-seconds":
-      return `Add QPU time on project: '${requestBody.project_name}'`;
+      return `Add QPU time on project: '${metadata.project_name}'`;
     case "project-access":
-      return `Join project '${requestBody.project_name ?? requestBody.project_ext_id}'`;
+      return `Join project '${metadata.project_name ?? request.resource_id}'`;
     case "transfer-project":
-      return `Transfer project '${requestBody.project_name}'`;
+      return `Transfer project '${metadata.project_name}'`;
     default:
       return "User request";
   }
+}
+
+/**
+ * Gets the details of what the request asks for, to show to its parties
+ *
+ * @param request - the request instance as returned from the API
+ * @returns - the reason for the request and the details peculiar to its type
+ */
+export function getUserRequestDetails(request: UserRequest): AnyFlatRecord {
+  // every request concerns a project for now, so the resource says nothing
+  const { resource: _resource, ...metadata } = request.metadata;
+  const details = { reason: request.reason, ...metadata };
+  return Object.fromEntries(
+    Object.entries(details).filter(([_k, v]) => v != null),
+  );
 }
 
 /**
