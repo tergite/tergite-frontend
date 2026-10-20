@@ -305,9 +305,9 @@ export interface User extends DbRecord {
   organization?: string;
 }
 
+// the token as the API shows it, which never names its user
 export interface AppToken extends DbRecord {
   title: string;
-  user_id: string;
   project_id: string;
   lifespan_seconds: number;
   created_at: string;

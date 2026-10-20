@@ -18,9 +18,6 @@ const updatedTokenList = bulkUpdate(tokenList, {
 });
 const userIds = updatedTokenList.map((v) => v.user_id);
 const users = userList.filter((v) => userIds.includes(v.id)) as User[];
-const extendedTokens = updatedTokenList
-  .filter((v) => projectsMap[v.project_id])
-  .map((v) => extendAppToken(v, projectsMap[v.project_id]));
 const tokensTableHeaders = [
   "Title",
   "Project",
@@ -39,7 +36,9 @@ users.forEach((user) => {
   const userProjects = projects.filter(
     (v) => v.user_ids.includes(user.id) && v.is_active
   );
-  const allUserTokens = extendedTokens.filter((v) => v.user_id === user.id);
+  const allUserTokens = updatedTokenList
+    .filter((v) => v.user_id === user.id && projectsMap[v.project_id])
+    .map((v) => extendAppToken(v, projectsMap[v.project_id]));
 
   describe(`tokens page for ${username}`, () => {
     const dashboardUrl = Cypress.config("baseUrl");

@@ -135,7 +135,7 @@ class MockDb {
   cache: { [k: string | ItemType]: DbRecord[] } = {
     projects: [...(projectList as Project[])],
     users: [...(userList as User[])],
-    tokens: [...(tokenList as AppToken[])],
+    tokens: [...(tokenList as AppTokenInDb[])],
     devices: [...(deviceList as unknown as Device[])],
     calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
     jobs: [...(jobList as Job[])],
@@ -184,7 +184,7 @@ class MockDb {
     this.cache = {
       projects: [...(projectList as Project[])],
       users: [...(userList as User[])],
-      tokens: bulkUpdate(tokenList, { created_at: now }) as AppToken[],
+      tokens: bulkUpdate(tokenList, { created_at: now }) as AppTokenInDb[],
       devices: [...(deviceList as unknown as Device[])],
       calibrations: [...(deviceCalibrationList as DeviceCalibration[])],
       jobs: [...(jobList as Job[])],
@@ -750,6 +750,13 @@ export interface BookingInDb extends Booking {}
  * Schema for Bookings
  */
 export interface BookingsConfigInDb extends BookingsConfig, DbRecord {}
+
+/**
+ * Schema for app tokens
+ */
+export interface AppTokenInDb extends AppToken {
+  user_id: string;
+}
 
 /**
  * Basic info for a notice as stored in the fixture, using relative time offsets

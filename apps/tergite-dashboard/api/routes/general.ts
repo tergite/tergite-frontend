@@ -2,6 +2,7 @@ import { Router, type Request as ExpressRequest } from "express";
 import { type ParsedQs } from "qs";
 import cors from "cors";
 import {
+  AppTokenInDb,
   archiveDb,
   BccUserInDb,
   BookingInDb,
@@ -192,7 +193,7 @@ router.post(
     const project = mockDb.getOne<Project>(
       "projects",
       (v) =>
-        v.id === (payload as AppToken).project_id &&
+        v.id === (payload as AppTokenInDb).project_id &&
         v.user_ids.includes(user_id),
     );
     if (!project) {
@@ -202,7 +203,7 @@ router.post(
     const access_token = randomUUID();
     payload["access_token"] = access_token;
 
-    mockDb.create<AppToken>("tokens", payload);
+    mockDb.create<AppTokenInDb>("tokens", payload);
     res.status(201);
     res.json({
       access_token,
@@ -220,9 +221,11 @@ router.get(
     }
 
     const { project_id } = req.query as { [k: string]: string };
-    const data = mockDb.getMany<AppToken>("tokens", (v) =>
-      conformsToFilter(v, { user_id: currentUserId, project_id }),
-    );
+    const data = mockDb
+      .getMany<AppTokenInDb>("tokens", (v) =>
+        conformsToFilter(v, { user_id: currentUserId, project_id }),
+      )
+      .map(toAppToken);
 
     res.json({ skip: 0, limit: null, data } as PaginatedData<AppToken[]>);
   }),
@@ -237,7 +240,7 @@ router.delete(
     }
 
     const { params } = req;
-    const token = mockDb.getOne<AppToken>("tokens", (v) =>
+    const token = mockDb.getOne<AppTokenInDb>("tokens", (v) =>
       conformsToFilter(v, { user_id: currentUserId, id: params.id }),
     );
     if (token === undefined) {
@@ -261,9 +264,9 @@ router.put(
     }
 
     const { body, params } = req;
-    const filterFn = (v: AppToken) =>
+    const filterFn = (v: AppTokenInDb) =>
       conformsToFilter(v, { user_id, id: params.id });
-    const oldToken = mockDb.getOne<AppToken>("tokens", filterFn);
+    const oldToken = mockDb.getOne<AppTokenInDb>("tokens", filterFn);
     if (!oldToken) {
       res.status(404).json({ detail: `Not Found` });
       return;
@@ -274,11 +277,11 @@ router.put(
       "seconds",
     ).seconds;
 
-    const token = mockDb.update<AppToken>("tokens", filterFn, {
+    const token = mockDb.update<AppTokenInDb>("tokens", filterFn, {
       lifespan_seconds,
     });
 
-    res.json(token);
+    res.json(token && toAppToken(token));
   }),
 );
 
@@ -1698,6 +1701,15 @@ function applyApproval(request: UserRequest) {
       break;
     }
   }
+}
+
+/**
+ * Gets the app token as the API shows it, without its user
+ *
+ * @param token - the app token as stored
+ */
+function toAppToken({ user_id: _userId, ...token }: AppTokenInDb): AppToken {
+  return token;
 }
 
 /**
