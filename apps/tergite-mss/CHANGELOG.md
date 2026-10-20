@@ -9,6 +9,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Added the `id`, `user_ids`, `name`, `is_active`, `min_qpu_seconds` and `max_qpu_seconds` filters
+  of GET `/admin/projects/` to GET `/me/projects/`, which ignored them, so the dashboard's list of
+  active projects also showed inactive ones.
 - Added `GET /admin/users/emails/`, a superuser-only lookup of user email addresses behind the
   admin project forms.
 - Added an unlogged `GET /health` for the container healthcheck.

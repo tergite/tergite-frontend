@@ -30,6 +30,7 @@ from tests._utils.auth import (
 )
 from tests._utils.date_time import get_current_timestamp_str
 from tests._utils.notices import get_user_notices
+from tests._utils.projects import PROJECT_QUERIES
 from tests._utils.records import prune
 from tests.conftest import PROJECT_LIST
 
@@ -59,9 +60,50 @@ _USER_ID_COOKIES_FIXTURE = [
     (TEST_SUPERUSER_ID, lazy_fixture("admin_jwt_cookie")),
 ]
 _EXTRA_PROJECT_DEFAULTS = {"is_personal": False}
+_ALL_PROJECTS = [TEST_PROJECT_DICT, TEST_NO_QPU_PROJECT_DICT] + PROJECT_LIST
 _SYSTEM_USER_MEMBERSHIP_URL = (
     f"/me/projects/{TEST_PROJECT_ID}/members/{TEST_SYSTEM_USER_ID}"
 )
+
+
+@pytest.mark.parametrize("params, is_match", PROJECT_QUERIES)
+def test_filter_own_projects(
+    params, is_match, client, inserted_project_ids, user_jwt_cookie
+):
+    """Any user can filter their own projects at /me/projects/"""
+    expected = sorted(
+        str(v["_id"])
+        for v in _ALL_PROJECTS
+        if TEST_USER_ID in [str(u) for u in v["user_ids"]] and is_match(v)
+    )
+
+    with client as client:
+        response = client.get("/me/projects/", params=params, cookies=user_jwt_cookie)
+        got = sorted(v["id"] for v in response.json()["data"])
+
+        assert response.status_code == 200
+        assert got == expected
+
+
+def test_filter_projects_by_others_members(
+    client, inserted_project_ids, user_jwt_cookie
+):
+    """Filtering by members finds only the user's own projects that they are in"""
+    with client as client:
+        response = client.get(
+            "/me/projects/",
+            params={"user_ids": TEST_SUPERUSER_ID},
+            cookies=user_jwt_cookie,
+        )
+        got = sorted(v["id"] for v in response.json()["data"])
+
+        assert response.status_code == 200
+        assert got == sorted(
+            project["_id"]
+            for project in PROJECT_LIST
+            if TEST_SUPERUSER_ID in project["user_ids"]
+            and TEST_USER_ID in project["user_ids"]
+        )
 
 
 @pytest.mark.parametrize("user_id, cookies", _USER_ID_COOKIES_FIXTURE)

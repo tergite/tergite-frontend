@@ -65,9 +65,25 @@ def get_my_projects_router(
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
         skip: int = Query(0),
         limit: Optional[int] = Query(None),
+        ids: Optional[List[PydanticObjectId]] = Query(None, alias="id"),
+        user_ids: Optional[List[PydanticObjectId]] = Query(None),
+        name: Optional[List[str]] = Query(None),
+        is_active: Optional[bool] = Query(None),
+        min_qpu_seconds: Optional[int] = Query(None),
+        max_qpu_seconds: Optional[int] = Query(None),
     ):
+        query_filter = get_projects_filter(
+            ids=ids,
+            user_ids=user_ids,
+            name=name,
+            is_active=is_active,
+            min_qpu_seconds=min_qpu_seconds,
+            max_qpu_seconds=max_qpu_seconds,
+        )
+        # in an $and, so that a user_ids query narrows the user's projects
+        filter_obj = {"$and": [{"user_ids": PydanticObjectId(user_id)}, query_filter]}
         projects = await project_manager.get_many(
-            filter_obj={"user_ids": PydanticObjectId(user_id)},
+            filter_obj=filter_obj,
             skip=skip,
             limit=limit,
         )

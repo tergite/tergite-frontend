@@ -24,7 +24,6 @@ from tests._utils.auth import (
     TEST_PROJECT_DICT,
     TEST_PROJECT_ID,
     TEST_PROJECT_NAME,
-    TEST_SUPERUSER_ID,
     TEST_SYSTEM_USER_EMAIL,
     TEST_SYSTEM_USER_ID,
     TEST_USER_EMAIL,
@@ -36,6 +35,7 @@ from tests._utils.date_time import get_timestamp_str
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mongodb import find_in_collection
 from tests._utils.notices import get_user_notices
+from tests._utils.projects import PROJECT_QUERIES
 from tests._utils.records import prune
 from tests.conftest import PROJECT_LIST
 
@@ -50,29 +50,6 @@ _NOTIFIED_PROJECT = {
     "qpu_seconds": 100,
 }
 _ALL_PROJECTS = [TEST_PROJECT_DICT, TEST_NO_QPU_PROJECT_DICT] + PROJECT_LIST
-_PROJECT_QUERIES = [
-    ([("is_active", "false")], lambda v: not v.get("is_active", True)),
-    (
-        [("min_qpu_seconds", "0"), ("max_qpu_seconds", "60000")],
-        lambda v: 0 <= v["qpu_seconds"] <= 60000,
-    ),
-    (
-        [("name", "Normal Test"), ("name", "Zero QPU")],
-        lambda v: v["name"] in ("Normal Test", "Zero QPU"),
-    ),
-    (
-        [("id", TEST_PROJECT_ID), ("id", "7c445113e77284cef9397c5b")],
-        lambda v: str(v["_id"]) in (TEST_PROJECT_ID, "7c445113e77284cef9397c5b"),
-    ),
-    (
-        [("user_ids", TEST_SUPERUSER_ID)],
-        lambda v: TEST_SUPERUSER_ID in [str(u) for u in v["user_ids"]],
-    ),
-    (
-        [("is_active", "true"), ("min_qpu_seconds", "1")],
-        lambda v: v.get("is_active", True) and v["qpu_seconds"] >= 1,
-    ),
-]
 
 
 @pytest.mark.parametrize("project", _PROJECT_CREATE_LIST)
@@ -247,7 +224,7 @@ def test_admin_view_all_projects_in_detail(
         assert got == {"skip": 0, "limit": None, "data": project_list}
 
 
-@pytest.mark.parametrize("params, is_match", _PROJECT_QUERIES)
+@pytest.mark.parametrize("params, is_match", PROJECT_QUERIES)
 def test_admin_filter_projects(
     params, is_match, client, inserted_project_ids, admin_jwt_cookie
 ):
