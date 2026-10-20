@@ -214,7 +214,8 @@ def get_projects_filter(
         filter_obj["name"] = {"$in": name}
 
     if is_active is not None:
-        filter_obj["is_active"] = is_active
+        # a project stored without is_active is active, as the field defaults to True
+        filter_obj["is_active"] = {"$ne": False} if is_active else False
 
     if min_qpu_seconds is not None:
         filter_obj["qpu_seconds"] = {"$gte": min_qpu_seconds}

@@ -68,6 +68,10 @@ _PROJECT_QUERIES = [
         [("user_ids", TEST_SUPERUSER_ID)],
         lambda v: TEST_SUPERUSER_ID in [str(u) for u in v["user_ids"]],
     ),
+    (
+        [("is_active", "true"), ("min_qpu_seconds", "1")],
+        lambda v: v.get("is_active", True) and v["qpu_seconds"] >= 1,
+    ),
 ]
 
 
