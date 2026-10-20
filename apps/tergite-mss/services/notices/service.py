@@ -300,7 +300,7 @@ async def find_many(
     filters: Optional[Dict[str, Any]] = None,
     limit: Optional[int] = None,
     skip: int = 0,
-    sort: List[str] = (),
+    sort: tuple[str, ...] = (),
     user_id: Optional[PydanticObjectId | str] = None,
     min_start_utc: Optional[datetime] = None,
     max_start_utc: Optional[datetime] = None,

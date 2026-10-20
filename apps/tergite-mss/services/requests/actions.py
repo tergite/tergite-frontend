@@ -11,7 +11,8 @@
 # that they have been altered from the originals.
 
 """The actions that approving each type of request does"""
-from typing import Any, Callable, Coroutine, Dict, Sequence, cast
+import asyncio
+from typing import Any, Callable, Coroutine, Dict, List, Sequence, cast
 
 from beanie import PydanticObjectId
 from beanie.odm.operators.find.comparison import In
@@ -40,7 +41,30 @@ type Action = Callable[[Request, User], Coroutine[Any, Any, None]]
 """An action that approving a request does, given the request and its approver"""
 
 
-async def do_action(request: Request, approver: User) -> None:
+async def do_many_actions(requests: List[Request], approver: User) -> None:
+    """Does an actions on multiple requests for each request type
+
+    Args:
+        requests: The requests to do that are to be acted on
+        approver: The user who is supposed to approve the request
+
+    Raises:
+        ExceptionGroup: errors doing bulk actions
+            ValueError: no action for request type {type}
+            NotFoundError: project {id} not found
+            NotFoundError: no users of emails {emails}
+            ConflictError: a project named '{name}' already exists
+    """
+    tasks = [_do_action(req, approver) for req in requests]
+
+    resp = await asyncio.gather(*tasks, return_exceptions=True)
+    errors = [item for item in resp if isinstance(resp, Exception)]
+
+    if errors:
+        raise ExceptionGroup("errors doing bulk action", errors)
+
+
+async def _do_action(request: Request, approver: User) -> None:
     """Does what the given request asks for, as it is being approved
 
     Args:
@@ -53,15 +77,23 @@ async def do_action(request: Request, approver: User) -> None:
         NotFoundError: no users of emails {emails}
         ConflictError: a project named '{name}' already exists
     """
+    action_map: Dict[RequestType, Action] = {
+        RequestType.CREATE_PROJECT: _create_project,
+        RequestType.CLOSE_PROJECT: _close_project,
+        RequestType.TRANSFER_PROJECT: _transfer_project,
+        RequestType.PROJECT_QPU_SECONDS: _add_qpu_seconds,
+        RequestType.PROJECT_ACCESS: _add_project_member,
+    }
+
     try:
-        action = _ACTION_MAP[request.type]
+        action = action_map[request.type]
     except KeyError:
         raise ValueError(f"no action for request type {request.type}")
 
     await action(request, approver)
 
 
-async def create_project(request: Request, approver: User) -> None:
+async def _create_project(request: Request, approver: User) -> None:
     """Creates the project described in the metadata of a create-project request
 
     Users of any emails that do not exist yet are created, as when a superuser
@@ -83,7 +115,7 @@ async def create_project(request: Request, approver: User) -> None:
         raise ConflictError(f"a project named '{metadata.name}' already exists")
 
 
-async def close_project(request: Request, approver: User) -> None:
+async def _close_project(request: Request, approver: User) -> None:
     """Closes the project of a close-project request, keeping a copy of it
 
     Args:
@@ -98,7 +130,7 @@ async def close_project(request: Request, approver: User) -> None:
     await project_manager.delete(project, is_superuser=True)
 
 
-async def transfer_project(request: Request, approver: User) -> None:
+async def _transfer_project(request: Request, approver: User) -> None:
     """Makes the user named in a transfer-project request the admin of its project
 
     Args:
@@ -119,7 +151,7 @@ async def transfer_project(request: Request, approver: User) -> None:
     )
 
 
-async def add_qpu_seconds(request: Request, approver: User) -> None:
+async def _add_qpu_seconds(request: Request, approver: User) -> None:
     """Adds the seconds asked for in a project-qpu-seconds request to its project
 
     Args:
@@ -135,7 +167,7 @@ async def add_qpu_seconds(request: Request, approver: User) -> None:
     await project_db.increment_qpu_seconds(project.id, metadata.seconds)
 
 
-async def add_project_member(request: Request, approver: User) -> None:
+async def _add_project_member(request: Request, approver: User) -> None:
     """Adds the requester of a project-access request to its project
 
     Args:
@@ -149,16 +181,6 @@ async def add_project_member(request: Request, approver: User) -> None:
     await Project.find_one(Project.id == project.id).update(
         AddToSet({Project.user_ids: request.requester_id})
     )
-
-
-_ACTION_MAP: Dict[RequestType, Action] = {
-    RequestType.CREATE_PROJECT: create_project,
-    RequestType.CLOSE_PROJECT: close_project,
-    RequestType.TRANSFER_PROJECT: transfer_project,
-    RequestType.PROJECT_QPU_SECONDS: add_qpu_seconds,
-    RequestType.PROJECT_ACCESS: add_project_member,
-}
-"""A map of the actions for each type of request"""
 
 
 async def _get_project(project_id: PydanticObjectId) -> Project:

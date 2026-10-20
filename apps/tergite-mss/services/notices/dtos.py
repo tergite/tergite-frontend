@@ -96,7 +96,6 @@ class CustomNoticeContext(BaseNoticeContext):
     body: str = ""
 
 
-# @dataclasses.dataclass(frozen=True, eq=True)
 class NoticeTypeInfo(NamedTuple):
     id: str
     title: str

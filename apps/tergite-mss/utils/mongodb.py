@@ -14,7 +14,7 @@ from contextlib import suppress
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type
 
 import pymongo
-from beanie import Document, init_beanie
+from beanie import Document, SortDirection, init_beanie
 from loguru import logger
 from motor.motor_asyncio import (
     AsyncIOMotorClient,
@@ -178,7 +178,7 @@ async def find(
     exclude: Tuple[str] = (),
     limit: Optional[int] = None,
     skip: int = 0,
-    sort: Optional[List[str]] = None,
+    sort: Optional[Sequence[str]] = None,
     schema: Type[ModelOrDict] = dict,
     skip_validation: bool = False,
 ) -> List[ModelOrDict]:
@@ -211,7 +211,7 @@ async def find(
 
     db_cursor = collection.find(filters, projection).skip(skip)
     if sort:
-        sort_config = _extract_sort_config(sort)
+        sort_config = extract_sort_config(sort)
         db_cursor.sort(sort_config)
 
     if limit and limit >= 0:
@@ -368,6 +368,29 @@ async def delete_many(collection: AsyncIOMotorCollection, _filter: dict):
     return result.deleted_count
 
 
+def extract_sort_config(sort_fields: Sequence[str]) -> List[Tuple[str, SortDirection]]:
+    """Gets the configuration for sorting basing on sort_fields passed
+
+    Sort fields are passed as prefixed with a "-" if a descending sort is required,
+    otherwise, their names are just listed.
+
+    Args:
+        sort_fields: the fields to sort by, prefixed with "-" if descending sort is needed
+
+    Returns:
+        The list of tuples of field and direction
+    """
+    sort_config: List[Tuple[str, SortDirection]] = []
+
+    for sort_field in sort_fields:
+        if sort_field.startswith("-"):
+            sort_config.append((sort_field[1:], SortDirection.DESCENDING))
+        else:
+            sort_config.append((sort_field, SortDirection.ASCENDING))
+
+    return sort_config
+
+
 def _extract_filter_obj(document: Dict[str, Any], unique_fields: Tuple[str, ...]):
     """Extracts a filter object from a document, given a set of unique fields
 
@@ -385,29 +408,6 @@ def _extract_filter_obj(document: Dict[str, Any], unique_fields: Tuple[str, ...]
         return {k: document[k] for k in unique_fields}
     except KeyError as exp:
         raise ValueError(f"property '{exp}' is required")
-
-
-def _extract_sort_config(sort_fields: List[str]) -> List[Tuple[str, int]]:
-    """Gets the configuration for sorting basing on sort_fields passed
-
-    Sort fields are passed as prefixed with a "-" if a descending sort is required,
-    otherwise, their names are just listed.
-
-    Args:
-        sort_fields: the fields to sort by, prefixed with "-" if descending sort is needed
-
-    Returns:
-        The list of tuples of field and direction
-    """
-    sort_config: List[Tuple[str, int]] = []
-
-    for sort_field in sort_fields:
-        if sort_field.startswith("-"):
-            sort_config.append((sort_field[1:], pymongo.DESCENDING))
-        else:
-            sort_config.append((sort_field, pymongo.ASCENDING))
-
-    return sort_config
 
 
 async def _set_jsonschema_validator(

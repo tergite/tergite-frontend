@@ -11,10 +11,10 @@
 # that they have been altered from the originals.
 import asyncio
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import motor.motor_asyncio
-from beanie import PydanticObjectId, SortDirection
+from beanie import PydanticObjectId
 from beanie.odm.operators.find.comparison import In
 from pydantic import BaseModel, Field
 
@@ -23,7 +23,7 @@ from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
 from utils.config import UserRole
 from utils.exc import ForbiddenError, NotFoundError
-from utils.mongodb import init_strict_beanie
+from utils.mongodb import extract_sort_config, init_strict_beanie
 
 from . import actions
 from .dtos import (
@@ -148,12 +148,11 @@ async def get_many(
             {"requester_id": current_user_id},
         ],
     }
-    sort_args = _to_sort_pairs(sort)
     return await Request.find(
         _filter,
         skip=skip,
         limit=limit,
-        sort=sort_args,
+        sort=extract_sort_config(sort),
     ).to_list()
 
 
@@ -204,7 +203,7 @@ async def update(
     _filter.update(
         {"target_user_ids": current_user.id, "status": RequestStatus.PENDING}
     )
-    sort_args = _to_sort_pairs(sort)
+    sort_args = extract_sort_config(sort)
 
     # found first, as approving needs them, and update_many can neither skip nor limit
     matches = await Request.find(
@@ -214,8 +213,7 @@ async def update(
         raise NotFoundError("no match found")
 
     if payload.status == RequestStatus.APPROVED:
-        for item in matches:
-            await actions.do_action(item, approver=current_user)
+        await actions.do_many_actions(matches, approver=current_user)
 
     # updated_at is never set by the client, so exclude_unset would drop its default
     update_dict = payload.model_dump(exclude_unset=True)
@@ -235,7 +233,10 @@ async def update(
         for item in result:
             ref_type_ids_map[item.metadata.resource].append(item.id)
 
+        # clear the notice for all possible approvers
         await notices.clear_notices_by_reference(ref_type_ids_map)
+
+        # update requester
         await asyncio.gather(
             *(
                 notices.create_system_notice(
@@ -249,28 +250,6 @@ async def update(
             )
         )
     return result
-
-
-def _to_sort_pairs(sort_fields: Sequence[str]) -> List[Tuple[str, SortDirection]]:
-    """Converts a list of sort fields with '-' prepended for descending to tuples of field and direction.
-
-    Args:
-        sort_fields: the sort fields
-
-    Returns:
-        the tuples of the fields with their directions of sorting
-    """
-    sort_args = []
-    for field in sort_fields:
-        cleaned_field = field.lstrip("-")
-        direction = (
-            SortDirection.DESCENDING
-            if field.startswith("-")
-            else SortDirection.ASCENDING
-        )
-        sort_args.append((cleaned_field, direction))
-
-    return sort_args
 
 
 async def _get_target_user_ids(request: RequestPostBody) -> List[PydanticObjectId]:
