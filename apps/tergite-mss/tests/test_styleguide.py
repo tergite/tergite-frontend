@@ -164,7 +164,9 @@ LICENSE_MARKERS = (
 )
 LICENSE_SEARCH_LINES = 15
 CONSTANT_NAME = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
-BANNER_COMMENT = re.compile(r"^#\s*(?:[-=*#~_]{3,}.*|.*\s[-=*#~_]{3,})$")
+BANNER_COMMENT = re.compile(
+    r"^#\s*(?:[-=*#~_]{10,}|[-=*#~_]{3,}\s*\S.*\S\s*[-=*#~_]{3,})$"
+)
 FORBIDDEN_IMPORTS = {
     "services": ("api", "settings"),
     "utils": ("api", "services", "settings"),
