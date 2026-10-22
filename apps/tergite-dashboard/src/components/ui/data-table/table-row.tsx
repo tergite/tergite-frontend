@@ -12,7 +12,7 @@ export const DataTableRow = React.forwardRef(function <TData>(
       className="cursor-pointer"
       data-state={row.getIsSelected() && "selected"}
       onClick={() => onClick && onClick(row)}
-      data-id={row.id}
+      data-id={row.index}
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell
