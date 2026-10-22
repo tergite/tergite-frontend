@@ -1,7 +1,34 @@
-import { createContext } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import { AppState } from "../../types";
+import { getSavedIsDarkMode, saveIsDarkMode } from "./utils";
 
 export const AppStateContext = createContext<AppState>(newAppState());
+
+/**
+ * The app state owned by the root component, with setters that change it
+ */
+export function useRootAppState(): AppState {
+  const [currentProjectId, setCurrentProjectId] = useState<string>();
+  const [apiToken, setApiToken] = useState<string>();
+  const [isDark, setIsDark] = useState<boolean>(getSavedIsDarkMode());
+  const toggleIsDark = useCallback(() => setIsDark((value) => !value), []);
+  const clear = useCallback(() => {
+    setCurrentProjectId(undefined);
+    setApiToken(undefined);
+  }, []);
+
+  useEffect(() => saveIsDarkMode(isDark), [isDark]);
+
+  return {
+    currentProjectId,
+    setCurrentProjectId,
+    apiToken,
+    setApiToken,
+    isDark,
+    toggleIsDark,
+    clear,
+  };
+}
 
 /**
  * A factory function for generating app states to ensure immutability
