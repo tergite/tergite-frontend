@@ -69,15 +69,9 @@ export function getCalibrationMedians(
       values
         .map((v) => v[field]?.value)
         .filter((v) => v != undefined)
-        .sort() as number[],
+        .sort((a, b) => (a as number) - (b as number)) as number[],
     ])
   );
-
-  const middle = Math.floor(values.length / 2);
-  const isLengthEven = values.length % 2 === 0;
-  const medianFunc = isLengthEven
-    ? (v: number[]) => (v[middle - 1] + v[middle]) / 2
-    : (v: number[]) => v[middle];
 
   return Object.fromEntries(
     fields
@@ -87,7 +81,7 @@ export function getCalibrationMedians(
         {
           // Assume that the unit of the first item is the one for all
           unit: values[0][field]?.unit ?? "",
-          value: medianFunc(constituentLists[field]),
+          value: computeMedian(constituentLists[field]),
         },
       ])
   );
@@ -433,4 +427,11 @@ export async function tryQueryFetchMany<T, K extends QueryKey = QueryKey>(
     }
     return [];
   }
+}
+
+function computeMedian(sorted: number[]): number {
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
 }

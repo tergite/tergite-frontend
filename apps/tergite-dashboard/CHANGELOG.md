@@ -69,6 +69,9 @@ and this project follows versions of format {year}.{month}.{patch_number}.
   the next user in the same tab started out on the previous user's project.
 - Switching project or theme no longer rebuilds the router and remounts every page, which
   threw away open dialogs, form input and scroll position.
+- Fixed the device summary's calibration medians, which sorted values as text and counted
+  qubits with no value, and the qubit map, which ordered coordinates of 10 and above
+  before 2.
 - Fixed the days box of the QPU-time request form counting a day as 24 seconds, so 2 days
   asked for 48 seconds on top of the default hour.
 - Fixed the QPU-time request form sending a duration other than the one displayed: days,

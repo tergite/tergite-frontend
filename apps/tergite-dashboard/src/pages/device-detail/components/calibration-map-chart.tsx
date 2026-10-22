@@ -34,11 +34,11 @@ export function CalibrationMapChart({
   const yMax = Math.max(height - margin.top - margin.bottom, 0);
 
   const xValues = useMemo(
-    () => [...new Set(device.coordinates.map((v) => v[0]))].sort(),
+    () => [...new Set(device.coordinates.map((v) => v[0]))].sort((a, b) => a - b),
     [device]
   );
   const yValues = useMemo(
-    () => [...new Set(device.coordinates.map((v) => v[1]))].sort(),
+    () => [...new Set(device.coordinates.map((v) => v[1]))].sort((a, b) => a - b),
     [device]
   );
 
