@@ -161,9 +161,23 @@ const toJob = ({
 
 db = db.getSiblingDB("testing"); // Create/use database
 
-// Drop the database
-db.dropDatabase();
-console.log("Database 'testing' dropped successfully.");
+// Clear the data rather than drop the database, which would also drop the
+// indexes and notice templates MSS creates only at startup
+const dataCollections = [
+  "auth_app_tokens",
+  "auth_projects",
+  "auth_users",
+  "calibrations",
+  "calibrations_logs",
+  "deleted_auth_projects",
+  "devices",
+  "jobs",
+  "notice_preferences",
+  "notices",
+  "requests",
+];
+dataCollections.forEach((name) => db.getCollection(name).deleteMany({}));
+console.log("Database 'testing' cleared successfully.");
 
 console.log("Inserting initial data in mongo...");
 
