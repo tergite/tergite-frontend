@@ -474,3 +474,90 @@ users.forEach((user) => {
     });
   });
 });
+
+// pick a user who both belongs to a project and is absent from another, so every
+// request-access branch is reachable without adding projects to the shared fixture
+const requester = (userList as User[]).find(
+  (user) =>
+    projects.some((v) => v.user_ids.includes(user.id)) &&
+    projects.some((v) => !v.user_ids.includes(user.id) && v.admin_id !== user.id),
+) as User;
+
+describe("requesting project access", () => {
+  const foreign = projects.find(
+    (v) => !v.user_ids.includes(requester.id) && v.admin_id !== requester.id,
+  ) as Project;
+
+  beforeEach(() => {
+    loginToProjects(requester);
+    cy.wait("@my-project-list");
+  });
+
+  it("submits a request for a project the user is not on", () => {
+    cy.get("[data-cy-request-access]").click();
+    cy.get("#request-access-dialog").within(() => {
+      cy.get("#project_id").type(foreign.id);
+      cy.get("#reason").type("joining this collaboration");
+      cy.contains("button", /submit/i).click();
+    });
+
+    cy.wait("@request-create").its("response.statusCode").should("eq", 201);
+    cy.get("#request-access-dialog").should("not.exist");
+    cy.contains(/access requested/i).should("be.visible");
+  });
+
+  it("reports an unknown project id on the field rather than as a toast", () => {
+    cy.get("[data-cy-request-access]").click();
+    cy.get("#request-access-dialog").within(() => {
+      cy.get("#project_id").type("ffffffffffffffffffffffff");
+      cy.get("#reason").type("please");
+      cy.contains("button", /submit/i).click();
+
+      cy.contains(/project ffffffffffffffffffffffff not found/i).should(
+        "be.visible",
+      );
+    });
+  });
+
+  it("refuses what cannot be a project id before asking the API", () => {
+    cy.get("[data-cy-request-access]").click();
+    cy.get("#request-access-dialog").within(() => {
+      cy.get("#project_id").type("no-such-project-anywhere");
+      cy.get("#reason").type("please");
+      cy.contains("button", /submit/i).click();
+
+      cy.contains(/not a project ID/i).should("be.visible");
+    });
+    cy.get("@request-create.all").should("have.length", 0);
+  });
+});
+
+function loginToProjects(user: User) {
+  const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
+  const dbResetUrl = Cypress.env("DB_RESET_URL");
+  const domain = Cypress.env("VITE_COOKIE_DOMAIN");
+  const cookieName = Cypress.env("VITE_COOKIE_NAME");
+  const secret = Cypress.env("JWT_SECRET");
+  const audience = Cypress.env("AUTH_AUDIENCE");
+  const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
+
+  cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
+  cy.intercept("GET", `${apiBaseUrl}/me/projects/?*`).as("my-project-list");
+  cy.intercept("POST", `${apiBaseUrl}/me/requests/`).as("request-create");
+
+  cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
+    (jwtToken) => {
+      cy.setCookie(cookieName, jwtToken as string, {
+        domain,
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+      });
+    },
+  );
+
+  cy.request(`${dbResetUrl}`);
+  cy.wait(500);
+  cy.visit("/projects");
+  cy.wait("@my-user-info");
+}

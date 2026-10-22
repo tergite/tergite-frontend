@@ -2,10 +2,9 @@
 /// <reference types="cypress-real-events" />
 
 import noticeList from "../fixtures/notices.json";
-import projectList from "../fixtures/projects.json";
 import userList from "../fixtures/users.json";
 import { generateJwt } from "../../api/utils";
-import { type Project, type User } from "../../types";
+import { type User } from "../../types";
 
 // the fixture carries the stored shape, with relative offsets for the timestamps
 interface StoredNotice {
@@ -18,7 +17,6 @@ interface StoredNotice {
 }
 
 const users = [...userList] as User[];
-const projects = [...projectList] as Project[];
 const notices = [...noticeList] as StoredNotice[];
 
 function login(user: User, path: string) {
@@ -32,13 +30,11 @@ function login(user: User, path: string) {
 
   cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
   cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
-  cy.intercept("GET", `${apiBaseUrl}/me/projects/?*`).as("my-project-list");
   cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("my-notices");
   cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
   cy.intercept("POST", `${apiBaseUrl}/me/notices/*/dismiss`).as(
     "notice-dismiss",
   );
-  cy.intercept("POST", `${apiBaseUrl}/me/requests/`).as("request-create");
   cy.intercept("PUT", `${apiBaseUrl}/me/requests/*`).as("request-react");
 
   cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
@@ -162,62 +158,5 @@ users.forEach((user) => {
         unread.length - 1,
       );
     });
-  });
-});
-
-// pick a user who both belongs to a project and is absent from another, so every
-// request-access branch is reachable without adding projects to the shared fixture
-const requester = users.find(
-  (user) =>
-    projects.some((v) => v.user_ids.includes(user.id)) &&
-    projects.some((v) => !v.user_ids.includes(user.id) && v.admin_id !== user.id),
-) as User;
-
-describe("requesting project access", () => {
-  const foreign = projects.find(
-    (v) => !v.user_ids.includes(requester.id) && v.admin_id !== requester.id,
-  ) as Project;
-
-  beforeEach(() => {
-    login(requester, "/projects");
-    cy.wait("@my-project-list");
-  });
-
-  it("submits a request for a project the user is not on", () => {
-    cy.get("[data-cy-request-access]").click();
-    cy.get("#request-access-dialog").within(() => {
-      cy.get("#project_id").type(foreign.id);
-      cy.get("#reason").type("joining this collaboration");
-      cy.contains("button", /submit/i).click();
-    });
-
-    cy.wait("@request-create").its("response.statusCode").should("eq", 201);
-    cy.get("#request-access-dialog").should("not.exist");
-    cy.contains(/access requested/i).should("be.visible");
-  });
-
-  it("reports an unknown project id on the field rather than as a toast", () => {
-    cy.get("[data-cy-request-access]").click();
-    cy.get("#request-access-dialog").within(() => {
-      cy.get("#project_id").type("ffffffffffffffffffffffff");
-      cy.get("#reason").type("please");
-      cy.contains("button", /submit/i).click();
-
-      cy.contains(/project ffffffffffffffffffffffff not found/i).should(
-        "be.visible",
-      );
-    });
-  });
-
-  it("refuses what cannot be a project id before asking the API", () => {
-    cy.get("[data-cy-request-access]").click();
-    cy.get("#request-access-dialog").within(() => {
-      cy.get("#project_id").type("no-such-project-anywhere");
-      cy.get("#reason").type("please");
-      cy.contains("button", /submit/i).click();
-
-      cy.contains(/not a project ID/i).should("be.visible");
-    });
-    cy.get("@request-create.all").should("have.length", 0);
   });
 });
