@@ -83,8 +83,7 @@ const toNoticeDoc = ({
   dismissed_by,
   ...rest
 }) => {
-  const currentDateStr = process.env.CURRENT_DATE;
-  const now = currentDateStr ? new Date(currentDateStr) : new Date();
+  const now = new Date();
   const toOffsetDate = (hours) =>
     hours == null
       ? null

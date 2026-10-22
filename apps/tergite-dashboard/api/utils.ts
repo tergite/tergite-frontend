@@ -70,7 +70,7 @@ const bookingList = deviceList
   )
   .flat(1);
 const processedNoticeList = rawNoticeList.map((n) =>
-  toNoticeInDb(n as NoticeFixtureInfo, currentDateFromEnv)
+  toNoticeInDb(n as NoticeFixtureInfo, new Date())
 );
 
 /**
@@ -800,7 +800,7 @@ export function getUserNoticesFilter(req: ExpressRequest, user_id?: string) {
   } = req.query as ParsedQs & { type?: string | string[]; is_read?: string };
   const includeDismissed = `${includeDismissedAsStr}`.toLowerCase() === "true";
   const types = type ? ([] as string[]).concat(type) : [];
-  const now = currentDateFromEnv.toISOString();
+  const now = new Date().toISOString();
 
   return (v: Notice) => {
     // the API's TTL index deletes notices once they expire

@@ -58,8 +58,6 @@ const onlineDevice = devices.find((d) => d.is_online)!; // Thor
 users.forEach((user) => {
   const isAdmin = user.roles.includes(UserRole.ADMIN);
   const username = getUsername(user);
-  let currentDateStr: string;
-  let currentDate: Date;
   let activeNotices: NoticeFixture[];
   let activeNoticeCount: number;
 
@@ -72,11 +70,9 @@ users.forEach((user) => {
       const secret = Cypress.env("JWT_SECRET");
       const audience = Cypress.env("AUTH_AUDIENCE");
       const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
-      currentDateStr = Cypress.env("CURRENT_DATE");
-      currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
       // The admin NoticesCard fetches all notices with no user_id filter, so the
       // expected count is every notice that has started and not yet expired.
-      activeNotices = getAllActiveNotices(rawNotices, currentDate);
+      activeNotices = getAllActiveNotices(rawNotices, new Date());
       activeNoticeCount = activeNotices.length;
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("device-req");
@@ -115,7 +111,6 @@ users.forEach((user) => {
       cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
       cy.intercept("GET", `${apiBaseUrl}/bookings/*`).as("my-bookings-list");
 
-      cy.clock(currentDate, ["Date"]);
       if (user.id) {
         cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
           (jwtToken) => {

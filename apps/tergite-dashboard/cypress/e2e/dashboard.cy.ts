@@ -32,8 +32,6 @@ users.forEach((user) => {
       v.target_user_ids.includes(user.id),
   );
   const requestsCount = pendingUserRequests.length;
-  let currentDateStr: string;
-  let currentDate: Date;
   let unreadNoticeCount: number;
 
   describe(`dashboard-layout for ${username}`, () => {
@@ -47,12 +45,10 @@ users.forEach((user) => {
       const secret = Cypress.env("JWT_SECRET");
       const audience = Cypress.env("AUTH_AUDIENCE");
       const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
-      currentDateStr = Cypress.env("CURRENT_DATE");
-      currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
       unreadNoticeCount = getUnreadNoticesForUser(
         user.id,
         rawNotices,
-        currentDate,
+        new Date(),
       ).length;
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
@@ -65,7 +61,6 @@ users.forEach((user) => {
         "dismiss-notice",
       );
 
-      cy.clock(currentDate, ["Date"]);
       if (user.id) {
         cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
           (jwtToken) => {
