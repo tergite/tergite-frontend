@@ -81,7 +81,7 @@ Issues = "https://github.com/tergite/tergite-frontend/issues"
 Changelog = "https://github.com/tergite/tergite-frontend/blob/main/apps/tergite-mss/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-exclude = ["docs*", "tests*"]
+exclude = ["dev*", "docs*", "tests*"]
 
 [tool.isort]
 skip_gitignore = true
