@@ -9,12 +9,14 @@ import {
 } from "@/components/ui/card";
 import { ErrorInfo } from "../../types";
 import { cn } from "@/lib/utils";
-import { useNavigate, useRouteError } from "react-router-dom";
-import { PropsWithChildren } from "react";
-import { ErrorBoundary, useErrorBoundary } from "react-error-boundary";
+import { useNavigate, useRevalidator, useRouteError } from "react-router-dom";
+import { PropsWithChildren, useContext } from "react";
+import { ErrorBoundary, ErrorBoundaryContext } from "react-error-boundary";
 
 export default function ErrorAlert({ className = "", error }: Props) {
-  const { resetBoundary } = useErrorBoundary();
+  // a route's errorElement renders outside any ErrorBoundary, where retrying means reloading the route
+  const boundary = useContext(ErrorBoundaryContext);
+  const revalidator = useRevalidator();
   const routeError = useRouteError() as ErrorInfo;
   const navigate = useNavigate();
   const displayedError = error ?? routeError;
@@ -46,7 +48,12 @@ export default function ErrorAlert({ className = "", error }: Props) {
           </div>
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Button variant="default" onClick={resetBoundary}>
+          <Button
+            variant="default"
+            onClick={() =>
+              boundary ? boundary.resetErrorBoundary() : revalidator.revalidate()
+            }
+          >
             Try again
           </Button>
           <Button variant="secondary" onClick={() => navigate(-1)}>

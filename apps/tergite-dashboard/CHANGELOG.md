@@ -75,6 +75,9 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 - A selected token, project or request now stays selected when its table refetches in a
   different order; selection followed the row position, so the sidebar could switch to
   another item and act on it.
+- An error while loading the dashboard or the login page now shows the dashboard's error card
+  with working "Try again" and "Back" buttons; the card itself crashed, leaving React Router's
+  bare "Unexpected Application Error" page.
 - Fixed the days box of the QPU-time request form counting a day as 24 seconds, so 2 days
   asked for 48 seconds on top of the default hour.
 - Fixed the QPU-time request form sending a duration other than the one displayed: days,
