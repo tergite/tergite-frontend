@@ -28,7 +28,7 @@ async def update_request(database: Database, request_id: Id, approver: User, dec
     return decided
 ```
 
-**Every commit is verified the same way.** MSS: `black` and `isort` with no flags, then `pytest > "$LOG" 2>&1; echo "exit=$?" >> "$LOG"`. Dashboard: `eslint`, `tsc`, `vitest`, `cypress`. `DESIGN.md` changes in the same commit as any file it names. `dev/e2e_test.sh` runs at the end of steps 7 and 9.
+**Every commit is verified the same way.** MSS: `black` and `isort` with no flags, then `pytest > "$LOG" 2>&1; echo "exit=$?" >> "$LOG"`. Dashboard: `eslint`, `tsc`, `vitest`, `cypress`. `DESIGN.md` changes in the same commit as any file it names. `dev/e2e_test.sh` runs at the end of steps 7 and 9. In MSS, `tests/test_naming.py` runs `apps/tergite-mss/dev/naming.py`, so a function not named with a verb or a boolean without `is_`/`should_` fails the suite; a commit that renames one of the names in `dev/naming_baseline.txt` deletes its line there.
 
 **Every step ends with a sign-off.** Its last commit adds `docs/prototypes/<NN>-<step>.md`, a user acceptance test (UAT) script: how to start the app, what to do, and what should be seen. A user or an agent runs it, reruns the step 1.7 performance checks, and gives the go-ahead before the next step starts.
 
@@ -350,7 +350,7 @@ The co-located page hierarchy, the `index / columns / filter-form` table split a
    - sidebar and mobile menu render one `NAV_GROUPS` array from `nav-items.ts`
    - delete memo hooks that cannot hit, e.g. `booking-form.tsx:82-113`
 8. **Delete `types.ts`.** Response and request types come from `schema.d.ts`; the client-only shapes (`Time`, `InputDuration`, `CalibrationDataPoint`, `AppState`) move next to their users in `src/`.
-9. **Names.** `isFormDirty` (a number) → a boolean; `use` → `forwardAsyncErrors`; `NotFound` → `createNotFoundError`; `handleEventDrop` → `bookingMove`; `sortBookings` → `pickEarliestBookings`; `chatData` → `chartData`; `meta.ts` → `notice-type-styles.ts`; `isUserAdmin` → `isAdmin`.
+9. **Names.** `isFormDirty` (a number) → a boolean; `use` → `forwardAsyncErrors`; `NotFound` → `createNotFoundError`; `handleEventDrop` → `bookingMove`; `sortBookings` → `pickEarliestBookings`; `chatData` → `chartData`; `meta.ts` → `notice-type-styles.ts`; `isUserAdmin` → `isAdmin`. Then enable `@typescript-eslint/naming-convention` so boolean variables, parameters and properties must start with `is` or `should`; no ESLint rule checks that functions are verbs, so review catches those.
 10. **Split the mock API** (`dev/mock-api/routes/general.ts` 1,825 lines, `dev/mock-api/utils.ts` 880) into `db.ts`, `auth.ts` (no db import), `http.ts`, `notices.ts`, `requests.ts` and `routes/{me,devices,bookings,admin-projects,bcc,notices,requests}.ts`. Its handlers are typed against `schema.d.ts`, so the mock cannot drift from MSS unnoticed. `requireUser` and `requireRole(UserRole.ADMIN)` Express middleware replace 46 copies of the auth preamble and 19 role checks. `MockDb` keeps its rows as data, with `createFreshDb()` replacing the initial state written twice.
 11. **Cypress.** `cy.loginAs(user)` and `cy.resetDb()` replace the block repeated in 14 specs; specs import `dev/mock-api/auth.ts`, not `dev/mock-api/utils.ts`; `cypress/support/utils.ts` imports `extendAppToken` and `getUserRequestDetails` from `src/` instead of copying them.
 
