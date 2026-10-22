@@ -30,4 +30,30 @@ describe("AppRouter", () => {
 
     expect(routerConstructor).toHaveBeenCalledTimes(1);
   });
+
+  it("reloads the routes when the selected project changes", () => {
+    const router = createMemoryRouter([{ path: "/", element: <div /> }]);
+    const revalidate = vi.spyOn(router, "revalidate");
+    const queryClient = new QueryClient();
+    const renderWithProject = (projectId: string) => (
+      <QueryClientProvider client={queryClient}>
+        <AppStateContext.Provider
+          value={{ ...newAppState(), currentProjectId: projectId }}
+        >
+          <AppRouter
+            routerConstructor={
+              (() => router) as unknown as typeof createBrowserRouter
+            }
+          />
+        </AppStateContext.Provider>
+      </QueryClientProvider>
+    );
+
+    const { rerender } = render(renderWithProject("project-1"));
+    rerender(renderWithProject("project-1"));
+    expect(revalidate).not.toHaveBeenCalled();
+
+    rerender(renderWithProject("project-2"));
+    expect(revalidate).toHaveBeenCalledTimes(1);
+  });
 });

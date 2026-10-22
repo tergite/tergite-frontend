@@ -42,6 +42,7 @@ export function AppRouter({ routerConstructor }: Props) {
   const appState = useContext(AppStateContext);
   const queryClient = useQueryClient();
   const latestAppState = useRef(appState);
+  const loadedProjectId = useRef(appState.currentProjectId);
   const router = useMemo(
     () =>
       routerConstructor(
@@ -52,7 +53,11 @@ export function AppRouter({ routerConstructor }: Props) {
 
   useEffect(() => {
     latestAppState.current = appState;
-  }, [appState]);
+    if (appState.currentProjectId !== loadedProjectId.current) {
+      loadedProjectId.current = appState.currentProjectId;
+      router.revalidate();
+    }
+  }, [appState, router]);
 
   return <RouterProvider router={router} />;
 }
