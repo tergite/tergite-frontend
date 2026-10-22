@@ -9,7 +9,7 @@ import LoginPage from "./pages/login";
 import { Home, loader as homeLoader } from "./pages/home";
 import { Devices, loader as devicesLoader } from "./pages/devices";
 import { AppState } from "../types";
-import { useContext } from "react";
+import { MutableRefObject, useContext, useEffect, useMemo, useRef } from "react";
 import { AppStateContext } from "./lib/app-state";
 import {
   Dashboard,
@@ -41,8 +41,20 @@ import { MyRequests, loader as myRequestsLoader } from "./pages/requests";
 export function AppRouter({ routerConstructor }: Props) {
   const appState = useContext(AppStateContext);
   const queryClient = useQueryClient();
-  const router = getRoutes(appState, queryClient);
-  return <RouterProvider router={routerConstructor(router)} />;
+  const latestAppState = useRef(appState);
+  const router = useMemo(
+    () =>
+      routerConstructor(
+        getRoutes(createLiveAppState(latestAppState), queryClient),
+      ),
+    [routerConstructor, queryClient],
+  );
+
+  useEffect(() => {
+    latestAppState.current = appState;
+  }, [appState]);
+
+  return <RouterProvider router={router} />;
 }
 
 interface Props {
@@ -182,4 +194,26 @@ function getRoutes(appState: AppState, queryClient: QueryClient) {
       />
     </>,
   );
+}
+
+/**
+ * An app state whose every read and call goes to the latest state, so loaders built once
+ * still see the project chosen since
+ */
+function createLiveAppState(latest: MutableRefObject<AppState>): AppState {
+  return {
+    get currentProjectId() {
+      return latest.current.currentProjectId;
+    },
+    get apiToken() {
+      return latest.current.apiToken;
+    },
+    get isDark() {
+      return latest.current.isDark;
+    },
+    setCurrentProjectId: (value) => latest.current.setCurrentProjectId(value),
+    setApiToken: (value) => latest.current.setApiToken(value),
+    toggleIsDark: () => latest.current.toggleIsDark(),
+    clear: () => latest.current.clear(),
+  };
 }
