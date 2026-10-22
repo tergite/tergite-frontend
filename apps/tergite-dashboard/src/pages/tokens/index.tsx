@@ -23,6 +23,7 @@ import { TokensTable } from "./components/tokens-table";
 import { TokensSidebar } from "./components/tokens-sidebar";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { Progress } from "@/components/ui/progress";
+import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function Tokens() {
   const queryClient = useQueryClient();
@@ -34,15 +35,7 @@ export function Tokens() {
     [currentProject]
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const selectedTokenIdx = useMemo(() => {
-    const selectedEntries = Object.entries(rowSelection).filter(
-      ([_k, v]) => v === true
-    );
-    if (selectedEntries.length > 0) {
-      return parseInt(selectedEntries[0][0]);
-    }
-    return -1;
-  }, [rowSelection]);
+  const selectedToken = findSelectedRow(tokens ?? [], rowSelection);
 
   const handleRowClick = useCallback(
     (row: Row<ExtendedAppToken>) => {
@@ -91,7 +84,7 @@ export function Tokens() {
 
       {tokens && (
         <TokensSidebar
-          token={tokens[selectedTokenIdx]}
+          token={selectedToken}
           className="order-first xl:order-none col-span-1"
           onDelete={handleTokenDelete}
         />

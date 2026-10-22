@@ -8,10 +8,11 @@ import { myProjectsQuery, myRequestsQuery } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { type AppState, type UserRequest } from "types";
 import { MyRequestSidebar } from "./components/request-sidebar";
 import { MyRequestsTable } from "./components/requests-table";
+import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function MyRequests() {
   const { data: projects = [] } = useQuery(myProjectsQuery);
@@ -20,12 +21,7 @@ export function MyRequests() {
   );
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const selectedIdx = useMemo(() => {
-    const selected = Object.entries(rowSelection).filter(
-      ([_k, v]) => v === true
-    );
-    return selected.length > 0 ? parseInt(selected[0][0]) : -1;
-  }, [rowSelection]);
+  const selectedRequest = findSelectedRow(requests ?? [], rowSelection);
 
   const handleRowClick = useCallback(
     (row: Row<UserRequest>) => {
@@ -54,7 +50,7 @@ export function MyRequests() {
       </Card>
 
       <MyRequestSidebar
-        request={requests[selectedIdx]}
+        request={selectedRequest}
         className="order-first xl:order-none col-span-1"
       />
     </main>

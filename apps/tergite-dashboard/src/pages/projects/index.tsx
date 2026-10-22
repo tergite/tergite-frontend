@@ -13,7 +13,7 @@ import {
 } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   User,
   UserRequestStatus,
@@ -25,6 +25,7 @@ import { ProjectsSidebar } from "./components/projects-sidebar";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { Link, useLoaderData } from "react-router-dom";
 import { RequestAccessDialog } from "./components/request-access-dialog";
+import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function Projects() {
   const queryClient = useQueryClient();
@@ -40,15 +41,7 @@ export function Projects() {
     myRequestsQuery({ role: "approver", status: UserRequestStatus.PENDING }),
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const selectedProjectIdx = useMemo(() => {
-    const selectedEntries = Object.entries(rowSelection).filter(
-      ([_k, v]) => v === true
-    );
-    if (selectedEntries.length > 0) {
-      return parseInt(selectedEntries[0][0]);
-    }
-    return -1;
-  }, [rowSelection]);
+  const selectedProject = findSelectedRow(projects ?? [], rowSelection);
 
   const handleRowClick = useCallback(
     (row: Row<Project>) => {
@@ -99,13 +92,13 @@ export function Projects() {
       </Card>
 
       <ProjectsSidebar
-        project={projects[selectedProjectIdx]}
+        project={selectedProject}
         className="order-first xl:order-none col-span-1"
         onDelete={handleProjectDelete}
         canDelete={
-          projects[selectedProjectIdx]?.admin_id === currentUser.id &&
+          selectedProject?.admin_id === currentUser.id &&
           // the API refuses the owner deleting their own, superusers aside
-          !projects[selectedProjectIdx]?.is_personal
+          !selectedProject?.is_personal
         }
       />
     </main>

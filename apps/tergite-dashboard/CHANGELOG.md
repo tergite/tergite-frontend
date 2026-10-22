@@ -72,6 +72,9 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 - Fixed the device summary's calibration medians, which sorted values as text and counted
   qubits with no value, and the qubit map, which ordered coordinates of 10 and above
   before 2.
+- A selected token, project or request now stays selected when its table refetches in a
+  different order; selection followed the row position, so the sidebar could switch to
+  another item and act on it.
 - Fixed the days box of the QPU-time request form counting a day as 24 seconds, so 2 days
   asked for 48 seconds on top of the default hour.
 - Fixed the QPU-time request form sending a duration other than the one displayed: days,

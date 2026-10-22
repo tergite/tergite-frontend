@@ -26,6 +26,7 @@ import {
 } from "../../../types";
 import { ApprovalsSidebar } from "./components/approvals-sidebar";
 import { ApprovalsTable } from "./components/approvals-table";
+import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function Approvals() {
   const queryClient = useQueryClient();
@@ -44,12 +45,7 @@ export function Approvals() {
   );
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const selectedIdx = useMemo(() => {
-    const selected = Object.entries(rowSelection).filter(
-      ([_k, v]) => v === true,
-    );
-    return selected.length > 0 ? parseInt(selected[0][0]) : -1;
-  }, [rowSelection]);
+  const selectedRequest = findSelectedRow(requests ?? [], rowSelection);
 
   const handleRowClick = useCallback(
     (row: Row<UserRequest>) => {
@@ -85,7 +81,7 @@ export function Approvals() {
       </Card>
 
       <ApprovalsSidebar
-        request={requests[selectedIdx]}
+        request={selectedRequest}
         className="order-first xl:order-none col-span-1"
         onReaction={handleReaction}
       />

@@ -12,7 +12,7 @@ import {
 } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ErrorInfo,
   User,
@@ -26,6 +26,7 @@ import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useLoaderData } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreateProjectForm } from "./components/create-project-form";
+import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function AdminProjects() {
   const queryClient = useQueryClient();
@@ -39,15 +40,7 @@ export function AdminProjects() {
     })
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const selectedProjectIdx = useMemo(() => {
-    const selectedEntries = Object.entries(rowSelection).filter(
-      ([_k, v]) => v === true
-    );
-    if (selectedEntries.length > 0) {
-      return parseInt(selectedEntries[0][0]);
-    }
-    return -1;
-  }, [rowSelection]);
+  const selectedProject = findSelectedRow(projects ?? [], rowSelection);
 
   const handleRowClick = useCallback(
     (row: Row<AdminProject>) => {
@@ -116,7 +109,7 @@ export function AdminProjects() {
 
       {mode === OperationMode.EDIT && (
         <AdminProjectsSidebar
-          project={projects[selectedProjectIdx]}
+          project={selectedProject}
           className="order-first xl:order-none col-span-1"
           onDelete={handleProjectDelete}
           onEdit={handleProjectEdit}

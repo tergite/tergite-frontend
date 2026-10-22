@@ -13,7 +13,7 @@ import {
 } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useLoaderData } from "react-router-dom";
 import {
   ErrorInfo,
@@ -26,6 +26,7 @@ import {
 import { AdminRequestsTable } from "./components/requests-table";
 import { RequestsSidebar } from "./components/requests-sidebar";
 import { Row, RowSelectionState } from "@tanstack/react-table";
+import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function AdminRequests() {
   const queryClient = useQueryClient();
@@ -42,15 +43,7 @@ export function AdminRequests() {
   );
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const selectedRequestIdx = useMemo(() => {
-    const selectedEntries = Object.entries(rowSelection).filter(
-      ([_k, v]) => v === true
-    );
-    if (selectedEntries.length > 0) {
-      return parseInt(selectedEntries[0][0]);
-    }
-    return -1;
-  }, [rowSelection]);
+  const selectedRequest = findSelectedRow(requests ?? [], rowSelection);
 
   const handleRowClick = useCallback(
     (row: Row<UserRequest>) => {
@@ -86,7 +79,7 @@ export function AdminRequests() {
       </Card>
 
       <RequestsSidebar
-        request={requests[selectedRequestIdx]}
+        request={selectedRequest}
         className="order-first xl:order-none col-span-1"
         onApproval={handleRequestReaction}
         onRejection={handleRequestReaction}

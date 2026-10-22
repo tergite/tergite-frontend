@@ -65,6 +65,7 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
+    getRowId: getRowKey,
     ...options,
     state: {
       sorting,
@@ -220,4 +221,9 @@ interface DetailDrawerProps<TData> {
   row: Row<TData>;
   drawerClassName?: string;
   getDrawerContent: (row: Row<TData>) => React.ReactElement;
+}
+
+function getRowKey<TData>(row: TData, index: number): string {
+  const id = (row as { id?: unknown }).id;
+  return typeof id === "string" ? id : String(index);
 }
