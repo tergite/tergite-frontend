@@ -36,9 +36,9 @@ async def update_request(database: Database, request_id: Id, approver: User, dec
 
 The only behaviour changes in the plan. Each commit adds a test that fails before the fix and gets a `Fixed` changelog entry.
 
-1. `api/rest/routers/calibrations.py:33, 64`: add the app-token dependency that `DESIGN.md` says these routes require.
-2. `api/rest/routers/jobs.py:87`: `GET /jobs/{id}` returns the decrypted BCC access token for any job to any active project. Restrict it to the job's own project, after confirming that is the intent.
-3. `api/rest/routers/counts.py:76`: `GET /counts/job-submitters` raises `NotImplementedError` (a 500). Implement it or remove the route.
+1. `api/rest/routers/calibrations.py:33, 64` have no auth dependency, though `DESIGN.md` said they need an app token. Decided: they stay open, like `/devices`, as public device data; `DESIGN.md` is corrected.
+2. `api/rest/routers/jobs.py:87`: `GET /jobs/{id}` returns the decrypted BCC access token for any job to any active project. Decided: job reads (the job, its status, the list) go to the user who submitted it or an admin, whatever the project; a job stored without a submitter stays readable by anyone.
+3. `api/rest/routers/counts.py:76`: `GET /counts/job-submitters` raises `NotImplementedError` (a 500). Decided: implement it for admins only, counting distinct submitters in the window, or every submission with `count_distinct=false`.
 4. `utils/exc.py`: map `InvalidRequestIDError` to 400; it is a 500 today.
 5. `dashboard/src/lib/app-state.ts:17`: `clear()` calls the factory's own no-op setters, so logout keeps the project and token. Call the real setters.
 6. `dashboard/src/router.tsx:41`: the router is rebuilt on every render, remounting the tree on any app-state change. Fixed structurally in step 9.4; until then, memoise it.

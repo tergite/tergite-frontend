@@ -250,10 +250,10 @@ Codified in [docs/api-design.md](./docs/api-design.md); the short version:
 | `/auth/{provider}/…` | — | `authorize`, `auto-authorize`, `callback`; plus `GET /auth/providers/` and `POST /auth/logout`. There is no password-login route — `get_auth_router` only registers logout. |
 | `/me` | JWT | current user; `/me/jobs/`, `/me/projects/…`, `/me/tokens/…` |
 | `/devices` | app token / open reads | `GET /`, `GET /{name}`, `WS /ws/{name}` |
-| `/calibrations` | app token | `GET /`, `GET /{name}` |
-| `/jobs` | app token (strict on POST) | list, get, `/{id}/status`, create, `/{id}/cancel`, delete |
+| `/calibrations` | open reads | `GET /`, `GET /{name}`; public device data, like `/devices` |
+| `/jobs` | app token (strict on POST) | list, get, `/{id}/status`, create, `/{id}/cancel`, delete; reads return only the token user's jobs (and jobs with no recorded submitter) unless the user is an admin |
 | `/bookings/{backend}` | JWT | proxied to BCC; create, cancel, list, `/config` |
-| `/counts` | JWT | `/notices`; `/job-submitters` is declared but unimplemented |
+| `/counts` | JWT | `/notices`; `/job-submitters` (superusers only) |
 | `/admin` | superuser / specific roles | `/projects/…`, `/qpu-time-requests/`, `/user-requests/{id}`, `/bcc-users/{backend}/…`, `/recalibration/{backend}/…`, `/switch/{backend}/on|off`, `/notices/…` |
 
 ## 7. Testing
