@@ -21,14 +21,16 @@ from pytest_lazyfixture import lazy_fixture
 from pytest_mock import MockerFixture
 
 import settings
-from services.auth import Project
+from services.auth import AppToken, Project
 from services.notices import NoticeType
 from tests._utils.auth import (
     TEST_PROJECT_ID,
     TEST_PROJECT_NAME,
+    TEST_SUPERUSER_ID,
     TEST_SYSTEM_USER_ID,
     TEST_USER_ID,
     get_db_record,
+    insert_if_not_exist,
 )
 from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import (
@@ -132,6 +134,62 @@ def test_read_job(db, client, job_id: str, no_qpu_app_token_header, freezer):
 
         assert response.status_code == 200
         assert got == expected
+
+
+@pytest.mark.parametrize("path", ["/jobs/{job_id}", "/jobs/{job_id}/status"])
+def test_read_another_users_job_is_not_found(db, client, app_token_header, path):
+    """Get /jobs/{job_id} hides a job another user submitted"""
+    job = {**_prepare_jobs()[0], "user_id": PydanticObjectId(TEST_SYSTEM_USER_ID)}
+    insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
+
+    with client as client:
+        response = client.get(path.format(**job), headers=app_token_header)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("path", ["/jobs/{job_id}", "/jobs/{job_id}/status"])
+def test_read_own_job(db, client, app_token_header, path):
+    """Get /jobs/{job_id} returns a job the token's user submitted"""
+    job = {**_prepare_jobs()[0], "user_id": PydanticObjectId(TEST_USER_ID)}
+    insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
+
+    with client as client:
+        response = client.get(path.format(**job), headers=app_token_header)
+
+    assert response.status_code == 200
+
+
+def test_admin_reads_another_users_job(db, client):
+    """Get /jobs/{job_id} returns any user's job to an admin"""
+    job = {**_prepare_jobs()[0], "user_id": PydanticObjectId(TEST_USER_ID)}
+    insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
+    headers = _insert_superuser_app_token(db)
+
+    with client as client:
+        response = client.get(f"/jobs/{job['job_id']}", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["job_id"] == job["job_id"]
+
+
+def test_list_jobs_shows_own_and_unowned_jobs(db, client, app_token_header):
+    """Get /jobs/ leaves out jobs other users submitted"""
+    own, others, unowned = (
+        {**_prepare_jobs()[0], "user_id": PydanticObjectId(TEST_USER_ID)},
+        {**_prepare_jobs()[1], "user_id": PydanticObjectId(TEST_SYSTEM_USER_ID)},
+        {**_prepare_jobs()[2], "user_id": None},
+    )
+    insert_in_collection(
+        database=db, collection_name=_COLLECTION, data=[own, others, unowned]
+    )
+
+    with client as client:
+        response = client.get("/jobs/", headers=app_token_header)
+
+    job_ids = {job["job_id"] for job in response.json()["data"]}
+    assert response.status_code == 200
+    assert job_ids == {own["job_id"], unowned["job_id"]}
 
 
 @pytest.mark.parametrize("payload", _CREATE_JOB_PAYLOADS)
@@ -732,3 +790,40 @@ def _get_job(records: List[dict], job_id: str) -> dict:
         return copy.deepcopy(value)
     except IndexError:
         raise KeyError(f"job of job_id: {job_id} does not exist")
+
+
+def _insert_superuser_app_token(db) -> Dict[str, str]:
+    """Gives the superuser a project of their own and an app token for it"""
+    project_id = PydanticObjectId()
+    insert_if_not_exist(
+        db,
+        Project,
+        dict(
+            _id=project_id,
+            name="superuser-project",
+            admin_id=PydanticObjectId(TEST_SUPERUSER_ID),
+            user_ids=[PydanticObjectId(TEST_SUPERUSER_ID)],
+            qpu_seconds=3600,
+        ),
+    )
+    token = "superuser-app-token"
+    insert_if_not_exist(
+        db,
+        AppToken,
+        dict(
+            title="superuser-token",
+            token=token,
+            user_id=PydanticObjectId(TEST_SUPERUSER_ID),
+            project_id=project_id,
+            lifespan_seconds=3600,
+        ),
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _prepare_jobs() -> List[dict]:
+    """The job fixtures as stored, with timestamps and BCC tokens filled in"""
+    jobs = with_current_timestamps(
+        _JOBS_LIST, fields=("created_at", "updated_at", "calibration_date")
+    )
+    return _with_bcc_tokens(jobs)

@@ -12,7 +12,7 @@
 """FastAPIUsers-specific definition of Authenticator for app tokens"""
 import dataclasses
 from inspect import Parameter, Signature
-from typing import Callable, List, Optional, Sequence, Tuple, cast
+from typing import Any, Awaitable, Callable, List, Optional, Sequence, Tuple, cast
 
 from fastapi import Depends, HTTPException, status
 from fastapi_users.authentication import AuthenticationBackend
@@ -132,6 +132,28 @@ class AppTokenAuthenticator:
             return project_id, user_id
 
         return current_project_and_user_id_dependency
+
+    def get_project_and_user(
+        self,
+        should_require_active: bool = False,
+        should_ignore_qpu_seconds: bool = False,
+    ) -> Callable[..., Awaitable[Tuple[Project, User]]]:
+        """Return a dependency callable to retrieve the current project and its token's user"""
+        signature = self._get_dependency_signature()
+
+        @with_signature(signature)
+        async def get_project_and_user(
+            *args: Any, **options: Any
+        ) -> Tuple[Project, User]:
+            auth_metadata = await self._authenticate(
+                *args,
+                active=should_require_active,
+                ignore_qpu_seconds=should_ignore_qpu_seconds,
+                **options,
+            )
+            return auth_metadata.project, auth_metadata.user
+
+        return get_project_and_user
 
     async def _authenticate(
         self,

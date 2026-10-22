@@ -31,7 +31,7 @@ from utils import mongodb as mongodb_utils
 from utils.crypto import decrypt_message
 from utils.exc import NotFoundError
 
-from ..auth import Project
+from ..auth import Project, User
 from ..notices import NoticeType
 from ..notices.dtos import ProjectRequestContext, RefType
 from .dtos import CreatedJobResponse, Job, JobUpdate
@@ -261,6 +261,43 @@ async def remove_job(db: AsyncIOMotorDatabase, job_id: UUID):
         NotFoundError: no matches for {filter}
     """
     return await mongodb_utils.delete_many(db.jobs, _filter={"job_id": str(job_id)})
+
+
+async def get_readable_job(
+    db: AsyncIOMotorDatabase,
+    job_id: UUID,
+    user: User,
+    is_token_decrypted: bool = False,
+) -> Job:
+    """Gets a job the user may read: one they submitted, one with no recorded submitter, or any if they are an admin
+
+    Args:
+        db: the mongo database from where to get the job
+        job_id: the `job_id` of the job to be returned
+        user: the user reading the job
+        is_token_decrypted: whether the token returned is decrypted
+
+    Raises:
+        utils.exc.NotFoundError: no matches for '{search_filter}', also for a job the user may not read
+
+    Returns:
+        the job
+    """
+    job = await get_one(db, job_id=job_id, is_token_decrypted=is_token_decrypted)
+    if not _is_job_readable_by(job, user):
+        raise NotFoundError(f"no matches for '{dict(job_id=str(job_id))}'")
+    return job
+
+
+def build_readable_jobs_filter(filters: dict, user: User) -> dict:
+    """Narrows a jobs filter to the jobs the user may read"""
+    if user.is_superuser:
+        return filters
+    return {"$and": [filters, {"user_id": {"$in": [user.id, None]}}]}
+
+
+def _is_job_readable_by(job: Job, user: User) -> bool:
+    return job.user_id is None or job.user_id == user.id or user.is_superuser
 
 
 def _without_special_docker_host_domain(url: str) -> str:

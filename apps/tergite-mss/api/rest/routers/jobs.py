@@ -23,7 +23,7 @@ from fastapi.requests import Request
 
 from api.rest.dependencies import (
     BccClientsMapDep,
-    CurrentLaxProjectDep,
+    CurrentLaxProjectAndUserDep,
     CurrentStrictProjectUserIds,
     CurrentUserDep,
     MongoDbDep,
@@ -49,7 +49,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 @router.get("/")
 async def get_many(
     db: MongoDbDep,
-    project: CurrentLaxProjectDep,
+    project_and_user: CurrentLaxProjectAndUserDep,
     query: JobQuery = Depends(),
     skip: int = 0,
     limit: Optional[int] = None,
@@ -59,14 +59,15 @@ async def get_many(
 
     Args:
         db: the mongo db database from which to get the job
-        project: the current project that the associated API token is associated with
+        project_and_user: the API token's project and user; only the user's jobs, jobs with no recorded user, or all jobs for an admin are listed
         query: the query params for getting the jobs
         skip: the number of records to skip
         limit: the maximum number of records to return
         sort: the fields to sort by, prefixing any with a '-' means descending; default = ("-created_at",)
             To add multiple fields to sort by, repeat the same query parameter in the url e.g. "query=tom&q=dick&q=harry"
     """
-    filters = query.model_dump()
+    _, user = project_and_user
+    filters = jobs_service.build_readable_jobs_filter(query.model_dump(), user)
     data = await jobs_service.get_latest_many(
         db,
         filters=filters,
@@ -80,24 +81,31 @@ async def get_many(
 
 
 @router.get("/{job_id}")
-async def get_one(db: MongoDbDep, project: CurrentLaxProjectDep, job_id: UUID):
+async def get_one(
+    db: MongoDbDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
+):
     """Gets the job of the given job_id
 
     Args:
         db: the mongo db database from which to get the job
-        project: the current project that the associated API token is associated with
+        project_and_user: the API token's project and user; the user must have submitted the job or be an admin
         job_id: the job_id of the job
     """
-    return await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)
+    _, user = project_and_user
+    return await jobs_service.get_readable_job(
+        db, job_id=job_id, user=user, is_token_decrypted=True
+    )
 
 
 @router.get("/{job_id}/status")
-async def get_job_status(db: MongoDbDep, project: CurrentLaxProjectDep, job_id: UUID):
+async def get_job_status(
+    db: MongoDbDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
+):
     """Gets the status of the job for the given job_id
 
     Args:
         db: the mongo database to get the job data from
-        project: the project associated to the API token that is passed during requests
+        project_and_user: the API token's project and user; the user must have submitted the job or be an admin
         job_id: the ID of the job
 
     Returns:
@@ -107,7 +115,8 @@ async def get_job_status(db: MongoDbDep, project: CurrentLaxProjectDep, job_id: 
         utils.exc.NotFoundError: no matches for '{search_filter}'.
         ValidationError: the document does not satisfy the schema passed
     """
-    job = await jobs_service.get_one(db, job_id=job_id)
+    _, user = project_and_user
+    job = await jobs_service.get_readable_job(db, job_id=job_id, user=user)
     return JobStatusResponse.from_job(job)
 
 
