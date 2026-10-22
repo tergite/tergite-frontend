@@ -1,0 +1,393 @@
+# Code that broke the styleguide when tests/test_styleguide.py was added.
+# Fix one, then delete its line; the tests fail until you do.
+# Public names (query parameters, config keys, overrides of library methods) need an alias first, or stay listed.
+verb: api/rest/__init__.py::health
+verb: api/rest/app_kwargs.py::lifespan
+verb: api/rest/routers/me/notices/notices.py::unread_all_my_notices
+verb: api/rest/routers/me/notices/notices.py::unread_my_notice
+verb: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project
+verb: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project.current_project_dependency
+verb: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids
+verb: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids.current_project_and_user_id_dependency
+verb: services/auth/projects/dtos.py::ProjectRead.model_dump
+verb: services/auth/providers/__init__.py::_to_hash
+verb: services/auth/providers/dtos.py::AuthProvider.as_public_view
+verb: services/auth/users/authenticator.py::UserAuthenticator.current_user
+verb: services/auth/users/authenticator.py::UserAuthenticator.current_user.current_user_dependency
+verb: services/auth/users/authenticator.py::UserAuthenticator.current_user_id
+verb: services/auth/users/authenticator.py::UserAuthenticator.current_user_id.current_user_id_dependency
+verb: services/auth/users/manager.py::UserManager.oauth_callback
+verb: services/auth/users/routers.py::get_oauth_router.auto_authorize
+verb: services/auth/users/routers.py::get_oauth_router.callback
+verb: services/devices/dtos.py::DeviceUpsert.model_dump
+verb: services/external/email/dtos.py::EmailDetails.to_email_message
+verb: services/jobs/__init__.py::_without_special_docker_host_domain
+verb: services/jobs/dtos.py::Job.model_dump
+verb: services/jobs/dtos.py::JobStatusResponse.from_job
+verb: services/notices/dtos.py::CustomNoticeCreate.to_documents
+verb: services/notices/dtos.py::Notice.from_template
+verb: services/notices/dtos.py::NoticeSeverity.to_int
+verb: services/notices/dtos.py::NoticeTemplate.from_notice_type
+verb: services/notices/dtos.py::NoticeType.from_str
+verb: services/notices/emails.py::_to_email_body
+verb: services/notices/emails.py::_to_email_details
+verb: services/notices/service.py::_nested_append
+verb: services/notices/service.py::_nested_insert
+verb: services/notices/service.py::_with_default_email_preferences
+verb: services/notices/service.py::_with_project_name
+verb: services/requests/dtos.py::Request.from_post_body
+verb: services/requests/dtos.py::RequestPostBody.has_right_metadata_type
+verb: services/requests/service.py::_has_resource_access
+verb: utils/api.py::PaginatedListResponse.model_dump
+verb: utils/api.py::WebsocketRequestLog.from_request
+verb: utils/api.py::to_http_error
+verb: utils/api.py::to_http_error.handler
+verb: utils/api.py::unwrap_exception_group.handler
+verb: utils/config.py::AppConfig.dashboard_url_required_for_email
+verb: utils/config.py::AppConfig.from_json_str
+verb: utils/date_time.py::datetime_to_zulu
+verb: utils/date_time.py::to_datetime
+verb: utils/logging.py::json_formatter
+verb: utils/models.py::PartialMeta.model_dump
+verb: utils/models.py::_as_optional
+verb: utils/mongodb.py::_to_mongo_json_schema
+verb: utils/redis_store.py::Collection.exists
+verb: utils/redis_store.py::Schema.model_dump
+boolean: api/rest/routers/admin/bcc/recalibration.py::cancel_recalibration(ignore_errors)
+boolean: api/rest/routers/admin/notices.py::get_many_notices(include_dismissed)
+boolean: api/rest/routers/counts.py::get_job_submitters_count(count_distinct)
+boolean: api/rest/routers/counts.py::get_notice_count(include_dismissed)
+boolean: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator._authenticate(active)
+boolean: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator._authenticate(ignore_qpu_seconds)
+boolean: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project(active)
+boolean: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project(ignore_qpu_seconds)
+boolean: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids(active)
+boolean: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids(ignore_qpu_seconds)
+boolean: services/auth/providers/__init__.py::_to_hash(negated)
+boolean: services/auth/users/__init__.py::UserBasedAuth.get_auth_router(requires_verification)
+boolean: services/auth/users/__init__.py::UserBasedAuth.get_oauth_router(associate_by_email)
+boolean: services/auth/users/authenticator.py::UserAuthenticator._authenticate_without_db(optional)
+boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user(active)
+boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user(optional)
+boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user(superuser)
+boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user(verified)
+boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user_id(optional)
+boolean: services/auth/users/dtos.py::User.is_superuser(value)
+boolean: services/auth/users/manager.py::UserManager.oauth_callback(associate_by_email)
+boolean: services/auth/users/routers.py::get_auth_router(requires_verification)
+boolean: services/auth/users/routers.py::get_oauth_router(associate_by_email)
+boolean: services/devices/dtos.py::DeviceUpsert.characterized
+boolean: services/devices/dtos.py::DeviceUpsert.model_dump(by_alias)
+boolean: services/devices/dtos.py::DeviceUpsert.model_dump(exclude_defaults)
+boolean: services/devices/dtos.py::DeviceUpsert.model_dump(exclude_none)
+boolean: services/devices/dtos.py::DeviceUpsert.model_dump(exclude_unset)
+boolean: services/devices/dtos.py::DeviceUpsert.model_dump(round_trip)
+boolean: services/devices/dtos.py::DeviceUpsert.model_dump(serialize_as_any)
+boolean: services/devices/dtos.py::DeviceUpsert.open_pulse
+boolean: services/external/bcc/service.py::BccClient.stop_recalibration(ignore_errors)
+boolean: services/external/email/dtos.py::EmailDetails.can_retry
+boolean: services/external/email/dtos.py::EmailResult.can_retry
+boolean: services/external/email/service.py::Emailer.register_batch_schedule(ignore_errors)
+boolean: services/external/email/service.py::_send_on_repeat(ignore_errors)
+boolean: services/jobs/dtos.py::Job.model_dump(by_alias)
+boolean: services/jobs/dtos.py::Job.model_dump(exclude_defaults)
+boolean: services/jobs/dtos.py::Job.model_dump(exclude_none)
+boolean: services/jobs/dtos.py::Job.model_dump(exclude_unset)
+boolean: services/jobs/dtos.py::Job.model_dump(round_trip)
+boolean: services/jobs/dtos.py::Job.model_dump(serialize_as_any)
+boolean: services/notices/service.py::_merge_filters(include_dismissed)
+boolean: services/notices/service.py::count_many(include_dismissed)
+boolean: services/notices/service.py::find_many(include_dismissed)
+boolean: utils/api.py::PaginatedListResponse.model_dump(by_alias)
+boolean: utils/api.py::PaginatedListResponse.model_dump(exclude_data_none_fields)
+boolean: utils/api.py::PaginatedListResponse.model_dump(exclude_defaults)
+boolean: utils/api.py::PaginatedListResponse.model_dump(exclude_unset)
+boolean: utils/api.py::PaginatedListResponse.model_dump(round_trip)
+boolean: utils/api.py::PaginatedListResponse.model_dump(serialize_as_any)
+boolean: utils/api.py::get_bearer_token(raise_if_error)
+boolean: utils/config.py::EmailConfig.start_tls
+boolean: utils/config.py::EmailConfig.use_tls
+boolean: utils/config.py::Oauth2ClientConfig.associate_by_email
+boolean: utils/models.py::PartialMeta.model_dump(by_alias)
+boolean: utils/models.py::PartialMeta.model_dump(exclude_defaults)
+boolean: utils/models.py::PartialMeta.model_dump(exclude_none)
+boolean: utils/models.py::PartialMeta.model_dump(exclude_unset)
+boolean: utils/models.py::PartialMeta.model_dump(round_trip)
+boolean: utils/models.py::PartialMeta.model_dump(serialize_as_any)
+boolean: utils/mongodb.py::find(skip_validation)
+boolean: utils/mongodb.py::init_strict_beanie(allow_index_dropping)
+boolean: utils/mongodb.py::init_strict_beanie(multiprocessing_mode)
+boolean: utils/mongodb.py::init_strict_beanie(recreate_views)
+boolean: utils/mongodb.py::init_strict_beanie(skip_indexes)
+boolean: utils/mongodb.py::update_one(return_document)
+boolean: utils/mongodb.py::update_one(upsert)
+boolean: utils/redis_store.py::Collection.get_all(desc)
+boolean: utils/redis_store.py::Schema.model_dump(by_alias)
+boolean: utils/redis_store.py::Schema.model_dump(exclude_defaults)
+boolean: utils/redis_store.py::Schema.model_dump(exclude_none)
+boolean: utils/redis_store.py::Schema.model_dump(exclude_unset)
+boolean: utils/redis_store.py::Schema.model_dump(round_trip)
+boolean: utils/redis_store.py::Schema.model_dump(serialize_as_any)
+constant-position: services/auth/users/dtos.py::ID
+constant-position: utils/date_time.py::DEFAULT_FROM_DATETIME_STR
+constant-position: utils/date_time.py::DEFAULT_TO_DATETIME_STR
+private-helper-position: api/rest/utils.py::get_bcc_client
+private-helper-position: api/rest/utils.py::get_default_mongodb
+private-helper-position: utils/api.py::get_request_logs_store
+license-header: api/__init__.py
+license-header: api/rest/routers/__init__.py
+license-header: services/__init__.py
+license-header: services/auth/providers/__init__.py
+license-header: services/auth/providers/dtos.py
+license-header: services/devices/__init__.py
+license-header: services/external/__init__.py
+license-header: services/external/bcc/__init__.py
+license-header: tests/__init__.py
+license-header: tests/_utils/__init__.py
+license-header: tests/api/__init__.py
+license-header: tests/api/rest/__init__.py
+license-header: tests/api/rest/admin/__init__.py
+license-header: tests/api/rest/admin/bcc/__init__.py
+license-header: tests/api/rest/me/__init__.py
+license-header: tests/api/rest/me/notices/__init__.py
+license-header: tests/conftest.py
+license-header: utils/__init__.py
+all-strings: services/auth/__init__.py::__all__
+import-layering: services/auth/app_tokens/authenticator.py::import settings
+import-layering: services/auth/projects/__init__.py::import settings
+import-layering: services/auth/providers/__init__.py::import settings
+import-layering: services/auth/service.py::import settings
+import-layering: services/auth/users/__init__.py::import settings
+import-layering: services/external/bcc/service.py::import settings
+import-layering: services/external/email/service.py::import settings
+import-layering: services/jobs/__init__.py::import settings
+import-layering: services/jobs/__init__.py::import settings
+import-layering: services/notices/service.py::import settings
+import-layering: utils/api.py::import settings
+import-layering: utils/date_time.py::import settings
+facade-import: api/rest/__init__.py::import services.auth.utils
+facade-import: api/rest/app_kwargs.py::import services.external.email
+facade-import: api/rest/dependencies.py::import services.auth.service
+facade-import: api/rest/dependencies.py::import services.auth.users
+facade-import: api/rest/routers/admin/bcc/recalibration.py::import services.external.bcc.dtos
+facade-import: api/rest/routers/admin/bcc/users.py::import services.external.bcc.dtos
+facade-import: api/rest/routers/admin/notices.py::import services.notices.dtos
+facade-import: api/rest/routers/auth.py::import services.auth.providers.dtos
+facade-import: api/rest/routers/auth.py::import services.auth.service
+facade-import: api/rest/routers/booking.py::import services.external.bcc.dtos
+facade-import: api/rest/routers/calibrations.py::import services.calibration.dtos
+facade-import: api/rest/routers/counts.py::import services.auth.users.dtos
+facade-import: api/rest/routers/counts.py::import services.notices.dtos
+facade-import: api/rest/routers/devices/__init__.py::import services.devices.dtos
+facade-import: api/rest/routers/devices/events.py::import services.devices.dtos
+facade-import: api/rest/routers/jobs.py::import services.external.bcc.dtos
+facade-import: api/rest/routers/jobs.py::import services.jobs.dtos
+facade-import: api/rest/routers/me/jobs.py::import services.jobs.dtos
+facade-import: api/rest/routers/me/notices/notices.py::import services.notices.dtos
+facade-import: api/rest/routers/me/notices/preferences.py::import services.notices.dtos
+facade-import: api/rest/routers/me/requests.py::import services.requests.service
+facade-import: services/auth/projects/routers/__init__.py::import services.notices.dtos
+facade-import: services/auth/projects/routers/utils.py::import services.notices.dtos
+facade-import: services/devices/dtos.py::import services.calibration.dtos
+facade-import: services/devices/dtos.py::import services.jobs.dtos
+facade-import: services/external/bcc/service.py::import services.auth.users
+facade-import: services/jobs/__init__.py::import services.auth.projects.database
+facade-import: services/jobs/__init__.py::import services.external.bcc
+facade-import: services/jobs/__init__.py::import services.notices.dtos
+facade-import: services/notices/dtos.py::import services.auth.users.dtos
+facade-import: services/notices/emails.py::import services.auth.users.dtos
+facade-import: services/notices/emails.py::import services.external.email
+facade-import: services/notices/service.py::import services.auth.projects.dtos
+facade-import: services/notices/service.py::import services.external.email.service
+facade-import: services/requests/actions.py::import services.auth.app_tokens.database
+facade-import: services/requests/actions.py::import services.auth.projects
+facade-import: services/requests/actions.py::import services.auth.projects.dtos
+facade-import: services/requests/actions.py::import services.auth.projects.exc
+facade-import: services/requests/actions.py::import services.auth.projects.manager
+facade-import: services/requests/actions.py::import services.auth.projects.routers
+facade-import: services/requests/actions.py::import services.auth.users.database
+facade-import: services/requests/actions.py::import services.auth.users.dtos
+facade-import: services/requests/dtos.py::import services.auth.projects.dtos
+facade-import: services/requests/dtos.py::import services.notices.dtos
+facade-import: services/requests/service.py::import services.auth.projects.dtos
+facade-import: services/requests/service.py::import services.auth.users.dtos
+http-exception: services/auth/app_tokens/authenticator.py
+http-exception: services/auth/app_tokens/exc.py
+http-exception: services/auth/app_tokens/routers.py
+http-exception: services/auth/projects/routers/__init__.py
+http-exception: services/auth/users/authenticator.py
+http-exception: services/auth/users/exc.py
+http-exception: services/auth/users/routers.py
+http-exception: services/auth/utils.py
+http-exception: services/external/bcc/service.py
+http-exception: utils/api.py
+http-exception: utils/date_time.py
+type-hints: api/rest/__init__.py::health
+type-hints: api/rest/app_kwargs.py::lifespan
+type-hints: api/rest/middleware.py::RequestIDMiddleware.dispatch
+type-hints: api/rest/routers/admin/bcc/users.py::view_bcc_users
+type-hints: api/rest/routers/auth.py::include_auth_router
+type-hints: api/rest/routers/auth.py::include_auth_router.get_auth_providers
+type-hints: api/rest/routers/booking.py::view_bookings
+type-hints: api/rest/routers/booking.py::view_bookings_configs
+type-hints: api/rest/routers/calibrations.py::get_many
+type-hints: api/rest/routers/calibrations.py::read_one
+type-hints: api/rest/routers/counts.py::get_job_submitters_count
+type-hints: api/rest/routers/devices/__init__.py::handle_device_events
+type-hints: api/rest/routers/devices/__init__.py::read_many
+type-hints: api/rest/routers/devices/__init__.py::read_one
+type-hints: api/rest/routers/devices/events.py::on_device_initialized_event
+type-hints: api/rest/routers/devices/events.py::on_device_recalibrated_event
+type-hints: api/rest/routers/devices/events.py::on_device_switched_off_event
+type-hints: api/rest/routers/devices/events.py::on_device_switched_on_event
+type-hints: api/rest/routers/devices/events.py::on_job_updated_event
+type-hints: api/rest/routers/jobs.py::create_one
+type-hints: api/rest/routers/jobs.py::get_job_status
+type-hints: api/rest/routers/jobs.py::get_many
+type-hints: api/rest/routers/jobs.py::get_one
+type-hints: api/rest/routers/me/jobs.py::get_my_jobs
+type-hints: api/rest/routers/me/notices/notices.py::get_my_notices
+type-hints: api/rest/routers/me/notices/preferences.py::get_my_email_preferences
+type-hints: api/rest/routers/me/notices/preferences.py::update_my_email_preferences
+type-hints: api/rest/routers/me/profile.py::get_my_user_profile
+type-hints: api/rest/routers/me/requests.py::get_many
+type-hints: api/rest/utils.py::_is_valid_uuid4
+type-hints: api/rest/utils.py::get_default_mongodb
+type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.destroy_token
+type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.generate_token
+type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.update_token
+type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator._authenticate
+type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project
+type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project.current_project_dependency
+type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids
+type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids.current_project_and_user_id_dependency
+type-hints: services/auth/app_tokens/database.py::AppTokenDatabase._find_one
+type-hints: services/auth/app_tokens/database.py::AppTokenDatabase.get
+type-hints: services/auth/app_tokens/database.py::AppTokenDatabase.get_by_token
+type-hints: services/auth/app_tokens/dtos.py::AppTokenCreate.serialize_object_id
+type-hints: services/auth/app_tokens/dtos.py::AppTokenRead.serialize_created_at
+type-hints: services/auth/app_tokens/dtos.py::AppTokenUpdate.serialize_expires_at
+type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router
+type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.destroy
+type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.generate_app_token
+type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.get_my_app_token
+type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.get_my_app_tokens
+type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.update_app_token
+type-hints: services/auth/app_tokens/strategy.py::AppTokenStrategy.destroy_token
+type-hints: services/auth/projects/__init__.py::get_app_token_db
+type-hints: services/auth/projects/__init__.py::get_project_db
+type-hints: services/auth/projects/__init__.py::get_project_manager
+type-hints: services/auth/projects/database.py::ProjectDatabase.increment_qpu_seconds
+type-hints: services/auth/projects/dtos.py::ProjectRead.model_dump
+type-hints: services/auth/projects/dtos.py::ProjectRead.serialize_id
+type-hints: services/auth/projects/dtos.py::ProjectRead.serialize_user_ids
+type-hints: services/auth/projects/manager.py::ProjectAppTokenManager.create
+type-hints: services/auth/projects/manager.py::ProjectAppTokenManager.update
+type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router
+type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router.destroy
+type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router.get_project
+type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router.get_projects
+type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router.remove_member
+type-hints: services/auth/projects/routers/__init__.py::get_projects_router
+type-hints: services/auth/projects/routers/__init__.py::get_projects_router.create
+type-hints: services/auth/projects/routers/__init__.py::get_projects_router.delete_project
+type-hints: services/auth/projects/routers/__init__.py::get_projects_router.get_many_projects
+type-hints: services/auth/projects/routers/__init__.py::get_projects_router.get_project
+type-hints: services/auth/projects/routers/__init__.py::get_projects_router.update_project
+type-hints: services/auth/providers/__init__.py::_order_by_many.get_key
+type-hints: services/auth/service.py::on_startup
+type-hints: services/auth/service.py::register_oauth2_client
+type-hints: services/auth/users/__init__.py::get_user_db
+type-hints: services/auth/users/__init__.py::get_user_manager
+type-hints: services/auth/users/authenticator.py::UserAuthenticator._authenticate_without_db
+type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user
+type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user.current_user_dependency
+type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user_id
+type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user_id.current_user_id_dependency
+type-hints: services/auth/users/database.py::UserDatabase.get_many
+type-hints: services/auth/users/dtos.py::User.is_superuser
+type-hints: services/auth/users/dtos.py::User.is_superuser
+type-hints: services/auth/users/dtos.py::User.username
+type-hints: services/auth/users/dtos.py::UserRead.serialize_id
+type-hints: services/auth/users/routers.py::get_auth_router.logout
+type-hints: services/auth/users/routers.py::get_oauth_router.auto_authorize
+type-hints: services/auth/users/routers.py::get_oauth_router.callback
+type-hints: services/auth/users/validators.py::EmailRegexValidator.validate
+type-hints: services/auth/users/validators.py::Validator.validate
+type-hints: services/auth/utils.py::get_oauth2_client
+type-hints: services/calibration/__init__.py::on_startup
+type-hints: services/calibration/dtos.py::DeviceCalibration.serialize_id
+type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
+type-hints: services/devices/service.py::disconnect_all
+type-hints: services/devices/service.py::try_connect_device
+type-hints: services/devices/service.py::try_disconnect_device
+type-hints: services/external/bcc/dtos.py::Booking.validate_username
+type-hints: services/external/bcc/service.py::BccClient._request
+type-hints: services/external/bcc/service.py::BccClient.cancel_booking
+type-hints: services/external/bcc/service.py::BccClient.cancel_job
+type-hints: services/external/bcc/service.py::BccClient.close
+type-hints: services/external/bcc/service.py::BccClient.create_booking
+type-hints: services/external/bcc/service.py::BccClient.create_user
+type-hints: services/external/bcc/service.py::BccClient.delete_job
+type-hints: services/external/bcc/service.py::BccClient.delete_user
+type-hints: services/external/bcc/service.py::BccClient.get_recalibration_info
+type-hints: services/external/bcc/service.py::BccClient.get_token
+type-hints: services/external/bcc/service.py::BccClient.init_recalibration
+type-hints: services/external/bcc/service.py::BccClient.stop_recalibration
+type-hints: services/external/bcc/service.py::BccClient.switch_off
+type-hints: services/external/bcc/service.py::BccClient.switch_on
+type-hints: services/external/bcc/service.py::BccClient.view_bookings
+type-hints: services/external/bcc/service.py::BccClient.view_bookings_configs
+type-hints: services/external/bcc/service.py::BccClient.view_users
+type-hints: services/external/bcc/service.py::close_clients
+type-hints: services/external/bcc/service.py::create_clients
+type-hints: services/external/email/service.py::Emailer.from_value
+type-hints: services/external/email/service.py::Emailer.register_batch_schedule
+type-hints: services/external/email/service.py::Emailer.send
+type-hints: services/external/email/service.py::_send_on_repeat
+type-hints: services/jobs/__init__.py::remove_job
+type-hints: services/jobs/dtos.py::Job.serialize_object_id
+type-hints: services/jobs/dtos.py::JobStatusResponse.from_job
+type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished
+type-hints: services/jobs/dtos.py::TimestampPair.serialize_started
+type-hints: services/notices/dtos.py::Notice.from_template
+type-hints: services/notices/dtos.py::Notice.serialize_object_fields
+type-hints: services/notices/dtos.py::NoticeTemplate.serialize_id
+type-hints: services/notices/dtos.py::NoticeTemplate.validate_context_cls
+type-hints: services/notices/dtos.py::NoticeType.__str__
+type-hints: services/notices/service.py::_init_notice_templates_in_db
+type-hints: services/notices/service.py::_nested_append
+type-hints: services/notices/service.py::_nested_insert
+type-hints: services/notices/service.py::create_system_notice
+type-hints: services/notices/service.py::on_startup
+type-hints: services/requests/dtos.py::Request.serialize_ids
+type-hints: services/requests/service.py::on_startup
+type-hints: utils/api.py::PaginatedListResponse.model_dump
+type-hints: utils/api.py::WebsocketConnectionManager.broadcast
+type-hints: utils/api.py::WebsocketConnectionManager.close_all
+type-hints: utils/api.py::WebsocketConnectionManager.connect
+type-hints: utils/api.py::WebsocketConnectionManager.disconnect
+type-hints: utils/api.py::WebsocketConnectionManager.reply
+type-hints: utils/api.py::_get_bcc_public_key
+type-hints: utils/config.py::BccConfig.validate_public_key_path
+type-hints: utils/crypto.py::get_uuid4_str
+type-hints: utils/date_time.py::datetime_to_zulu
+type-hints: utils/date_time.py::get_current_timestamp
+type-hints: utils/exc.py::BaseMssException.__repr__
+type-hints: utils/exc.py::BaseMssException.__str__
+type-hints: utils/logging.py::json_formatter
+type-hints: utils/logging.py::patch_record
+type-hints: utils/logging.py::setup_logging
+type-hints: utils/models.py::_as_optional
+type-hints: utils/mongodb.py::_extract_filter_obj
+type-hints: utils/mongodb.py::_set_jsonschema_validator
+type-hints: utils/mongodb.py::delete_many
+type-hints: utils/mongodb.py::init_strict_beanie
+type-hints: utils/mongodb.py::insert_one
+type-hints: utils/mongodb.py::update_many
+type-hints: utils/redis_store.py::Collection._cleanup_expired_indexes
+type-hints: utils/redis_store.py::Collection._delete_indexes
+type-hints: utils/redis_store.py::Collection._update_indexes
+type-hints: utils/redis_store.py::Collection.clear
+type-hints: utils/redis_store.py::Collection.delete_many
+type-hints: utils/redis_store.py::Collection.insert
