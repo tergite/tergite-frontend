@@ -25,6 +25,7 @@ from utils.exc import (
     ConflictError,
     DbValidationError,
     ForbiddenError,
+    InvalidRequestIDError,
     NotFoundError,
     ServiceUnavailableError,
     TooManyRequestsError,
@@ -70,6 +71,7 @@ app.add_exception_handler(
 )
 app.add_exception_handler(ServiceUnavailableError, to_http_error(503))
 app.add_exception_handler(UnknownBccError, to_http_error(400))
+app.add_exception_handler(InvalidRequestIDError, to_http_error(400))
 app.add_exception_handler(TooManyListQueryParams, to_http_error(400))
 app.add_exception_handler(ForbiddenError, to_http_error(403))
 app.add_exception_handler(ConflictError, to_http_error(409))

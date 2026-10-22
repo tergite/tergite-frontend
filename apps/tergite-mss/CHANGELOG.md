@@ -72,6 +72,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Fixed
 
+- An `x-request-id` header that is not a UUID4 now gets a 400 naming the bad id on the routes
+  that read it (job creation, bookings, the admin BCC routes); it was an unexplained 500.
 - Fixed GET `/me/profile` reporting `is_superuser` as false for every user, admins included.
 - An unhandled server error now answers with a 500 carrying the CORS headers. Errors with no
   handler of their own were turned into a response outside the CORS middleware, so a browser

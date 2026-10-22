@@ -222,6 +222,21 @@ def test_create_job_without_bcc(db, client, payload, app_token_header, bcc):
         assert jobs_after_creation == []
 
 
+@pytest.mark.parametrize("payload", _CREATE_JOB_PAYLOADS)
+def test_create_job_with_invalid_request_id(db, client, payload, app_token_header):
+    """Post to /jobs/ with an x-request-id that is not a UUID4 is a bad request"""
+    headers = {**app_token_header, "x-request-id": "not-a-uuid"}
+
+    # using context manager to ensure on_startup runs
+    with client as client:
+        response = client.post(f"/jobs/", json=payload, headers=headers)
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "The request ID 'not-a-uuid' is not a valid UUID4"
+    }
+
+
 @pytest.mark.parametrize("skip, limit, sort, search", _PAGINATE_AND_SEARCH_PARAMS)
 def test_find_jobs(
     db,
