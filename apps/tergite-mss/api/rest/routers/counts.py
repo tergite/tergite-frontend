@@ -17,7 +17,8 @@ from typing import List, Optional
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
+from api.rest.dependencies import CurrentSuperuserDep, CurrentUserDep, MongoDbDep
+from services import jobs as jobs_service
 from services import notices as notices_service
 from services.auth.users.dtos import User
 from services.notices.dtos import NoticeTypeId
@@ -73,12 +74,29 @@ async def get_notice_count(
     return {"count": count}
 
 
-@router.get("/job-submitters", response_model=CountsResponse)
+@router.get(
+    "/job-submitters",
+    response_model=CountsResponse,
+    dependencies=[CurrentSuperuserDep],
+)
 async def get_job_submitters_count(
-    user_id: str = CurrentUserIdDep,
+    db: MongoDbDep,
     start_utc: datetime = Query(...),
     end_utc: datetime = Query(...),
-    count_distinct: bool = Query(True),
-):
-    """Gets the number of notices that fulfill a given filter"""
-    raise NotImplementedError()
+    should_count_distinct: bool = Query(True, alias="count_distinct"),
+) -> CountsResponse:
+    """Gets the number of users who submitted jobs in [start_utc, end_utc), for admins only
+
+    Args:
+        db: the MongoDB database where the jobs are stored
+        start_utc: the start of the window, inclusive
+        end_utc: the end of the window, exclusive
+        should_count_distinct: whether to count each submitter once; otherwise every job counts
+    """
+    count = await jobs_service.count_job_submitters(
+        db,
+        start_utc=start_utc,
+        end_utc=end_utc,
+        should_count_distinct=should_count_distinct,
+    )
+    return {"count": count}

@@ -15,6 +15,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 from uuid import UUID
@@ -29,6 +30,7 @@ from services.external.bcc import BccClient
 from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils import mongodb as mongodb_utils
 from utils.crypto import decrypt_message
+from utils.date_time import datetime_to_zulu
 from utils.exc import NotFoundError
 
 from ..auth import Project, User
@@ -287,6 +289,36 @@ async def get_readable_job(
     if not _is_job_readable_by(job, user):
         raise NotFoundError(f"no matches for '{dict(job_id=str(job_id))}'")
     return job
+
+
+async def count_job_submitters(
+    db: AsyncIOMotorDatabase,
+    start_utc: datetime,
+    end_utc: datetime,
+    should_count_distinct: bool = True,
+) -> int:
+    """Counts the users who submitted jobs in [start_utc, end_utc), or their submissions
+
+    Args:
+        db: the mongo database holding the jobs
+        start_utc: the start of the window, inclusive
+        end_utc: the end of the window, exclusive
+        should_count_distinct: whether to count each submitter once; otherwise every job counts
+
+    Returns:
+        the number of submitters, or of submitted jobs
+    """
+    window = {
+        "created_at": {
+            "$gte": datetime_to_zulu(start_utc),
+            "$lt": datetime_to_zulu(end_utc),
+        }
+    }
+    if not should_count_distinct:
+        return await db.jobs.count_documents(window)
+
+    submitter_ids = await db.jobs.distinct("user_id", window)
+    return len([user_id for user_id in submitter_ids if user_id is not None])
 
 
 def build_readable_jobs_filter(filters: dict, user: User) -> dict:

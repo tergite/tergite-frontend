@@ -11,8 +11,23 @@
 # that they have been altered from the originals.
 """Integration tests for the /counts routes"""
 from datetime import datetime, timedelta, timezone
+from typing import List, Optional, Tuple
+from uuid import uuid4
+
+from beanie import PydanticObjectId
 
 from tests._utils.auth import TEST_SUPERUSER_ID, TEST_USER_ID
+from tests._utils.mongodb import insert_in_collection
+
+_JANUARY = {"start_utc": "2026-01-01T00:00:00Z", "end_utc": "2026-02-01T00:00:00Z"}
+# two submitters in January, one job without a recorded submitter, one job in February
+_SUBMISSIONS = [
+    (TEST_USER_ID, "2026-01-02T08:00:00Z"),
+    (TEST_USER_ID, "2026-01-03T08:00:00Z"),
+    (TEST_SUPERUSER_ID, "2026-01-04T08:00:00Z"),
+    (None, "2026-01-05T08:00:00Z"),
+    (TEST_USER_ID, "2026-02-03T08:00:00Z"),
+]
 
 
 def test_admin_count_all_notices(admin_jwt_cookie, client, inserted_notices):
@@ -127,3 +142,56 @@ def test_unauthenticated_cannot_count_notices(client, inserted_notices):
 
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
+
+
+def test_admin_counts_distinct_job_submitters(admin_jwt_cookie, client, db):
+    """GET /counts/job-submitters counts the users who submitted jobs in the window"""
+    _insert_jobs(db, _SUBMISSIONS)
+
+    with client as client:
+        response = client.get(
+            "/counts/job-submitters", params=_JANUARY, cookies=admin_jwt_cookie
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"count": 2}
+
+
+def test_admin_counts_job_submissions(admin_jwt_cookie, client, db):
+    """GET /counts/job-submitters?count_distinct=false counts every job submitted in the window"""
+    _insert_jobs(db, _SUBMISSIONS)
+
+    with client as client:
+        response = client.get(
+            "/counts/job-submitters",
+            params={**_JANUARY, "count_distinct": "false"},
+            cookies=admin_jwt_cookie,
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"count": 4}
+
+
+def test_non_admin_cannot_count_job_submitters(user_jwt_cookie, client, db):
+    """GET /counts/job-submitters is for admins only"""
+    with client as client:
+        response = client.get(
+            "/counts/job-submitters", params=_JANUARY, cookies=user_jwt_cookie
+        )
+
+    assert response.status_code == 403
+
+
+def _insert_jobs(db, submissions: List[Tuple[Optional[str], str]]):
+    insert_in_collection(
+        database=db,
+        collection_name="jobs",
+        data=[
+            {
+                "job_id": str(uuid4()),
+                "user_id": None if user_id is None else PydanticObjectId(user_id),
+                "created_at": created_at,
+            }
+            for user_id, created_at in submissions
+        ],
+    )

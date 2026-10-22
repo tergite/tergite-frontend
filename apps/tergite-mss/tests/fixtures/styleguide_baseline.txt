@@ -55,7 +55,6 @@ verb: utils/redis_store.py::Collection.exists
 verb: utils/redis_store.py::Schema.model_dump
 boolean: api/rest/routers/admin/bcc/recalibration.py::cancel_recalibration(ignore_errors)
 boolean: api/rest/routers/admin/notices.py::get_many_notices(include_dismissed)
-boolean: api/rest/routers/counts.py::get_job_submitters_count(count_distinct)
 boolean: api/rest/routers/counts.py::get_notice_count(include_dismissed)
 boolean: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator._authenticate(active)
 boolean: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator._authenticate(ignore_qpu_seconds)
@@ -232,7 +231,6 @@ type-hints: api/rest/routers/booking.py::view_bookings
 type-hints: api/rest/routers/booking.py::view_bookings_configs
 type-hints: api/rest/routers/calibrations.py::get_many
 type-hints: api/rest/routers/calibrations.py::read_one
-type-hints: api/rest/routers/counts.py::get_job_submitters_count
 type-hints: api/rest/routers/devices/__init__.py::handle_device_events
 type-hints: api/rest/routers/devices/__init__.py::read_many
 type-hints: api/rest/routers/devices/__init__.py::read_one
