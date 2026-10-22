@@ -35,6 +35,9 @@ function login(user: User, path: string) {
   cy.intercept("GET", `${apiBaseUrl}/me/projects/?*`).as("my-project-list");
   cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("my-notices");
   cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
+  cy.intercept("POST", `${apiBaseUrl}/me/notices/*/dismiss`).as(
+    "notice-dismiss",
+  );
   cy.intercept("POST", `${apiBaseUrl}/me/requests/`).as("request-create");
   cy.intercept("PUT", `${apiBaseUrl}/me/requests/*`).as("request-react");
 
@@ -67,7 +70,7 @@ users.forEach((user) => {
   // the prompts to decide a request are the only ones that can be acted on
   const actionable = unread.filter((v) => v.type.endsWith("-requested"));
 
-  describe(`notifications for ${username}`, () => {
+  describe(`notices for ${username}`, () => {
     beforeEach(() => {
       login(user, "/");
       cy.wait("@my-notices");
@@ -139,6 +142,26 @@ users.forEach((user) => {
 
         cy.wait("@request-react").its("response.statusCode").should("eq", 200);
       });
+
+    // every user has the broadcasts ntc_007 and ntc_009 in force
+    it("shows a notice in force in the top banner", () => {
+      cy.get('[data-testid="top-banner"]').within(() => {
+        cy.get('[aria-label="Dismiss notice"]').should("be.visible");
+        cy.contains(/\b(info|warning|critical)\b/i).should("be.visible");
+      });
+    });
+
+    it("takes a notice dismissed from the top banner off the bell", () => {
+      cy.get(
+        '[data-testid="top-banner"] [aria-label="Dismiss notice"]',
+      ).click();
+      cy.wait("@notice-dismiss");
+
+      cy.get("[data-cy-unread-count]").should(
+        "contain.text",
+        unread.length - 1,
+      );
+    });
   });
 });
 

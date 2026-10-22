@@ -3,7 +3,6 @@
 import userList from "../fixtures/users.json";
 import projectList from "../fixtures/projects.json";
 import userRequestList from "../fixtures/user-requests.json";
-import rawNoticeList from "../fixtures/notices.json";
 import { generateJwt, getUsername } from "../../api/utils";
 import {
   UserRequest,
@@ -16,8 +15,6 @@ import {
 const users = [...userList] as User[];
 const projects = [...projectList] as Project[];
 const userRequests = [...userRequestList] as UserRequest[];
-
-const rawNotices = [...rawNoticeList] as NoticeFixture[];
 
 users.forEach((user) => {
   const userProjects = projects.filter(
@@ -32,7 +29,6 @@ users.forEach((user) => {
       v.target_user_ids.includes(user.id),
   );
   const requestsCount = pendingUserRequests.length;
-  let unreadNoticeCount: number;
 
   describe(`dashboard-layout for ${username}`, () => {
     const dashboardUrl = Cypress.config("baseUrl");
@@ -45,21 +41,11 @@ users.forEach((user) => {
       const secret = Cypress.env("JWT_SECRET");
       const audience = Cypress.env("AUTH_AUDIENCE");
       const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
-      unreadNoticeCount = getUnreadNoticesForUser(
-        user.id,
-        rawNotices,
-        new Date(),
-      ).length;
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
       cy.intercept("GET", `${apiBaseUrl}/me/projects/*`).as("my-project-list");
       cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
       cy.intercept("POST", `${apiBaseUrl}/auth/logout`).as("logout");
-      cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("notices");
-      cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
-      cy.intercept("POST", `${apiBaseUrl}/me/notices/*/dismiss`).as(
-        "dismiss-notice",
-      );
 
       if (user.id) {
         cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
@@ -335,72 +321,6 @@ users.forEach((user) => {
       });
     });
 
-    it(`displays the correct notice count badge in the top banner`, () => {
-      cy.wait("@notices");
-      cy.wait("@notice-count");
-      cy.wait(100);
-
-      cy.get('[data-testid="top-banner"] [data-testid="notices-bell-icon"]')
-        .siblings()
-        .first()
-        .invoke("text")
-        .then((text) => {
-          const count = parseInt(text.trim(), 10);
-          expect(count).to.equal(unreadNoticeCount);
-        });
-    });
-
-    it("shows an active notice banner in the top banner", () => {
-      // Every user in the fixture has at least two announcements in force
-      // (ntc_007 and ntc_009 are broadcast and fall within the test date range)
-      cy.wait("@notices");
-      cy.wait("@notice-count");
-
-      cy.get('[data-testid="top-banner"]').within(() => {
-        cy.get('[aria-label="Dismiss notice"]').should("be.visible");
-        // Severity label is rendered in the banner
-        cy.contains(/\b(info|warning|critical)\b/i).should("be.visible");
-      });
-    });
-
-    it("decreases the notice count badge by one when a notice banner is dismissed", () => {
-      cy.wait("@notices");
-      cy.wait("@notice-count");
-      cy.wait(100);
-
-      // Capture the initial badge count before any dismissal
-      cy.get('[data-testid="top-banner"] [data-testid="notices-bell-icon"]')
-        .siblings()
-        .first()
-        .invoke("text")
-        .then((before) => {
-          const initialCount = parseInt(before.trim(), 10);
-          expect(initialCount).to.be.gt(0);
-
-          // Dismiss the visible notice
-          cy.get(
-            '[data-testid="top-banner"] [aria-label="Dismiss notice"]'
-          ).click();
-
-          cy.wait("@dismiss-notice");
-          // Both the notices list and the count are refreshed after dismissal
-          cy.wait("@notices");
-          cy.wait("@notice-count");
-          cy.wait(100);
-
-          // Badge must now show exactly one less than before
-          cy.get('[data-testid="top-banner"] [data-testid="notices-bell-icon"]')
-            .siblings()
-            .first()
-            .invoke("text")
-            .then((after) => {
-              const newCount = parseInt(after.trim(), 10);
-              expect(newCount).to.equal(initialCount - 1);
-            });
-          // @prettier-ignore
-        });
-    });
-
     it("logout button logs current user out", () => {
       cy.get("[data-testid='topbar'] [aria-label='UserRound']").click({
         force: true,
@@ -491,43 +411,3 @@ users.forEach((user) => {
     });
   });
 });
-
-/**
- * Shape of a notice record in the fixture (uses relative-time offsets instead
- * of absolute ISO strings so the data stays valid on any run date).
- */
-interface NoticeFixture {
-  id: string;
-  user_id: string | null;
-  expires_at_offset_hours: number | null;
-  dismissed_by: string[];
-}
-
-/**
- * Returns the notices the bell counts as unread for the given user at the
- * supplied reference time, mirroring the server-side getUserNoticesFilter logic.
- *
- * A notice is unread when:
- *  - it has not yet expired  (expires_at >= now, or expires_at is null = permanent)
- *  - it is for this user     (user_id is null = everyone, or is userId)
- *  - this user has not read it (dismissed_by excludes userId)
- */
-function getUnreadNoticesForUser(
-  userId: string,
-  notices: NoticeFixture[],
-  currentDate: Date,
-): NoticeFixture[] {
-  const now = currentDate.getTime();
-  return notices.filter((n) => {
-    const expiresAt =
-      n.expires_at_offset_hours === null
-        ? Infinity
-        : now + n.expires_at_offset_hours * 3_600_000;
-
-    if (expiresAt < now) return false; // already expired
-    if (n.user_id !== null && n.user_id !== userId) return false; // not for this user
-    if (n.dismissed_by.includes(userId)) return false; // read
-
-    return true;
-  });
-}
