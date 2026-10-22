@@ -268,32 +268,13 @@ class MockDb {
   }
 
   /**
-   * Creates the item, returning it on completion. It fails if any of the objects with the same values of unique fields already exist
+   * Creates the item, returning it on completion
    *
    * @param itemType - the type of the item to create
-   * @param payload - the project to create
-   * @param unique_fields - the fields that are unique
-   * @returns - the created project
+   * @param payload - the item to create
+   * @returns - the created item
    */
-  create<T extends DbRecord>(
-    itemType: ItemType,
-    payload: UnknownObject | T,
-    unique_fields: string[] | undefined = undefined,
-  ): T {
-    const filters = unique_fields?.reduce(
-      (prev, k) => ({ ...prev, k: payload[k] }),
-      {},
-    );
-    const preExistingItems =
-      filters &&
-      this.getOne(itemType, (item) => conformsToFilter(item, filters));
-
-    if (preExistingItems) {
-      const error = new Error(`${itemType} already exists`) as ErrorInfo;
-      error.status = 400;
-      throw error;
-    }
-
+  create<T extends DbRecord>(itemType: ItemType, payload: UnknownObject | T): T {
     const timestamp = new Date().toISOString();
     const newItem = {
       ...payload,
