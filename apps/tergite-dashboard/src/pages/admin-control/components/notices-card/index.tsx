@@ -15,7 +15,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { DateTime } from "luxon";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { noticeCountQuery, noticesQuery } from "@/lib/api-client";
 import { AdminNoticeBanner } from "./banner";
@@ -23,8 +23,13 @@ import { CUSTOM_NOTICE_TYPES } from "../../../../../types";
 
 export function NoticesCard() {
   const [page, setPage] = useState(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const currentTimestamp = useMemo(() => DateTime.now().toISO(), [page]);
+  const [currentTimestamp, setCurrentTimestamp] = useState(
+    DateTime.now().toISO(),
+  );
+  const refreshCurrentTimestamp = useCallback(
+    () => setCurrentTimestamp(DateTime.now().toISO()),
+    [],
+  );
   const filters = {
     types: CUSTOM_NOTICE_TYPES,
     max_start_utc: currentTimestamp,
@@ -42,15 +47,15 @@ export function NoticesCard() {
   );
   const { data: noticeCount } = useQuery(noticeCountQuery(filters));
 
-  const handlePaginationNext = useCallback(
-    () => setPage((old) => old + 1),
-    [setPage],
-  );
+  const handlePaginationNext = useCallback(() => {
+    setPage((old) => old + 1);
+    refreshCurrentTimestamp();
+  }, [setPage, refreshCurrentTimestamp]);
 
-  const handlePaginationPrevious = useCallback(
-    () => setPage((old) => old - 1),
-    [setPage],
-  );
+  const handlePaginationPrevious = useCallback(() => {
+    setPage((old) => old - 1);
+    refreshCurrentTimestamp();
+  }, [setPage, refreshCurrentTimestamp]);
 
   return (
     <Card className="h-full" data-testid="notices-card">
@@ -83,7 +88,8 @@ export function NoticesCard() {
           isNextDisabled={isPlaceholderData || page >= (noticeCount ?? 0)}
           isPreviousDisabled={page <= 1}
         />
-        <NoticeForm />
+        {/* a notice posted now starts after the timestamp the card last took */}
+        <NoticeForm onPost={refreshCurrentTimestamp} />
       </CardContent>
     </Card>
   );
