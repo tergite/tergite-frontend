@@ -235,7 +235,7 @@ Names follow the usual SQL convention: plural snake_case tables, foreign keys na
    - `$addToSet` → insert the child row inside a savepoint; a unique-key conflict on the pair means it was already there. `$pull` → delete the child row
    - `$inc` → `column = column + n`
    - `should_upsert` → `UPDATE`, then `INSERT` if no row matched, retrying the `UPDATE` on a unique-key conflict, all in one transaction
-   - `returning=BEFORE` → `SELECT … with_for_update()`, then `UPDATE`, in one transaction. `returning=AFTER` → `UPDATE`, then `SELECT`; where `dialect.update_returning` is true, a single `UPDATE … RETURNING` instead. SQLAlchemy drops `FOR UPDATE` where a database has no row locks, and on SQLite `SqlStore` begins write transactions immediately, so the read already holds the write lock
+   - `returning=BEFORE` → `SELECT … with_for_update()`, then `UPDATE`, in one transaction. `returning=AFTER` → `UPDATE`, then `SELECT`. A single `UPDATE … RETURNING` where `dialect.update_returning` is true was left out in step 4: it saves one round trip, and a record with child rows needs the second read anyway. SQLAlchemy drops `FOR UPDATE` where a database has no row locks, and on SQLite `SqlStore` begins write transactions immediately, so the read already holds the write lock
    - a write to a record and its child tables runs in one transaction
    - case-insensitive unique email → a unique index on `func.lower(email)`, and equality on it compares `func.lower` of both sides
    - expiring records (`notices`, `request_logs`) → every read filters on `expires_at`, and the lifespan runs a periodic delete, since SQL has no TTL index
