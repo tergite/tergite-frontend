@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 from loguru import logger
 
-from libs.storage import Database, Filter, Update, is_id
+from libs.storage import Database, Filter, is_id
 from services.external.email.service import Emailer
 from services.notices.dtos import (
     BaseNoticeContext,
@@ -71,16 +71,33 @@ async def set_read_status(
     """
     user_id = str(user_id)
     notice_filter = {"id": str(pk), "user_id": {"$in": [user_id, None]}}
+    # broadcast notices are shared, so their read state lives in dismissed_by alone
+    now = get_current_timestamp()
+    if is_read:
+        broadcast_update = {
+            "$addToSet": {"dismissed_by": user_id},
+            "$set": {"updated_at": now},
+        }
+        direct_update = {
+            "$addToSet": {"dismissed_by": user_id},
+            "$set": {"updated_at": now, "read_at": now},
+        }
+    else:
+        broadcast_update = {
+            "$pull": {"dismissed_by": user_id},
+            "$set": {"updated_at": now},
+        }
+        direct_update = {
+            "$pull": {"dismissed_by": user_id},
+            "$set": {"updated_at": now, "read_at": None},
+        }
+
     notice = await database.update_one(
-        Notice,
-        {**notice_filter, "type": _BROADCAST_TYPE},
-        _get_broadcast_read_update(user_id, is_read),
+        Notice, {**notice_filter, "type": _BROADCAST_TYPE}, broadcast_update
     )
     if notice is None:
         notice = await database.update_one(
-            Notice,
-            {**notice_filter, "type": {"$ne": _BROADCAST_TYPE}},
-            _get_direct_read_update(user_id, is_read),
+            Notice, {**notice_filter, "type": {"$ne": _BROADCAST_TYPE}}, direct_update
         )
     if notice is None:
         raise NotFoundError(f"notice of ID '{pk}' not found")
@@ -123,15 +140,34 @@ async def set_read_status_many(
         types=types,
         is_read=not is_read,
     )
+    # broadcast notices are shared, so their read state lives in dismissed_by alone
+    now = get_current_timestamp()
+    if is_read:
+        broadcast_update = {
+            "$addToSet": {"dismissed_by": user_id},
+            "$set": {"updated_at": now},
+        }
+        direct_update = {
+            "$addToSet": {"dismissed_by": user_id},
+            "$set": {"updated_at": now, "read_at": now},
+        }
+    else:
+        broadcast_update = {
+            "$pull": {"dismissed_by": user_id},
+            "$set": {"updated_at": now},
+        }
+        direct_update = {
+            "$pull": {"dismissed_by": user_id},
+            "$set": {"updated_at": now, "read_at": None},
+        }
+
     broadcast_count = await database.update_many(
-        Notice,
-        {"$and": [notice_filter, {"type": _BROADCAST_TYPE}]},
-        _get_broadcast_read_update(user_id, is_read),
+        Notice, {"$and": [notice_filter, {"type": _BROADCAST_TYPE}]}, broadcast_update
     )
     direct_count = await database.update_many(
         Notice,
         {"$and": [notice_filter, {"type": {"$ne": _BROADCAST_TYPE}}]},
-        _get_direct_read_update(user_id, is_read),
+        direct_update,
     )
     return broadcast_count + direct_count
 
@@ -481,10 +517,23 @@ def _get_notice_filter(
     if user_id:
         # either broadcast notices or those sent directly to the user
         notice_filter["user_id"] = {"$in": [user_id, None]}
-    if min_start_utc or max_start_utc:
-        notice_filter["starts_at"] = _get_range(min_start_utc, max_start_utc)
-    if min_expires_utc or max_expires_utc:
-        notice_filter["expires_at"] = _get_range(min_expires_utc, max_expires_utc)
+
+    starts_at: Dict[str, datetime] = {}
+    if min_start_utc:
+        starts_at["$gte"] = min_start_utc
+    if max_start_utc:
+        starts_at["$lte"] = max_start_utc
+    if starts_at:
+        notice_filter["starts_at"] = starts_at
+
+    expires_at: Dict[str, datetime] = {}
+    if min_expires_utc:
+        expires_at["$gte"] = min_expires_utc
+    if max_expires_utc:
+        expires_at["$lte"] = max_expires_utc
+    if expires_at:
+        notice_filter["expires_at"] = expires_at
+
     if types:
         notice_filter["type"] = {"$in": list(types)}
 
@@ -498,43 +547,6 @@ def _get_notice_filter(
     if dismissal_conditions:
         notice_filter["$and"] = dismissal_conditions
     return notice_filter
-
-
-def _get_range(
-    lowest: Optional[datetime], highest: Optional[datetime]
-) -> Dict[str, Any]:
-    """Gets the condition of a value within the bounds, either of which may be None"""
-    if lowest and highest:
-        return {"$gte": lowest, "$lte": highest}
-    if lowest:
-        return {"$gte": lowest}
-    return {"$lte": highest}
-
-
-def _get_broadcast_read_update(user_id: str, is_read: bool) -> Update:
-    """Gets the update marking a broadcast notice read or unread for the user
-
-    Broadcast notices are shared by many users, so their read state lives in
-    'dismissed_by' alone and 'read_at' stays None.
-    """
-    now = get_current_timestamp()
-    if is_read:
-        return {"$addToSet": {"dismissed_by": user_id}, "$set": {"updated_at": now}}
-    return {"$pull": {"dismissed_by": user_id}, "$set": {"updated_at": now}}
-
-
-def _get_direct_read_update(user_id: str, is_read: bool) -> Update:
-    """Gets the update marking a notice sent to the user read or unread"""
-    now = get_current_timestamp()
-    if is_read:
-        return {
-            "$addToSet": {"dismissed_by": user_id},
-            "$set": {"updated_at": now, "read_at": now},
-        }
-    return {
-        "$pull": {"dismissed_by": user_id},
-        "$set": {"updated_at": now, "read_at": None},
-    }
 
 
 def _with_default_email_preferences(

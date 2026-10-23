@@ -146,8 +146,15 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             project_filter["is_active"] = {"$ne": False}
         if is_active is False:
             project_filter["is_active"] = False
-        if min_qpu_seconds is not None or max_qpu_seconds is not None:
-            project_filter["qpu_seconds"] = _get_range(min_qpu_seconds, max_qpu_seconds)
+
+        qpu_seconds: Dict[str, float] = {}
+        if min_qpu_seconds is not None:
+            qpu_seconds["$gte"] = min_qpu_seconds
+        if max_qpu_seconds is not None:
+            qpu_seconds["$lte"] = max_qpu_seconds
+        if qpu_seconds:
+            project_filter["qpu_seconds"] = qpu_seconds
+
         if member_id is not None:
             # in an $and, so that a user_ids query narrows the member's projects
             project_filter = {"$and": [project_filter, {"user_ids": member_id}]}
@@ -188,10 +195,15 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             }
         if titles is not None:
             token_filter["title"] = {"$in": _ensure_short_list("title", titles)}
-        if min_lifespan_seconds is not None or max_lifespan_seconds is not None:
-            token_filter["lifespan_seconds"] = _get_range(
-                min_lifespan_seconds, max_lifespan_seconds
-            )
+
+        lifespan_seconds: Dict[str, float] = {}
+        if min_lifespan_seconds is not None:
+            lifespan_seconds["$gte"] = min_lifespan_seconds
+        if max_lifespan_seconds is not None:
+            lifespan_seconds["$lte"] = max_lifespan_seconds
+        if lifespan_seconds:
+            token_filter["lifespan_seconds"] = lifespan_seconds
+
         return await self.app_token_db.get_many(token_filter, skip=skip, limit=limit)
 
     async def create(
@@ -343,12 +355,3 @@ def _ensure_short_list(query_param: str, values: Sequence[Any]) -> List[Any]:
             query_param, expected=MAX_LIST_QUERY_LEN, got=len(values)
         )
     return list(values)
-
-
-def _get_range(lowest: Optional[float], highest: Optional[float]) -> Dict[str, float]:
-    """Gets the condition of a value within the bounds, either of which may be None"""
-    if lowest is not None and highest is not None:
-        return {"$gte": lowest, "$lte": highest}
-    if lowest is not None:
-        return {"$gte": lowest}
-    return {"$lte": highest}
