@@ -175,6 +175,8 @@ class Database:
         return schema
 ```
 
+Beside those, `Database` has the other operations MSS uses today: `setup()`, which the lifespan calls to create indexes and tables, `find_one`, `find_distinct`, `insert_many` and `delete_one`. `StorageSpec.indexes` declares the plain and compound indexes the queries rely on (a leading `-` marks a descending field), so that none of today's indexes is lost.
+
 Filters and updates name schema fields, dotted for nested objects (`timestamps.execution.started`). `Database` checks every `__storage__` against its schema when it is created (field names exist, referenced schemas are registered too), so a mistake fails at boot, not on a request.
 
 **One async interface, no sync twin.** Every caller is async: the routes, the websocket handler, the lifespan and the email sweeper. Alembic connects on its own. Sync tests seed and inspect through `tests/_utils/storage.py`, which wraps each call in `asyncio.run` with a short-lived `Database`. A sync twin would double every backend and its conformance tests; a sync caller that appears later uses `asyncio.run` the same way.
