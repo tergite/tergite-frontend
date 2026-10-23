@@ -275,6 +275,18 @@ def test_checks_catch_what_they_describe(tmp_path: Path):
     }
 
 
+def test_external_services_are_imported_through_their_own_facades(tmp_path: Path):
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "sample.py").write_text(
+        "from services.external.bcc import BccClient\n"
+        "from services.external.bcc.dtos import Booking\n"
+    )
+
+    found = {str(v) for v in find_violations("facade-import", app_root=tmp_path)}
+
+    assert found == {"facade-import: api/sample.py::import services.external.bcc.dtos"}
+
+
 def find_violations(rule: str, app_root: Path = APP_ROOT) -> List[Violation]:
     check, roots = _RULES[rule]
     return [
@@ -411,8 +423,10 @@ def _check_import_layering(module: Module) -> Iterator[Violation]:
 def _check_facade_imports(module: Module) -> Iterator[Violation]:
     for imported in _imported_modules(module):
         parts = imported.split(".")
-        is_inside_another_service = parts[0] == "services" and len(parts) > 2
-        own_service_prefix = "/".join(parts[:2]) + "/"
+        # services/external holds services, each with its own facade
+        depth = 3 if parts[:2] == ["services", "external"] else 2
+        is_inside_another_service = parts[0] == "services" and len(parts) > depth
+        own_service_prefix = "/".join(parts[:depth]) + "/"
         if is_inside_another_service and not module.name.startswith(own_service_prefix):
             yield Violation("facade-import", f"{module.name}::import {imported}")
 

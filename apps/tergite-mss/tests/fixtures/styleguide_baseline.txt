@@ -163,7 +163,6 @@ import-layering: services/jobs/service.py::import settings
 import-layering: services/notices/service.py::import settings
 import-layering: utils/api.py::import settings
 import-layering: utils/date_time.py::import settings
-facade-import: api/rest/app_kwargs.py::import services.external.email
 facade-import: api/rest/dependencies.py::import services.auth.service
 facade-import: api/rest/dependencies.py::import services.auth.users
 facade-import: api/rest/routers/admin/bcc/recalibration.py::import services.external.bcc.dtos
@@ -188,11 +187,9 @@ facade-import: services/devices/dtos.py::import services.calibration.dtos
 facade-import: services/devices/dtos.py::import services.jobs.dtos
 facade-import: services/external/bcc/service.py::import services.auth.users
 facade-import: services/jobs/service.py::import services.auth.projects.database
-facade-import: services/jobs/service.py::import services.external.bcc
 facade-import: services/jobs/service.py::import services.notices.dtos
 facade-import: services/notices/dtos.py::import services.auth.users.dtos
 facade-import: services/notices/emails.py::import services.auth.users.dtos
-facade-import: services/notices/emails.py::import services.external.email
 facade-import: services/notices/service.py::import services.auth.projects.dtos
 facade-import: services/notices/service.py::import services.external.email.service
 facade-import: services/requests/actions.py::import services.auth.app_tokens.database
