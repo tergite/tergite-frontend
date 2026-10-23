@@ -16,6 +16,7 @@ from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing_extensions import Annotated
 
+from libs.storage import Database
 from services.auth import (
     Project,
     ProjectDatabase,
@@ -35,6 +36,7 @@ from .auth import (
     GET_CURRENT_USER,
     GET_CURRENT_USER_ID,
 )
+from .database import get_database
 from .utils import get_default_mongodb, get_request_id
 
 CurrentUserDep = Annotated[User, Depends(GET_CURRENT_USER)]
@@ -49,5 +51,6 @@ CurrentStrictProjectUserIdsDep = Annotated[
 ]
 ProjectDbDep = Annotated[ProjectDatabase, Depends(get_project_db)]
 MongoDbDep = Annotated[AsyncIOMotorDatabase, Depends(get_default_mongodb)]
+DatabaseDep = Annotated[Database, Depends(get_database)]
 BccClientDep = Annotated[bcc.BccClient, Depends(bcc.get_client)]
 RequestIdDep = Annotated[str, Depends(get_request_id)]

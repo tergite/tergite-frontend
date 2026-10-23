@@ -31,6 +31,7 @@ from services.external import bcc
 from services.external.email import Emailer
 from services.notices import service as notices_service
 
+from .database import close_database, open_database
 from .routers.devices import ws_manager as devices_ws_manager
 from .utils import get_default_mongodb
 
@@ -53,7 +54,7 @@ def get_app_kwargs() -> Dict[str, Any]:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(app: FastAPI):
     logger.info("Initializing Tergite MSS database connections and client services...")
     email_conf = settings.CONFIG.email
     emailer = Emailer(config=email_conf) if email_conf is not None else None
@@ -62,6 +63,7 @@ async def lifespan(_app: FastAPI):
         private_key_file=settings.PRIVATE_KEY_FILE,
         private_key_password=settings.CONFIG.private_key_password,
     )
+    await open_database(app, settings.CONFIG.database)
     db = await get_default_mongodb()
     await auth_service.on_startup(
         db, conf=settings.CONFIG.auth, projects_conf=settings.CONFIG.projects
@@ -87,4 +89,5 @@ async def lifespan(_app: FastAPI):
     await devices_service.disconnect_all(db)
     if emailer is not None:
         emailer.close()
+    await close_database(app)
     logger.info("Tergite MSS shutdown sequence completed.")

@@ -20,9 +20,9 @@ from typing import Any, Dict, List, Optional
 import aiosmtplib
 from pydantic import (
     AnyHttpUrl,
+    AnyUrl,
     BaseModel,
     Field,
-    MongoDsn,
     RedisDsn,
     computed_field,
     field_validator,
@@ -50,7 +50,8 @@ class DatabaseConfig(BaseModel):
     """Configuration for the database"""
 
     name: str
-    url: MongoDsn
+    # any URL a storage backend supports, e.g. mongodb://host:27017
+    url: AnyUrl
     redis_url: RedisDsn = "redis://tergite-redis:6379/0"
 
 

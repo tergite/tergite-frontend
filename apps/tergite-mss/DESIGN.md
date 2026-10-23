@@ -27,6 +27,7 @@ apps/tergite-mss/
 │       ├── __init__.py      # the FastAPI app: middleware, exception handlers, routers
 │       ├── app_kwargs.py    # app metadata + lifespan (startup/shutdown)
 │       ├── auth.py          # the auth backends and current-user dependencies
+│       ├── database.py      # opens the one Database in the lifespan; get_database
 │       ├── dependencies.py  # every injectable, as an Annotated alias
 │       ├── errors.py        # the exception handlers
 │       ├── middleware.py    # TergiteCORSMiddleware
@@ -47,6 +48,7 @@ apps/tergite-mss/
 │   ├── jobs/
 │   ├── notices/
 │   └── external/bcc/        # outbound client to the quantum backends
+├── libs/storage/            # Database, Schema and the stores behind them; imports no app code
 ├── utils/                   # cross-cutting, domain-agnostic helpers
 ├── dev/openapi/             # export.py and the openapi.json it writes: the API contract
 └── tests/
