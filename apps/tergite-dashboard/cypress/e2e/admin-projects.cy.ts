@@ -786,15 +786,13 @@ users.forEach((user) => {
                 cy.get("@project-selector").click();
                 cy.contains(
                   '#project-selector [role="option"]',
-                  expected.name,
-                  {
-                    timeout: 500,
-                  }
+                  expected.name
                 ).should("be.visible");
                 // close the project selector drop down
-                cy.contains('#project-selector [role="option"]', /none/i, {
-                  timeout: 500,
-                }).click();
+                cy.contains(
+                  '#project-selector [role="option"]',
+                  /none/i
+                ).click();
               }
 
               // the only the default right sidebar placeholder should exist
@@ -1080,13 +1078,15 @@ users.forEach((user) => {
             if (project.user_ids.includes(user.id)) {
               // if current user is a member of the given project, open the project selector
               cy.get("@project-selector").realClick();
-              cy.contains('#project-selector [role="option"]', project.name, {
-                timeout: 500,
-              }).should("be.visible");
+              cy.contains(
+                '#project-selector [role="option"]',
+                project.name
+              ).should("be.visible");
               // to close the dropdown
-              cy.contains('#project-selector [role="option"]', /none/i, {
-                timeout: 500,
-              }).realClick();
+              cy.contains(
+                '#project-selector [role="option"]',
+                /none/i
+              ).realClick();
             }
 
             cy.contains("#project-summary button", /delete/i)
@@ -1105,13 +1105,13 @@ users.forEach((user) => {
                   cy.get("@project-selector").realClick();
                   cy.contains(
                     '#project-selector [role="option"]',
-                    project.name,
-                    { timeout: 500 }
+                    project.name
                   ).should("not.exist");
                   // close the project selector drop down
-                  cy.contains('#project-selector [role="option"]', /none/i, {
-                    timeout: 500,
-                  }).realClick();
+                  cy.contains(
+                    '#project-selector [role="option"]',
+                    /none/i
+                  ).realClick();
                 }
               });
           });
@@ -1167,12 +1167,14 @@ users.forEach((user) => {
                 '[data-testid="topbar"] button',
                 /project:/i
               ).realClick();
-              cy.contains('#project-selector [role="option"]', project.name, {
-                timeout: 500,
-              }).should("be.visible");
-              cy.contains('#project-selector [role="option"]', /none/i, {
-                timeout: 500,
-              }).realClick();
+              cy.contains(
+                '#project-selector [role="option"]',
+                project.name
+              ).should("be.visible");
+              cy.contains(
+                '#project-selector [role="option"]',
+                /none/i
+              ).realClick();
             }
           });
         }

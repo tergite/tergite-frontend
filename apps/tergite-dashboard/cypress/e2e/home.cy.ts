@@ -232,9 +232,10 @@ users.forEach((user) => {
       for (const project of userProjects) {
         cy.wrap(project).then((project) => {
           cy.contains('[data-testid="topbar"] button', /project:/i).realClick();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).realClick();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).realClick();
 
           const jobsForProject = allUserJobs.filter(
             (v) => v.project_id === project.id

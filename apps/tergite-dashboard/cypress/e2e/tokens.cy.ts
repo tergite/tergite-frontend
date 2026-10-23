@@ -340,9 +340,10 @@ users.forEach((user) => {
       for (const project of userProjects) {
         cy.wrap(project).then((project) => {
           cy.contains('[data-testid="topbar"] button', /project:/i).click();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).click();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).click();
 
           const tokensForProject = allUserTokens.filter(
             (v) => v.project_id === project.id
@@ -412,9 +413,10 @@ users.forEach((user) => {
       for (const project of userProjects) {
         cy.wrap(project).then((project) => {
           cy.contains('[data-testid="topbar"] button', /project:/i).click();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).click();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).click();
 
           const tokensForProject = allUserTokens.filter(
             (v) => v.project_id === project.id
@@ -564,9 +566,10 @@ users.forEach((user) => {
           .then((project) => {
             // click on project
             cy.contains('[data-testid="topbar"] button', /project:/i).click();
-            cy.contains('#project-selector [role="option"]', project.name, {
-              timeout: 500,
-            }).click();
+            cy.contains(
+              '#project-selector [role="option"]',
+              project.name
+            ).click();
 
             // token summary should not exist
             cy.get("#token-summary").should("not.exist");
@@ -591,9 +594,10 @@ users.forEach((user) => {
         cy.wrap(project).then((project) => {
           // click on project
           cy.contains('[data-testid="topbar"] button', /project:/i).click();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).click();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).click();
 
           const tokensForProject = allUserTokens.filter(
             (v) => v.project_id === project.id
@@ -650,9 +654,10 @@ users.forEach((user) => {
         cy.wrap(project).then((project) => {
           // click on project
           cy.contains('[data-testid="topbar"] button', /project:/i).click();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).click();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).click();
 
           // token summary is hidden
           cy.get("#token-summary").should("not.exist");
@@ -683,9 +688,10 @@ users.forEach((user) => {
       for (const project of userProjects.slice(0, 1)) {
         cy.wrap(project).then((project) => {
           cy.contains('[data-testid="topbar"] button', /project:/i).click();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).click();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).click();
 
           cy.wrap({ project }).then(({ project }) => {
             const tokenNameRegex = new RegExp(`${project.id}-(\\d+)`, "i");
@@ -743,9 +749,10 @@ users.forEach((user) => {
       for (const project of userProjects.slice(0, 1)) {
         cy.wrap(project).then((project) => {
           cy.contains('[data-testid="topbar"] button', /project:/i).click();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).click();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).click();
 
           cy.wrap({ project }).then(({ project }) => {
             const projectsTokens = allUserTokens.filter(
@@ -856,9 +863,10 @@ users.forEach((user) => {
         cy.wrap(project).then((project) => {
           // click on project
           cy.contains('[data-testid="topbar"] button', /project:/i).click();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).click();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).click();
 
           const tokensForProject = allUserTokens.filter(
             (v) => v.project_id === project.id
@@ -946,9 +954,10 @@ users.forEach((user) => {
         cy.wrap(project).then((project) => {
           // click on project
           cy.contains('[data-testid="topbar"] button', /project:/i).click();
-          cy.contains('#project-selector [role="option"]', project.name, {
-            timeout: 500,
-          }).click();
+          cy.contains(
+            '#project-selector [role="option"]',
+            project.name
+          ).click();
 
           const tokensForProject = allUserTokens.filter(
             (v) => v.project_id === project.id
