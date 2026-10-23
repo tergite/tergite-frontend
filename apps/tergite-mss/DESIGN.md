@@ -338,6 +338,9 @@ On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
 - **Obvious beats clever.** An `if`/`else` returning each whole literal, one explicit `if`
   per optional field; not loops over tuples of fields, comprehensions that build operators,
   merged dicts, or one helper returning two things to pull apart.
+- **A value that is only defined stays at its use.** No function that just returns a
+  literal (a dict, a filter, an update); write it where it is used. Functions are for real
+  actions: I/O, a check that raises, a computation with steps.
 - **Type hints everywhere**, including `async def` return types. DTOs are Pydantic models,
   never bare dicts crossing a service boundary.
 - **License header** on every new file: copy the block from a neighbouring module and add

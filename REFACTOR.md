@@ -20,6 +20,7 @@ The code reads like an article: the overview first, the detail below it. Every s
 12. **Obvious beats clever.** Write code a reader takes in at a glance: an `if`/`else` that returns each whole literal, one explicit `if` per optional field. Do not make the reader assemble the result in their head from a loop over tuples of fields, a comprehension that builds operators, merged dicts, or one helper that returns two things to be pulled apart. A helper that two callers share is fine when it reads the same way.
 13. **Storage is queried in MongoDB's own dialect** (step 3): `filter={"user_id": {"$in": [user_id, None]}}`, `update={"$set": {...}}`, `sort=["-created_at"]`, `skip`, `limit`, never structs that wrap each operator. A service function takes its query's arguments or its query model and gets its filter privately; a route never makes one.
 14. **What every request reads or writes lives in a cache.** The request log is in Redis, behind a `Database` of its own; records stay in the records' database. Putting per-request data in MongoDB doubled p95 latency in step 3.
+15. **A value that is only defined stays where it is used.** A function that does no more than return a literal (a dict, a filter, an update, a range) makes the reader jump to it and back for nothing; write the literal at its use, in an `if`/`else` where it varies. Rule 1's functions are for real actions, such as I/O, a check that raises, or a computation with steps; rule 2's one-liner exception covers the rest.
 
 Rule 1 applied to `requests.update`, 94 lines today (signatures illustrative):
 
