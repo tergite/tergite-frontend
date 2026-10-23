@@ -35,7 +35,6 @@ TEST_BACKENDS: List["BackendConfDict"] = TEST_APP_CONFIG["backends"]
 TEST_BACKENDS_MAP: Dict[str, "BackendConfDict"] = {
     item["name"]: item for item in TEST_BACKENDS
 }
-TEST_REDIS_URL = TEST_APP_CONFIG["database"]["redis_url"]
 
 
 def setup_test_env():

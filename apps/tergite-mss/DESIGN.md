@@ -118,8 +118,8 @@ websockets, and marks every device disconnected.
    `Origin` back instead of `*`, because the auth cookie requires credentialed CORS.
 2. **`request_logging_middleware`** — resolves or generates a request ID (reusing an
    incoming `x-request-id`), binds it into the loguru context so every log line in the
-   request carries it, logs start/finish with duration, records the request in the Redis
-   request-log store, and echoes `x-request-id` back on the response.
+   request carries it, logs start/finish with duration, records the request id with
+   `request_log.record_request`, and echoes `x-request-id` back on the response.
 3. **Dependencies** — everything injectable is a named `Annotated` alias in
    `api/rest/dependencies.py` (`MongoDbDep`, `CurrentUserDep`, `BccClientDep`,
    `RequestIdDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
@@ -240,10 +240,10 @@ Notable collections: `jobs`, `devices`, `calibrations`, `calibrations_logs` (his
 indexed on `(name, last_calibrated desc)`), `notices` (TTL index on `expires_at`).
 Deleting a project moves it to `deleted_auth_projects` rather than dropping it.
 
-**Redis** ([utils/redis_store.py](./utils/redis_store.py)) backs one thing: the
-request-log store used for websocket nonce replay protection, entries expiring after
-`request_log_ttl`. It is a small hand-rolled indexed-collection abstraction (`Schema` +
-`Collection[T]`) over Redis hashes and sorted sets, not a general cache.
+**Request logs** (`services/request_log`) remember each request id and websocket nonce for
+`request_log_ttl` seconds, in `request_logs`, where `request_id` is unique and a TTL index
+expires them. `record_request` returns False for an id already recorded: that is how a
+replayed nonce is refused, in one write.
 
 ## 6. REST conventions
 
@@ -284,7 +284,7 @@ Codified in [docs/api-design.md](./docs/api-design.md); the short version:
 
 ## 7. Testing
 
-`pytest` with a real MongoDB and a real Redis — no database mocking. `tests/conftest.py`
+`pytest` with a real MongoDB — no database mocking. `tests/conftest.py`
 calls `setup_test_env()` **before any app import**, because `settings.py` reads config at
 import time; keep that ordering when adding fixtures.
 
@@ -297,8 +297,8 @@ import time; keep that ordering when adding fixtures.
   signature paths.
 - `tests/api/rest/test_*.py` — one file per router, driven through `TestClient`.
 - `mock_backend.py` stands in for BCC; `respx` intercepts httpx calls.
-- The `db` fixture drops its database afterwards and `redis_client` flushes — tests must not
-  assume a clean store beyond what those give them.
+- The `db` fixture drops its database afterwards — tests must not assume a clean store beyond
+  what it gives them.
 
 CI runs `black --check .`, `pyflakes`, then `pytest` on Python 3.12 and 3.13.
 

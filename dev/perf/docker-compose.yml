@@ -13,21 +13,11 @@ services:
       timeout: 5s
       retries: 30
 
-  tergite-redis:
-    image: redis:8.4.0
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 1s
-      timeout: 3s
-      retries: 30
-
   mss:
     build:
       context: ../../apps/tergite-mss
     depends_on:
       tergite-mongo:
-        condition: service_healthy
-      tergite-redis:
         condition: service_healthy
     ports:
       - "8002:80"

@@ -17,11 +17,12 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.types import Message, Send
 
-from utils.api import WebsocketRequestLog
+import settings
+from services import request_log
 from utils.crypto import get_uuid4_str
 from utils.logging import UNLOGGED_PATHS
 
-from .utils import get_request_logs_store
+from .database import get_database
 
 
 class TergiteCORSMiddleware(CORSMiddleware):
@@ -64,9 +65,13 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
         response = await call_next(request)
 
-        requests_store = get_request_logs_store()
-        if not requests_store.exists(request_id):
-            requests_store.insert(WebsocketRequestLog.from_request(request))
+        await request_log.record_request(
+            get_database(request),
+            request_id,
+            ttl=settings.CONFIG.request_log_ttl,
+            client_name=request.headers.get("x-id"),
+            ip_address=request.client.host if request.client else None,
+        )
 
         # Attach request ID to response headers
         response.headers["x-request-id"] = request_id

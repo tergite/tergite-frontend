@@ -26,11 +26,9 @@ from typing import (
 from fastapi import WebSocketException, status
 from fastapi.websockets import WebSocket
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
 
 from utils.crypto import get_uuid4_str
-from utils.date_time import get_current_timestamp
-from utils.redis_store import Collection, Schema
 
 ITEM = TypeVar("ITEM", bound=BaseModel)
 
@@ -84,40 +82,6 @@ class CountsResponse(TypedDict):
     count: int
 
 
-class WebsocketRequestLog(Schema):
-    """Schema for tracking websocket requests"""
-
-    __primary_key_fields__ = ("request_id",)
-    __index_fields__ = (
-        "id",
-        "ip_address",
-    )
-    model_config = ConfigDict(extra="allow")
-
-    request_id: str
-    id: Optional[str] = None
-    ip_address: Optional[str] = None
-    created_at: Optional[str] = Field(default_factory=get_current_timestamp)
-    updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
-
-    @classmethod
-    def from_request(cls, websocket: WebSocket) -> "WebsocketRequestLog":
-        """Generates a request log object from the request
-
-        Args:
-            websocket: the received HTTP request
-
-        Returns:
-            the request log object
-        """
-        request_id = websocket.headers.get("x-request-id", websocket.state.request_id)
-        return cls(
-            request_id=request_id,
-            id=websocket.headers.get("x-id"),
-            ip_address=f"{websocket.client.host}",
-        )
-
-
 class EventResponse(GeneralMessage):
     """Response to an event"""
 
@@ -130,17 +94,13 @@ class WebsocketConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
 
-    async def connect(
-        self, websocket: WebSocket, request_logs: Collection[WebsocketRequestLog]
-    ):
-        """Allows a connection to be established, logging its request once"""
+    async def connect(self, websocket: WebSocket):
+        """Allows a connection to be established"""
         request_id = websocket.headers.get("x-request-id")
         if request_id is None:
             request_id = get_uuid4_str()
 
         websocket.state.request_id = request_id
-        if not request_logs.exists(request_id):
-            request_logs.insert(WebsocketRequestLog.from_request(websocket))
 
         await websocket.accept(headers=[(b"x-request-id", request_id.encode("utf8"))])
         self.active_connections.append(websocket)

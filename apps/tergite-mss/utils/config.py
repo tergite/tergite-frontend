@@ -23,7 +23,6 @@ from pydantic import (
     AnyUrl,
     BaseModel,
     Field,
-    RedisDsn,
     computed_field,
     field_validator,
     model_validator,
@@ -52,7 +51,6 @@ class DatabaseConfig(BaseModel):
     name: str
     # any URL a storage backend supports, e.g. mongodb://host:27017
     url: AnyUrl
-    redis_url: RedisDsn = "redis://tergite-redis:6379/0"
 
 
 class BccConfig(BaseModel):
@@ -281,13 +279,9 @@ class AppConfig(BaseModel, extra="allow"):
     # time-to-live for the nonce; defaults to 5 minutes
     bcc_nonce_ttl: float = 300
 
-    # The time to live in seconds for the request logs in the store.
+    # how long, in seconds, a request id or websocket nonce is remembered to reject a replay
     # default: 1209600 (two weeks)
     request_log_ttl: float = 1209600
-
-    # Interval in seconds between expired index cleanups for the request log store.
-    # default: 18000 (5 hours)
-    request_log_clean_interval: float = 18000
 
     # configuration for one database; it might become possible to add multiple databases
     database: DatabaseConfig

@@ -53,6 +53,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Changed
 
+- MSS no longer needs Redis: request ids and websocket nonces are kept in MongoDB's
+  `request_logs` collection. `database.redis_url` and `request_log_clean_interval` are ignored.
 - The low and depleted QPU warnings come only from the job that crosses the threshold or zero,
   so the jobs after it do not repeat them.
 - A superuser can delete a personal project, for offboarding or an erasure request; only the

@@ -9,13 +9,10 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-import redis
-from redis import Redis
 
 from tests._utils.env import (
     TEST_DB_NAME,
     TEST_MONGODB_URL,
-    TEST_REDIS_URL,
     setup_test_env,
 )
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
@@ -73,15 +70,7 @@ PROJECT_LIST = load_json_fixture("project_list.json")
 APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
 NOTICE_LIST = load_json_fixture("notices.json")
 USER_REQUEST_LIST = load_json_fixture("user_requests.json")
-_redis_connection = redis.Redis.from_url(TEST_REDIS_URL)
 pytest_plugins = ["tests._utils.oauth", "tests._utils.mock_backend"]
-
-
-@pytest.fixture
-def redis_client() -> Generator[Redis, Any, None]:
-    """A mock redis client"""
-    yield _redis_connection
-    _redis_connection.flushall()
 
 
 @pytest.fixture

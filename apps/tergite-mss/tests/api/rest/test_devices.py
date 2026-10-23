@@ -177,6 +177,23 @@ def test_create_device(db, client, payload: Dict[str, Any]):
             )
 
 
+def test_a_replayed_nonce_is_refused(client):
+    """A second websocket with the same signed x-request-id is refused as a replay"""
+    name = _DEVICE_LIST[0]["name"]
+    url = f"/devices/ws/{name}"
+    headers = create_bcc_headers(name)
+
+    with client as client:
+        with client.websocket_connect(url, headers=headers):
+            pass
+
+        with pytest.raises(WebSocketDisconnect) as exp:
+            with client.websocket_connect(url, headers=headers):
+                pass
+
+    assert exp.value.code == 1008
+
+
 @pytest.mark.parametrize("payload", _DEVICE_LIST)
 def test_create_device_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """Only clients with the certificate known to MSS can push to /devices/ws/{name}"""

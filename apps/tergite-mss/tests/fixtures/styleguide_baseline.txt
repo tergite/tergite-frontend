@@ -38,7 +38,6 @@ verb: services/notices/service.py::_with_project_name
 verb: services/requests/dtos.py::Request.from_post_body
 verb: services/requests/dtos.py::RequestPostBody.has_right_metadata_type
 verb: services/requests/service.py::_has_resource_access
-verb: utils/api.py::WebsocketRequestLog.from_request
 verb: utils/config.py::AppConfig.dashboard_url_required_for_email
 verb: utils/config.py::AppConfig.from_json_str
 verb: utils/date_time.py::datetime_to_zulu
@@ -46,8 +45,6 @@ verb: utils/logging.py::json_formatter
 verb: utils/models.py::PartialMeta.model_dump
 verb: utils/models.py::_as_optional
 verb: utils/mongodb.py::_to_mongo_json_schema
-verb: utils/redis_store.py::Collection.exists
-verb: utils/redis_store.py::Schema.model_dump
 boolean: api/rest/routers/admin/bcc/recalibration.py::cancel_recalibration(ignore_errors)
 boolean: api/rest/routers/admin/notices.py::get_many_notices(include_dismissed)
 boolean: api/rest/routers/counts.py::get_notice_count(include_dismissed)
@@ -108,13 +105,6 @@ boolean: utils/mongodb.py::init_strict_beanie(recreate_views)
 boolean: utils/mongodb.py::init_strict_beanie(skip_indexes)
 boolean: utils/mongodb.py::update_one(return_document)
 boolean: utils/mongodb.py::update_one(upsert)
-boolean: utils/redis_store.py::Collection.get_all(desc)
-boolean: utils/redis_store.py::Schema.model_dump(by_alias)
-boolean: utils/redis_store.py::Schema.model_dump(exclude_defaults)
-boolean: utils/redis_store.py::Schema.model_dump(exclude_none)
-boolean: utils/redis_store.py::Schema.model_dump(exclude_unset)
-boolean: utils/redis_store.py::Schema.model_dump(round_trip)
-boolean: utils/redis_store.py::Schema.model_dump(serialize_as_any)
 constant-position: services/auth/users/dtos.py::ID
 constant-position: utils/date_time.py::DEFAULT_FROM_DATETIME_STR
 constant-position: utils/date_time.py::DEFAULT_TO_DATETIME_STR
@@ -297,9 +287,3 @@ type-hints: utils/mongodb.py::delete_many
 type-hints: utils/mongodb.py::init_strict_beanie
 type-hints: utils/mongodb.py::insert_one
 type-hints: utils/mongodb.py::update_many
-type-hints: utils/redis_store.py::Collection._cleanup_expired_indexes
-type-hints: utils/redis_store.py::Collection._delete_indexes
-type-hints: utils/redis_store.py::Collection._update_indexes
-type-hints: utils/redis_store.py::Collection.clear
-type-hints: utils/redis_store.py::Collection.delete_many
-type-hints: utils/redis_store.py::Collection.insert
