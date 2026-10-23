@@ -24,7 +24,6 @@ from typing import (
 import aiosmtplib
 from loguru import logger
 
-import settings
 from utils.config import EmailConfig
 
 from .dtos import BatchEmailCallback, BatchEmailGenerator, EmailDetails, EmailResult
@@ -33,7 +32,7 @@ from .dtos import BatchEmailCallback, BatchEmailGenerator, EmailDetails, EmailRe
 class Emailer:
     """A process that sends email messages"""
 
-    def __init__(self, config: EmailConfig = settings.CONFIG.email) -> None:
+    def __init__(self, config: EmailConfig) -> None:
         if not isinstance(config, EmailConfig):
             raise ValueError("email config needs to be an instance of EmailConfig")
 
