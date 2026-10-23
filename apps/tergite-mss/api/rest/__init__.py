@@ -29,8 +29,6 @@ from utils.date_time import set_datetime_precision
 from utils.exc import (
     BccHttpError,
     ConflictError,
-    DatabaseError,
-    DbValidationError,
     ForbiddenError,
     InvalidInputError,
     InvalidRequestIDError,
@@ -75,12 +73,6 @@ app.add_exception_handler(
 )
 app.add_exception_handler(
     RuntimeError, make_http_error_handler(500, "Unexpected server error")
-)
-app.add_exception_handler(
-    DbValidationError, make_http_error_handler(500, "Unexpected server error")
-)
-app.add_exception_handler(
-    DatabaseError, make_http_error_handler(500, "Unexpected server error")
 )
 app.add_exception_handler(UnsupportedOauthException, make_http_error_handler(500))
 app.add_exception_handler(ServiceUnavailableError, make_http_error_handler(503))

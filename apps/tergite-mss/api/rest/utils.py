@@ -29,7 +29,6 @@ from services import request_log
 from utils.config import get_ip_addr
 from utils.crypto import verify_ws_signature
 from utils.exc import InvalidRequestIDError
-from utils.mongodb import get_mongodb
 
 from .database import get_database
 
@@ -138,9 +137,3 @@ def _is_valid_uuid4(value):
     except (ValueError, TypeError):
         return False
     return str(temp_uuid) == value
-
-
-async def get_default_mongodb():
-    return get_mongodb(
-        url=f"{settings.CONFIG.database.url}", name=settings.CONFIG.database.name
-    )

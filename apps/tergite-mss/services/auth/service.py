@@ -12,16 +12,19 @@
 
 """Service for oauth2 authentication and project-based authorization"""
 import re
+from contextlib import suppress
 from typing import List, Optional
 
 import motor.motor_asyncio
+from beanie import init_beanie
 from fastapi import APIRouter
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend
+from pymongo.errors import CollectionInvalid
 
 from libs.storage import Database
+from libs.storage.mongo.schema import get_validator
 from utils.config import AuthConfig, Oauth2ClientConfig, ProjectsConfig
-from utils.mongodb import init_strict_beanie
 
 from . import projects, providers, users
 from .users.dtos import User
@@ -45,12 +48,8 @@ async def on_startup(
     users.set_auth_clients(conf.clients)
     providers.set_auth_providers(conf.clients)
     projects.on_startup(database, conf=projects_conf)
-    await init_strict_beanie(
-        database=db,
-        document_models=[
-            users.dtos.User,
-        ],
-    )
+    await init_beanie(database=db, document_models=[User])
+    await _set_users_validator(db)
 
 
 def register_oauth2_client(
@@ -125,3 +124,20 @@ async def get_user_emails(search: Optional[str] = None, limit: int = 20) -> List
 
     records = await User.find(filter_obj, limit=limit, sort="email").to_list()
     return [user.email for user in records]
+
+
+async def _set_users_validator(db: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
+    """Makes the users' collection reject documents that violate the User schema"""
+    name = User.get_settings().name
+    # collMod fails on a collection that does not exist yet
+    with suppress(CollectionInvalid):
+        await db.create_collection(name)
+
+    await db.command(
+        {
+            "collMod": name,
+            "validator": get_validator(User),
+            "validationLevel": "strict",
+            "validationAction": "error",
+        }
+    )

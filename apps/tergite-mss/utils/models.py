@@ -14,24 +14,11 @@
 # Refactored by Martin Ahindura 2023-11-08
 """Utilities specific to models"""
 import sys
-from typing import (
-    Any,
-    Callable,
-    Literal,
-    Mapping,
-    Optional,
-    Sequence,
-    Type,
-    TypeVar,
-    get_args,
-)
+from typing import Any, Callable, Literal, Optional, Sequence, TypeVar, get_args
 
-from pydantic import BaseModel, ConfigDict, ValidationError, create_model
+from pydantic import BaseModel, ConfigDict, create_model
 from pydantic.main import IncEx
 
-from utils.exc import DbValidationError
-
-ModelOrDict = TypeVar("ModelOrDict", dict, BaseModel)
 Model = TypeVar("Model", bound=BaseModel)
 
 
@@ -70,27 +57,6 @@ class PartialMeta(BaseModel):
             fallback=fallback,
             serialize_as_any=serialize_as_any,
         )
-
-
-def parse_record(type__: Type[ModelOrDict], record: Mapping[str, Any]) -> ModelOrDict:
-    """Converts a record to the given type
-
-    Args:
-        type__: the type to parse to
-        record: the item to convert
-
-    Returns:
-        the record converted to the given type
-
-    Raises:
-        ValidationError: the record has some pydantic validation errors
-    """
-    try:
-        return type__.model_validate(record)
-    except AttributeError:
-        return dict(record)
-    except ValidationError as exp:
-        raise DbValidationError(exp)
 
 
 def create_partial_model(

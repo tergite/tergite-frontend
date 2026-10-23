@@ -29,9 +29,8 @@ from services.external import bcc
 from services.external.email import Emailer
 from services.notices import service as notices_service
 
-from .database import close_database, open_database
+from .database import close_database, open_database, open_users_database
 from .routers.devices import ws_manager as devices_ws_manager
-from .utils import get_default_mongodb
 
 
 def get_app_kwargs() -> Dict[str, Any]:
@@ -62,9 +61,12 @@ async def lifespan(app: FastAPI):
         private_key_password=settings.CONFIG.private_key_password,
     )
     database = await open_database(app, settings.CONFIG.database)
-    db = await get_default_mongodb()
+    users_db = open_users_database(app, settings.CONFIG.database)
     await auth_service.on_startup(
-        db, database, conf=settings.CONFIG.auth, projects_conf=settings.CONFIG.projects
+        users_db,
+        database,
+        conf=settings.CONFIG.auth,
+        projects_conf=settings.CONFIG.projects,
     )
     await jobs_service.on_startup(
         private_key_file=settings.PRIVATE_KEY_FILE,

@@ -42,7 +42,6 @@ verb: utils/date_time.py::datetime_to_zulu
 verb: utils/logging.py::json_formatter
 verb: utils/models.py::PartialMeta.model_dump
 verb: utils/models.py::_as_optional
-verb: utils/mongodb.py::_to_mongo_json_schema
 boolean: api/rest/routers/admin/bcc/recalibration.py::cancel_recalibration(ignore_errors)
 boolean: api/rest/routers/admin/notices.py::get_many_notices(include_dismissed)
 boolean: api/rest/routers/counts.py::get_notice_count(include_dismissed)
@@ -93,17 +92,9 @@ boolean: utils/models.py::PartialMeta.model_dump(exclude_none)
 boolean: utils/models.py::PartialMeta.model_dump(exclude_unset)
 boolean: utils/models.py::PartialMeta.model_dump(round_trip)
 boolean: utils/models.py::PartialMeta.model_dump(serialize_as_any)
-boolean: utils/mongodb.py::find(skip_validation)
-boolean: utils/mongodb.py::init_strict_beanie(allow_index_dropping)
-boolean: utils/mongodb.py::init_strict_beanie(multiprocessing_mode)
-boolean: utils/mongodb.py::init_strict_beanie(recreate_views)
-boolean: utils/mongodb.py::init_strict_beanie(skip_indexes)
-boolean: utils/mongodb.py::update_one(return_document)
-boolean: utils/mongodb.py::update_one(upsert)
 constant-position: services/auth/users/dtos.py::ID
 constant-position: utils/date_time.py::DEFAULT_FROM_DATETIME_STR
 constant-position: utils/date_time.py::DEFAULT_TO_DATETIME_STR
-private-helper-position: api/rest/utils.py::get_default_mongodb
 license-header: api/__init__.py
 license-header: api/rest/routers/__init__.py
 license-header: services/__init__.py
@@ -172,7 +163,6 @@ type-hints: api/rest/routers/me/notices/notices.py::get_my_notices
 type-hints: api/rest/routers/me/profile.py::get_my_user_profile
 type-hints: api/rest/routers/me/requests.py::get_many
 type-hints: api/rest/utils.py::_is_valid_uuid4
-type-hints: api/rest/utils.py::get_default_mongodb
 type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.destroy_token
 type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.generate_token
 type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.update_token
@@ -253,9 +243,3 @@ type-hints: utils/logging.py::json_formatter
 type-hints: utils/logging.py::patch_record
 type-hints: utils/logging.py::setup_logging
 type-hints: utils/models.py::_as_optional
-type-hints: utils/mongodb.py::_extract_filter_obj
-type-hints: utils/mongodb.py::_set_jsonschema_validator
-type-hints: utils/mongodb.py::delete_many
-type-hints: utils/mongodb.py::init_strict_beanie
-type-hints: utils/mongodb.py::insert_one
-type-hints: utils/mongodb.py::update_many

@@ -61,13 +61,13 @@ A service is a package. Its public surface is what `__init__.py` exposes; caller
 
 | File | Contains |
 | --- | --- |
-| `dtos.py` | Pydantic models — request bodies, responses, and Beanie `Document`s (which double as the persistence schema). Query-param models too. |
-| `service.py` | The business logic: module-level `async def` functions taking the db handle as their first argument. |
+| `dtos.py` | Pydantic models — request bodies, responses, and the `libs.storage` `Schema`s that are also the persistence schema. Query-param models too. |
+| `service.py` | The business logic: module-level `async def` functions taking the `Database` as their first argument. |
 | `database.py` | Only where a service needs a repository object rather than free functions (the `auth` submodules). |
 | `routers.py` | Only where the service owns routes that are mounted by an `api/rest/routers/*` module — used by `auth` for the fastapi-users-derived routers. |
 | `manager.py`, `authenticator.py`, `strategy.py`, `auth_backend.py` | fastapi-users extension points; `auth` only. |
 | `exc.py` | Service-specific exceptions. |
-| `on_startup(db)` | Index creation / Beanie init, called from the app lifespan. |
+| `on_startup(...)` | Config, and the `Database` where a module must keep it, from the app lifespan. |
 
 A service's `__init__.py` is its facade: it only re-exports, with `__all__` as strings. Code
 outside the service imports from the facade (`from services.jobs import Job`), never from its
@@ -80,9 +80,10 @@ A router should read as: resolve dependencies → call one or two service functi
 result in a response envelope. Persistence details, BCC protocol details and cross-entity
 rules live in `services/`. Two consequences worth internalising:
 
-- Services take `db: AsyncIOMotorDatabase` as a parameter; they never reach for a global
-  connection. This is what makes them testable and what lets the request-scoped dependency
-  own connection lifetime.
+- Services take the `Database` as a parameter; they never reach for a global connection.
+  This is what makes them testable and what lets the lifespan own the connection. A module
+  called from where no `Database` is at hand (`notices`, `auth.projects`) gets it once
+  through its `on_startup`.
 - `services/` may import `utils/` and other services (e.g. `devices` events call `jobs` and
   `calibration`). `services/` must not import from `api/`.
 - Only `api/rest` reads `settings`. A class gets its config in its constructor (`BccClient`,
@@ -102,12 +103,12 @@ production, and `--forwarded-allow-ips` when it detects `/.dockerenv`).
 `settings.py` then validates that JSON into `AppConfig` and asserts the private key file
 exists. Any config error is a startup crash, not a runtime surprise.
 
-The FastAPI `lifespan` in `app_kwargs.py` creates the BCC httpx clients, then runs each
-service's `on_startup(db)`: Beanie document registration for `auth`, `notices`, `notifications`
-and `qpu_grants`, index creation for `calibration` and `notices`. It then starts the only
-background loop in the app, `notifications.start_sweeper()`, which is a no-op unless `[email]`
-is configured. On shutdown it stops the sweeper, closes the BCC clients, closes all device
-websockets, and marks every device disconnected.
+The FastAPI `lifespan` in `app_kwargs.py` creates the BCC httpx clients, opens the
+`Database` (whose `setup` creates every schema's collection, validator and indexes) and the
+Motor database Beanie keeps the users in, then runs the `on_startup` of `auth`, `jobs` and
+`notices`. `notices` starts the only background loop in the app, the email sweeper, when
+`[email]` is configured. On shutdown it stops the emailer, closes the BCC clients, closes all
+device websockets, marks every device disconnected, and closes both databases.
 
 `docs_url` / `redoc_url` / `openapi_url` are set to `None` unless
 `general.environment == "development"` — there are no interactive docs in production.
@@ -121,7 +122,7 @@ websockets, and marks every device disconnected.
    request carries it, logs start/finish with duration, records the request id with
    `request_log.record_request`, and echoes `x-request-id` back on the response.
 3. **Dependencies** — everything injectable is a named `Annotated` alias in
-   `api/rest/dependencies.py` (`MongoDbDep`, `CurrentUserDep`, `BccClientDep`,
+   `api/rest/dependencies.py` (`DatabaseDep`, `CurrentUserDep`, `BccClientDep`,
    `RequestIdDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
    parameters (`user: CurrentUserDep`), never the raw `Depends(...)` expression, and a route
    that only needs the check still names the parameter (`requester: CurrentSuperuserDep`).
@@ -132,8 +133,8 @@ websockets, and marks every device disconnected.
    `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,
    `ForbiddenError` → 403, `NotFoundError` → 404, `ConflictError` → 409,
    `ServiceUnavailableError` → 503, `BccHttpError` → the BCC's
-   own status, and `ValueError` / `TypeError` / `RuntimeError` / `DbValidationError` /
-   `DatabaseError` / bare `Exception` → 500 with a generic message, and
+   own status, and `ValueError` / `TypeError` / `RuntimeError` / bare `Exception` → 500
+   with a generic message, and
    `UnsupportedOauthException` → 500 with its own. Other service exceptions subclass these
    and need no mapping of their own. **Raise domain exceptions from services; do not raise
    `HTTPException` there.**
@@ -226,15 +227,16 @@ enum member in `services/devices/dtos.py`, and a handler and its entry in `EVENT
 
 ## 5. Data
 
-MongoDB, reached via motor. Two access styles coexist:
+MongoDB, reached through `libs/storage`: one `Database`, opened in the lifespan with every
+service's `SCHEMAS` and handed to routes as `DatabaseDep`. A schema is a Pydantic `Schema`
+whose `__storage__` names its table, key, unique fields and indexes; services query it with
+`Filter`s (`Eq`, `In`, `Range`, `And`, …) and change it with `Update`s (`Set`, `Inc`,
+`AddToSet`, …), and nothing outside `libs/storage/mongo` names MongoDB. Ids are `Id`
+strings, which the Mongo store keeps as ObjectIds.
 
-- **Beanie `Document`s** for the auth entities and notices — `auth_users`,
-  `auth_projects`, `deleted_auth_projects`, `auth_app_tokens`, user requests, `notices`.
-  Registered in `init_beanie` during startup; indexes declared in each `Settings` class.
-- **Raw collections through `utils/mongodb.py`** for jobs, devices and calibrations —
-  `find`, `find_one`, `insert_one_if_not_exists`, `update_one`, `update_many`,
-  `delete_many`, each taking a Pydantic `schema=` to validate results into DTOs and raising
-  `DbValidationError` on mismatch.
+The one exception is `auth_users`: the `User` is still a Beanie `Document`, on its own Motor
+client, because fastapi-users' Beanie adapter reads it. Code that compares a user's id with
+an `Id` converts it with `str(user.id)`.
 
 Notable collections: `jobs`, `devices`, `calibrations`, `calibrations_logs` (historical,
 indexed on `(name, last_calibrated desc)`), `notices` (TTL index on `expires_at`).

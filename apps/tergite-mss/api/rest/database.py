@@ -15,6 +15,7 @@ from typing import Tuple, Type
 from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import FastAPI
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from starlette.requests import HTTPConnection
 
 from libs.storage import Database, Schema
@@ -41,8 +42,16 @@ async def open_database(app: FastAPI, conf: DatabaseConfig) -> Database:
     return database
 
 
+def open_users_database(app: FastAPI, conf: DatabaseConfig) -> AsyncIOMotorDatabase:
+    """Opens the Motor database Beanie keeps the users in, until they move onto the Database"""
+    client = AsyncIOMotorClient(build_database_url(conf), tz_aware=True)
+    app.state.users_client = client
+    return client.get_default_database()
+
+
 async def close_database(app: FastAPI) -> None:
     await app.state.database.close()
+    app.state.users_client.close()
 
 
 def get_database(connection: HTTPConnection) -> Database:

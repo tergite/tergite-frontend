@@ -310,7 +310,6 @@ async def delete_job(
         the BCC's answer
 
     Raises:
-        DatabaseError: server failed deleting documents
         NotFoundError: no matches for {filter}
     """
     response = await bcc_client.delete_job(
@@ -403,7 +402,6 @@ async def on_startup(
         private_key_password: the password of that key's PEM file
         qpu_seconds_low_threshold: the QPU seconds below which a project is running low
     """
-    # FIXME: Add init_strict_beanie
     global _private_key_file, _private_key_password, _qpu_seconds_low_threshold
     _private_key_file = private_key_file
     _private_key_password = private_key_password

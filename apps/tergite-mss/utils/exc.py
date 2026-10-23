@@ -10,7 +10,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Exceptions for usage in application"""
-from pydantic import ValidationError
 
 
 class BaseMssException(Exception):
@@ -32,14 +31,6 @@ class ServiceUnavailableError(BaseMssException):
 
 class UnknownBccError(BaseMssException):
     """Exception when an unknown BCC is requested for"""
-
-
-class DbValidationError(BaseMssException):
-    """Exception that occurs when validation fails on a schema"""
-
-    def __init__(self, original_exp: ValidationError):
-        self._original_exp = original_exp
-        self._message = f"{original_exp}"
 
 
 class NotFoundError(BaseMssException):
@@ -84,7 +75,3 @@ class BccHttpError(BaseMssException):
     def __init__(self, status_code: int, message: str = ""):
         super().__init__(message)
         self.status_code = status_code
-
-
-class DatabaseError(BaseMssException):
-    """Exception when the database fails to carry out an operation"""
