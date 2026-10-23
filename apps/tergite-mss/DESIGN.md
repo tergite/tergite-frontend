@@ -193,8 +193,8 @@ devices, calibrations, notices and the auth entities live in MongoDB.
 `WS /devices/ws/{name}` is how a backend pushes state. The handshake is verified by
 `get_verified_device_name` (signature, source IP, nonce freshness, nonce replay) and the
 socket is registered with a `WebsocketConnectionManager`. Each JSON frame is a
-`DeviceEvent` dispatched through `_EVENT_HANDLER_MAP` in `api/rest/routers/devices/__init__.py`
-to a handler in `events.py`:
+`DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
+handler for its name:
 
 | Event | Handler effect |
 | --- | --- |
@@ -207,8 +207,8 @@ to a handler in `events.py`:
 Handlers reply with an `EventResponse` per frame and never kill the socket: validation
 errors become `{"status": "error", "detail": …}`, and a device attempting to edit another
 device's record raises `ForbiddenError` → `forbidden`. Adding an event means adding an
-enum member in `services/devices/dtos.py`, a handler in `events.py`, and an entry in
-`_EVENT_HANDLER_MAP`.
+enum member in `services/devices/dtos.py`, and a handler and its entry in `EVENT_HANDLERS` in
+`services/devices/events.py`.
 
 ## 5. Data
 
@@ -290,7 +290,7 @@ On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
   before committing; neither needs flags.
 - **Constants go at the top of the file**, after imports — not buried between functions. The
   exception is a constant built from a function or class defined in the same file, which
-  stays after it (e.g. `_EVENT_HANDLER_MAP` after the handler imports, `ProjectPartial`
+  stays after it (e.g. `EVENT_HANDLERS` after the handlers, `ProjectPartial`
   after `Project`).
 - **Module-private helpers** (`_name`, not used outside the module) go at the **bottom**,
   unless definition order forces otherwise. `_extract_error_message` and `_create_headers`
@@ -315,6 +315,6 @@ On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
 | New injectable | an `Annotated` alias in `api/rest/dependencies.py` |
 | New OAuth2 provider | a `[[auth.clients]]` block — no code; see [docs/auth.md](./docs/auth.md) |
 | New quantum backend | a `[[backends]]` block plus its public key — no code; see [docs/backends.md](./docs/backends.md) |
-| New device event | enum member in `services/devices/dtos.py`, handler in `routers/devices/events.py`, entry in `_EVENT_HANDLER_MAP` |
+| New device event | enum member in `services/devices/dtos.py`, handler and `EVENT_HANDLERS` entry in `services/devices/events.py` |
 | New config option | a field on the right model in `utils/config.py` **and** a documented entry in `mss-config.example.toml` |
 | New BCC call | a method on `BccClient` using `self._request`, so signing and error mapping are inherited |

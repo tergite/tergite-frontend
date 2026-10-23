@@ -13,7 +13,7 @@
 # that they have been altered from the originals.
 #
 # Refactored by Martin Ahindura - 2023-11-08, 2024-08-01
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, WebSocketException
 from fastapi.websockets import WebSocket
@@ -25,12 +25,7 @@ from starlette.websockets import WebSocketDisconnect
 from api.rest.dependencies import MongoDbDep, ProjectDbDep
 from api.rest.utils import get_verified_device_name
 from services import devices
-from services.devices.dtos import (
-    DeviceEvent,
-    DeviceEventHandler,
-    DeviceEventName,
-    DeviceQuery,
-)
+from services.devices.dtos import DeviceEvent, DeviceQuery
 from utils.api import (
     EventResponse,
     PaginatedListResponse,
@@ -39,24 +34,8 @@ from utils.api import (
 )
 from utils.exc import ForbiddenError, InvalidWebsocketDataTypeError
 
-from .events import (
-    on_device_initialized_event,
-    on_device_recalibrated_event,
-    on_device_switched_off_event,
-    on_device_switched_on_event,
-    on_job_updated_event,
-)
-
 router = APIRouter(prefix="/devices", tags=["devices"])
 ws_manager = WebsocketConnectionManager()
-_EVENT_HANDLER_MAP: Dict[DeviceEventName, DeviceEventHandler] = {
-    DeviceEventName.INITIALIZED: on_device_initialized_event,
-    DeviceEventName.RECALIBRATED: on_device_recalibrated_event,
-    DeviceEventName.JOB_UPDATED: on_job_updated_event,
-    DeviceEventName.SWITCHED_OFF: on_device_switched_off_event,
-    DeviceEventName.SWITCHED_ON: on_device_switched_on_event,
-}
-"""A map of event handlers for device events"""
 
 
 @router.get("/")
@@ -127,7 +106,7 @@ async def handle_device_events(
             try:
                 parsed_data = DeviceEvent.model_validate(data)
                 event_response.update(id=parsed_data.id)
-                handler = _EVENT_HANDLER_MAP[parsed_data.name]
+                handler = devices.EVENT_HANDLERS[parsed_data.name]
                 general_response = await handler(
                     device=verified_name,
                     data=parsed_data.data,

@@ -176,7 +176,6 @@ facade-import: api/rest/routers/calibrations.py::import services.calibration.dto
 facade-import: api/rest/routers/counts.py::import services.auth.users.dtos
 facade-import: api/rest/routers/counts.py::import services.notices.dtos
 facade-import: api/rest/routers/devices/__init__.py::import services.devices.dtos
-facade-import: api/rest/routers/devices/events.py::import services.devices.dtos
 facade-import: api/rest/routers/jobs.py::import services.external.bcc.dtos
 facade-import: api/rest/routers/jobs.py::import services.jobs.dtos
 facade-import: api/rest/routers/me/jobs.py::import services.jobs.dtos
@@ -227,11 +226,11 @@ type-hints: api/rest/routers/calibrations.py::read_one
 type-hints: api/rest/routers/devices/__init__.py::handle_device_events
 type-hints: api/rest/routers/devices/__init__.py::read_many
 type-hints: api/rest/routers/devices/__init__.py::read_one
-type-hints: api/rest/routers/devices/events.py::on_device_initialized_event
-type-hints: api/rest/routers/devices/events.py::on_device_recalibrated_event
-type-hints: api/rest/routers/devices/events.py::on_device_switched_off_event
-type-hints: api/rest/routers/devices/events.py::on_device_switched_on_event
-type-hints: api/rest/routers/devices/events.py::on_job_updated_event
+type-hints: services/devices/events.py::on_device_initialized_event
+type-hints: services/devices/events.py::on_device_recalibrated_event
+type-hints: services/devices/events.py::on_device_switched_off_event
+type-hints: services/devices/events.py::on_device_switched_on_event
+type-hints: services/devices/events.py::on_job_updated_event
 type-hints: api/rest/routers/jobs.py::create_one
 type-hints: api/rest/routers/jobs.py::get_job_status
 type-hints: api/rest/routers/jobs.py::get_many

@@ -133,6 +133,45 @@ async def patch_device(
     return Device.model_validate(device)
 
 
+async def mark_device_online(db: AsyncIOMotorDatabase, name: str) -> Device:
+    """Marks the device of the given name as online
+
+    Args:
+        db: the mongo database where the device data is stored
+        name: the name of the device
+
+    Returns:
+        the updated device
+
+    Raises:
+        NotFoundError: device {name} not found
+    """
+    return await patch_device(
+        db, name=name, payload={"last_online": None, "is_online": True}
+    )
+
+
+async def mark_device_offline(
+    db: AsyncIOMotorDatabase, name: str, last_online: str
+) -> Device:
+    """Marks the device of the given name as offline since the given time
+
+    Args:
+        db: the mongo database where the device data is stored
+        name: the name of the device
+        last_online: the timestamp when the device was last online
+
+    Returns:
+        the updated device
+
+    Raises:
+        NotFoundError: device {name} not found
+    """
+    return await patch_device(
+        db, name=name, payload={"last_online": last_online, "is_online": False}
+    )
+
+
 async def try_connect_device(db: AsyncIOMotorDatabase, name: str):
     """Tries to connect the given device to this API
 
@@ -146,9 +185,7 @@ async def try_connect_device(db: AsyncIOMotorDatabase, name: str):
         the updated device
     """
     try:
-        return await patch_device(
-            db, name=name, payload={"last_online": None, "is_online": True}
-        )
+        return await mark_device_online(db, name=name)
     except NotFoundError:
         pass
 
@@ -166,10 +203,8 @@ async def try_disconnect_device(db: AsyncIOMotorDatabase, name: str):
         the updated device
     """
     try:
-        return await patch_device(
-            db,
-            name=name,
-            payload={"last_online": get_current_timestamp(), "is_online": False},
+        return await mark_device_offline(
+            db, name=name, last_online=get_current_timestamp()
         )
     except NotFoundError:
         pass

@@ -11,18 +11,20 @@
 # that they have been altered from the originals.
 
 """Module containing event handlers"""
+from typing import Dict
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from services import calibration as calibration_service
-from services import devices as devices_service
 from services import jobs as jobs_service
 from services.auth import ProjectDatabase
 from services.calibration import DeviceCalibration
-from services.devices import DeviceUpsert
-from services.devices.dtos import DeviceSwitchData
 from services.jobs import JobUpdate
 from utils.api import GeneralMessage
 from utils.exc import ForbiddenError
+
+from .dtos import DeviceEventHandler, DeviceEventName, DeviceSwitchData, DeviceUpsert
+from .service import mark_device_offline, mark_device_online, upsert_device
 
 
 async def on_job_updated_event(
@@ -86,7 +88,7 @@ async def on_device_initialized_event(
     if data.name != device:
         raise ForbiddenError(f"editing '{data.name}' is not allowed")
 
-    upserted_record = await devices_service.upsert_device(db, payload=data)
+    upserted_record = await upsert_device(db, payload=data)
     return {
         "status": "success",
         "data": upserted_record.model_dump(mode="json"),
@@ -107,17 +109,11 @@ async def on_device_switched_off_event(
         the general message with the updated job
 
     Raises:
-        ValueError: server failed updating documents
         NotFoundError: device {device} not found
         ValidationError: if the final object is not validated
     """
-    patched_record = await devices_service.patch_device(
-        db,
-        name=device,
-        payload={
-            "last_online": data.date.isoformat(),
-            "is_online": False,
-        },
+    patched_record = await mark_device_offline(
+        db, name=device, last_online=data.date.isoformat()
     )
     return {
         "status": "success",
@@ -139,18 +135,10 @@ async def on_device_switched_on_event(
         the general message with the updated job
 
     Raises:
-        ValueError: server failed updating documents
         NotFoundError: device {device} not found
         ValidationError: if the final object is not validated
     """
-    patched_record = await devices_service.patch_device(
-        db,
-        name=device,
-        payload={
-            "last_online": None,
-            "is_online": True,
-        },
-    )
+    patched_record = await mark_device_online(db, name=device)
     return {
         "status": "success",
         "data": patched_record.model_dump(mode="json"),
@@ -183,3 +171,13 @@ async def on_device_recalibrated_event(
         "status": "success",
         "data": upserted_record.model_dump(mode="json"),
     }
+
+
+EVENT_HANDLERS: Dict[DeviceEventName, DeviceEventHandler] = {
+    DeviceEventName.INITIALIZED: on_device_initialized_event,
+    DeviceEventName.RECALIBRATED: on_device_recalibrated_event,
+    DeviceEventName.JOB_UPDATED: on_job_updated_event,
+    DeviceEventName.SWITCHED_OFF: on_device_switched_off_event,
+    DeviceEventName.SWITCHED_ON: on_device_switched_on_event,
+}
+"""A map of event handlers for device events"""
