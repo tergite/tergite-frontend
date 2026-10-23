@@ -21,7 +21,7 @@ verb: services/auth/users/routers.py::get_oauth_router.auto_authorize
 verb: services/auth/users/routers.py::get_oauth_router.callback
 verb: services/devices/dtos.py::DeviceUpsert.model_dump
 verb: services/external/email/dtos.py::EmailDetails.to_email_message
-verb: services/jobs/__init__.py::_without_special_docker_host_domain
+verb: services/jobs/service.py::_without_special_docker_host_domain
 verb: services/jobs/dtos.py::Job.model_dump
 verb: services/jobs/dtos.py::JobStatusResponse.from_job
 verb: services/notices/dtos.py::CustomNoticeCreate.to_documents
@@ -158,8 +158,8 @@ import-layering: services/auth/service.py::import settings
 import-layering: services/auth/users/__init__.py::import settings
 import-layering: services/external/bcc/service.py::import settings
 import-layering: services/external/email/service.py::import settings
-import-layering: services/jobs/__init__.py::import settings
-import-layering: services/jobs/__init__.py::import settings
+import-layering: services/jobs/service.py::import settings
+import-layering: services/jobs/service.py::import settings
 import-layering: services/notices/service.py::import settings
 import-layering: utils/api.py::import settings
 import-layering: utils/date_time.py::import settings
@@ -188,9 +188,9 @@ facade-import: services/auth/projects/routers/utils.py::import services.notices.
 facade-import: services/devices/dtos.py::import services.calibration.dtos
 facade-import: services/devices/dtos.py::import services.jobs.dtos
 facade-import: services/external/bcc/service.py::import services.auth.users
-facade-import: services/jobs/__init__.py::import services.auth.projects.database
-facade-import: services/jobs/__init__.py::import services.external.bcc
-facade-import: services/jobs/__init__.py::import services.notices.dtos
+facade-import: services/jobs/service.py::import services.auth.projects.database
+facade-import: services/jobs/service.py::import services.external.bcc
+facade-import: services/jobs/service.py::import services.notices.dtos
 facade-import: services/notices/dtos.py::import services.auth.users.dtos
 facade-import: services/notices/emails.py::import services.auth.users.dtos
 facade-import: services/notices/emails.py::import services.external.email
@@ -306,7 +306,7 @@ type-hints: services/auth/users/routers.py::get_oauth_router.callback
 type-hints: services/auth/users/validators.py::EmailRegexValidator.validate
 type-hints: services/auth/users/validators.py::Validator.validate
 type-hints: services/auth/utils.py::get_oauth2_client
-type-hints: services/calibration/__init__.py::on_startup
+type-hints: services/calibration/service.py::on_startup
 type-hints: services/calibration/dtos.py::DeviceCalibration.serialize_id
 type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
 type-hints: services/devices/service.py::disconnect_all
@@ -336,7 +336,7 @@ type-hints: services/external/email/service.py::Emailer.from_value
 type-hints: services/external/email/service.py::Emailer.register_batch_schedule
 type-hints: services/external/email/service.py::Emailer.send
 type-hints: services/external/email/service.py::_send_on_repeat
-type-hints: services/jobs/__init__.py::remove_job
+type-hints: services/jobs/service.py::remove_job
 type-hints: services/jobs/dtos.py::Job.serialize_object_id
 type-hints: services/jobs/dtos.py::JobStatusResponse.from_job
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished
