@@ -25,6 +25,7 @@ from utils.config import Oauth2ClientConfig, UserRole
 from utils.mongodb import init_strict_beanie
 
 from . import app_tokens, projects, users
+from .users.dtos import User
 from .utils import get_oauth2_client
 
 # JWT-based authentication
@@ -157,5 +158,5 @@ async def get_user_emails(search: Optional[str] = None, limit: int = 20) -> List
         # escaped, or a caller could hand us a regex to evaluate
         filter_obj["email"] = {"$regex": re.escape(search), "$options": "i"}
 
-    records = await users.User.find(filter_obj, limit=limit, sort="email").to_list()
+    records = await User.find(filter_obj, limit=limit, sort="email").to_list()
     return [user.email for user in records]
