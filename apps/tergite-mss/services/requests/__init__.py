@@ -24,11 +24,13 @@ from .service import (
     create,
     get_many,
     get_one,
-    on_startup,
     update,
 )
 
+SCHEMAS = (Request,)
+
 __all__ = [
+    "SCHEMAS",
     "ALL_REQ_STATUSES",
     "ALL_REQ_TYPES",
     "Request",
@@ -41,5 +43,4 @@ __all__ = [
     "get_one",
     "get_many",
     "update",
-    "on_startup",
 ]

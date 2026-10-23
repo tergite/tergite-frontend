@@ -11,19 +11,17 @@
 # that they have been altered from the originals.
 import asyncio
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Sequence, Tuple
 
-import motor.motor_asyncio
 from beanie import PydanticObjectId
-from beanie.odm.operators.find.comparison import In
 from pydantic import BaseModel, Field
 
+from libs.storage import And, Database, Eq, Filter, In, Or, Page, Set, Sort
 from services import notices
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
 from utils.config import UserRole
 from utils.exc import ForbiddenError, NotFoundError
-from utils.mongodb import extract_sort_config, init_strict_beanie
 
 from . import actions
 from .dtos import (
@@ -41,17 +39,8 @@ ALL_REQ_TYPES = tuple(RequestType)
 ALL_REQ_STATUSES = tuple(RequestStatus)
 
 
-async def on_startup(db: motor.motor_asyncio.AsyncIOMotorDatabase):
-    """Runs init operations when the application is starting up"""
-    await init_strict_beanie(
-        database=db,
-        document_models=[
-            Request,
-        ],
-    )
-
-
 async def create(
+    database: Database,
     request_body: RequestPostBody,
     requester: User,
 ) -> Request:
@@ -77,7 +66,7 @@ async def create(
     record = Request.from_post_body(
         request_body, requester=requester, target_user_ids=target_user_ids
     )
-    await record.create()
+    await database.insert(Request, record)
     # NOTE: We explicitly notify here instead of in a beanie hook because:
     #   - hooks would have hidden the logic to a reader/maintainer in future
     await notices.create_system_notice(
@@ -90,7 +79,7 @@ async def create(
     return record
 
 
-async def get_one(pk: PydanticObjectId, current_user_id: PydanticObjectId) -> Request:
+async def get_one(database: Database, pk: str, current_user_id: str) -> Request:
     """Gets a single request if the given user is allowed to see it
 
     Args:
@@ -103,14 +92,16 @@ async def get_one(pk: PydanticObjectId, current_user_id: PydanticObjectId) -> Re
     Raises:
         NotFoundError if the request is not found
     """
-    record = await Request.find_one(
-        {
-            "_id": pk,
-            "$or": [
-                {"target_user_ids": current_user_id},
-                {"requester_id": current_user_id},
-            ],
-        }
+    current_user_id = str(current_user_id)
+    record = await database.find_one(
+        Request,
+        where=And(
+            Eq("id", str(pk)),
+            Or(
+                Eq("target_user_ids", current_user_id),
+                Eq("requester_id", current_user_id),
+            ),
+        ),
     )
     if record is None:
         raise NotFoundError(f"{pk} not found")
@@ -118,50 +109,44 @@ async def get_one(pk: PydanticObjectId, current_user_id: PydanticObjectId) -> Re
 
 
 async def get_many(
-    current_user_id: PydanticObjectId,
+    database: Database,
+    current_user_id: str,
     role: RequestRole,
     statuses: Tuple[RequestStatus, ...] = ALL_REQ_STATUSES,
     request_types: Tuple[RequestType, ...] = ALL_REQ_TYPES,
-    sort: tuple[str, ...] = ("-created_at",),
-    skip: int = 0,
-    limit: Optional[int] = None,
+    sort: Sequence[Sort] = (Sort("created_at", is_descending=True),),
+    page: Page = Page(),
 ) -> List[Request]:
     """Gets the requests the current user made, or those awaiting their decision
 
     Args:
+        database: the database where the requests are stored
         current_user_id: the identifier of the current user
         role: "requester" for the user's own requests, "approver" for those targeting them
         statuses: the statuses of request to return. default = ALL_REQ_STATUSES
         request_types: the types of request to return. default = ALL_REQ_TYPES
         sort: the sort order of the returned results
-        skip: the number of matched records to skip
-        limit: the maximum number of records to return.
-                If None, all possible records are returned.
+        page: which slice of the matched requests to return
 
     Returns:
         the list of request objects
     """
     user_field = "target_user_ids" if role == "approver" else "requester_id"
-    _filter = {
-        user_field: current_user_id,
-        "status": {"$in": statuses},
-        "type": {"$in": request_types},
-    }
-    return await Request.find(
-        _filter,
-        skip=skip,
-        limit=limit,
-        sort=extract_sort_config(sort),
-    ).to_list()
+    where = And(
+        Eq(user_field, str(current_user_id)),
+        In("status", list(statuses)),
+        In("type", list(request_types)),
+    )
+    return await database.find(Request, where=where, sort=sort, page=page)
 
 
 async def update(
-    filter_obj: Dict[str, Any],
+    database: Database,
+    where: Filter,
     payload: RequestUpdate,
     current_user: User,
-    sort: tuple[str, ...] = ("-created_at",),
-    skip: int = 0,
-    limit: Optional[int] = None,
+    sort: Sequence[Sort] = (Sort("created_at", is_descending=True),),
+    page: Page = Page(),
 ) -> List[Request]:
     """Updates the matched requests.
 
@@ -179,13 +164,12 @@ async def update(
     nothing done.
 
     Args:
-        filter_obj: the filters to match
+        database: the database where the requests are stored
+        where: the filter the updated requests match
         payload: the update payload for the requests
         current_user: the logged-in user
         sort: the sort order of the returned results
-        skip: the number of matched records to skip
-        limit: the maximum number of records to match.
-                If None, all possible records are matched.
+        page: which slice of the matched requests to update
 
     Returns:
         Returns all updated requests
@@ -196,18 +180,14 @@ async def update(
         NotFoundError: no users of emails {emails}
         ConflictError: a project named '{name}' already exists
     """
-    _filter = {} if filter_obj is None else {**filter_obj}
-    # only requests that are pending can be updated
-    # only requests that a user is a target can be updated
-    _filter.update(
-        {"target_user_ids": current_user.id, "status": RequestStatus.PENDING}
+    # only pending requests that target the user can be updated
+    where = And(
+        where,
+        Eq("target_user_ids", str(current_user.id)),
+        Eq("status", RequestStatus.PENDING),
     )
-    sort_args = extract_sort_config(sort)
-
     # found first, as approving needs them, and update_many can neither skip nor limit
-    matches = await Request.find(
-        _filter, skip=skip, limit=limit, sort=sort_args
-    ).to_list()
+    matches = await database.find(Request, where=where, sort=sort, page=page)
     if len(matches) == 0:
         raise NotFoundError("no match found")
 
@@ -218,13 +198,17 @@ async def update(
     update_dict = payload.model_dump(exclude_unset=True)
     update_dict.update(
         {
-            "approver_id": current_user.id,
+            "approver_id": str(current_user.id),
             "approver_name": current_user.username,
             "updated_at": payload.updated_at,
         }
     )
     ids = [item.id for item in matches]
-    await Request.find(In(Request.id, ids)).update({"$set": update_dict})
+    await database.update_many(
+        Request,
+        where=In("id", ids),
+        changes=[Set(field, value) for field, value in update_dict.items()],
+    )
     result = [item.model_copy(update=update_dict) for item in matches]
 
     if payload.status in _DECIDED_STATUSES:
@@ -251,7 +235,7 @@ async def update(
     return result
 
 
-async def _get_target_user_ids(request: RequestPostBody) -> List[PydanticObjectId]:
+async def _get_target_user_ids(request: RequestPostBody) -> List[str]:
     """Gets the IDs of users to whom this request is directed
 
     Args:
@@ -266,18 +250,18 @@ async def _get_target_user_ids(request: RequestPostBody) -> List[PydanticObjectI
     if request.target == RequestTarget.PROJECT:
         # personal projects answer as missing ones do, so they cannot be probed
         project = await Project.find_one(
-            Project.id == request.resource_id,
+            Project.id == PydanticObjectId(request.resource_id),
             Project.is_personal != True,
             projection_model=_TrimmedProject,
         )
         if project is None:
             raise NotFoundError(f"project {request.resource_id} not found")
 
-        return [project.admin_id]
+        return [str(project.admin_id)]
 
     elif request.target == RequestTarget.SYSTEM:
         superusers = await User.find({"roles": UserRole.ADMIN}).to_list()
-        return [user.id for user in superusers]
+        return [str(user.id) for user in superusers]
 
     return []
 
@@ -297,14 +281,14 @@ async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
 
     elif request.type in (RequestType.CLOSE_PROJECT, RequestType.TRANSFER_PROJECT):
         project = await Project.find_one(
-            Project.id == request.resource_id,
+            Project.id == PydanticObjectId(request.resource_id),
             Project.admin_id == user.id,
             projection_model=_TrimmedProject,
         )
         return project is not None
     elif request.type == RequestType.PROJECT_QPU_SECONDS:
         project = await Project.find_one(
-            Project.id == request.resource_id,
+            Project.id == PydanticObjectId(request.resource_id),
             Project.user_ids == user.id,
             projection_model=_TrimmedProject,
         )

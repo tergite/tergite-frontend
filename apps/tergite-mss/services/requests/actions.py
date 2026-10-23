@@ -179,11 +179,11 @@ async def _add_project_member(request: Request, approver: User) -> None:
     """
     project = await _get_project(request.resource_id)
     await Project.find_one(Project.id == project.id).update(
-        AddToSet({Project.user_ids: request.requester_id})
+        AddToSet({Project.user_ids: PydanticObjectId(request.requester_id)})
     )
 
 
-async def _get_project(project_id: PydanticObjectId) -> Project:
+async def _get_project(project_id: str) -> Project:
     """Gets the project of the given ID
 
     Args:
@@ -195,7 +195,7 @@ async def _get_project(project_id: PydanticObjectId) -> Project:
     Raises:
         NotFoundError: project {id} not found
     """
-    project = await Project.get(project_id)
+    project = await Project.get(PydanticObjectId(project_id))
     if project is None:
         raise NotFoundError(f"project {project_id} not found")
 

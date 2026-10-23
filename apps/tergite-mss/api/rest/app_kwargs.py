@@ -23,7 +23,6 @@ from loguru import logger
 
 import settings
 from services import jobs as jobs_service
-from services import requests as requests_service
 from services.auth import service as auth_service
 from services.devices import service as devices_service
 from services.external import bcc
@@ -73,7 +72,6 @@ async def lifespan(app: FastAPI):
         qpu_seconds_low_threshold=settings.CONFIG.projects.qpu_seconds_low_threshold,
     )
     await notices_service.on_startup(database, emailer, conf=settings.CONFIG.notices)
-    await requests_service.on_startup(db)
     if emailer is not None:
         emailer.start()
     logger.info("Tergite MSS startup sequence completed successfully.")

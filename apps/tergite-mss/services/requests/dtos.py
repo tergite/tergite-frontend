@@ -13,7 +13,6 @@
 import enum
 from typing import Any, List, Literal, Optional, Self, Tuple, Type
 
-from beanie import Document, PydanticObjectId
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -21,11 +20,10 @@ from pydantic import (
     SerializeAsAny,
     ValidationInfo,
     computed_field,
-    field_serializer,
     field_validator,
 )
-from pymongo import IndexModel
 
+from libs.storage import Id, Schema, StorageSpec, generate_id
 from services.auth import User
 from services.auth.projects.dtos import ProjectCreate
 from services.notices import NoticeType
@@ -116,7 +114,7 @@ class ProjectAccessMetadata(RequestMetadata):
 class RequestPostBody(BaseModel):
     """The POST body sent for a request"""
 
-    resource_id: PydanticObjectId
+    resource_id: Id
     type: RequestType
     reason: str
     # SerializeAsAny, or the fields of the subclass are dropped when saving
@@ -162,14 +160,20 @@ class RequestPostBody(BaseModel):
         return metadata_cls.model_validate({} if value is None else value)
 
 
-class Request(RequestPostBody, Document):
+class Request(Schema, RequestPostBody):
     """The schema for all user requests that have to be approved/rejected by an admin"""
 
-    requester_id: PydanticObjectId
+    __storage__ = StorageSpec(
+        table=REQUEST_DB_COLLECTION,
+        indexes=("type", ("resource_id", "status"), ("requester_id", "-created_at")),
+    )
+
+    id: Id = Field(default_factory=generate_id)
+    requester_id: Id
     requester_name: Optional[str] = None
-    target_user_ids: List[PydanticObjectId]
+    target_user_ids: List[Id]
     status: RequestStatus = RequestStatus.PENDING
-    approver_id: Optional[PydanticObjectId] = None
+    approver_id: Optional[Id] = None
     approver_name: Optional[str] = None
     rejection_reason: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
@@ -243,21 +247,6 @@ class Request(RequestPostBody, Document):
         ): NoticeType.PROJECT_ACCESS_APPROVED,
     }
 
-    class Settings:
-        name = REQUEST_DB_COLLECTION
-        indexes = [
-            IndexModel(["type"]),
-            IndexModel([("resource_id", 1), ("status", 1)], sparse=True),
-            IndexModel([("requester_id", 1), ("created_at", -1)]),
-        ]
-
-    @field_serializer(
-        "id", "requester_id", "approver_id", "resource_id", when_used="json"
-    )
-    def serialize_ids(self, _id: PydanticObjectId):
-        """Convert id to string when working with JSON"""
-        return str(_id)
-
     @property
     def notice_type(self) -> NoticeType:
         """The notice type for this request given current status"""
@@ -296,7 +285,7 @@ class Request(RequestPostBody, Document):
         cls,
         body: RequestPostBody,
         requester: User,
-        target_user_ids: List[PydanticObjectId],
+        target_user_ids: List[str],
     ) -> Self:
         """Creates a request object given the request post body and requester
 
@@ -310,9 +299,9 @@ class Request(RequestPostBody, Document):
         """
         return cls(
             **body.model_dump(),
-            requester_id=requester.id,
+            requester_id=str(requester.id),
             requester_name=requester.username,
-            target_user_ids=target_user_ids,
+            target_user_ids=[str(v) for v in target_user_ids],
         )
 
 

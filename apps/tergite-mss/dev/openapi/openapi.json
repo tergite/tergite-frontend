@@ -2546,26 +2546,17 @@
       "Request": {
         "description": "The schema for all user requests that have to be approved/rejected by an admin",
         "properties": {
-          "_id": {
+          "approver_id": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PydanticObjectId"
+                "pattern": "^[0-9a-f]{24}$",
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "MongoDB document ObjectID"
-          },
-          "approver_id": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PydanticObjectId"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "title": "Approver Id"
           },
           "approver_name": {
             "anyOf": [
@@ -2588,6 +2579,11 @@
               }
             ],
             "title": "Created At"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Id",
+            "type": "string"
           },
           "metadata": {
             "anyOf": [
@@ -2615,7 +2611,9 @@
             "title": "Rejection Reason"
           },
           "requester_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Requester Id",
+            "type": "string"
           },
           "requester_name": {
             "anyOf": [
@@ -2629,7 +2627,9 @@
             "title": "Requester Name"
           },
           "resource_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Resource Id",
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/RequestStatus",
@@ -2642,7 +2642,8 @@
           },
           "target_user_ids": {
             "items": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "type": "string"
             },
             "title": "Target User Ids",
             "type": "array"
@@ -2702,7 +2703,9 @@
             "type": "string"
           },
           "resource_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Resource Id",
+            "type": "string"
           },
           "type": {
             "$ref": "#/components/schemas/RequestType"
@@ -8342,7 +8345,7 @@
     },
     "/me/requests/": {
       "get": {
-        "description": "Gets the requests the current user made, or those awaiting their approval\n\nArgs:\n    role: whether to return the user's own requests or those they may react to\n    status: the status to filter by; default = ALL_REQ_STATUSES i.e. any\n    types: the request types to filter by; repeat the param for many; default = ALL_REQ_TYPES\n    sort: the fields to sort by and in what direction, '-' meaning descending order; default = -created_at\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    user: the current signed-in user\n\nReturns:\n    the paginated list of matched requests, newest first",
+        "description": "Gets the requests the current user made, or those awaiting their approval\n\nArgs:\n    database: the database where the requests are stored\n    role: whether to return the user's own requests or those they may react to\n    status: the status to filter by; default = ALL_REQ_STATUSES i.e. any\n    types: the request types to filter by; repeat the param for many; default = ALL_REQ_TYPES\n    sort: the fields to sort by and in what direction, '-' meaning descending order; default = -created_at\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    user: the current signed-in user\n\nReturns:\n    the paginated list of matched requests, newest first",
         "operationId": "get_many_me_requests__get",
         "parameters": [
           {
@@ -8518,7 +8521,7 @@
     },
     "/me/requests/{_id}": {
       "put": {
-        "description": "Updates a request.\n\nOnly approvers can update a request, not requesters.\n\nArgs:\n    _id: the unique identifier of the request\n    body: the payload containing new field values\n    user: the current signed-in user\n\nReturns:\n    the updated request\n\nRaises:\n    NotFoundError: no pending request of that id awaits the user's decision",
+        "description": "Updates a request.\n\nOnly approvers can update a request, not requesters.\n\nArgs:\n    database: the database where the requests are stored\n    _id: the unique identifier of the request\n    body: the payload containing new field values\n    user: the current signed-in user\n\nReturns:\n    the updated request\n\nRaises:\n    NotFoundError: no pending request of that id awaits the user's decision",
         "operationId": "update_me_requests___id__put",
         "parameters": [
           {

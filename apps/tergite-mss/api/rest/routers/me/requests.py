@@ -18,7 +18,8 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 from fastapi import status as http_status
 
-from api.rest.dependencies import CurrentUserDep
+from api.rest.dependencies import CurrentUserDep, DatabaseDep
+from libs.storage import Eq, Page, parse_sort
 from services import requests as requests_service
 from services.requests import (
     ALL_REQ_STATUSES,
@@ -38,7 +39,9 @@ router = APIRouter()
 @router.post(
     "/", status_code=http_status.HTTP_201_CREATED, response_model_by_alias=False
 )
-async def create(body: RequestPostBody, requester: CurrentUserDep) -> Request:
+async def create(
+    database: DatabaseDep, body: RequestPostBody, requester: CurrentUserDep
+) -> Request:
     """Creates a request of the type named in the body
 
     Args:
@@ -48,11 +51,14 @@ async def create(body: RequestPostBody, requester: CurrentUserDep) -> Request:
     Returns:
         the created user request
     """
-    return await requests_service.create(request_body=body, requester=requester)
+    return await requests_service.create(
+        database, request_body=body, requester=requester
+    )
 
 
 @router.get("/", responses={200: {"model": PaginatedListResponse[Request]}})
 async def get_many(
+    database: DatabaseDep,
     user: CurrentUserDep,
     role: RequestRole = Query("approver"),
     status: Tuple[RequestStatus, ...] = Query(ALL_REQ_STATUSES),
@@ -64,6 +70,7 @@ async def get_many(
     """Gets the requests the current user made, or those awaiting their approval
 
     Args:
+        database: the database where the requests are stored
         role: whether to return the user's own requests or those they may react to
         status: the status to filter by; default = ALL_REQ_STATUSES i.e. any
         types: the request types to filter by; repeat the param for many; default = ALL_REQ_TYPES
@@ -76,13 +83,13 @@ async def get_many(
         the paginated list of matched requests, newest first
     """
     data = await requests_service.get_many(
+        database,
         current_user_id=user.id,
         role=role,
         statuses=status,
         request_types=types,
-        skip=skip,
-        sort=sort,
-        limit=limit,
+        sort=parse_sort(sort),
+        page=Page(skip=skip, limit=limit),
     )
 
     return build_paginated_json(data, skip=skip, limit=limit)
@@ -90,6 +97,7 @@ async def get_many(
 
 @router.put("/{_id}", response_model_by_alias=False)
 async def update(
+    database: DatabaseDep,
     _id: PydanticObjectId,
     body: RequestUpdate,
     user: CurrentUserDep,
@@ -99,6 +107,7 @@ async def update(
     Only approvers can update a request, not requesters.
 
     Args:
+        database: the database where the requests are stored
         _id: the unique identifier of the request
         body: the payload containing new field values
         user: the current signed-in user
@@ -110,6 +119,10 @@ async def update(
         NotFoundError: no pending request of that id awaits the user's decision
     """
     result = await requests_service.update(
-        {"_id": _id}, payload=body, current_user=user, limit=1
+        database,
+        where=Eq("id", str(_id)),
+        payload=body,
+        current_user=user,
+        page=Page(limit=1),
     )
     return result[0]

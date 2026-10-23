@@ -251,8 +251,6 @@ type-hints: services/notices/dtos.py::Notice.from_template
 type-hints: services/notices/dtos.py::NoticeTemplate.validate_context_cls
 type-hints: services/notices/dtos.py::NoticeType.__str__
 type-hints: services/notices/service.py::create_system_notice
-type-hints: services/requests/dtos.py::Request.serialize_ids
-type-hints: services/requests/service.py::on_startup
 type-hints: utils/api.py::WebsocketConnectionManager.broadcast
 type-hints: utils/api.py::WebsocketConnectionManager.close_all
 type-hints: utils/api.py::WebsocketConnectionManager.connect
