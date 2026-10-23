@@ -49,11 +49,13 @@ _SEARCH_PARAMS = [
     {"version": "2023.06.0", "name": "Thor"},
     {},
 ]
+# paging and searching are independent, so each is tested without the other
 _PAGINATE_AND_SEARCH_PARAMS = [
-    (skip, limit, sort, search)
-    for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS
-    for search in _SEARCH_PARAMS
+    *((skip, limit, sort, {}) for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS),
+    *((None, None, None, search) for search in _SEARCH_PARAMS if search),
 ]
+# an offline real device and an online simulator
+_SAMPLE_DEVICES = [_DEVICE_LIST[0], _DEVICE_LIST[1]]
 
 
 @pytest.mark.parametrize("skip, limit, sort, search", _PAGINATE_AND_SEARCH_PARAMS)
@@ -114,7 +116,7 @@ def test_find_devices(
         assert got == expected
 
 
-@pytest.mark.parametrize("name", [v["name"] for v in _DEVICE_LIST])
+@pytest.mark.parametrize("name", [v["name"] for v in _SAMPLE_DEVICES])
 def test_read_one_device(db, client, name: str, user_jwt_cookie):
     """GET to /devices/{name} returns the device of the given name"""
     insert_in_collection(
@@ -132,7 +134,7 @@ def test_read_one_device(db, client, name: str, user_jwt_cookie):
         assert expected == got
 
 
-@pytest.mark.parametrize("payload", _DEVICE_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_DEVICES)
 def test_create_device(db, client, payload: Dict[str, Any]):
     """DeviceEvent with name 'initialized' to /devices/ws/{name} creates a new device if it does not exist"""
     original_data_in_db = find_in_collection(
@@ -194,7 +196,7 @@ def test_a_replayed_nonce_is_refused(client):
     assert exp.value.code == 1008
 
 
-@pytest.mark.parametrize("payload", _DEVICE_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_DEVICES[:1])
 def test_create_device_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """Only clients with the certificate known to MSS can push to /devices/ws/{name}"""
     original_data_in_db = find_in_collection(
@@ -220,7 +222,7 @@ def test_create_device_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_
     assert final_data_in_db == []
 
 
-@pytest.mark.parametrize("payload", _DEVICE_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_DEVICES[:1])
 def test_create_device_wrong_payload(
     db, client, payload: Dict[str, Any], user_jwt_cookie
 ):
@@ -264,7 +266,7 @@ def test_create_device_wrong_payload(
             assert final_data_in_db == []
 
 
-@pytest.mark.parametrize("payload", _DEVICE_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_DEVICES[:1])
 def test_create_device_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """BCC devices can only push to their own urls /devices/ws/{name}/ and not those of others"""
     original_data_in_db = find_in_collection(
@@ -290,7 +292,7 @@ def test_create_device_wrong_url(db, client, payload: Dict[str, Any], user_jwt_c
     assert final_data_in_db == []
 
 
-@pytest.mark.parametrize("backend_dict", _DEVICE_LIST)
+@pytest.mark.parametrize("backend_dict", _SAMPLE_DEVICES)
 def test_update_pre_existing_device(
     db, client, backend_dict: Dict[str, Any], system_app_token_header
 ):

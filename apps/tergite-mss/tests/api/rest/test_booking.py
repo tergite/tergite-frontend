@@ -83,19 +83,34 @@ _FILTERS_SORT_AND_RESULTS = [
         BOOKINGS_IN_MSS[1:2],
     ),
 ]
+# every case on the first backend; the second only shows a route reaches its own BCC
+_BACKEND, _OTHER_BACKEND = BACKEND_SLUGS
 _BOOKINGS_CREATE_PARAMS = [
-    (backend, payload)
-    for backend in BACKEND_SLUGS
-    for payload in VALID_BOOKING_PAYLOADS
+    *((_BACKEND, payload) for payload in VALID_BOOKING_PAYLOADS),
+    (_OTHER_BACKEND, VALID_BOOKING_PAYLOADS[0]),
 ]
+_NO_PAGINATION: PaginationInfo = {"skip": 0, "limit": None}
 _BOOKINGS_VIEW_PARAMS = [
-    (backend, pagination, filters, sort, expected_records)
-    for backend in BACKEND_SLUGS
-    for pagination in _PAGINATION
-    for filters, sort, expected_records in _FILTERS_SORT_AND_RESULTS
+    *(
+        (_BACKEND, _NO_PAGINATION, filters, sort, expected_records)
+        for filters, sort, expected_records in _FILTERS_SORT_AND_RESULTS
+    ),
+    *(
+        (_BACKEND, pagination, {}, (), BOOKINGS_IN_MSS)
+        for pagination in _PAGINATION
+        if pagination != _NO_PAGINATION
+    ),
+    (_OTHER_BACKEND, _NO_PAGINATION, {}, (), BOOKINGS_IN_MSS),
 ]
 _BOOKINGS_CANCEL_PARAMS = [
-    (backend, booking) for backend in BACKEND_SLUGS for booking in CREATED_BOOKINGS
+    *((_BACKEND, booking) for booking in CREATED_BOOKINGS),
+    (_OTHER_BACKEND, CREATED_BOOKINGS[0]),
+]
+_BOOKING_ROUTES = [
+    ("post", f"/bookings/{_BACKEND}", VALID_BOOKING_PAYLOADS[0]),
+    ("get", f"/bookings/{_BACKEND}", None),
+    ("post", f"/bookings/{_BACKEND}/{CREATED_BOOKINGS[0]['id']}/cancel", None),
+    ("get", f"/bookings/{_BACKEND}/config", None),
 ]
 
 
@@ -118,24 +133,6 @@ def test_create_booking(
         assert actual_booking["user_id"] == TEST_USER_ID
         assert actual_booking["username"] == _USERNAMES_MAP[TEST_USER_ID]
         assert actual_booking["backend"] == backend
-
-
-@pytest.mark.parametrize("backend, payload", _BOOKINGS_CREATE_PARAMS)
-def test_unauthenticated_create_booking(
-    client, backend, payload: BookingPayload, mock_bcc
-):
-    """Creating booking without proper authentication errors out"""
-    with client as client:
-        headers = {"Authorization": f"Bearer {TEST_USER_ID}"}
-        response = client.post(f"/bookings/{backend}", headers=headers, json=payload)
-
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
-
-        response = client.post(f"/bookings/{backend}", json=payload)
-
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
 
 
 @pytest.mark.parametrize(
@@ -171,36 +168,6 @@ def test_view_bookings(
         assert actual_output == expected
 
 
-@pytest.mark.parametrize(
-    "backend, pagination, filters, sort, expected_records", _BOOKINGS_VIEW_PARAMS
-)
-def test_unauthenticated_view_bookings(
-    client,
-    backend,
-    pagination: PaginationInfo,
-    filters,
-    sort,
-    expected_records,
-    mock_bcc,
-):
-    """Viewing bookings without authenticated user errors out"""
-    with client as client:
-        headers = {"Authorization": f"Bearer {TEST_USER_ID}"}
-        url = f"/bookings/{backend}"
-        params = {k: v for k, v in pagination.items() if v is not None}
-        params.update(filters)
-        params.update({"sort": sort})
-        response = client.get(url, headers=headers, params=params)
-
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
-
-        response = client.get(url, params=params)
-
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
-
-
 @pytest.mark.parametrize("backend, booking", _BOOKINGS_CANCEL_PARAMS)
 def test_cancel_future_booking(client, backend, booking, user_jwt_cookie, mock_bcc):
     """POST '/bookings/{backend}/{id}/cancel' for a future booking, deletes the booking and allows jobs to run without it."""
@@ -219,24 +186,6 @@ def test_cancel_future_booking(client, backend, booking, user_jwt_cookie, mock_b
         assert got == expected
 
 
-@pytest.mark.parametrize("backend, booking", _BOOKINGS_CANCEL_PARAMS)
-def test_unauthenticated_cancel_booking(client, backend, booking, mock_bcc):
-    """Cancelling booking without proper authentication errors out"""
-    with client as client:
-        booking_id = booking["id"]
-        headers = {"Authorization": f"Bearer {TEST_USER_ID}"}
-        url = f"/bookings/{backend}/{booking_id}/cancel"
-        response = client.post(url, headers=headers)
-
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
-
-        response = client.post(url)
-
-        assert response.status_code == 401
-        assert response.json() == {"detail": "Unauthorized"}
-
-
 @pytest.mark.parametrize("backend", BACKEND_SLUGS)
 def test_view_bookings_config(client, backend, user_jwt_cookie, mock_bcc):
     """GET "/bookings/config" shows paginated list of all available bookings"""
@@ -247,18 +196,17 @@ def test_view_bookings_config(client, backend, user_jwt_cookie, mock_bcc):
         assert got == expected
 
 
-@pytest.mark.parametrize("backend", BACKEND_SLUGS)
-def test_unauthenticated_view_bookings_configs(client, backend, mock_bcc):
-    """Viewing bookings configs with non-existing user or outside MSS errors out"""
+@pytest.mark.parametrize("method, url, payload", _BOOKING_ROUTES)
+def test_unauthenticated_booking_routes(client, method, url, payload, mock_bcc):
+    """Every booking route refuses a request without a valid user"""
     with client as client:
         headers = {"Authorization": f"Bearer {TEST_USER_ID}"}
-        url = f"/bookings/{backend}/config"
-        response = client.get(url, headers=headers)
+        response = client.request(method, url, headers=headers, json=payload)
 
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
 
-        response = client.get(url)
+        response = client.request(method, url, json=payload)
 
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}

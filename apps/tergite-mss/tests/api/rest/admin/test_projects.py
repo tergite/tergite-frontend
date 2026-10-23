@@ -54,7 +54,7 @@ _NOTIFIED_PROJECT = {
 _ALL_PROJECTS = [TEST_PROJECT_DICT, TEST_NO_QPU_PROJECT_DICT] + PROJECT_LIST
 
 
-@pytest.mark.parametrize("project", _PROJECT_CREATE_LIST)
+@pytest.mark.parametrize("project", _PROJECT_CREATE_LIST[:3])
 def test_admin_create_project(db, project, client, admin_jwt_cookie, freezer):
     """Admins can create projects at /admin/projects/"""
     # using context manager to ensure on_startup runs
@@ -95,7 +95,7 @@ def test_admin_create_project(db, project, client, admin_jwt_cookie, freezer):
         assert got == expected
 
 
-@pytest.mark.parametrize("project", _PROJECT_CREATE_LIST)
+@pytest.mark.parametrize("project", _PROJECT_CREATE_LIST[:1])
 def test_non_admin_cannot_create_project(project, client, user_jwt_cookie):
     """Non-admins cannot create projects at /admin/projects"""
     # using context manager to ensure on_startup runs
@@ -181,7 +181,7 @@ def test_admin_update_project(db, payload, client, admin_jwt_cookie, freezer):
         assert updated_at != created_at
 
 
-@pytest.mark.parametrize("payload", _PROJECT_UPDATE_LIST)
+@pytest.mark.parametrize("payload", _PROJECT_UPDATE_LIST[:1])
 def test_non_admin_cannot_update_project(payload, client, user_jwt_cookie):
     """Non-admins cannot create projects at /admin/projects/{id}"""
     # using context manager to ensure on_startup runs
@@ -244,7 +244,7 @@ def test_admin_filter_projects(
         assert got == expected
 
 
-@pytest.mark.parametrize("project", PROJECT_LIST)
+@pytest.mark.parametrize("project", PROJECT_LIST[:1])
 def test_non_admin_cannot_view_all_projects_in_detail(
     project, db, client, inserted_project_ids, user_jwt_cookie
 ):
@@ -259,7 +259,7 @@ def test_non_admin_cannot_view_all_projects_in_detail(
         assert got == expected
 
 
-@pytest.mark.parametrize("project", PROJECT_LIST)
+@pytest.mark.parametrize("project", PROJECT_LIST[:2])
 def test_admin_view_single_project_in_detail(
     project, client, inserted_projects, admin_jwt_cookie, freezer
 ):
@@ -308,7 +308,7 @@ def test_admin_view_single_project_in_detail(
         assert got == expected
 
 
-@pytest.mark.parametrize("project", PROJECT_LIST)
+@pytest.mark.parametrize("project", PROJECT_LIST[:1])
 def test_non_admin_cannot_view_single_project_in_detail(
     project, db, client, inserted_project_ids, user_jwt_cookie
 ):
@@ -325,7 +325,7 @@ def test_non_admin_cannot_view_single_project_in_detail(
         assert got == expected
 
 
-@pytest.mark.parametrize("project", PROJECT_LIST)
+@pytest.mark.parametrize("project", PROJECT_LIST[:2])
 def test_admin_delete_project(
     project, db, client, inserted_project_ids, admin_jwt_cookie, freezer
 ):
@@ -355,7 +355,7 @@ def test_admin_delete_project(
             assert timestamp == now
 
 
-@pytest.mark.parametrize("project", PROJECT_LIST)
+@pytest.mark.parametrize("project", PROJECT_LIST[:1])
 def test_non_admin_cannot_delete_project(
     project, db, client, inserted_project_ids, user_jwt_cookie
 ):

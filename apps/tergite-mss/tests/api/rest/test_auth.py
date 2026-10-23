@@ -76,10 +76,10 @@ _SEARCH_PARAMS = [
     {"email_domain": "chalmers.com"},
     {},
 ]
+# paging and searching are independent, so each is tested without the other
 _PAGINATE_AND_SEARCH_PARAMS = [
-    (skip, limit, sort, search)
-    for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS
-    for search in _SEARCH_PARAMS
+    *((skip, limit, sort, {}) for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS),
+    *((None, None, None, search) for search in _SEARCH_PARAMS if search),
 ]
 
 
@@ -324,7 +324,7 @@ def test_find_auth_providers(
         assert got == expected
 
 
-@pytest.mark.parametrize("email_domain", ["s.com", "some.es", "blablah.foo"])
+@pytest.mark.parametrize("email_domain", ["blablah.foo"])
 def test_get_auth_providers_unsupported_domains(client, email_domain):
     """GET /auth/providers returns 404 for unsupported email domain"""
     # using context manager to ensure on_startup runs

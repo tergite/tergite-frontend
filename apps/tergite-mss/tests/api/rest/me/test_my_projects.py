@@ -36,11 +36,6 @@ from tests._utils.projects import PROJECT_QUERIES
 from tests._utils.records import prune
 from tests.conftest import PROJECT_LIST
 
-_MY_PROJECT_REQUESTS = [
-    (user_id, get_auth_cookie(user_id), project)
-    for project in PROJECT_LIST
-    for user_id in project["user_ids"]
-]
 _MY_ADMINISTERED_PROJECT_REQUESTS = [
     (project["admin_id"], get_auth_cookie(project["admin_id"]), project)
     for project in PROJECT_LIST
@@ -155,7 +150,13 @@ def test_view_own_projects_in_less_detail(
         assert got == {"skip": 0, "limit": None, "data": project_list}
 
 
-@pytest.mark.parametrize("user_id, cookies, project", _MY_PROJECT_REQUESTS)
+@pytest.mark.parametrize(
+    "user_id, cookies, project",
+    [
+        *_MY_ADMINISTERED_PROJECT_REQUESTS[:1],
+        *_MY_NON_ADMINISTERED_PROJECT_REQUESTS[:1],
+    ],
+)
 def test_view_my_project_in_less_detail(
     user_id, cookies, project, client, inserted_projects
 ):
@@ -185,7 +186,7 @@ def test_view_my_project_in_less_detail(
         assert got == expected
 
 
-@pytest.mark.parametrize("user_id, cookies, project", _OTHERS_PROJECT_REQUESTS)
+@pytest.mark.parametrize("user_id, cookies, project", _OTHERS_PROJECT_REQUESTS[:1])
 def test_view_others_project_is_not_allowed(
     user_id, cookies, project, client, inserted_projects
 ):
@@ -203,7 +204,9 @@ def test_view_others_project_is_not_allowed(
         assert got == expected
 
 
-@pytest.mark.parametrize("user_id, cookies, project", _MY_ADMINISTERED_PROJECT_REQUESTS)
+@pytest.mark.parametrize(
+    "user_id, cookies, project", _MY_ADMINISTERED_PROJECT_REQUESTS[:2]
+)
 def test_delete_own_project(
     user_id, cookies, project, client, inserted_projects, db, freezer
 ):

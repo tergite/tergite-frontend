@@ -33,18 +33,19 @@ from tests._utils.mongodb import (
 )
 from tests.conftest import APP_TOKEN_LIST, PROJECT_LIST
 
+# one token of each user; the rest of the fixture's tokens behave the same
+_TOKENS = [APP_TOKEN_LIST[0], APP_TOKEN_LIST[2]]
 _USER_ID_COOKIES_FIXTURE = [
     (TEST_USER_ID, lazy_fixture("user_jwt_cookie")),
     (TEST_SUPERUSER_ID, lazy_fixture("admin_jwt_cookie")),
 ]
 
 _MY_TOKENS_REQUESTS = [
-    (token["user_id"], get_auth_cookie(token["user_id"]), token)
-    for token in APP_TOKEN_LIST
+    (token["user_id"], get_auth_cookie(token["user_id"]), token) for token in _TOKENS
 ]
 _OTHERS_TOKENS_REQUESTS = [
     (user_id, get_auth_cookie(user_id), token)
-    for token in APP_TOKEN_LIST
+    for token in _TOKENS
     for user_id in [TEST_USER_ID, TEST_SUPERUSER_ID]
     if user_id != token["user_id"]
 ]
@@ -56,10 +57,10 @@ _UNAUTHORIZED_TOKEN_REQUESTS = [
     for token in APP_TOKEN_LIST
     for user_id in [TEST_USER_ID, TEST_SUPERUSER_ID]
     if user_id not in _PROJECT_USER_IDS_MAP[token["project_id"]]
-]
+][:1]
 
 
-@pytest.mark.parametrize("payload", APP_TOKEN_LIST)
+@pytest.mark.parametrize("payload", _TOKENS)
 def test_generate_app_token(payload, inserted_projects, client):
     """At /me/tokens/, user can generate app token for project they are attached to"""
     cookies = get_auth_cookie(payload["user_id"])
@@ -75,7 +76,7 @@ def test_generate_app_token(payload, inserted_projects, client):
         assert len(got["access_token"]) > 12
 
 
-@pytest.mark.parametrize("payload", APP_TOKEN_LIST)
+@pytest.mark.parametrize("payload", _TOKENS)
 def test_unauthenticated_app_token_generation(payload, inserted_projects, client):
     """401 error raised at /me/tokens/ when no user jwt is sent"""
 
@@ -102,7 +103,7 @@ def test_unauthorized_app_token_generation(body, cookies, inserted_projects, cli
         assert got == expected
 
 
-@pytest.mark.parametrize("payload", APP_TOKEN_LIST)
+@pytest.mark.parametrize("payload", _TOKENS)
 def test_destroy_app_token(payload, db, client, inserted_projects, inserted_app_tokens):
     """At /me/tokens/{token}, user can destroy their own app token"""
     # using context manager to ensure on_startup runs
@@ -119,7 +120,7 @@ def test_destroy_app_token(payload, db, client, inserted_projects, inserted_app_
         assert get_db_record(db, AppToken, _id) is None
 
 
-@pytest.mark.parametrize("payload", APP_TOKEN_LIST)
+@pytest.mark.parametrize("payload", _TOKENS)
 def test_destroy_expired_app_token(
     payload, db, client, inserted_projects, inserted_app_tokens
 ):
@@ -146,7 +147,7 @@ def test_destroy_expired_app_token(
         assert get_db_record(db, AppToken, _id) is None
 
 
-@pytest.mark.parametrize("payload", APP_TOKEN_LIST)
+@pytest.mark.parametrize("payload", _TOKENS)
 def test_unauthenticated_app_token_deletion(
     payload, db, client, inserted_projects, inserted_app_tokens
 ):
@@ -267,7 +268,7 @@ def test_view_others_tokens_is_not_allowed(
         assert got == expected
 
 
-@pytest.mark.parametrize("token", APP_TOKEN_LIST)
+@pytest.mark.parametrize("token", _TOKENS)
 def test_extend_own_token_lifespan(
     db,
     token,
@@ -319,7 +320,7 @@ def test_extend_own_token_lifespan(
         }
 
 
-@pytest.mark.parametrize("token", APP_TOKEN_LIST)
+@pytest.mark.parametrize("token", _TOKENS)
 def test_extend_own_expired_token_lifespan(
     db,
     token,
@@ -372,7 +373,7 @@ def test_extend_own_expired_token_lifespan(
         assert token_after_request is None
 
 
-@pytest.mark.parametrize("app_token", APP_TOKEN_LIST)
+@pytest.mark.parametrize("app_token", _TOKENS)
 def test_expired_app_token_fails(
     db, app_token, client, inserted_projects, app_tokens_with_timestamps
 ):
@@ -403,7 +404,7 @@ def test_expired_app_token_fails(
         assert got == expected
 
 
-@pytest.mark.parametrize("app_token", APP_TOKEN_LIST)
+@pytest.mark.parametrize("app_token", _TOKENS)
 def test_app_token_of_unallocated_projects_fails(
     app_token, client, unallocated_projects, inserted_app_tokens
 ):

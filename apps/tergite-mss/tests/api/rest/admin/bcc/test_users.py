@@ -24,11 +24,15 @@ _BCC_USERS = load_json_fixture("bcc_users.json")
 
 _PAGINATION: List["PaginationInfo"] = load_json_fixture("pagination.json")
 
+# every case on the first backend; the second only shows a route reaches its own BCC
+_BACKEND, _OTHER_BACKEND = BACKEND_SLUGS
 _BCC_USERS_VIEW_PARAMS = [
-    (backend, pagination) for backend in BACKEND_SLUGS for pagination in _PAGINATION
+    *((_BACKEND, pagination) for pagination in _PAGINATION),
+    (_OTHER_BACKEND, _PAGINATION[0]),
 ]
 _BCC_USERS_CREATE_PARAMS = [
-    (backend, payload) for backend in BACKEND_SLUGS for payload in _BCC_USERS
+    *((_BACKEND, payload) for payload in _BCC_USERS),
+    (_OTHER_BACKEND, _BCC_USERS[0]),
 ]
 
 

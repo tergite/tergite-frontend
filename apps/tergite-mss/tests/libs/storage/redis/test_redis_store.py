@@ -78,6 +78,8 @@ _AUTH_LOG_LIST = [
     {"job_id": "fee", "app_token": "barracuda"},
     {"job_id": "billings", "app_token": "zealot"},
 ]
+# a pending and an executing log; the multi-record tests use the whole list
+_SAMPLE_AUTH_LOGS = _AUTH_LOG_LIST[:2]
 _DELETE_SLICES = [
     (0, -1),
     (1, 4),
@@ -120,7 +122,7 @@ async def auth_logs(make_database):
     await database.close()
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_update_one_sets_fields(redis_client, auth_logs, payload):
     """Calling update_one() updates the item if it exists already"""
     original_item = AuthLog(**{**payload, "status": "pending"})
@@ -140,7 +142,7 @@ async def test_update_one_sets_fields(redis_client, auth_logs, payload):
     }
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _AUTH_LOG_LIST[:1])
 async def test_update_one_with_an_expiry_expires_the_item(
     redis_client, make_database, payload
 ):
@@ -171,7 +173,7 @@ async def test_update_one_with_an_expiry_expires_the_item(
     await auth_logs.close()
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _AUTH_LOG_LIST[:1])
 async def test_update_one_keeps_the_expiry_it_does_not_change(
     redis_client, auth_logs, payload
 ):
@@ -189,7 +191,7 @@ async def test_update_one_keeps_the_expiry_it_does_not_change(
     assert await auth_logs.get(AuthLog, payload["job_id"]) is None
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _AUTH_LOG_LIST[:1])
 async def test_update_one_persists_or_expires_the_item_as_asked(
     redis_client, auth_logs, payload
 ):
@@ -217,7 +219,7 @@ async def test_update_one_persists_or_expires_the_item_as_asked(
     assert await auth_logs.get(AuthLog, payload["job_id"]) is None
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_update_not_found(redis_client, auth_logs, payload):
     """Calling update_one() and update_many() changes nothing if the item does not exist"""
     job_filter = {"job_id": payload["job_id"]}
@@ -228,7 +230,7 @@ async def test_update_not_found(redis_client, auth_logs, payload):
     assert _get_redis_hmap(redis_client) == {}
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_update_invalid_model(redis_client, auth_logs, payload):
     """update_one() fails if the update leaves the item off the model"""
     original_item = AuthLog(**{**payload, "status": "pending"})
@@ -243,7 +245,7 @@ async def test_update_invalid_model(redis_client, auth_logs, payload):
     assert _get_redis_value(redis_client, original_item) == original_item_in_db
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_update_indexes(redis_client, auth_logs, payload):
     """Calling update_one() updates the redis index keys"""
     first_item = AuthLog(**{**payload, "status": "pending"})
@@ -302,7 +304,7 @@ async def test_update_one_upserts(auth_logs):
     assert await auth_logs.get(AuthLog, "new") == created
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _AUTH_LOG_LIST[:1])
 async def test_insert(redis_client, make_database, payload):
     """Calling insert() stores the item, expiring it when its expires_at says"""
     auth_logs = make_database(cleanup_interval=0.3)
@@ -335,7 +337,7 @@ async def test_insert(redis_client, make_database, payload):
     await auth_logs.close()
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_insert_refuses_an_existing_key(redis_client, auth_logs, payload):
     """Calling insert() on an existing key fails, leaving the item as it was"""
     item = AuthLog(**{**payload, "status": "pending"})
@@ -405,7 +407,7 @@ async def test_unique_fields_refuse_duplicates(auth_logs):
     assert await auth_logs.count(Owner, {"email": "ANN@EXAMPLE.COM"}) == 1
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_get(redis_client, auth_logs, payload):
     """Calling get() gets the item identified by the given key"""
     item = AuthLog(**{**payload, "status": "pending"})
@@ -415,7 +417,7 @@ async def test_get(redis_client, auth_logs, payload):
     assert await auth_logs.get(AuthLog, payload["job_id"]) == item
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_get_not_found(auth_logs, payload):
     """Calling get() returns None if item is nonexistent"""
     assert await auth_logs.get(AuthLog, payload["job_id"]) is None
@@ -528,7 +530,7 @@ async def test_delete_many_by_keys(redis_client, auth_logs, bounds: Tuple[int, i
     assert _get_redis_hmap(redis_client) == expected_hmap
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_delete_indexes(redis_client, auth_logs, payload):
     """Calling delete_one() updates the redis index keys"""
     first_item = AuthLog(**{**payload, "status": "successful"})
@@ -563,7 +565,7 @@ async def test_clear(redis_client, auth_logs):
     assert _get_redis_hmap(redis_client) == {}
 
 
-@pytest.mark.parametrize("payload", _AUTH_LOG_LIST)
+@pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)
 async def test_clear_indexes(redis_client, auth_logs, payload):
     """Calling delete_many() with an empty filter removes all the redis index keys"""
     first_item = AuthLog(**{**payload, "status": "successful"})

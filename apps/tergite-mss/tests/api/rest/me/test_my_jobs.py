@@ -39,11 +39,19 @@ _SEARCH_PARAMS = [
     {"project_id": "653a8f19e736d76276597a6c"},
     {"project_id": "653a8f19e736d76276597a6c", "status": "pending"},
 ]
+# paging and searching are independent, so each is tested without the other, for one
+# user; the other user's own jobs are checked once
 _PAGINATE_AND_SEARCH_PARAMS = [
-    (skip, limit, sort, search, user_id, cookie)
-    for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS
-    for search in _SEARCH_PARAMS
-    for user_id, cookie in _USER_ID_COOKIES_FIXTURE
+    *(
+        (skip, limit, sort, {}, *_USER_ID_COOKIES_FIXTURE[0])
+        for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS
+    ),
+    *(
+        (None, None, None, search, *_USER_ID_COOKIES_FIXTURE[0])
+        for search in _SEARCH_PARAMS
+        if search
+    ),
+    (None, None, None, {}, *_USER_ID_COOKIES_FIXTURE[1]),
 ]
 _JOBS_LIST_IN_DB = [
     {

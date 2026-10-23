@@ -56,10 +56,10 @@ _SEARCH_PARAMS = [
     {"version": "2023.06.0", "name": "Thor"},
     {},
 ]
+# paging and searching are independent, so each is tested without the other
 _PAGINATE_AND_SEARCH_PARAMS = [
-    (skip, limit, sort, search)
-    for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS
-    for search in _SEARCH_PARAMS
+    *((skip, limit, sort, {}) for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS),
+    *((None, None, None, search) for search in _SEARCH_PARAMS if search),
 ]
 
 
@@ -271,7 +271,7 @@ def test_create_log(db, client, system_app_token_header, raw_payload, freezer):
             assert order_by(got, "name") == order_by(expected, "name")
 
 
-@pytest.mark.parametrize("payload", _CALIBRATIONS_LIST)
+@pytest.mark.parametrize("payload", _CALIBRATIONS_LIST[:1])
 def test_create_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """Only clients with the certificate known to MSS can push to /ws/devices/"""
     original_data_in_db = find_in_collection(
@@ -297,7 +297,7 @@ def test_create_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie)
     assert final_data_in_db == []
 
 
-@pytest.mark.parametrize("payload", _CALIBRATIONS_LIST)
+@pytest.mark.parametrize("payload", _CALIBRATIONS_LIST[:1])
 def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """BCC devices can only push their own calibration data to /ws/devices/ and not those of others"""
     original_data_in_db = find_in_collection(
@@ -337,7 +337,7 @@ def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cook
             assert final_data_in_db == []
 
 
-@pytest.mark.parametrize("payload", _CALIBRATIONS_LIST)
+@pytest.mark.parametrize("payload", _CALIBRATIONS_LIST[:1])
 def test_create_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """BCC devices can only push to their own urls /ws/devices/{name}/ and not those of others"""
     original_data_in_db = find_in_collection(

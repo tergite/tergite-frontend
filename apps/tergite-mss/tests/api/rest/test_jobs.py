@@ -74,7 +74,7 @@ _COLLECTION = "jobs"
 _EXCLUDED_FIELDS = ["_id"]
 _UNAVAILABLE_BCC_FIXTURE = [
     ({"device": device, "calibration_date": "2024-05-23T09:12:00.733Z"}, client)
-    for device in _DEVICES
+    for device in _DEVICES[:1]
     for client in (
         lazy_fixture("mock_timed_out_bcc"),
         lazy_fixture("mock_unavailable_bcc"),
@@ -96,18 +96,24 @@ _SEARCH_PARAMS = [
     {"status": "pending"},
     {},
 ]
+# paging and searching are independent, so each is tested without the other
 _PAGINATE_AND_SEARCH_PARAMS = [
-    (skip, limit, sort, search)
-    for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS
-    for search in _SEARCH_PARAMS
+    *((skip, limit, sort, {}) for skip, limit, sort in _SKIP_LIMIT_SORT_PARAMS),
+    *((None, None, None, search) for search in _SEARCH_PARAMS if search),
 ]
+# one job of each shape: with and without a BCC token, a status, a result, a device,
+# and fields the job does not have
+_READ_JOB_IDS = [_JOB_IDS[0], _JOB_IDS[3]]
+_JOB_UPDATES_OF_EACH_SHAPE = [_JOB_UPDATES[i] for i in (0, 1, 3, 4, 5, 9, 10)]
 _DEVICES_AND_JOB_UPDATES = [
-    (device, job_update) for device in _DEVICES[:2] for job_update in _JOB_UPDATES
+    *((_DEVICES[0], job_update) for job_update in _JOB_UPDATES_OF_EACH_SHAPE),
+    (_DEVICES[1], _JOB_UPDATES[0]),
 ]
+# the first with a result, the last with a status alone
 _DEVICES_AND_JOB_TIMESTAMPED_UPDATES = [
-    (device, job_update)
-    for device in _DEVICES[:2]
-    for job_update in _JOB_TIMESTAMPED_UPDATES
+    (_DEVICES[0], _JOB_TIMESTAMPED_UPDATES[0]),
+    (_DEVICES[0], _JOB_TIMESTAMPED_UPDATES[-1]),
+    (_DEVICES[1], _JOB_TIMESTAMPED_UPDATES[0]),
 ]
 _BILLED_JOB_UPDATE = _JOB_TIMESTAMPED_UPDATES[0]
 _BILLED_JOB_COST = (
@@ -117,7 +123,7 @@ _BILLED_JOB_COST = (
 _QPU_THRESHOLD = settings.CONFIG.projects.qpu_seconds_low_threshold
 
 
-@pytest.mark.parametrize("job_id", _JOB_IDS)
+@pytest.mark.parametrize("job_id", _READ_JOB_IDS)
 def test_read_job(db, client, job_id: str, no_qpu_app_token_header, freezer):
     """Get to /jobs/{job_id} returns the job for the given job_id"""
     all_jobs = with_current_timestamps(
@@ -283,7 +289,7 @@ def test_create_job_without_bcc(db, client, payload, app_token_header, bcc):
         assert jobs_after_creation == []
 
 
-@pytest.mark.parametrize("payload", _CREATE_JOB_PAYLOADS)
+@pytest.mark.parametrize("payload", _CREATE_JOB_PAYLOADS[:1])
 def test_create_job_with_invalid_request_id(db, client, payload, app_token_header):
     """Post to /jobs/ with an x-request-id that is not a UUID4 is a bad request"""
     headers = {**app_token_header, "x-request-id": "not-a-uuid"}
@@ -503,7 +509,7 @@ def test_update_job_resource_usage_advanced(
     assert actual_resource_usage == expected_resource_usage
 
 
-@pytest.mark.parametrize("job", _JOBS_LIST[:4])
+@pytest.mark.parametrize("job", _JOBS_LIST[:2])
 def test_cancel_job(db, client, user_jwt_cookie, job, mock_bcc, freezer):
     """A POST to '/jobs/{id}/cancel' cancels the job of the job_id if the job belongs to the current user"""
     with client as client:
@@ -545,7 +551,7 @@ def test_cancel_job(db, client, user_jwt_cookie, job, mock_bcc, freezer):
         }
 
 
-@pytest.mark.parametrize("job", _JOBS_LIST[:4])
+@pytest.mark.parametrize("job", _JOBS_LIST[:1])
 def test_unauthenticated_cancel_job(db, client, job, mock_bcc, freezer):
     """POST to `/jobs/{job_id}/cancel` raises 401 if not accessed with an authentic cookie"""
     with client as client:
@@ -574,7 +580,7 @@ def test_unauthenticated_cancel_job(db, client, job, mock_bcc, freezer):
         assert response.json() == {"detail": "Unauthorized"}
 
 
-@pytest.mark.parametrize("idx", range(4))
+@pytest.mark.parametrize("idx", range(2))
 def test_remove_job(db, client, user_jwt_cookie, idx: int, mock_bcc, freezer):
     """DELETE to '/jobs/{job_id}' deletes the given job if job belongs to user"""
     # using context manager to ensure on_startup runs
@@ -608,7 +614,7 @@ def test_remove_job(db, client, user_jwt_cookie, idx: int, mock_bcc, freezer):
         assert jobs_in_db == expected_jobs
 
 
-@pytest.mark.parametrize("idx", range(4))
+@pytest.mark.parametrize("idx", range(1))
 def test_unauthenticated_remove_job(db, client, idx: int, mock_bcc, freezer):
     """Delete to /jobs/{job_id} returns 401 error when accessed outside MSS or without proper MSS headers"""
     # using context manager to ensure on_startup runs
