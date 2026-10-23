@@ -6,7 +6,7 @@ import deviceList from "../fixtures/device-list.json";
 import medianCalibrations from "../fixtures/median-calibrations.json";
 import bookingsConfigList from "../fixtures/bookings-configs.json";
 import bookingsFixture from "../fixtures/bookings.json";
-import { BookingsConfigInDb, generateJwt, getUsername } from "../../api/utils";
+import { BookingsConfigInDb, generateJwt, getUsername } from "../../dev/mock-api/utils";
 import { Booking, type Device, type User } from "../../types";
 
 const users = [...userList] as User[];

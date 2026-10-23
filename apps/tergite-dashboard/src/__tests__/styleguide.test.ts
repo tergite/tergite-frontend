@@ -17,7 +17,7 @@ const BASELINE_FILE = join(
   APP_ROOT,
   "src/__tests__/fixtures/styleguide-baseline.txt",
 );
-const CODE_ROOTS = ["src", "api", "types.ts"];
+const CODE_ROOTS = ["src", "dev/mock-api", "types.ts"];
 const SKIPPED_DIRS = new Set(["__tests__", "node_modules"]);
 // a new verb is added here in review, never to the baseline
 const VERBS = new Set([
@@ -44,7 +44,7 @@ const BANNER_COMMENT =
 const FETCH_HOMES = new Set(["src/lib/api-client.ts", "src/lib/api/client.ts"]);
 const UI_DIR = "src/components/ui/";
 const PAGES_DIR = "src/pages/";
-const MOCK_API_DIRS = ["api/", "dev/mock-api/"];
+const MOCK_API_DIR = "dev/mock-api/";
 
 type Violation = { rule: string; location: string };
 type Module = { name: string; source: ts.SourceFile };
@@ -292,7 +292,7 @@ function checkFetchHome(module: Module): Violation[] {
 function isForbiddenImport(importer: string, specifier: string): boolean {
   const target = resolveSpecifier(importer, specifier);
   if (target === undefined) return false;
-  const isMockApi = MOCK_API_DIRS.some((dir) => target.startsWith(dir));
+  const isMockApi = target.startsWith(MOCK_API_DIR);
   const isPageFromUi =
     importer.startsWith(UI_DIR) && target.startsWith(PAGES_DIR);
   return isMockApi || isPageFromUi || isAnotherPage(importer, target);

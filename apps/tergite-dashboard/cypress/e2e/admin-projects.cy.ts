@@ -3,7 +3,7 @@
 
 import userList from "../fixtures/users.json";
 import projectList from "../fixtures/projects.json";
-import { generateJwt, getUsername } from "../../api/utils";
+import { generateJwt, getUsername } from "../../dev/mock-api/utils";
 import { type User, UserRole, type AdminProject } from "../../types";
 
 type ProjectFormData = Omit<

@@ -2,7 +2,7 @@
 /// <reference types="cypress-real-events" />
 
 import userList from "../fixtures/users.json";
-import { generateJwt } from "../../api/utils";
+import { generateJwt } from "../../dev/mock-api/utils";
 import { NoticeType, type User } from "../../types";
 
 // preferences behave identically for everyone, so one representative user is enough

@@ -190,15 +190,15 @@ using `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID` ([config.alloy](config.alloy)).
 | MSS unit/integration | `apps/tergite-mss/tests` — pytest against real MongoDB + Redis | `pytest` |
 | Dashboard component | `apps/tergite-dashboard/src/**/__tests__` — vitest + happy-dom | `npm run test` |
 | Dashboard e2e | `apps/tergite-dashboard/cypress/e2e` — cypress against the **mock** API | `npm run e2e` |
-| Full-stack e2e | [e2e_test.sh](e2e_test.sh) — cypress against real MSS + real backend in docker | `./e2e_test.sh` |
+| Full-stack e2e | [dev/e2e_test.sh](dev/e2e_test.sh) — cypress against real MSS + real backend in docker | `./dev/e2e_test.sh` |
 
 The dashboard's own e2e suite does not run MSS. It runs an Express mock API
-(`apps/tergite-dashboard/api/`) that serves the same JSON shapes from
+(`apps/tergite-dashboard/dev/mock-api/`) that serves the same JSON shapes from
 `cypress/fixtures/*.json`, plus a `GET /refreshed-db` endpoint tests hit to reset state.
 This keeps the UI suite fast and deterministic, at the cost of a second place to update
 when an MSS response changes.
 
-`e2e_test.sh` is the one that catches contract drift: it clones `tergite-backend`, builds
+`dev/e2e_test.sh` is the one that catches contract drift: it clones `tergite-backend`, builds
 MSS, the dashboard and the backend, seeds Mongo from the same cypress fixtures, wires up a
 mock OpenID provider, and runs the cypress specs against the real stack. It is a manual /
 tag-triggered job in CI, not a per-commit one.
@@ -217,7 +217,7 @@ a mirror — see §8).
   against `mongo` and `redis` services. Path-filtered to `apps/tergite-mss/**`.
 - `dashboard-ci.yml` / `lint dashboard`, `test dashboard`, `e2e test dashboard` —
   eslint, vitest, cypress. Path-filtered to `apps/tergite-dashboard/**`.
-- `frontend-ci.yml` / `full e2e` — the cross-app `e2e_test.sh`, on `main`, on `v*` tags, or
+- `frontend-ci.yml` / `full e2e` — the cross-app `dev/e2e_test.sh`, on `main`, on `v*` tags, or
   manually.
 - On a `v*` tag, each app's workflow buildx-builds a multi-platform image and pushes to the
   staging registry and/or Docker Hub, gated on the `SHOULD_PUBLISH_TO_STAGING` /

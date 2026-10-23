@@ -49,7 +49,7 @@ jobs:
           OPENID_CLIENT_SECRET: "${{ secrets.OPENID_CLIENT_SECRET }}"
           OPENID_AUTH_URL: "${{ secrets.OPENID_AUTH_URL }}"
           TEST_THRESHOLD: "${{ vars.TEST_THRESHOLD }}"
-        run: ./e2e_test.sh
+        run: ./dev/e2e_test.sh
 
   # TODO: Add a stage for testing the docker compose loading
   upstream:

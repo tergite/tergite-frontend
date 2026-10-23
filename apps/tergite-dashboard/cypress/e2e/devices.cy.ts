@@ -2,7 +2,7 @@
 
 import userList from "../fixtures/users.json";
 import deviceList from "../fixtures/device-list.json";
-import { generateJwt, getUsername } from "../../api/utils";
+import { generateJwt, getUsername } from "../../dev/mock-api/utils";
 import { type Device, type User } from "../../types";
 
 const users = [...userList] as User[];

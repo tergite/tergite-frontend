@@ -109,7 +109,7 @@ full e2e:
     - apk update && apk add --no-cache curl bash build-base
       openssl-dev zlib-dev libffi-dev make git jq
   script:
-    - ./e2e_test.sh
+    - ./dev/e2e_test.sh
 
 lint mss:
   needs: []

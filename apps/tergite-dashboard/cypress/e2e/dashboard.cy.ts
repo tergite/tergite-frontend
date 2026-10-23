@@ -3,7 +3,7 @@
 import userList from "../fixtures/users.json";
 import projectList from "../fixtures/projects.json";
 import userRequestList from "../fixtures/user-requests.json";
-import { generateJwt, getUsername } from "../../api/utils";
+import { generateJwt, getUsername } from "../../dev/mock-api/utils";
 import {
   UserRequest,
   UserRequestStatus,

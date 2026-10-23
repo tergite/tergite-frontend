@@ -5,7 +5,7 @@ import userList from "../fixtures/users.json";
 import tokenList from "../fixtures/tokens.json";
 import projectList from "../fixtures/projects.json";
 import userRequestList from "../fixtures/user-requests.json";
-import { bulkUpdate, generateJwt, getUsername } from "../../api/utils";
+import { bulkUpdate, generateJwt, getUsername } from "../../dev/mock-api/utils";
 import { Duration } from "luxon";
 import {
   type Project,

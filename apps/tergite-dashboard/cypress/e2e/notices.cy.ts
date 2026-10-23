@@ -3,7 +3,7 @@
 
 import noticeList from "../fixtures/notices.json";
 import userList from "../fixtures/users.json";
-import { generateJwt } from "../../api/utils";
+import { generateJwt } from "../../dev/mock-api/utils";
 import { type User } from "../../types";
 
 // the fixture carries the stored shape, with relative offsets for the timestamps

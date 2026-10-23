@@ -9,7 +9,7 @@ cross-app conventions.
 
 The dashboard has **no backend of its own**. In production it is a static bundle served by
 nginx; every piece of data comes from MSS over HTTP with a cookie. The Express server in
-`api/` is a development and testing mock only — it is never deployed.
+`dev/mock-api/` is a development and testing mock only — it is never deployed.
 
 ## 1. Architecture: co-located hierarchy
 
@@ -238,13 +238,13 @@ Loader payload types follow the same placement as `interface XData`.
 intentionally unused binding must be `_`-prefixed (the eslint rule matches). `@/*` resolves
 to `src/*` in both tsconfig and vite; imports of `types.ts` from within `src` are relative.
 
-## 5. The mock API server (`api/`)
+## 5. The mock API server (`dev/mock-api/`)
 
 An Express app that impersonates MSS well enough to develop and test the UI without running
 the real stack.
 
 ```
-api/
+dev/mock-api/
 ├── server.ts        # express setup, mounts routers, JSON error handler ({ detail })
 ├── routes/
 │   ├── general.ts   # every MSS resource endpoint, plus GET /refreshed-db
@@ -264,9 +264,9 @@ Run it with `npm run dev-api` (watch mode) or `npm run test-api`. `npm run dev` 
 vite together via `start-server-and-test`.
 
 **When an MSS response shape changes, three places need updating**: `types.ts`, the mock
-route in `api/routes/general.ts`, and the fixture in `cypress/fixtures/`. Missing one shows
+route in `dev/mock-api/routes/general.ts`, and the fixture in `cypress/fixtures/`. Missing one shows
 up as a passing UI suite against a stale contract — which is what the repo-level
-`e2e_test.sh` exists to catch.
+`dev/e2e_test.sh` exists to catch.
 
 ## 6. Testing
 
@@ -316,6 +316,6 @@ loader must be exported alongside a component.
 | New table | a `*-table/` folder with `index.tsx`, `columns.tsx`, `filter-form.tsx` (+ `detail-drawer.tsx`) |
 | New API call | a `queryOptions` (reads) or an action function (writes) in `src/lib/api-client.ts` — nowhere else calls `fetch` — then consume it from a `useQuery` or a `useMutation`, never from a bare handler |
 | New destination | a `<Route>` in `src/router.tsx` with its loader; reach it with `<Link>` or `useNavigate`, never `window.location` |
-| New response shape | `types.ts`, the mock route in `api/routes/general.ts`, and the `cypress/fixtures/` JSON |
+| New response shape | `types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the `cypress/fixtures/` JSON |
 | New shadcn primitive | the shadcn CLI, then edit the generated file in `src/components/ui/` |
 | New env variable | `VITE_`-prefix it if the browser needs it, add it to `.env.development` / `.env.test`, and thread it through `Dockerfile` as a build arg |

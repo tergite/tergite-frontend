@@ -4,8 +4,8 @@
   "version": "2026.06.0",
   "type": "module",
   "scripts": {
-    "test-api": "tsx --env-file=.env.test api/server.ts",
-    "dev-api": "tsx watch --env-file=.env.development api/server.ts",
+    "test-api": "tsx --env-file=.env.test dev/mock-api/server.ts",
+    "dev-api": "tsx watch --env-file=.env.development dev/mock-api/server.ts",
     "dev": "start-server-and-test dev-api http://0.0.0.0:8002 vite",
     "dev-app-only": "vite --host 0.0.0.0",
     "build": "tsc && vite build",

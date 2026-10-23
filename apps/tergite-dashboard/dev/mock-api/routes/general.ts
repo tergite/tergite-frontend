@@ -54,7 +54,7 @@ import {
   NoticeRefType,
   NoticeType,
   NoticeSeverity,
-} from "../../types";
+} from "../../../types";
 import { DateTime } from "luxon";
 
 const currentDateString = process.env.CURRENT_DATE;

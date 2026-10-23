@@ -4,7 +4,7 @@
 import userList from "../fixtures/users.json";
 import deviceList from "../fixtures/device-list.json";
 import rawNoticeList from "../fixtures/notices.json";
-import { generateJwt, getUsername } from "../../api/utils";
+import { generateJwt, getUsername } from "../../dev/mock-api/utils";
 import { type Device, type User, UserRole } from "../../types";
 
 /**

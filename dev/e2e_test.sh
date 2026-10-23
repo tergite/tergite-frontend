@@ -23,7 +23,7 @@
 #   OPENID_CLIENT_ID="kbyuFDidLLm280LIwVFiazOqjO3ty8KH" \ # Set the client id for mock OpenID connect, default: 'kbyuFDidLLm280LIwVFiazOqjO3ty8KH'
 #   OPENID_CLIENT_SECRET="60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa" \ # Set the client secret for mock OpenID connect, default: '60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa'
 #   OPENID_AUTH_URL="https://samples.auth0.com/authorize" \ # Set the url to redirect to for auth for mock OpenID connect, default: 'https://samples.auth0.com/authorize'
-#   ./e2e_test.sh
+#   ./dev/e2e_test.sh
 
 set -e # exit if any step fails
 
@@ -35,7 +35,7 @@ OPENID_CONFIG_URL="${OPENID_CONFIG_URL:-https://samples.auth0.com/.well-known/op
 OPENID_CLIENT_ID="${OPENID_CLIENT_ID:-kbyuFDidLLm280LIwVFiazOqjO3ty8KH}"
 OPENID_CLIENT_SECRET="${OPENID_CLIENT_SECRET:-60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa}"
 OPENID_AUTH_URL="${OPENID_AUTH_URL:-https://samples.auth0.com/authorize}"
-ROOT_PATH="$(pwd)"
+ROOT_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 TEMP_DIR_PATH="$ROOT_PATH/$TEMP_DIR"
 FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/cypress/fixtures"
 CYPRESS_IMAGE="$CYPRESS_IMAGE"

@@ -4,7 +4,7 @@ import userList from "../fixtures/users.json";
 import authProviders from "../fixtures/auth-providers.json";
 import { User } from "../../types";
 import { decodeJwt } from "jose";
-import { generateJwt } from "../../api/utils";
+import { generateJwt } from "../../dev/mock-api/utils";
 
 const invalidFormatEmailAddresses = [
   "john",

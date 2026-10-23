@@ -1,16 +1,16 @@
 import { jwtVerify, type JWTVerifyResult, SignJWT } from "jose";
-import authProviderList from "../cypress/fixtures/auth-providers.json";
-import deviceCalibrationList from "../cypress/fixtures/calibrations.json";
-import deviceList from "../cypress/fixtures/device-list.json";
-import jobList from "../cypress/fixtures/jobs.json";
-import projectList from "../cypress/fixtures/projects.json";
-import tokenList from "../cypress/fixtures/tokens.json";
-import userList from "../cypress/fixtures/users.json";
-import bccUsersFixture from "../cypress/fixtures/bcc-users.json";
-import bookingsFixture from "../cypress/fixtures/bookings.json";
-import bookingsConfigList from "../cypress/fixtures/bookings-configs.json";
-import userRequestList from "../cypress/fixtures/user-requests.json";
-import rawNoticeList from "../cypress/fixtures/notices.json";
+import authProviderList from "../../cypress/fixtures/auth-providers.json";
+import deviceCalibrationList from "../../cypress/fixtures/calibrations.json";
+import deviceList from "../../cypress/fixtures/device-list.json";
+import jobList from "../../cypress/fixtures/jobs.json";
+import projectList from "../../cypress/fixtures/projects.json";
+import tokenList from "../../cypress/fixtures/tokens.json";
+import userList from "../../cypress/fixtures/users.json";
+import bccUsersFixture from "../../cypress/fixtures/bcc-users.json";
+import bookingsFixture from "../../cypress/fixtures/bookings.json";
+import bookingsConfigList from "../../cypress/fixtures/bookings-configs.json";
+import userRequestList from "../../cypress/fixtures/user-requests.json";
+import rawNoticeList from "../../cypress/fixtures/notices.json";
 import { type ParsedQs } from "qs";
 import {
   type NextFunction,
@@ -37,7 +37,7 @@ import {
   NoticeRefType,
   NoticeSeverity,
   NoticeType,
-} from "../types";
+} from "../../types";
 import { v4 as uuidv4 } from "uuid";
 import { DateTime } from "luxon";
 

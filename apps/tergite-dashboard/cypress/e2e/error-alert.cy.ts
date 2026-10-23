@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { generateJwt, getUsername } from "../../api/utils";
+import { generateJwt, getUsername } from "../../dev/mock-api/utils";
 import { type User } from "../../types";
 import userList from "../fixtures/users.json";
 
