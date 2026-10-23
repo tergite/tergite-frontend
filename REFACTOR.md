@@ -65,7 +65,7 @@ Tests only. After this step, any refactor commit that changes behaviour fails a 
 | Invalid project id in a path | 404, not 422 |
 | `auth_users` documents | `oauth_accounts` keeps its seven fields; existing documents load unchanged |
 
-2. **Response bodies** for the routes whose DTOs override `model_dump`: jobs, devices, every paginated list.
+2. **Response bodies** for the routes whose DTOs override `model_dump`: jobs, devices, every paginated list. Already pinned: `test_jobs.py`, `test_devices.py`, `test_calibrations.py` and `me/test_my_jobs.py` compare whole bodies, lists included, so a `null` field appearing fails them.
 3. **CORS:** `Access-Control-Allow-Origin` echoes the request origin on a credentialed request.
 4. **Test helpers by job.** Move `insert_if_not_exist`, `get_db_record` and `update_db_record` from `tests/_utils/auth.py` to `tests/_utils/mongodb.py`.
 5. **Split `tests/conftest.py`** (527 lines, 34 fixtures). OAuth provider mocks go to `tests/_utils/oauth.py`, the `mock_bcc*` fixtures to `tests/_utils/bcc.py`, the `_to_*_record` converters to `tests/_utils/records.py`; register the fixture modules with `pytest_plugins`. `conftest.py` keeps the environment, stores and client, in that order.
