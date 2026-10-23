@@ -145,7 +145,6 @@ import-layering: services/jobs/service.py::import settings
 import-layering: services/jobs/service.py::import settings
 import-layering: services/notices/service.py::import settings
 import-layering: utils/api.py::import settings
-import-layering: utils/date_time.py::import settings
 facade-import: api/rest/dependencies.py::import services.auth.service
 facade-import: api/rest/dependencies.py::import services.auth.users
 facade-import: api/rest/routers/auth.py::import services.auth.providers.dtos
@@ -317,8 +316,6 @@ type-hints: utils/api.py::WebsocketConnectionManager.disconnect
 type-hints: utils/api.py::WebsocketConnectionManager.reply
 type-hints: utils/config.py::BccConfig.validate_public_key_path
 type-hints: utils/crypto.py::get_uuid4_str
-type-hints: utils/date_time.py::datetime_to_zulu
-type-hints: utils/date_time.py::get_current_timestamp
 type-hints: utils/exc.py::BaseMssException.__repr__
 type-hints: utils/exc.py::BaseMssException.__str__
 type-hints: utils/logging.py::json_formatter

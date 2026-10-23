@@ -25,6 +25,12 @@ setup_test_env()
 # See: https://github.com/pydantic/pydantic/discussions/9343#discussioncomment-10723743
 stub_pydantic_match_type_for_freezegun()
 
+import settings
+from utils.date_time import set_datetime_precision
+
+# as the app does at startup, before any helper writes a timestamp
+set_datetime_precision(settings.CONFIG.datetime_precision)
+
 import random
 from datetime import datetime, timezone
 from typing import Any, Dict, Generator, List

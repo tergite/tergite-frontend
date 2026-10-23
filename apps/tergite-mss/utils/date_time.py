@@ -16,10 +16,18 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-import settings
+from utils.config import DatetimePrecision
+
+_precision = DatetimePrecision.AUTO
 
 
-def datetime_to_zulu(d: datetime, precision=settings.CONFIG.datetime_precision) -> str:
+def set_datetime_precision(precision: DatetimePrecision) -> None:
+    """Sets the precision every timestamp is written with; the app sets it once at startup"""
+    global _precision
+    _precision = precision
+
+
+def datetime_to_zulu(d: datetime, precision: Optional[DatetimePrecision] = None) -> str:
     """
     Returns the given datetime object in string format with an ending Z.
 
@@ -27,17 +35,19 @@ def datetime_to_zulu(d: datetime, precision=settings.CONFIG.datetime_precision) 
         d: the datetime to convert
         precision: the number of additional terms of the time to include.
             Valid options are 'auto', 'hours', 'minutes', 'seconds', 'milliseconds' and 'microseconds'.
-            Default: "auto"
+            Default: the one set with set_datetime_precision
     """
     # FIXME: MongoDB shaves off the nanoseconds automatically.
     #   to make things uniform in tests, we shave them off here also. But it is possible to store
     #   datetimes as int timestamps instead of dates in order to avoid loss of precision
     return (
-        d.astimezone(timezone.utc).isoformat(timespec=precision).replace("+00:00", "Z")
+        d.astimezone(timezone.utc)
+        .isoformat(timespec=precision or _precision)
+        .replace("+00:00", "Z")
     )
 
 
-def get_current_timestamp(precision=settings.CONFIG.datetime_precision):
+def get_current_timestamp(precision: Optional[DatetimePrecision] = None) -> str:
     """Returns current time in UTC string but with hours replaced with a Z"""
     return datetime_to_zulu(datetime.now(timezone.utc), precision=precision)
 

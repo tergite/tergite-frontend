@@ -25,6 +25,7 @@ from api.rest.errors import (
 )
 from api.rest.middleware import RequestIDMiddleware, TergiteCORSMiddleware
 from services.auth import UnsupportedOauthException
+from utils.date_time import set_datetime_precision
 from utils.exc import (
     BccHttpError,
     ConflictError,
@@ -52,6 +53,8 @@ from .routers.me import router as my_router
 
 # Initialize logging
 setup_logging(settings.CONFIG.environment)
+
+set_datetime_precision(settings.CONFIG.datetime_precision)
 
 # application
 app = FastAPI(**get_app_kwargs())
