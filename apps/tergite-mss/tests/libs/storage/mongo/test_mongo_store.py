@@ -10,8 +10,11 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Runs every Database method against a real MongoDB, in a database of its own"""
-from datetime import datetime, timedelta, timezone
+"""What only MongoStore does: ObjectIds, nested updates, indexes and validators
+
+What every store does alike is in tests/libs/storage/test_conformance.py.
+"""
+from datetime import datetime
 from typing import List, Optional
 
 import pytest
@@ -20,15 +23,7 @@ from pydantic import BaseModel, Field
 from pymongo import AsyncMongoClient, IndexModel
 from pymongo.errors import WriteError
 
-from libs.storage import (
-    Database,
-    DuplicateKeyError,
-    Id,
-    Returning,
-    Schema,
-    StorageSpec,
-    generate_id,
-)
+from libs.storage import Database, Id, Schema, StorageSpec, generate_id
 from tests._utils.env import TEST_MONGODB_URL
 
 _DATABASE_NAME = "tergite-storage-test"
@@ -92,121 +87,24 @@ async def database():
     await client.close()
 
 
-async def test_insert_and_get(database, raw):
+async def test_ids_are_stored_as_object_ids(database, raw):
     owner = await database.insert(_Owner, _Owner(email="ann@example.com"))
     pet = await database.insert(_Pet, _Pet(name="Rex", owner_id=owner.id))
 
+    document = await raw["pets"].find_one({"_id": ObjectId(pet.id)})
+
+    assert document["owner_id"] == ObjectId(owner.id)
     assert await database.get(_Pet, pet.id) == pet
-    assert await database.get(_Pet, generate_id()) is None
-    assert (await raw["pets"].find_one({"_id": ObjectId(pet.id)}))["owner_id"] == (
-        ObjectId(owner.id)
-    )
 
 
-async def test_a_schema_keyed_by_another_field(database):
-    await database.insert(_Job, _Job(job_id="j-1"))
-
-    assert await database.get(_Job, "j-1") == _Job(job_id="j-1")
-
-
-async def test_unique_fields_refuse_duplicates(database):
-    await database.insert(_Owner, _Owner(email="ann@example.com"))
-
-    with pytest.raises(DuplicateKeyError):
-        await database.insert(_Owner, _Owner(email="ANN@example.com"))
-    with pytest.raises(DuplicateKeyError):
-        await database.insert_many(
-            _Owner, [_Owner(email="bob@example.com"), _Owner(email="Bob@example.com")]
-        )
-
-
-async def test_find_filters_sorts_and_pages(database):
-    owner_id = generate_id()
-    names = ["a", "b", "c", "d"]
-    await database.insert_many(
-        _Pet,
-        [_Pet(name=name, age=i, owner_id=owner_id) for i, name in enumerate(names)],
-    )
-
-    got = await database.find(
-        _Pet, filter={"age": {"$gte": 1}}, sort=["-age"], skip=1, limit=2
-    )
-    either = {"$or": [{"name": "a"}, {"age": {"$gt": 2}}]}
-
-    assert [pet.name for pet in got] == ["c", "b"]
-    assert await database.count(_Pet, filter={"owner_id": owner_id}) == 4
-    assert await database.count(_Pet, filter=either) == 2
-    assert (await database.find_one(_Pet, filter={"name": {"$in": ["d"]}})).age == 3
-    assert await database.find_distinct(_Pet, "owner_id") == [owner_id]
-
-
-async def test_case_insensitive_fields_match_without_case(database):
-    await database.insert(_Owner, _Owner(email="ann@example.com"))
-
-    assert await database.count(_Owner, filter={"email": "ANN@EXAMPLE.COM"}) == 1
-
-
-async def test_update_one_returns_the_record_before_or_after(database):
+async def test_a_nested_field_is_updated_in_place(database):
     pet = await database.insert(_Pet, _Pet(name="Rex"))
 
-    before = await database.update_one(
-        _Pet,
-        filter={"id": pet.id},
-        update={"$inc": {"stats.walks": 1}},
-        returning=Returning.BEFORE,
-    )
-    after = await database.update_one(
-        _Pet, filter={"id": pet.id}, update={"$set": {"age": 4}}
-    )
-    missing = await database.update_one(
-        _Pet, filter={"name": "Nobody"}, update={"$set": {"age": 1}}
+    updated = await database.update_one(
+        _Pet, filter={"id": pet.id}, update={"$inc": {"stats.walks": 1}}
     )
 
-    assert before.stats.walks == 0
-    assert after.stats.walks == 1 and after.age == 4
-    assert missing is None
-
-
-async def test_update_one_upserts(database):
-    created = await database.update_one(
-        _Job,
-        filter={"job_id": "j-2"},
-        update={"$set": {"status": "done"}, "$setOnInsert": {"job_id": "j-2"}},
-        should_upsert=True,
-    )
-
-    assert created == _Job(job_id="j-2", status="done")
-
-
-async def test_list_fields_take_and_drop_members(database):
-    friend_id = generate_id()
-    pet = await database.insert(_Pet, _Pet(name="Rex"))
-
-    pet_filter = {"id": pet.id}
-    await database.update_many(
-        _Pet, pet_filter, {"$addToSet": {"friend_ids": friend_id}}
-    )
-    await database.update_many(
-        _Pet, pet_filter, {"$addToSet": {"friend_ids": friend_id}}
-    )
-    assert (await database.get(_Pet, pet.id)).friend_ids == [friend_id]
-    assert await database.count(_Pet, filter={"friend_ids": friend_id}) == 1
-
-    count = await database.update_many(
-        _Pet, pet_filter, {"$pull": {"friend_ids": friend_id}}
-    )
-    assert count == 1
-    assert (await database.get(_Pet, pet.id)).friend_ids == []
-
-
-async def test_delete_one_and_many(database):
-    rex = await database.insert(_Pet, _Pet(name="Rex"))
-    await database.insert_many(_Pet, [_Pet(name="a", age=1), _Pet(name="b", age=1)])
-
-    assert await database.delete_one(_Pet, {"id": rex.id}) == rex
-    assert await database.delete_one(_Pet, {"id": rex.id}) is None
-    assert await database.delete_many(_Pet, {"age": 1}) == 2
-    assert await database.count(_Pet) == 0
+    assert updated.stats.walks == 1
 
 
 async def test_setup_makes_the_indexes_the_storage_facts_ask_for(database, raw):
@@ -241,12 +139,3 @@ async def test_setup_replaces_an_index_whose_options_changed(database, raw):
 async def test_the_validator_rejects_documents_off_the_schema(database, raw):
     with pytest.raises(WriteError):
         await raw["pets"].insert_one({"name": 7})
-
-
-async def test_expiring_records_carry_a_datetime(database):
-    expires_at = datetime.now(timezone.utc) + timedelta(days=1)
-    pet = await database.insert(_Pet, _Pet(name="Rex", expires_at=expires_at))
-
-    got = await database.get(_Pet, pet.id)
-
-    assert abs(got.expires_at - expires_at) < timedelta(milliseconds=1)

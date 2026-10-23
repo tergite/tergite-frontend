@@ -174,6 +174,11 @@ def _create_store(database_url: str, schemas: Sequence[Type[Schema]]) -> DbStore
         from .redis import RedisStore
 
         return RedisStore(database_url, schemas)
+    # SQLAlchemy names a database and its async driver, as in postgresql+asyncpg://
+    if "+" in scheme:
+        from .sql import SqlStore
+
+        return SqlStore(database_url, schemas)
     raise StorageError(f"no store supports '{scheme}://' URLs")
 
 

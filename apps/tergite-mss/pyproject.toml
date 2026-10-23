@@ -53,6 +53,9 @@ dependencies = [
     "aiosmtplib~=3.0.2",
     "hiredis~=3.2.1",
     "redis[hiredis]~=7.1.0",
+    "sqlalchemy[asyncio]~=2.0",
+    "asyncpg~=0.30",
+    "aiosqlite~=0.21",
 ]
 
 [project.optional-dependencies]
