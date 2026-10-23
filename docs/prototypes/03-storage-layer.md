@@ -14,7 +14,7 @@ ticked, or a failure is written beside its box.
 ## Checks
 
 - [ ] **3.1–3.7: CI's checks pass.** `.venv/bin/black --check .` and
-      `.venv/bin/python -m pyflakes api services utils settings.py tests dev` report nothing, and
+      `.venv/bin/python -m pyflakes api services utils libs settings.py tests dev` report nothing, and
       `.venv/bin/pytest tests` (about 18 minutes) gives 931 passed.
 - [ ] **3.1: libs depends on nothing above it.**
       `git grep -nE "^(from|import) (api|services|settings)" -- libs` finds nothing, and
