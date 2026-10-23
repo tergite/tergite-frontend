@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """FastAPIUsers-inspired logic for managing projects"""
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from beanie import PydanticObjectId
 from fastapi.requests import Request
@@ -132,15 +132,22 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         Raises:
             TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
         """
-        project_filter = _get_any_of_filter(
-            {"id": ids, "user_ids": user_ids, "name": names}
-        )
-        if is_active is not None:
+        project_filter: Dict[str, Any] = {}
+        if ids is not None:
+            project_filter["id"] = {"$in": _ensure_short_list("id", ids)}
+        if user_ids is not None:
+            project_filter["user_ids"] = {
+                "$in": _ensure_short_list("user_ids", user_ids)
+            }
+        if names is not None:
+            project_filter["name"] = {"$in": _ensure_short_list("name", names)}
+        if is_active is True:
             # a project stored without is_active is active, as the field defaults to True
-            project_filter["is_active"] = {"$ne": False} if is_active else False
-        qpu_seconds_range = _get_range(min_qpu_seconds, max_qpu_seconds)
-        if qpu_seconds_range:
-            project_filter["qpu_seconds"] = qpu_seconds_range
+            project_filter["is_active"] = {"$ne": False}
+        if is_active is False:
+            project_filter["is_active"] = False
+        if min_qpu_seconds is not None or max_qpu_seconds is not None:
+            project_filter["qpu_seconds"] = _get_range(min_qpu_seconds, max_qpu_seconds)
         if member_id is not None:
             # in an $and, so that a user_ids query narrows the member's projects
             project_filter = {"$and": [project_filter, {"user_ids": member_id}]}
@@ -172,15 +179,19 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         Raises:
             TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
         """
-        token_filter = {
-            "user_id": user_id,
-            **_get_any_of_filter(
-                {"id": ids, "project_id": project_ids, "title": titles}
-            ),
-        }
-        lifespan_range = _get_range(min_lifespan_seconds, max_lifespan_seconds)
-        if lifespan_range:
-            token_filter["lifespan_seconds"] = lifespan_range
+        token_filter: Dict[str, Any] = {"user_id": user_id}
+        if ids is not None:
+            token_filter["id"] = {"$in": _ensure_short_list("id", ids)}
+        if project_ids is not None:
+            token_filter["project_id"] = {
+                "$in": _ensure_short_list("project_id", project_ids)
+            }
+        if titles is not None:
+            token_filter["title"] = {"$in": _ensure_short_list("title", titles)}
+        if min_lifespan_seconds is not None or max_lifespan_seconds is not None:
+            token_filter["lifespan_seconds"] = _get_range(
+                min_lifespan_seconds, max_lifespan_seconds
+            )
         return await self.app_token_db.get_many(token_filter, skip=skip, limit=limit)
 
     async def create(
@@ -321,27 +332,23 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
 ProjectManagerDependency = DependencyCallable[ProjectAppTokenManager]
 
 
-def _get_any_of_filter(
-    values_by_field: Mapping[str, Optional[Sequence[Any]]]
-) -> Dict[str, Any]:
-    """Gets the filter matching any of the given values of each field; None skips a field
+def _ensure_short_list(query_param: str, values: Sequence[Any]) -> List[Any]:
+    """Gets the values as a list, if there are few enough to query by
 
     Raises:
-        TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
+        TooManyListQueryParams: there are more than MAX_LIST_QUERY_LEN values
     """
-    any_of_filter = {}
-    for field, values in values_by_field.items():
-        if values is None:
-            continue
-        if len(values) > MAX_LIST_QUERY_LEN:
-            raise TooManyListQueryParams(
-                field, expected=MAX_LIST_QUERY_LEN, got=len(values)
-            )
-        any_of_filter[field] = {"$in": list(values)}
-    return any_of_filter
+    if len(values) > MAX_LIST_QUERY_LEN:
+        raise TooManyListQueryParams(
+            query_param, expected=MAX_LIST_QUERY_LEN, got=len(values)
+        )
+    return list(values)
 
 
 def _get_range(lowest: Optional[float], highest: Optional[float]) -> Dict[str, float]:
-    """Gets the bounds a value may lie within; an empty map when there are none"""
-    bounds = {"$gte": lowest, "$lte": highest}
-    return {operator: value for operator, value in bounds.items() if value is not None}
+    """Gets the condition of a value within the bounds, either of which may be None"""
+    if lowest is not None and highest is not None:
+        return {"$gte": lowest, "$lte": highest}
+    if lowest is not None:
+        return {"$gte": lowest}
+    return {"$lte": highest}

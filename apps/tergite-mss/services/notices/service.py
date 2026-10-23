@@ -12,7 +12,7 @@
 #
 from datetime import datetime, timedelta
 from functools import partial
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 from loguru import logger
 
@@ -71,13 +71,16 @@ async def set_read_status(
     """
     user_id = str(user_id)
     notice_filter = {"id": str(pk), "user_id": {"$in": [user_id, None]}}
-    broadcast_update, direct_update = _get_read_status_updates(user_id, is_read)
     notice = await database.update_one(
-        Notice, {**notice_filter, "type": _BROADCAST_TYPE}, broadcast_update
+        Notice,
+        {**notice_filter, "type": _BROADCAST_TYPE},
+        _get_broadcast_read_update(user_id, is_read),
     )
     if notice is None:
         notice = await database.update_one(
-            Notice, {**notice_filter, "type": {"$ne": _BROADCAST_TYPE}}, direct_update
+            Notice,
+            {**notice_filter, "type": {"$ne": _BROADCAST_TYPE}},
+            _get_direct_read_update(user_id, is_read),
         )
     if notice is None:
         raise NotFoundError(f"notice of ID '{pk}' not found")
@@ -120,14 +123,15 @@ async def set_read_status_many(
         types=types,
         is_read=not is_read,
     )
-    broadcast_update, direct_update = _get_read_status_updates(user_id, is_read)
     broadcast_count = await database.update_many(
-        Notice, {"$and": [notice_filter, {"type": _BROADCAST_TYPE}]}, broadcast_update
+        Notice,
+        {"$and": [notice_filter, {"type": _BROADCAST_TYPE}]},
+        _get_broadcast_read_update(user_id, is_read),
     )
     direct_count = await database.update_many(
         Notice,
         {"$and": [notice_filter, {"type": {"$ne": _BROADCAST_TYPE}}]},
-        direct_update,
+        _get_direct_read_update(user_id, is_read),
     )
     return broadcast_count + direct_count
 
@@ -477,43 +481,60 @@ def _get_notice_filter(
     if user_id:
         # either broadcast notices or those sent directly to the user
         notice_filter["user_id"] = {"$in": [user_id, None]}
-
-    dismissed_by: Dict[str, Any] = {}
-    if (user_id and not should_include_dismissed) or is_read is False:
-        dismissed_by["$nin"] = [user_id]
-    if is_read:
-        dismissed_by["$in"] = [user_id]
-    if dismissed_by:
-        notice_filter["dismissed_by"] = dismissed_by
-
-    for field, lowest, highest in (
-        ("starts_at", min_start_utc, max_start_utc),
-        ("expires_at", min_expires_utc, max_expires_utc),
-    ):
-        bounds = {"$gte": lowest, "$lte": highest}
-        bounds = {operator: value for operator, value in bounds.items() if value}
-        if bounds:
-            notice_filter[field] = bounds
-
+    if min_start_utc or max_start_utc:
+        notice_filter["starts_at"] = _get_range(min_start_utc, max_start_utc)
+    if min_expires_utc or max_expires_utc:
+        notice_filter["expires_at"] = _get_range(min_expires_utc, max_expires_utc)
     if types:
         notice_filter["type"] = {"$in": list(types)}
+
+    dismissal_conditions = []
+    if user_id and not should_include_dismissed:
+        dismissal_conditions.append({"dismissed_by": {"$nin": [user_id]}})
+    if is_read is False:
+        dismissal_conditions.append({"dismissed_by": {"$nin": [user_id]}})
+    if is_read is True:
+        dismissal_conditions.append({"dismissed_by": user_id})
+    if dismissal_conditions:
+        notice_filter["$and"] = dismissal_conditions
     return notice_filter
 
 
-def _get_read_status_updates(user_id: str, is_read: bool) -> Tuple[Update, Update]:
-    """Gets the updates that mark a broadcast notice, and a direct one, read or unread
+def _get_range(
+    lowest: Optional[datetime], highest: Optional[datetime]
+) -> Dict[str, Any]:
+    """Gets the condition of a value within the bounds, either of which may be None"""
+    if lowest and highest:
+        return {"$gte": lowest, "$lte": highest}
+    if lowest:
+        return {"$gte": lowest}
+    return {"$lte": highest}
+
+
+def _get_broadcast_read_update(user_id: str, is_read: bool) -> Update:
+    """Gets the update marking a broadcast notice read or unread for the user
 
     Broadcast notices are shared by many users, so their read state lives in
     'dismissed_by' alone and 'read_at' stays None.
     """
     now = get_current_timestamp()
-    membership = {"$addToSet" if is_read else "$pull": {"dismissed_by": user_id}}
-    broadcast_update = {**membership, "$set": {"updated_at": now}}
-    direct_update = {
-        **membership,
-        "$set": {"updated_at": now, "read_at": now if is_read else None},
+    if is_read:
+        return {"$addToSet": {"dismissed_by": user_id}, "$set": {"updated_at": now}}
+    return {"$pull": {"dismissed_by": user_id}, "$set": {"updated_at": now}}
+
+
+def _get_direct_read_update(user_id: str, is_read: bool) -> Update:
+    """Gets the update marking a notice sent to the user read or unread"""
+    now = get_current_timestamp()
+    if is_read:
+        return {
+            "$addToSet": {"dismissed_by": user_id},
+            "$set": {"updated_at": now, "read_at": now},
+        }
+    return {
+        "$pull": {"dismissed_by": user_id},
+        "$set": {"updated_at": now, "read_at": None},
     }
-    return broadcast_update, direct_update
 
 
 def _with_default_email_preferences(

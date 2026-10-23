@@ -212,22 +212,33 @@ class RedisStore(DbStore):
         current_timestamp = time.time()
         matched_keys: Optional[Set[str]] = None
         for field, values in conditions:
-            keys: Set[str] = set()
             if field == schema.__storage__.key:
                 # the key names the record's field in the hash, which a read checks
-                keys.update(_convert_to_text(value) for value in values)
-                values = ()
-            for value in values:
-                idx_key = _get_index_key(schema, field, value)
-                keys.update(
-                    await self._connection.zrangebyscore(
-                        idx_key, current_timestamp, "+inf"
-                    )
+                keys = {_convert_to_text(value) for value in values}
+            else:
+                keys = await self._find_indexed_keys(
+                    schema, field, values, current_timestamp
                 )
             matched_keys = keys if matched_keys is None else matched_keys & keys
             if not matched_keys:
                 break
         return matched_keys
+
+    async def _find_indexed_keys(
+        self,
+        schema: Type[Schema],
+        field: str,
+        values: List[Any],
+        current_timestamp: float,
+    ) -> Set[str]:
+        """Gets the keys of the unexpired records whose field holds any of the values"""
+        keys: Set[str] = set()
+        for value in values:
+            idx_key = _get_index_key(schema, field, value)
+            keys.update(
+                await self._connection.zrangebyscore(idx_key, current_timestamp, "+inf")
+            )
+        return keys
 
     async def _ensure_unique(
         self, schema: Type[Schema], record: Schema, own_key: Optional[str] = None
