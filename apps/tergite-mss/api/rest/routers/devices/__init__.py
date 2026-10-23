@@ -19,6 +19,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, WebSocketException
 from fastapi.websockets import WebSocket
 from loguru import logger
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocketDisconnect
@@ -26,6 +27,7 @@ from starlette.websockets import WebSocketDisconnect
 from api.rest.dependencies import MongoDbDep, ProjectDbDep
 from api.rest.utils import get_verified_device_name
 from services import devices
+from services.auth import ProjectDatabase
 from services.devices import DeviceEvent, DeviceQuery
 from utils.api import (
     EventResponse,
@@ -34,7 +36,7 @@ from utils.api import (
     get_websocket_json,
 )
 from utils.date_time import get_current_timestamp
-from utils.exc import ForbiddenError, InvalidWebsocketDataTypeError, NotFoundError
+from utils.exc import ForbiddenError, NotFoundError
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 ws_manager = WebsocketConnectionManager()
@@ -104,36 +106,11 @@ async def handle_device_events(
     await ws_manager.connect(websocket)
     try:
         while True:
-            event_response: EventResponse = {"id": "unknown", "status": "success"}
             data = await get_websocket_json(websocket, data_type="text")
-
-            try:
-                parsed_data = DeviceEvent.model_validate(data)
-                event_response.update(id=parsed_data.id)
-                handler = devices.EVENT_HANDLERS[parsed_data.name]
-                general_response = await handler(
-                    device=verified_name,
-                    data=parsed_data.data,
-                    db=db,
-                    project_db=project_db,
-                )
-                event_response.update(general_response)
-
-            except ValidationError as exp:
-                event_response.update(
-                    {"status": "error", "detail": f"invalid data: {exp}"}
-                )
-            except ForbiddenError as exp:
-                event_response.update(
-                    {"status": "error", "detail": f"forbidden: {exp}"}
-                )
-            except Exception as exp:
-                logger.exception("Unexpected exception in device websocket handler")
-                event_response.update(
-                    {"status": "error", "detail": f"unexpected server error"}
-                )
-
-            await ws_manager.reply(websocket, event_response)
+            response = await _handle_frame(
+                data, device=verified_name, db=db, project_db=project_db
+            )
+            await ws_manager.reply(websocket, response)
 
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
@@ -141,3 +118,26 @@ async def handle_device_events(
             await devices.mark_device_offline(
                 db, name=name, last_online=get_current_timestamp()
             )
+
+
+async def _handle_frame(
+    data: dict, device: str, db: AsyncIOMotorDatabase, project_db: ProjectDatabase
+) -> EventResponse:
+    """Runs the handler of the event in one frame; an error becomes an error reply"""
+    response: EventResponse = {"id": "unknown", "status": "success"}
+    try:
+        event = DeviceEvent.model_validate(data)
+        response.update(id=event.id)
+        handler = devices.EVENT_HANDLERS[event.name]
+        response.update(
+            await handler(device=device, data=event.data, db=db, project_db=project_db)
+        )
+    except ValidationError as exp:
+        response.update({"status": "error", "detail": f"invalid data: {exp}"})
+    except ForbiddenError as exp:
+        response.update({"status": "error", "detail": f"forbidden: {exp}"})
+    except Exception:
+        logger.exception("Unexpected exception in device websocket handler")
+        response.update({"status": "error", "detail": "unexpected server error"})
+
+    return response
