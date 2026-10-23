@@ -18,11 +18,11 @@ from fastapi import FastAPI
 from starlette.requests import HTTPConnection
 
 from libs.storage import Database, Schema
-from services import request_log
+from services import jobs, request_log
 from utils.config import DatabaseConfig
 
 # each service adds its schemas here as it moves onto the storage layer
-SCHEMAS: Tuple[Type[Schema], ...] = (*request_log.SCHEMAS,)
+SCHEMAS: Tuple[Type[Schema], ...] = (*jobs.SCHEMAS, *request_log.SCHEMAS)
 
 
 async def open_database(app: FastAPI, conf: DatabaseConfig) -> Database:

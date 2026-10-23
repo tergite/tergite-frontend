@@ -31,6 +31,7 @@ from libs.storage import (
     UnknownFieldError,
     UnknownSchemaError,
     generate_id,
+    parse_sort,
 )
 from libs.storage.base.store import DbStore
 
@@ -227,3 +228,10 @@ class _RecordingStore(DbStore):
 
     async def close(self):
         self.calls.append(("close",))
+
+
+def test_parse_sort_reads_a_leading_minus_as_descending():
+    assert parse_sort(["-created_at", "name"]) == [
+        Sort("created_at", is_descending=True),
+        Sort("name"),
+    ]

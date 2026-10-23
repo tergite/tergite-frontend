@@ -25,9 +25,10 @@ from api.rest.dependencies import (
     CurrentLaxProjectAndUserDep,
     CurrentStrictProjectUserIdsDep,
     CurrentUserDep,
-    MongoDbDep,
+    DatabaseDep,
     RequestIdDep,
 )
+from libs.storage import Page, parse_sort
 from services import jobs as jobs_service
 from services.external import bcc
 from services.external.bcc import CancellationDetails
@@ -45,7 +46,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 @router.get("/", responses={200: {"model": PaginatedListResponse[Job]}})
 async def get_many(
-    db: MongoDbDep,
+    database: DatabaseDep,
     project_and_user: CurrentLaxProjectAndUserDep,
     query: JobQuery = Depends(),
     skip: int = 0,
@@ -55,7 +56,7 @@ async def get_many(
     """Gets a paginated list of jobs that fulfill a given set of filters
 
     Args:
-        db: the mongo db database from which to get the job
+        database: the database where the jobs are stored
         project_and_user: the API token's project and user; only the user's jobs, jobs with no recorded user, or all jobs for an admin are listed
         query: the query params for getting the jobs
         skip: the number of records to skip
@@ -64,42 +65,40 @@ async def get_many(
             To add multiple fields to sort by, repeat the same query parameter in the url e.g. "query=tom&q=dick&q=harry"
     """
     _, user = project_and_user
-    filters = jobs_service.build_readable_jobs_filter(query.model_dump(), user)
+    where = jobs_service.build_readable_jobs_filter(
+        jobs_service.build_filter(query), user
+    )
     data = await jobs_service.get_latest_many(
-        db,
-        filters=filters,
-        limit=limit,
-        sort=sort,
-        skip=skip,
+        database, where=where, sort=parse_sort(sort), page=Page(skip=skip, limit=limit)
     )
     return build_paginated_json(data, skip=skip, limit=limit)
 
 
 @router.get("/{job_id}", responses={200: {"model": Job}})
 async def get_one(
-    db: MongoDbDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
+    database: DatabaseDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
 ):
     """Gets the job of the given job_id
 
     Args:
-        db: the mongo db database from which to get the job
+        database: the database where the jobs are stored
         project_and_user: the API token's project and user; the user must have submitted the job or be an admin
         job_id: the job_id of the job
     """
     _, user = project_and_user
     return await jobs_service.get_readable_job(
-        db, job_id=job_id, user=user, should_decrypt_token=True
+        database, job_id=job_id, user=user, should_decrypt_token=True
     )
 
 
 @router.get("/{job_id}/status")
 async def get_job_status(
-    db: MongoDbDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
+    database: DatabaseDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
 ) -> JobStatusResponse:
     """Gets the status of the job for the given job_id
 
     Args:
-        db: the mongo database to get the job data from
+        database: the database where the jobs are stored
         project_and_user: the API token's project and user; the user must have submitted the job or be an admin
         job_id: the ID of the job
 
@@ -111,14 +110,14 @@ async def get_job_status(
         ValidationError: the document does not satisfy the schema passed
     """
     _, user = project_and_user
-    job = await jobs_service.get_readable_job(db, job_id=job_id, user=user)
+    job = await jobs_service.get_readable_job(database, job_id=job_id, user=user)
     return JobStatusResponse.from_job(job)
 
 
 @router.post("/")
 async def create_one(
     request: Request,
-    db: MongoDbDep,
+    database: DatabaseDep,
     project_user_id_pair: CurrentStrictProjectUserIdsDep,
     payload: JobCreate,
     request_id: RequestIdDep,
@@ -126,7 +125,7 @@ async def create_one(
     """Creates a job in the given backend and given calibration_date in the body"""
     project_id, user_id = project_user_id_pair
     return await jobs_service.create_job(
-        db,
+        database,
         bcc_client=bcc.get_client(payload.device),
         payload=payload,
         project_id=project_id,
@@ -137,7 +136,7 @@ async def create_one(
 
 @router.post("/{job_id}/cancel")
 async def cancel_job(
-    db: MongoDbDep,
+    database: DatabaseDep,
     job_id: UUID,
     details: CancellationDetails,
     request_id: RequestIdDep,
@@ -146,7 +145,7 @@ async def cancel_job(
     """Cancels the job of given job_id if job belongs to current user or if user is admin
 
     Args:
-        db: the database in which records are stored
+        database: the database where the jobs are stored
         job_id: the unique identifier of the job
         details: the extra information passed when canceling the job
         request_id: the request id associated with this request
@@ -160,9 +159,9 @@ async def cancel_job(
         404: no matches for {job_id: job_id}
         406: if the job has already been cancelled
     """
-    job = await jobs_service.get_job(db, job_id=job_id)
+    job = await jobs_service.get_job(database, job_id=job_id)
     return await jobs_service.cancel_job(
-        db,
+        database,
         bcc_client=bcc.get_client(job.device),
         job_id=job_id,
         user_id=user.id,
@@ -173,7 +172,7 @@ async def cancel_job(
 
 @router.delete("/{job_id}")
 async def remove_job(
-    db: MongoDbDep,
+    database: DatabaseDep,
     job_id: UUID,
     request_id: RequestIdDep,
     user: CurrentUserDep,
@@ -181,7 +180,7 @@ async def remove_job(
     """Deletes the job of given job_id if job belongs to current user or if user is admin
 
     Args:
-        db: the database in which records are stored
+        database: the database where the jobs are stored
         job_id: the unique identifier of the job
         request_id: the request id associated with this request
         user: the logged-in user
@@ -193,9 +192,9 @@ async def remove_job(
         404: Job {job_id} not found
         404: no matches for {job_id: job_id}
     """
-    job = await jobs_service.get_job(db, job_id=job_id)
+    job = await jobs_service.get_job(database, job_id=job_id)
     return await jobs_service.delete_job(
-        db,
+        database,
         bcc_client=bcc.get_client(job.device),
         job_id=job_id,
         user_id=user.id,

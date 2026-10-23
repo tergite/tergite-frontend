@@ -20,6 +20,7 @@ from .dtos import (
     JobUpdate,
 )
 from .service import (
+    build_filter,
     build_readable_jobs_filter,
     cancel_job,
     count_job_submitters,
@@ -33,7 +34,10 @@ from .service import (
     update_qpu_usage,
 )
 
+SCHEMAS = (Job,)
+
 __all__ = [
+    "SCHEMAS",
     "CreatedJobResponse",
     "Job",
     "JobCreate",
@@ -41,6 +45,7 @@ __all__ = [
     "JobStatus",
     "JobStatusResponse",
     "JobUpdate",
+    "build_filter",
     "build_readable_jobs_filter",
     "cancel_job",
     "count_job_submitters",

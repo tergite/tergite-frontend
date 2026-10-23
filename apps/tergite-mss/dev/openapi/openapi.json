@@ -1065,16 +1065,6 @@
         "additionalProperties": true,
         "description": "the job schema",
         "properties": {
-          "_id": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PydanticObjectId"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "access_token": {
             "anyOf": [
               {
@@ -1173,6 +1163,18 @@
             ],
             "title": "Failure Reason"
           },
+          "id": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{24}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
           "job_id": {
             "title": "Job Id",
             "type": "string"
@@ -1180,12 +1182,14 @@
           "project_id": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PydanticObjectId"
+                "pattern": "^[0-9a-f]{24}$",
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Project Id"
           },
           "result": {
             "anyOf": [
@@ -1225,12 +1229,14 @@
           "user_id": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PydanticObjectId"
+                "pattern": "^[0-9a-f]{24}$",
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "User Id"
           }
         },
         "required": [
@@ -6127,7 +6133,7 @@
     },
     "/counts/job-submitters": {
       "get": {
-        "description": "Gets the number of users who submitted jobs in [start_utc, end_utc), for admins only\n\nArgs:\n    db: the MongoDB database where the jobs are stored\n    requester: the superuser making the request; anyone else gets a 403\n    start_utc: the start of the window, inclusive\n    end_utc: the end of the window, exclusive\n    should_count_distinct: whether to count each submitter once; otherwise every job counts",
+        "description": "Gets the number of users who submitted jobs in [start_utc, end_utc), for admins only\n\nArgs:\n    database: the database where the jobs are stored\n    requester: the superuser making the request; anyone else gets a 403\n    start_utc: the start of the window, inclusive\n    end_utc: the end of the window, exclusive\n    should_count_distinct: whether to count each submitter once; otherwise every job counts",
         "operationId": "get_job_submitters_count_counts_job_submitters_get",
         "parameters": [
           {
@@ -6719,7 +6725,7 @@
     },
     "/jobs/": {
       "get": {
-        "description": "Gets a paginated list of jobs that fulfill a given set of filters\n\nArgs:\n    db: the mongo db database from which to get the job\n    project_and_user: the API token's project and user; only the user's jobs, jobs with no recorded user, or all jobs for an admin are listed\n    query: the query params for getting the jobs\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-created_at\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\"",
+        "description": "Gets a paginated list of jobs that fulfill a given set of filters\n\nArgs:\n    database: the database where the jobs are stored\n    project_and_user: the API token's project and user; only the user's jobs, jobs with no recorded user, or all jobs for an admin are listed\n    query: the query params for getting the jobs\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-created_at\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\"",
         "operationId": "get_many_jobs__get",
         "parameters": [
           {
@@ -6802,7 +6808,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/PydanticObjectId"
+                  "pattern": "^[0-9a-f]{24}$",
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -6834,7 +6841,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/PydanticObjectId"
+                  "pattern": "^[0-9a-f]{24}$",
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -6850,7 +6858,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/PydanticObjectId"
+                  "pattern": "^[0-9a-f]{24}$",
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -7093,7 +7102,7 @@
     },
     "/jobs/{job_id}": {
       "delete": {
-        "description": "Deletes the job of given job_id if job belongs to current user or if user is admin\n\nArgs:\n    db: the database in which records are stored\n    job_id: the unique identifier of the job\n    request_id: the request id associated with this request\n    user: the logged-in user\n\nReturns:\n    a general message showing status\nRaises:\n    401: user not found\n    404: Job {job_id} not found\n    404: no matches for {job_id: job_id}",
+        "description": "Deletes the job of given job_id if job belongs to current user or if user is admin\n\nArgs:\n    database: the database where the jobs are stored\n    job_id: the unique identifier of the job\n    request_id: the request id associated with this request\n    user: the logged-in user\n\nReturns:\n    a general message showing status\nRaises:\n    401: user not found\n    404: Job {job_id} not found\n    404: no matches for {job_id: job_id}",
         "operationId": "remove_job_jobs__job_id__delete",
         "parameters": [
           {
@@ -7143,7 +7152,7 @@
         ]
       },
       "get": {
-        "description": "Gets the job of the given job_id\n\nArgs:\n    db: the mongo db database from which to get the job\n    project_and_user: the API token's project and user; the user must have submitted the job or be an admin\n    job_id: the job_id of the job",
+        "description": "Gets the job of the given job_id\n\nArgs:\n    database: the database where the jobs are stored\n    project_and_user: the API token's project and user; the user must have submitted the job or be an admin\n    job_id: the job_id of the job",
         "operationId": "get_one_jobs__job_id__get",
         "parameters": [
           {
@@ -7192,7 +7201,7 @@
     },
     "/jobs/{job_id}/cancel": {
       "post": {
-        "description": "Cancels the job of given job_id if job belongs to current user or if user is admin\n\nArgs:\n    db: the database in which records are stored\n    job_id: the unique identifier of the job\n    details: the extra information passed when canceling the job\n    request_id: the request id associated with this request\n    user: the current logged-in user\n\nReturns:\n    a general message showing status\nRaises:\n    401: user not found\n    404: Job {job_id} not found\n    404: no matches for {job_id: job_id}\n    406: if the job has already been cancelled",
+        "description": "Cancels the job of given job_id if job belongs to current user or if user is admin\n\nArgs:\n    database: the database where the jobs are stored\n    job_id: the unique identifier of the job\n    details: the extra information passed when canceling the job\n    request_id: the request id associated with this request\n    user: the current logged-in user\n\nReturns:\n    a general message showing status\nRaises:\n    401: user not found\n    404: Job {job_id} not found\n    404: no matches for {job_id: job_id}\n    406: if the job has already been cancelled",
         "operationId": "cancel_job_jobs__job_id__cancel_post",
         "parameters": [
           {
@@ -7254,7 +7263,7 @@
     },
     "/jobs/{job_id}/status": {
       "get": {
-        "description": "Gets the status of the job for the given job_id\n\nArgs:\n    db: the mongo database to get the job data from\n    project_and_user: the API token's project and user; the user must have submitted the job or be an admin\n    job_id: the ID of the job\n\nReturns:\n    the status as one value\n\nRaises:\n    utils.exc.NotFoundError: no matches for '{search_filter}'.\n    ValidationError: the document does not satisfy the schema passed",
+        "description": "Gets the status of the job for the given job_id\n\nArgs:\n    database: the database where the jobs are stored\n    project_and_user: the API token's project and user; the user must have submitted the job or be an admin\n    job_id: the ID of the job\n\nReturns:\n    the status as one value\n\nRaises:\n    utils.exc.NotFoundError: no matches for '{search_filter}'.\n    ValidationError: the document does not satisfy the schema passed",
         "operationId": "get_job_status_jobs__job_id__status_get",
         "parameters": [
           {
@@ -7303,7 +7312,7 @@
     },
     "/me/jobs/": {
       "get": {
-        "description": "Gets a paginated list of jobs for the current user that fulfill a given set of filters\n\nArgs:\n    db: the mongo db database from which to get the job\n    user_id: the id of the current user\n    query: the query params for getting the jobs\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-created_at\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\n\nReturns:\n    Paginated list of jobs",
+        "description": "Gets a paginated list of jobs for the current user that fulfill a given set of filters\n\nArgs:\n    database: the database where the jobs are stored\n    user_id: the id of the current user\n    query: the query params for getting the jobs\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-created_at\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\n\nReturns:\n    Paginated list of jobs",
         "operationId": "get_my_jobs_me_jobs__get",
         "parameters": [
           {
@@ -7386,7 +7395,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/PydanticObjectId"
+                  "pattern": "^[0-9a-f]{24}$",
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -7418,7 +7428,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/PydanticObjectId"
+                  "pattern": "^[0-9a-f]{24}$",
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -7434,7 +7445,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/PydanticObjectId"
+                  "pattern": "^[0-9a-f]{24}$",
+                  "type": "string"
                 },
                 {
                   "type": "null"

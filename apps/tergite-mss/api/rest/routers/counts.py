@@ -17,7 +17,12 @@ from typing import List, Optional
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import CurrentSuperuserDep, CurrentUserDep, MongoDbDep
+from api.rest.dependencies import (
+    CurrentSuperuserDep,
+    CurrentUserDep,
+    DatabaseDep,
+    MongoDbDep,
+)
 from services import jobs as jobs_service
 from services import notices as notices_service
 from services.notices import NoticeTypeId
@@ -75,7 +80,7 @@ async def get_notice_count(
     response_model=CountsResponse,
 )
 async def get_job_submitters_count(
-    db: MongoDbDep,
+    database: DatabaseDep,
     requester: CurrentSuperuserDep,
     start_utc: datetime = Query(...),
     end_utc: datetime = Query(...),
@@ -84,14 +89,14 @@ async def get_job_submitters_count(
     """Gets the number of users who submitted jobs in [start_utc, end_utc), for admins only
 
     Args:
-        db: the MongoDB database where the jobs are stored
+        database: the database where the jobs are stored
         requester: the superuser making the request; anyone else gets a 403
         start_utc: the start of the window, inclusive
         end_utc: the end of the window, exclusive
         should_count_distinct: whether to count each submitter once; otherwise every job counts
     """
     count = await jobs_service.count_job_submitters(
-        db,
+        database,
         start_utc=start_utc,
         end_utc=end_utc,
         should_count_distinct=should_count_distinct,

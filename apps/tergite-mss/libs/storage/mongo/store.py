@@ -185,7 +185,9 @@ class MongoStore(DbStore):
             {
                 "collMod": name,
                 "validator": get_validator(schema),
-                "validationLevel": "strict",
+                # checks every insert, and every update of a document that is valid already,
+                # so that documents written before the validator can still be updated
+                "validationLevel": "moderate",
                 "validationAction": "error",
             }
         )

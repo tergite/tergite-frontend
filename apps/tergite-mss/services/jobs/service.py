@@ -17,26 +17,36 @@
 # that they have been altered from the originals.
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple
 from uuid import UUID
 
 from loguru import logger
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo import ReturnDocument
 
+from libs.storage import (
+    ALL,
+    And,
+    Database,
+    Eq,
+    Filter,
+    In,
+    Page,
+    Range,
+    Returning,
+    Set,
+    Sort,
+)
 from services import notices
 from services.external.bcc import BccClient, CancellationDetails
-from utils import mongodb as mongodb_utils
 from utils.api import GeneralMessage
 from utils.config import ProjectsConfig
 from utils.crypto import decrypt_message
-from utils.date_time import datetime_to_zulu
+from utils.date_time import datetime_to_zulu, get_current_timestamp
 from utils.exc import NotFoundError
 
 from ..auth import Project, User
 from ..notices import NoticeType
 from ..notices.dtos import ProjectRequestContext, RefType
-from .dtos import CreatedJobResponse, Job, JobCreate, JobStatus, JobUpdate
+from .dtos import CreatedJobResponse, Job, JobCreate, JobQuery, JobStatus, JobUpdate
 
 if TYPE_CHECKING:
     from ..auth.projects.database import ProjectDatabase
@@ -48,14 +58,14 @@ _qpu_seconds_low_threshold = ProjectsConfig().qpu_seconds_low_threshold
 
 
 async def get_job(
-    db: AsyncIOMotorDatabase,
+    database: Database,
     job_id: UUID,
     should_decrypt_token: bool = False,
 ) -> Job:
     """Gets a job by job_id
 
     Args:
-        db: the mongo database from where to get the job
+        database: the database where the jobs are stored
         job_id: the `job_id` of the job to be returned
         should_decrypt_token: whether to decrypt the returned access token
 
@@ -66,9 +76,9 @@ async def get_job(
     Returns:
         the job as a dict
     """
-    result = await mongodb_utils.find_one(
-        db.jobs, {"job_id": str(job_id)}, schema=Job, dropped_fields=("_id",)
-    )
+    result = await database.get(Job, str(job_id))
+    if result is None:
+        raise NotFoundError(f"no matches for '{ {'job_id': str(job_id)} }'")
     if should_decrypt_token and result.access_token:
         result.access_token = decrypt_message(
             private_key_file=_private_key_file,
@@ -80,7 +90,7 @@ async def get_job(
 
 
 async def create_job(
-    db: AsyncIOMotorDatabase,
+    database: Database,
     bcc_client: BccClient,
     payload: JobCreate,
     project_id: Optional[str],
@@ -90,7 +100,7 @@ async def create_job(
     """Creates a new job for the given backend
 
     Args:
-        db: the mongo database from where to create the job
+        database: the database where the jobs are stored
         bcc_client: the HTTP client for accessing BCC
         payload: the job to create
         project_id: the unique identifier of the project the job is billed to
@@ -106,13 +116,17 @@ async def create_job(
             ServiceUnavailableError: device is currently unavailable.
                 See :meth:`utils.http_clients.BccClient.save_credentials`
     """
-    job = Job(**payload.model_dump(), project_id=project_id, user_id=user_id)
+    job = Job(
+        **payload.model_dump(),
+        project_id=None if project_id is None else str(project_id),
+        user_id=None if user_id is None else str(user_id),
+    )
     logger.info(f"Creating new job with id: {job.job_id} for user: {user_id}")
     encrypted_token, token = await bcc_client.get_token(
         job_id=job.job_id, user_id=user_id, request_id=request_id
     )
     job.access_token = encrypted_token
-    await mongodb_utils.insert_one(collection=db.jobs, document=job.model_dump())
+    await database.insert(Job, job)
     logger.debug(f"Job {job.job_id} successfully saved to database")
 
     upload_url = _without_special_docker_host_domain(
@@ -127,12 +141,11 @@ async def create_job(
 
 
 async def get_latest_many(
-    db: AsyncIOMotorDatabase,
-    filters: Optional[dict] = None,
-    limit: Optional[int] = None,
-    skip: int = 0,
-    exclude: Tuple[str] = ("access_token",),
-    sort: List[str] = (),
+    database: Database,
+    where: Filter = ALL,
+    sort: Sequence[Sort] = (),
+    page: Page = Page(),
+    exclude: Tuple[str, ...] = ("access_token",),
 ) -> List[Job]:
     """Retrieves the latest jobs up to the given limit
 
@@ -140,33 +153,21 @@ async def get_latest_many(
     This is because such requests are usually not to submit the job but rather to view it.
 
     Args:
-        db: the mongo database from where to get the jobs
-        filters: the mongodb like filters which all returned records should satisfy
-        limit: maximum number of records to return; default = None meaning all of them
-        skip: the number of records to skip; default = 0
-        exclude: the fields to exclude
-        sort: the fields to sort by, prefixing any with a '-' means descending; default = ()
+        database: the database where the jobs are stored
+        where: the filter every returned job matches
+        sort: the order of the jobs
+        page: which slice of the matched jobs to return
+        exclude: the fields to leave out of each job
     """
-    results = await mongodb_utils.find(
-        db.jobs,
-        filters=filters,
-        exclude=exclude,
-        limit=limit,
-        skip=skip,
-        sort=sort,
-        schema=Job,
-        skip_validation=True,
-    )
-    # just for the
-    results = cast(list[Job], results)
-    return results
+    jobs = await database.find(Job, where=where, sort=sort, page=page)
+    return [job.model_copy(update={field: None for field in exclude}) for job in jobs]
 
 
-async def update_job(db: AsyncIOMotorDatabase, job_id: str, payload: JobUpdate) -> Job:
+async def update_job(database: Database, job_id: str, payload: JobUpdate) -> Job:
     """Updates the job of the given job_id
 
     Args:
-        db: the mongo database from where to get the job
+        database: the database where the jobs are stored
         job_id: the job id of the job
         payload: the new payload to update in job
 
@@ -176,17 +177,20 @@ async def update_job(db: AsyncIOMotorDatabase, job_id: str, payload: JobUpdate) 
     Raises:
         NotFoundError: no documents matching {"job_id": job_id} were found
     """
-    document = await mongodb_utils.update_one(
-        db.jobs,
-        _filter={"job_id": job_id},
-        payload=payload.model_dump(),
-        return_document=ReturnDocument.BEFORE,
+    changes = [Set(field, value) for field, value in payload.model_dump().items()]
+    job = await database.update_one(
+        Job,
+        where=Eq("job_id", job_id),
+        changes=[*changes, Set("updated_at", get_current_timestamp())],
+        returning=Returning.BEFORE,
     )
-    return Job.model_validate(document)
+    if job is None:
+        raise NotFoundError(f"no matches for { {'job_id': job_id} }")
+    return job
 
 
 async def update_qpu_usage(
-    db: AsyncIOMotorDatabase,
+    database: Database,
     project_db: "ProjectDatabase",
     job_id: UUID,
     qpu_usage: float,
@@ -194,7 +198,7 @@ async def update_qpu_usage(
     """Updates the resource usage for the job of the given job_id
 
     Args:
-        db: the mongo database from where to get the job
+        database: the database where the jobs are stored
         project_db: the ProjectDatabase instance where projects are found
         job_id: the job id of the job
         qpu_usage: the resource usage in seconds
@@ -207,7 +211,7 @@ async def update_qpu_usage(
         utils.exc.NotFoundError: project '{project_id}' for job '{job_id}' not found
         KeyError: 'project_id'
     """
-    job = await get_job(db, job_id=job_id)
+    job = await get_job(database, job_id=job_id)
     project_id = job.project_id
     project = await project_db.increment_qpu_seconds(
         project_id=project_id, qpu_seconds=-qpu_usage
@@ -251,7 +255,7 @@ async def update_qpu_usage(
 
 
 async def cancel_job(
-    db: AsyncIOMotorDatabase,
+    database: Database,
     bcc_client: BccClient,
     job_id: UUID,
     user_id: str,
@@ -261,7 +265,7 @@ async def cancel_job(
     """Cancels the job in its BCC, then marks it cancelled if the BCC succeeded
 
     Args:
-        db: the database where the jobs are stored
+        database: the database where the jobs are stored
         bcc_client: the client of the BCC running the job
         job_id: the unique identifier of the job
         user_id: the unique identifier of the user cancelling it
@@ -276,7 +280,7 @@ async def cancel_job(
     )
     if response["status"] == "success":
         await update_job(
-            db,
+            database,
             job_id=str(job_id),
             payload=JobUpdate(
                 cancellation_reason=details.reason, status=JobStatus.CANCELLED
@@ -287,7 +291,7 @@ async def cancel_job(
 
 
 async def delete_job(
-    db: AsyncIOMotorDatabase,
+    database: Database,
     bcc_client: BccClient,
     job_id: UUID,
     user_id: str,
@@ -296,7 +300,7 @@ async def delete_job(
     """Deletes the job from its BCC, then from the database if the BCC succeeded
 
     Args:
-        db: the database where the jobs are stored
+        database: the database where the jobs are stored
         bcc_client: the client of the BCC running the job
         job_id: the unique identifier of the job
         user_id: the unique identifier of the user deleting it
@@ -313,13 +317,15 @@ async def delete_job(
         job_id, user_id=user_id, request_id=request_id
     )
     if response["status"] == "success":
-        await mongodb_utils.delete_many(db.jobs, _filter={"job_id": str(job_id)})
+        count = await database.delete_many(Job, where=Eq("job_id", str(job_id)))
+        if count == 0:
+            raise NotFoundError(f"no matches for { {'job_id': str(job_id)} }")
 
     return response
 
 
 async def get_readable_job(
-    db: AsyncIOMotorDatabase,
+    database: Database,
     job_id: UUID,
     user: User,
     should_decrypt_token: bool = False,
@@ -327,7 +333,7 @@ async def get_readable_job(
     """Gets a job the user may read: one they submitted, one with no recorded submitter, or any if they are an admin
 
     Args:
-        db: the mongo database from where to get the job
+        database: the database where the jobs are stored
         job_id: the `job_id` of the job to be returned
         user: the user reading the job
         should_decrypt_token: whether to decrypt the returned access token
@@ -338,14 +344,16 @@ async def get_readable_job(
     Returns:
         the job
     """
-    job = await get_job(db, job_id=job_id, should_decrypt_token=should_decrypt_token)
+    job = await get_job(
+        database, job_id=job_id, should_decrypt_token=should_decrypt_token
+    )
     if not _is_job_readable_by(job, user):
         raise NotFoundError(f"no matches for '{dict(job_id=str(job_id))}'")
     return job
 
 
 async def count_job_submitters(
-    db: AsyncIOMotorDatabase,
+    database: Database,
     start_utc: datetime,
     end_utc: datetime,
     should_count_distinct: bool = True,
@@ -353,7 +361,7 @@ async def count_job_submitters(
     """Counts the users who submitted jobs in [start_utc, end_utc), or their submissions
 
     Args:
-        db: the mongo database holding the jobs
+        database: the database where the jobs are stored
         start_utc: the start of the window, inclusive
         end_utc: the end of the window, exclusive
         should_count_distinct: whether to count each submitter once; otherwise every job counts
@@ -361,24 +369,26 @@ async def count_job_submitters(
     Returns:
         the number of submitters, or of submitted jobs
     """
-    window = {
-        "created_at": {
-            "$gte": datetime_to_zulu(start_utc),
-            "$lt": datetime_to_zulu(end_utc),
-        }
-    }
+    window = Range(
+        "created_at", gte=datetime_to_zulu(start_utc), lt=datetime_to_zulu(end_utc)
+    )
     if not should_count_distinct:
-        return await db.jobs.count_documents(window)
+        return await database.count(Job, where=window)
 
-    submitter_ids = await db.jobs.distinct("user_id", window)
+    submitter_ids = await database.find_distinct(Job, "user_id", where=window)
     return len([user_id for user_id in submitter_ids if user_id is not None])
 
 
-def build_readable_jobs_filter(filters: dict, user: User) -> dict:
+def build_filter(query: JobQuery) -> Filter:
+    """Turns the query's set fields into a filter matching each of them"""
+    return And(*(Eq(field, value) for field, value in query.model_dump().items()))
+
+
+def build_readable_jobs_filter(where: Filter, user: User) -> Filter:
     """Narrows a jobs filter to the jobs the user may read"""
     if user.is_superuser:
-        return filters
-    return {"$and": [filters, {"user_id": {"$in": [user.id, None]}}]}
+        return where
+    return And(where, In("user_id", [str(user.id), None]))
 
 
 async def on_startup(
@@ -401,7 +411,7 @@ async def on_startup(
 
 
 def _is_job_readable_by(job: Job, user: User) -> bool:
-    return job.user_id is None or job.user_id == user.id or user.is_superuser
+    return job.user_id is None or job.user_id == str(user.id) or user.is_superuser
 
 
 def _without_special_docker_host_domain(url: str) -> str:

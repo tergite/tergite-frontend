@@ -16,7 +16,7 @@ Fields are named as on the schema, dotted for nested objects (`timestamps.starte
 field, `Eq` and `In` match a list holding the value, as a membership test.
 """
 from dataclasses import dataclass
-from typing import Any, Iterator, Optional, Sequence, Tuple, Union
+from typing import Any, Iterator, List, Optional, Sequence, Tuple, Union
 
 
 @dataclass(frozen=True)
@@ -94,6 +94,13 @@ class Sort:
 class Page:
     skip: int = 0
     limit: Optional[int] = None
+
+
+def parse_sort(fields: Sequence[str]) -> List[Sort]:
+    """Parses sort fields such as ("-created_at", "name"); a leading '-' sorts descending"""
+    return [
+        Sort(field.lstrip("-"), is_descending=field.startswith("-")) for field in fields
+    ]
 
 
 def extract_fields(where: Filter) -> Iterator[str]:

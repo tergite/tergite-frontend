@@ -32,6 +32,7 @@ from .base.query import (
     Page,
     Range,
     Sort,
+    parse_sort,
 )
 from .base.schema import Schema, StorageSpec
 from .base.update import AddToSet, Inc, Pull, Returning, Set, SetOnInsert, Update
@@ -68,4 +69,5 @@ __all__ = [
     "Update",
     "derive_id",
     "generate_id",
+    "parse_sort",
 ]

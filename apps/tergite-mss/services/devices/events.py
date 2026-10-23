@@ -15,6 +15,7 @@ from typing import Dict
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from libs.storage import Database
 from services import calibration as calibration_service
 from services import jobs as jobs_service
 from services.auth import ProjectDatabase
@@ -30,7 +31,7 @@ from .service import mark_device_offline, mark_device_online, upsert_device
 async def on_job_updated_event(
     device: str,
     data: JobUpdate,
-    db: AsyncIOMotorDatabase,
+    database: Database,
     project_db: ProjectDatabase,
     **kwargs,
 ) -> GeneralMessage:
@@ -42,7 +43,7 @@ async def on_job_updated_event(
     Args:
         device: the name of the device for this job
         data: the new job update
-        db: the mongo db instance where job data is stored
+        database: the database where the jobs are stored
         project_db: the database containing the project
 
     Returns:
@@ -52,16 +53,16 @@ async def on_job_updated_event(
         pydantic.error_wrappers.ValidationError: job with an unexpected structure
     """
     job_id = data.job_id
-    old_job = await jobs_service.update_job(db, job_id=job_id, payload=data)
+    old_job = await jobs_service.update_job(database, job_id=job_id, payload=data)
 
     qpu_usage = getattr(data.timestamps, "resource_usage", None)
     if old_job.duration_in_secs is None and qpu_usage is not None:
         await jobs_service.update_qpu_usage(
-            db, project_db=project_db, job_id=job_id, qpu_usage=qpu_usage
+            database, project_db=project_db, job_id=job_id, qpu_usage=qpu_usage
         )
 
     updated_job = await jobs_service.get_job(
-        db, job_id=job_id, should_decrypt_token=True
+        database, job_id=job_id, should_decrypt_token=True
     )
     return {
         "status": "success",

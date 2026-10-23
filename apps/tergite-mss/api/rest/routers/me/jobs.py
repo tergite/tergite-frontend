@@ -11,11 +11,11 @@
 # that they have been altered from the originals.
 from typing import List, Optional
 
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query
 
-from api.rest.dependencies import CurrentUserIdDep, MongoDbDep
-from services.jobs import Job, JobQuery, get_latest_many
+from api.rest.dependencies import CurrentUserIdDep, DatabaseDep
+from libs.storage import And, Eq, Page, parse_sort
+from services.jobs import Job, JobQuery, build_filter, get_latest_many
 from utils.api import PaginatedListResponse, build_paginated_json
 
 router = APIRouter()
@@ -23,7 +23,7 @@ router = APIRouter()
 
 @router.get("/", responses={200: {"model": PaginatedListResponse[Job]}})
 async def get_my_jobs(
-    db: MongoDbDep,
+    database: DatabaseDep,
     user_id: CurrentUserIdDep,
     query: JobQuery = Depends(),
     skip: int = 0,
@@ -33,7 +33,7 @@ async def get_my_jobs(
     """Gets a paginated list of jobs for the current user that fulfill a given set of filters
 
     Args:
-        db: the mongo db database from which to get the job
+        database: the database where the jobs are stored
         user_id: the id of the current user
         query: the query params for getting the jobs
         skip: the number of records to skip
@@ -44,15 +44,11 @@ async def get_my_jobs(
     Returns:
         Paginated list of jobs
     """
-    filters = query.model_dump()
-    # ensure that only jobs for the current user are considered
-    filters["user_id"] = PydanticObjectId(user_id)
-
+    where = And(
+        build_filter(query.model_copy(update={"user_id": None})),
+        Eq("user_id", str(user_id)),
+    )
     data = await get_latest_many(
-        db,
-        filters=filters,
-        limit=limit,
-        sort=sort,
-        skip=skip,
+        database, where=where, sort=parse_sort(sort), page=Page(skip=skip, limit=limit)
     )
     return build_paginated_json(data, skip=skip, limit=limit)

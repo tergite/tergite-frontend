@@ -511,7 +511,7 @@ def test_cancel_job(db, client, user_jwt_cookie, job, mock_bcc, freezer):
             [job], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = TEST_USER_ID
+        user_id = PydanticObjectId(TEST_USER_ID)
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_info = raw_jobs[0]
         job_id = job_info["job_id"]
@@ -553,7 +553,7 @@ def test_unauthenticated_cancel_job(db, client, job, mock_bcc, freezer):
             [job], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = TEST_USER_ID
+        user_id = PydanticObjectId(TEST_USER_ID)
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_info = raw_jobs[0]
         job_id = job_info["job_id"]
@@ -583,7 +583,7 @@ def test_remove_job(db, client, user_jwt_cookie, idx: int, mock_bcc, freezer):
             _JOBS_LIST[:4], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = TEST_USER_ID
+        user_id = PydanticObjectId(TEST_USER_ID)
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_id = raw_jobs[idx]["job_id"]
 
@@ -617,7 +617,7 @@ def test_unauthenticated_remove_job(db, client, idx: int, mock_bcc, freezer):
             _JOBS_LIST[:4], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = TEST_USER_ID
+        user_id = PydanticObjectId(TEST_USER_ID)
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_id = raw_jobs[idx]["job_id"]
 

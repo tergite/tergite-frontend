@@ -25,11 +25,11 @@ from typing import (
     Union,
 )
 
-from beanie import PydanticObjectId
 from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer
 from pydantic.main import IncEx
 
+from libs.storage import Id, Schema, StorageSpec
 from utils.crypto import get_uuid4_str
 from utils.date_time import datetime_to_zulu, get_current_timestamp
 from utils.models import create_partial_model
@@ -118,17 +118,18 @@ class JobResult(BaseModel):
     memory: Union[HexMemory, IQMemory] = []
 
 
-class Job(JobCreate):
+class Job(Schema, JobCreate):
     """the job schema"""
 
+    __storage__ = StorageSpec(table="jobs", key="job_id", indexes=("job_id",))
     model_config = ConfigDict(
         extra="allow",
     )
 
-    id: Optional[PydanticObjectId] = Field(alias="_id", default=None)
+    id: Optional[Id] = None
     job_id: str = Field(default_factory=get_uuid4_str)
-    project_id: Optional[PydanticObjectId] = None
-    user_id: Optional[PydanticObjectId] = None
+    project_id: Optional[Id] = None
+    user_id: Optional[Id] = None
     status: JobStatus = JobStatus.PENDING
     failure_reason: Optional[str] = None
     cancellation_reason: Optional[str] = None
@@ -150,11 +151,6 @@ class Job(JobCreate):
             return self.timestamps.resource_usage
         except AttributeError:
             return None
-
-    @field_serializer("id", "project_id", "user_id", when_used="json")
-    def serialize_object_id(self, value: PydanticObjectId):
-        """Convert objectID to builtin types like str when working with JSON"""
-        return str(value)
 
     def model_dump(
         self,
