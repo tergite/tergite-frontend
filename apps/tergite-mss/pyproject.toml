@@ -71,6 +71,7 @@ dev = [
     "respx>=0.20.2",
     "filelock>=3.12.2",
     "setuptools",
+    "pyflakes>=3.2",
 ]
 
 [project.urls]

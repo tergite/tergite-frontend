@@ -289,6 +289,8 @@ On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
   gate); `isort` for imports, configured with `profile = "black"` so the two agree —
   without it isort emits a style black then reformats, churning unrelated files. Run both
   before committing; neither needs flags.
+- **`pyflakes`** finds unused imports and variables: `python -m pyflakes <files>` on what you
+  changed. It is not a CI gate yet.
 - **Constants go at the top of the file**, after imports — not buried between functions. The
   exception is a constant built from a function or class defined in the same file, which
   stays after it (e.g. `EVENT_HANDLERS` after the handlers, `ProjectPartial`
