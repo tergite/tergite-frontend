@@ -17,13 +17,14 @@ from typing import List, Optional
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
+from libs.storage import Page, parse_sort
 from services import notices as notices_service
 from services.notices import CustomNoticeCreate, Notice, NoticeTypeId
 from utils.api import PaginatedListResponse
 
 from ...dependencies import (
     CurrentSuperuserDep,
-    MongoDbDep,
+    DatabaseDep,
 )
 
 router = APIRouter()
@@ -31,7 +32,7 @@ router = APIRouter()
 
 @router.post("/", response_model_by_alias=False)
 async def publish_notice(
-    db: MongoDbDep,
+    database: DatabaseDep,
     payload: CustomNoticeCreate,
     current_user: CurrentSuperuserDep,
 ) -> List[Notice]:
@@ -40,7 +41,7 @@ async def publish_notice(
     Only MSS admin users can publish notices
 
     Args:
-        db: the MongoDB database where the notice will be stored
+        database: the database where the notices are stored
         payload: the notice payload
         current_user: the current user
 
@@ -48,7 +49,7 @@ async def publish_notice(
         the created notices, one per targeted user or a single broadcast notice
     """
     return await notices_service.publish_custom_notice(
-        db, current_user_id=current_user.id, payload=payload
+        database, current_user_id=current_user.id, payload=payload
     )
 
 
@@ -57,7 +58,7 @@ async def publish_notice(
     response_model_by_alias=False,
 )
 async def delete_notice(
-    db: MongoDbDep,
+    database: DatabaseDep,
     requester: CurrentSuperuserDep,
     notice_id: PydanticObjectId,
 ) -> Notice:
@@ -66,19 +67,19 @@ async def delete_notice(
     Only MSS admin users can delete notices
 
     Args:
-        db: the MongoDB database where the notice will be stored
+        database: the database where the notices are stored
         requester: the superuser making the request; anyone else gets a 403
         notice_id: the unique identifier of the notice
 
     Returns:
         the deleted notice
     """
-    return await notices_service.delete_notice(db, pk=notice_id)
+    return await notices_service.delete_notice(database, pk=notice_id)
 
 
 @router.get("", response_model_by_alias=False)
 async def get_many_notices(
-    db: MongoDbDep,
+    database: DatabaseDep,
     requester: CurrentSuperuserDep,
     skip: int = 0,
     limit: Optional[int] = None,
@@ -96,7 +97,7 @@ async def get_many_notices(
     """Gets many notices, filtering them accordingly
 
     Args:
-        db: the MongoDB database where the notice will be stored
+        database: the database where the notices are stored
         requester: the superuser making the request; anyone else gets a 403
         skip: the number of notices to skip
         limit: the maximum number of notices to return
@@ -112,17 +113,16 @@ async def get_many_notices(
     Returns:
         a paginated list of notices
     """
-    data = await notices_service.find_many(
-        db,
-        limit=limit,
-        skip=skip,
-        sort=sort,
+    where = notices_service.build_filter(
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
         min_expires_utc=min_expires_utc,
         max_expires_utc=max_expires_utc,
-        include_dismissed=include_dismissed,
+        should_include_dismissed=include_dismissed,
         types=types,
+    )
+    data = await notices_service.find_many(
+        database, where=where, sort=parse_sort(sort), page=Page(skip=skip, limit=limit)
     )
     return PaginatedListResponse(skip=skip, limit=limit, data=data)

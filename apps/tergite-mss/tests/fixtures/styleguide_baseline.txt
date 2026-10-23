@@ -31,8 +31,6 @@ verb: services/notices/dtos.py::NoticeTemplate.from_notice_type
 verb: services/notices/dtos.py::NoticeType.from_str
 verb: services/notices/emails.py::_to_email_body
 verb: services/notices/emails.py::_to_email_details
-verb: services/notices/service.py::_nested_append
-verb: services/notices/service.py::_nested_insert
 verb: services/notices/service.py::_with_default_email_preferences
 verb: services/notices/service.py::_with_project_name
 verb: services/requests/dtos.py::Request.from_post_body
@@ -86,9 +84,6 @@ boolean: services/jobs/dtos.py::Job.model_dump(exclude_none)
 boolean: services/jobs/dtos.py::Job.model_dump(exclude_unset)
 boolean: services/jobs/dtos.py::Job.model_dump(round_trip)
 boolean: services/jobs/dtos.py::Job.model_dump(serialize_as_any)
-boolean: services/notices/service.py::_merge_filters(include_dismissed)
-boolean: services/notices/service.py::count_many(include_dismissed)
-boolean: services/notices/service.py::find_many(include_dismissed)
 boolean: utils/config.py::EmailConfig.start_tls
 boolean: utils/config.py::EmailConfig.use_tls
 boolean: utils/config.py::Oauth2ClientConfig.associate_by_email
@@ -253,15 +248,9 @@ type-hints: services/jobs/dtos.py::JobStatusResponse.from_job
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_started
 type-hints: services/notices/dtos.py::Notice.from_template
-type-hints: services/notices/dtos.py::Notice.serialize_object_fields
-type-hints: services/notices/dtos.py::NoticeTemplate.serialize_id
 type-hints: services/notices/dtos.py::NoticeTemplate.validate_context_cls
 type-hints: services/notices/dtos.py::NoticeType.__str__
-type-hints: services/notices/service.py::_init_notice_templates_in_db
-type-hints: services/notices/service.py::_nested_append
-type-hints: services/notices/service.py::_nested_insert
 type-hints: services/notices/service.py::create_system_notice
-type-hints: services/notices/service.py::on_startup
 type-hints: services/requests/dtos.py::Request.serialize_ids
 type-hints: services/requests/service.py::on_startup
 type-hints: utils/api.py::WebsocketConnectionManager.broadcast

@@ -17,10 +17,12 @@ from .dtos import (
     Notice,
     NoticePreferences,
     NoticeSeverity,
+    NoticeTemplate,
     NoticeType,
     NoticeTypeId,
 )
 from .service import (
+    build_filter,
     clear_notices_by_reference,
     count_many,
     create_system_notice,
@@ -35,7 +37,12 @@ from .service import (
     set_read_status_many,
 )
 
+SCHEMAS = (Notice, NoticePreferences, NoticeTemplate)
+
 __all__ = [
+    "SCHEMAS",
+    "NoticeTemplate",
+    "build_filter",
     "CustomNoticeCreate",
     "EmailStatus",
     "Notice",

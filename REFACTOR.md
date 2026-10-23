@@ -263,7 +263,8 @@ def check_project_access(owner: Optional[TokenOwner], rule: AccessRule) -> Proje
     return owner.project
 ```
 
-4. **Routes out of the service.** `projects/routers/__init__.py` and `app_tokens/routers.py` become `api/rest/routers/me/projects.py`, `me/tokens.py` and `admin/projects.py`. `ProjectQuery` and `AppTokenQuery` models, injected with `Depends()`, replace the hand-listed `Query(...)` parameters and produce filters through `build_filter`. Path parameters are typed `Id` (step 3.6).
+4. **`notices.create_system_notice` and `clear_notices_by_reference` take the `Database`** as their first argument, now that their callers in `auth` have one; step 3.5 gave them the one `notices.on_startup` holds, as those callers had none to pass.
+5. **Routes out of the service.** `projects/routers/__init__.py` and `app_tokens/routers.py` become `api/rest/routers/me/projects.py`, `me/tokens.py` and `admin/projects.py`. `ProjectQuery` and `AppTokenQuery` models, injected with `Depends()`, replace the hand-listed `Query(...)` parameters and produce filters through `build_filter`. Path parameters are typed `Id` (step 3.6).
 
 ## Step 6: `libs/authlib`, a stripped copy of fastapi-users
 

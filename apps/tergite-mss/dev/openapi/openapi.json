@@ -1453,17 +1453,6 @@
       "Notice": {
         "description": "A message",
         "properties": {
-          "_id": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PydanticObjectId"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "MongoDB document ObjectID"
-          },
           "body": {
             "title": "Body",
             "type": "string"
@@ -1487,16 +1476,19 @@
           "created_by": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PydanticObjectId"
+                "pattern": "^[0-9a-f]{24}$",
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Created By"
           },
           "dismissed_by": {
             "items": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "type": "string"
             },
             "title": "Dismissed By",
             "type": "array"
@@ -1521,6 +1513,11 @@
             ],
             "title": "Expires At"
           },
+          "id": {
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Id",
+            "type": "string"
+          },
           "read_at": {
             "anyOf": [
               {
@@ -1535,12 +1532,14 @@
           "ref_id": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PydanticObjectId"
+                "pattern": "^[0-9a-f]{24}$",
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Ref Id"
           },
           "ref_type": {
             "anyOf": [
@@ -1594,12 +1593,14 @@
           "user_id": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PydanticObjectId"
+                "pattern": "^[0-9a-f]{24}$",
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "User Id"
           }
         },
         "required": [
@@ -3584,7 +3585,7 @@
     },
     "/admin/notices": {
       "get": {
-        "description": "Gets many notices, filtering them accordingly\n\nArgs:\n    db: the MongoDB database where the notice will be stored\n    requester: the superuser making the request; anyone else gets a 403\n    skip: the number of notices to skip\n    limit: the maximum number of notices to return\n    sort: the sort order\n    user_id: The IDs of the users to retrieve notices for\n    min_start_utc: The minimum UTC timestamp the notice should start\n    max_start_utc: The maximum UTC timestamp the notice should start\n    min_expires_utc: The minimum UTC timestamp the notice should expire\n    max_expires_utc: The maximum UTC timestamp the notice should expire\n    include_dismissed: whether to include dismissed notices; defaults to False\n    types: the types to filter by; repeat the param for many\n\nReturns:\n    a paginated list of notices",
+        "description": "Gets many notices, filtering them accordingly\n\nArgs:\n    database: the database where the notices are stored\n    requester: the superuser making the request; anyone else gets a 403\n    skip: the number of notices to skip\n    limit: the maximum number of notices to return\n    sort: the sort order\n    user_id: The IDs of the users to retrieve notices for\n    min_start_utc: The minimum UTC timestamp the notice should start\n    max_start_utc: The maximum UTC timestamp the notice should start\n    min_expires_utc: The minimum UTC timestamp the notice should expire\n    max_expires_utc: The maximum UTC timestamp the notice should expire\n    include_dismissed: whether to include dismissed notices; defaults to False\n    types: the types to filter by; repeat the param for many\n\nReturns:\n    a paginated list of notices",
         "operationId": "get_many_notices_admin_notices_get",
         "parameters": [
           {
@@ -3740,7 +3741,7 @@
     },
     "/admin/notices/": {
       "post": {
-        "description": "Publishes a notice\n\nOnly MSS admin users can publish notices\n\nArgs:\n    db: the MongoDB database where the notice will be stored\n    payload: the notice payload\n    current_user: the current user\n\nReturns:\n    the created notices, one per targeted user or a single broadcast notice",
+        "description": "Publishes a notice\n\nOnly MSS admin users can publish notices\n\nArgs:\n    database: the database where the notices are stored\n    payload: the notice payload\n    current_user: the current user\n\nReturns:\n    the created notices, one per targeted user or a single broadcast notice",
         "operationId": "publish_notice_admin_notices__post",
         "requestBody": {
           "content": {
@@ -3794,7 +3795,7 @@
     },
     "/admin/notices/{notice_id}": {
       "delete": {
-        "description": "Deletes a notice\n\nOnly MSS admin users can delete notices\n\nArgs:\n    db: the MongoDB database where the notice will be stored\n    requester: the superuser making the request; anyone else gets a 403\n    notice_id: the unique identifier of the notice\n\nReturns:\n    the deleted notice",
+        "description": "Deletes a notice\n\nOnly MSS admin users can delete notices\n\nArgs:\n    database: the database where the notices are stored\n    requester: the superuser making the request; anyone else gets a 403\n    notice_id: the unique identifier of the notice\n\nReturns:\n    the deleted notice",
         "operationId": "delete_notice_admin_notices__notice_id__delete",
         "parameters": [
           {
@@ -6191,7 +6192,7 @@
     },
     "/counts/notices": {
       "get": {
-        "description": "Gets the number of notices that fulfill the given filters\n\nArgs:\n    db: the MongoDB database where the notices are stored\n    current_user: the current logged in user\n    user_id: The IDs of the users to retrieve notices for; only superusers can set it\n    min_start_utc: The minimum UTC timestamp the notice should start\n    max_start_utc: The maximum UTC timestamp the notice should start\n    min_expires_utc: The minimum UTC timestamp the notice should expire\n    max_expires_utc: The maximum UTC timestamp the notice should expire\n    include_dismissed: whether to include dismissed notices; defaults to False\n    types: the types to filter by; repeat the param for many\n    is_read: filter on read state; default = None i.e. either",
+        "description": "Gets the number of notices that fulfill the given filters\n\nArgs:\n    database: the database where the notices are stored\n    current_user: the current logged in user\n    user_id: The IDs of the users to retrieve notices for; only superusers can set it\n    min_start_utc: The minimum UTC timestamp the notice should start\n    max_start_utc: The maximum UTC timestamp the notice should start\n    min_expires_utc: The minimum UTC timestamp the notice should expire\n    max_expires_utc: The maximum UTC timestamp the notice should expire\n    include_dismissed: whether to include dismissed notices; defaults to False\n    types: the types to filter by; repeat the param for many\n    is_read: filter on read state; default = None i.e. either",
         "operationId": "get_notice_count_counts_notices_get",
         "parameters": [
           {
@@ -7633,7 +7634,7 @@
     },
     "/me/notices/": {
       "get": {
-        "description": "Gets the current user's notices, newest first\n\nArgs:\n    db: the mongodb instance that stores the data\n    user_id: the ID of the current signed-in user\n    types: the types to filter by; repeat the param for many\n    is_read: filter on read state; default = None i.e. either\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n\nReturns:\n    the paginated list of the user's notices",
+        "description": "Gets the current user's notices, newest first\n\nArgs:\n    database: the database where the notices are stored\n    user_id: the ID of the current signed-in user\n    types: the types to filter by; repeat the param for many\n    is_read: filter on read state; default = None i.e. either\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n\nReturns:\n    the paginated list of the user's notices",
         "operationId": "get_my_notices_me_notices__get",
         "parameters": [
           {
@@ -7731,7 +7732,7 @@
     },
     "/me/notices/dismiss": {
       "post": {
-        "description": "Marks every one of the current user's notices read\n\nArgs:\n    db: the mongodb instance that stores the data\n    user_id: the ID of the current signed-in user\n\nReturns:\n    a general message reporting how many were updated",
+        "description": "Marks every one of the current user's notices read\n\nArgs:\n    database: the database where the notices are stored\n    user_id: the ID of the current signed-in user\n\nReturns:\n    a general message reporting how many were updated",
         "operationId": "dismiss_all_my_notices_me_notices_dismiss_post",
         "responses": {
           "200": {
@@ -7762,7 +7763,7 @@
     },
     "/me/notices/preferences/": {
       "get": {
-        "description": "Gets the current user's delivery preferences, with defaults filled in\n\nArgs:\n    user_id: the ID of the current signed-in user\n\nReturns:\n    a map of notice type to its email preference",
+        "description": "Gets the current user's delivery preferences, with defaults filled in\n\nArgs:\n    database: the database where the preferences are stored\n    user_id: the ID of the current signed-in user\n\nReturns:\n    a map of notice type to its email preference",
         "operationId": "get_my_email_preferences_me_notices_preferences__get",
         "responses": {
           "200": {
@@ -7798,7 +7799,7 @@
         ]
       },
       "put": {
-        "description": "Updates the named preferences, leaving the rest untouched\n\nArgs:\n    body: the types to change and their wanted preferences\n    user_id: the ID of the current signed-in user\n\nReturns:\n    the user's full effective preferences after the update",
+        "description": "Updates the named preferences, leaving the rest untouched\n\nArgs:\n    database: the database where the preferences are stored\n    body: the types to change and their wanted preferences\n    user_id: the ID of the current signed-in user\n\nReturns:\n    the user's full effective preferences after the update",
         "operationId": "update_my_email_preferences_me_notices_preferences__put",
         "requestBody": {
           "content": {
@@ -7863,7 +7864,7 @@
     },
     "/me/notices/unread": {
       "post": {
-        "description": "Marks every one of the current user's notices unread\n\nArgs:\n    db: the mongodb instance that stores the data\n    user_id: the ID of the current signed-in user\n\nReturns:\n    a general message reporting how many were updated",
+        "description": "Marks every one of the current user's notices unread\n\nArgs:\n    database: the database where the notices are stored\n    user_id: the ID of the current signed-in user\n\nReturns:\n    a general message reporting how many were updated",
         "operationId": "unread_all_my_notices_me_notices_unread_post",
         "responses": {
           "200": {
@@ -7894,7 +7895,7 @@
     },
     "/me/notices/{notice_id}/dismiss": {
       "post": {
-        "description": "Dismisses a notice\n\nArgs:\n    db: the MongoDB database where the notice will be stored\n    notice_id: the unique identifier of the notice\n    current_user: the current logged-in user\n\nReturns:\n    a general message about the status of the operation\n\nRaises:\n    404: notification of ID '{pk}' not found",
+        "description": "Dismisses a notice\n\nArgs:\n    database: the database where the notices are stored\n    notice_id: the unique identifier of the notice\n    current_user: the current logged-in user\n\nReturns:\n    a general message about the status of the operation\n\nRaises:\n    404: notification of ID '{pk}' not found",
         "operationId": "dismiss_my_notice_me_notices__notice_id__dismiss_post",
         "parameters": [
           {
@@ -7945,7 +7946,7 @@
     },
     "/me/notices/{notice_id}/unread": {
       "post": {
-        "description": "Marks a notice unread\n\nArgs:\n    db: the MongoDB database where the notice will be stored\n    notice_id: the unique identifier of the notice\n    current_user: the current logged-in user\n\nReturns:\n    a general message about the status of the operation\n\nRaises:\n    404: notification of ID '{pk}' not found",
+        "description": "Marks a notice unread\n\nArgs:\n    database: the database where the notices are stored\n    notice_id: the unique identifier of the notice\n    current_user: the current logged-in user\n\nReturns:\n    a general message about the status of the operation\n\nRaises:\n    404: notification of ID '{pk}' not found",
         "operationId": "unread_my_notice_me_notices__notice_id__unread_post",
         "parameters": [
           {

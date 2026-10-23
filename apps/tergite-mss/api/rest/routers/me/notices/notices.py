@@ -16,7 +16,8 @@ from typing import List, Optional
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
+from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, DatabaseDep
+from libs.storage import Page, Sort
 from services import notices as notices_service
 from services.notices import Notice, NoticeTypeId
 from utils.api import GeneralMessage, PaginatedListResponse, build_paginated_json
@@ -26,7 +27,7 @@ router = APIRouter()
 
 @router.get("/", responses={200: {"model": PaginatedListResponse[Notice]}})
 async def get_my_notices(
-    db: MongoDbDep,
+    database: DatabaseDep,
     user_id: CurrentUserIdDep,
     types: List[NoticeTypeId] = Query((), alias="type"),
     is_read: Optional[bool] = Query(None),
@@ -36,7 +37,7 @@ async def get_my_notices(
     """Gets the current user's notices, newest first
 
     Args:
-        db: the mongodb instance that stores the data
+        database: the database where the notices are stored
         user_id: the ID of the current signed-in user
         types: the types to filter by; repeat the param for many
         is_read: filter on read state; default = None i.e. either
@@ -46,29 +47,28 @@ async def get_my_notices(
     Returns:
         the paginated list of the user's notices
     """
+    where = notices_service.build_filter(
+        user_id=user_id, should_include_dismissed=True, types=types, is_read=is_read
+    )
     data = await notices_service.find_many(
-        db,
-        limit=limit,
-        skip=skip,
-        sort=("-created_at",),
-        user_id=user_id,
-        include_dismissed=True,
-        types=types,
-        is_read=is_read,
+        database,
+        where=where,
+        sort=[Sort("created_at", is_descending=True)],
+        page=Page(skip=skip, limit=limit),
     )
     return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 
 
 @router.post("/{notice_id}/dismiss")
 async def dismiss_my_notice(
-    db: MongoDbDep,
+    database: DatabaseDep,
     notice_id: PydanticObjectId,
     current_user: CurrentUserDep,
 ) -> GeneralMessage:
     """Dismisses a notice
 
     Args:
-        db: the MongoDB database where the notice will be stored
+        database: the database where the notices are stored
         notice_id: the unique identifier of the notice
         current_user: the current logged-in user
 
@@ -79,21 +79,21 @@ async def dismiss_my_notice(
         404: notification of ID '{pk}' not found
     """
     await notices_service.set_read_status(
-        db, pk=notice_id, user_id=current_user.id, is_read=True
+        database, pk=notice_id, user_id=current_user.id, is_read=True
     )
     return {"status": "success"}
 
 
 @router.post("/{notice_id}/unread")
 async def unread_my_notice(
-    db: MongoDbDep,
+    database: DatabaseDep,
     notice_id: PydanticObjectId,
     current_user: CurrentUserDep,
 ) -> GeneralMessage:
     """Marks a notice unread
 
     Args:
-        db: the MongoDB database where the notice will be stored
+        database: the database where the notices are stored
         notice_id: the unique identifier of the notice
         current_user: the current logged-in user
 
@@ -104,46 +104,46 @@ async def unread_my_notice(
         404: notification of ID '{pk}' not found
     """
     await notices_service.set_read_status(
-        db, pk=notice_id, user_id=current_user.id, is_read=False
+        database, pk=notice_id, user_id=current_user.id, is_read=False
     )
     return {"status": "success"}
 
 
 @router.post("/dismiss")
 async def dismiss_all_my_notices(
-    db: MongoDbDep,
+    database: DatabaseDep,
     user_id: CurrentUserIdDep,
 ) -> GeneralMessage:
     """Marks every one of the current user's notices read
 
     Args:
-        db: the mongodb instance that stores the data
+        database: the database where the notices are stored
         user_id: the ID of the current signed-in user
 
     Returns:
         a general message reporting how many were updated
     """
     counts = await notices_service.set_read_status_many(
-        db, user_id=user_id, is_read=True
+        database, user_id=user_id, is_read=True
     )
     return {"status": "success", "detail": f"{counts} notices updated"}
 
 
 @router.post("/unread")
 async def unread_all_my_notices(
-    db: MongoDbDep,
+    database: DatabaseDep,
     user_id: CurrentUserIdDep,
 ) -> GeneralMessage:
     """Marks every one of the current user's notices unread
 
     Args:
-        db: the mongodb instance that stores the data
+        database: the database where the notices are stored
         user_id: the ID of the current signed-in user
 
     Returns:
         a general message reporting how many were updated
     """
     counts = await notices_service.set_read_status_many(
-        db, user_id=user_id, is_read=False
+        database, user_id=user_id, is_read=False
     )
     return {"status": "success", "detail": f"{counts} notices updated"}

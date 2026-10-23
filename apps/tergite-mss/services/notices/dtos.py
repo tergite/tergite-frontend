@@ -14,8 +14,6 @@ from datetime import datetime
 from enum import Enum, nonmember
 from typing import Any, Dict, List, Literal, NamedTuple, Optional, Self, Type, cast
 
-from beanie import Document, PydanticObjectId
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -25,8 +23,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pymongo import IndexModel
 
+from libs.storage import Database, Id, Schema, StorageSpec, generate_id
 from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
 from utils.types import get_class_import_path, load_class
 
@@ -285,55 +283,51 @@ type NoticeTypeId = Literal[tuple(v.id for v in NoticeType)]  # type: ignore[val
 # FIXME: Maybe find a stronger type for the strings in Notice type or just setup a map of dict[NoticeType, NoticeInfo]
 
 
-class Notice(Document):
+class Notice(Schema):
     """A message"""
 
+    __storage__ = StorageSpec(
+        table=NOTICE_DB_COLLECTION,
+        expires="expires_at",
+        indexed_lists=("dismissed_by",),
+        indexes=(
+            ("user_id", "-created_at"),
+            ("user_id", "read_at"),
+            ("email_status", "updated_at"),
+            ("starts_at", "expires_at"),
+            ("ref_type", "ref_id"),
+        ),
+    )
     model_config = ConfigDict(extra="ignore")
+
+    id: Id = Field(default_factory=generate_id)
 
     type: NoticeTypeId
     title: str
     body: str
-    user_id: Optional[PydanticObjectId] = None
+    user_id: Optional[Id] = None
     # 'created_by' is specific to custom notices
-    created_by: Optional[PydanticObjectId] = None
+    created_by: Optional[Id] = None
     severity: NoticeSeverity = NoticeSeverity.INFO
     ref_type: Optional[RefType] = None
-    ref_id: Optional[PydanticObjectId] = None
+    ref_id: Optional[Id] = None
     context: Dict[str, Any] = Field(default_factory=dict)
     email_status: EmailStatus = EmailStatus.NOT_APPLICABLE
     email_attempts: int = 0
     # read_at and dismissed_by must be atomically set for non-broadcast messages
     read_at: Optional[str] = None
-    dismissed_by: List[PydanticObjectId] = Field(default_factory=list)
+    dismissed_by: List[Id] = Field(default_factory=list)
     starts_at: Optional[datetime] = None
     # kept bounded by a TTL index rather than manual pruning
     expires_at: Optional[datetime] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
-    class Settings:
-        name = NOTICE_DB_COLLECTION
-        indexes = [
-            IndexModel("dismissed_by", sparse=True),
-            IndexModel([("user_id", 1), ("created_at", -1)]),
-            IndexModel([("user_id", 1), ("read_at", 1)]),
-            IndexModel([("email_status", 1), ("updated_at", 1)], sparse=True),
-            IndexModel("expires_at", expireAfterSeconds=0),
-            IndexModel(("starts_at", "expires_at")),
-            IndexModel(("ref_type", "ref_id"), sparse=True),
-        ]
-        validate_on_save = True
-
     @computed_field
     @property
     def severity_number(self) -> int:
         """The notice severity number"""
         return self.severity.to_int()
-
-    @field_serializer("id", when_used="json")
-    def serialize_object_fields(self, value: Any):
-        """Convert object fields to string when working with JSON"""
-        return str(value)
 
     @field_serializer(
         "expires_at", "starts_at", "created_at", "updated_at", when_used="json"
@@ -410,22 +404,28 @@ class Notice(Document):
         return cls.model_validate(data)
 
 
-class NoticePreferences(Document):
+class NoticePreferences(Schema):
     """One user's opt-outs, owned by this service rather than by the auth service"""
 
-    user_id: PydanticObjectId
+    __storage__ = StorageSpec(
+        table=NOTICE_PREFS_DB_COLLECTION, key="user_id", unique=("user_id",)
+    )
+
+    id: Id = Field(default_factory=generate_id)
+    user_id: Id
     email_prefs: Dict[NoticeTypeId, bool] = Field(default_factory=dict)
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
-    class Settings:
-        name = NOTICE_PREFS_DB_COLLECTION
-        indexes = [IndexModel("user_id", unique=True)]
 
-
-class NoticeTemplate(Document):
+class NoticeTemplate(Schema):
     """The templates for each notice type persisted and updated in the database"""
 
+    __storage__ = StorageSpec(
+        table=TEMPLATE_DB_COLLECTION, key="type", unique=("type",)
+    )
+
+    id: Id = Field(default_factory=generate_id)
     type: NoticeTypeId
     title: str
     body: str
@@ -433,12 +433,6 @@ class NoticeTemplate(Document):
     context_cls_path: str = get_class_import_path(BaseNoticeContext)
 
     __context_cls: Optional[Type[BaseNoticeContext]] = None
-
-    class Settings:
-        name = TEMPLATE_DB_COLLECTION
-        indexes = [
-            IndexModel("type", unique=True),
-        ]
 
     @property
     def context_cls(self) -> Type[BaseNoticeContext]:
@@ -448,11 +442,6 @@ class NoticeTemplate(Document):
                 Type[BaseNoticeContext], load_class(self.context_cls_path)
             )
         return self.__context_cls
-
-    @field_serializer("id", when_used="json")
-    def serialize_id(self, value: Any):
-        """Convert id fields to string when working with JSON"""
-        return str(value)
 
     @field_validator("context_cls_path", mode="before")
     @classmethod
@@ -486,19 +475,20 @@ class CustomNoticeCreate(BaseModel):
     starts_at: datetime = Field(default_factory=get_utc_now)
     target_user_emails: Optional[List[str]] = None
 
-    async def to_documents(
-        self, db: AsyncIOMotorDatabase, **kwargs: Any
-    ) -> List[Notice]:
+    async def to_documents(self, database: Database, **kwargs: Any) -> List[Notice]:
         """Converts the creation request to a list of database model documents
 
         Args:
-            db: the database instance where data is saved
+            database: the database where the notice templates are stored
             kwargs: the extra kwargs passed to each created record
 
         Returns:
              the list of notices that come from the CustomNoticeCreate
         """
-        from services.auth.users.dtos import USER_DB_COLLECTION
+        # imported here to avoid a circular import, as the auth service imports this one
+        from beanie.odm.operators.find.comparison import In as BeanieIn
+
+        from services.auth.users.dtos import User
 
         kwargs = dict(
             severity=self.severity,
@@ -510,24 +500,17 @@ class CustomNoticeCreate(BaseModel):
             title=self.message,
             body=self.message,
         )
-        users_col = db[USER_DB_COLLECTION]
-
         if self.target_user_emails:
-            cursor = users_col.find(
-                {"email": {"$in": self.target_user_emails}}, {"_id": 1}
-            )
-            template = await NoticeTemplate.find_one(
-                NoticeTemplate.type == NoticeType.CUSTOM.id
-            )
-
+            users = await User.find(
+                BeanieIn(User.email, self.target_user_emails)
+            ).to_list()
+            template = await database.get(NoticeTemplate, NoticeType.CUSTOM.id)
             return [
                 Notice.from_template(
-                    template=template, context=context, user_id=v["_id"], **kwargs
+                    template=template, context=context, user_id=str(user.id), **kwargs
                 )
-                for v in await cursor.to_list()
+                for user in users
             ]
 
-        template = await NoticeTemplate.find_one(
-            NoticeTemplate.type == NoticeType.CUSTOM_BROADCAST.id
-        )
+        template = await database.get(NoticeTemplate, NoticeType.CUSTOM_BROADCAST.id)
         return [Notice.from_template(template=template, context=context, **kwargs)]

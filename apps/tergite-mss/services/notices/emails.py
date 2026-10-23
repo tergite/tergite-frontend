@@ -12,10 +12,9 @@
 import asyncio
 from typing import Dict, List, Sequence
 
-from beanie import PydanticObjectId
-from beanie.odm.operators.find.comparison import In
 from loguru import logger
 
+from libs.storage import And, Database, Eq, In, Inc, Ne, Or, Page, Range, Set, Sort
 from services.external.email import BatchEmailGenerator, EmailDetails, EmailResult
 from utils.date_time import get_current_timestamp, get_utc_now
 
@@ -23,9 +22,10 @@ from .dtos import EmailStatus, Notice, NoticePreferences, NoticeTypeId
 
 
 async def get_email_preferences_map(
+    database: Database,
     notice_type: NoticeTypeId,
-    user_ids: Sequence[PydanticObjectId],
-) -> Dict[PydanticObjectId, bool]:
+    user_ids: Sequence[str],
+) -> Dict[str, bool]:
     """Retrieves a map of email preferences for the given notice type keyed by user_id
 
     Args:
@@ -35,15 +35,20 @@ async def get_email_preferences_map(
     Returns:
         a map of channel preferences for the given notice type keyed by user_id
     """
-    result = NoticePreferences.find({"user_id": {"$in": list(user_ids)}})
+    records = await database.find(
+        NoticePreferences, where=In("user_id", list(user_ids))
+    )
     return {
-        record.user_id: record.email_prefs.get(notice_type, True)
-        async for record in result
+        record.user_id: record.email_prefs.get(notice_type, True) for record in records
     }
 
 
 async def get_pending_email_batches(
-    batch_size: int, dashboard_url: str, app_name: str, max_attempts: int
+    database: Database,
+    batch_size: int,
+    dashboard_url: str,
+    app_name: str,
+    max_attempts: int,
 ) -> BatchEmailGenerator:
     """Generates email details batches that are yet to be sent.
 
@@ -58,8 +63,9 @@ async def get_pending_email_batches(
     """
     while True:
         try:
-            notices = await _find_notices_pending_email(batch_size)
+            notices = await _find_notices_pending_email(database, batch_size)
             batch = await _to_email_details(
+                database,
                 notices,
                 dashboard_url=dashboard_url,
                 app_name=app_name,
@@ -74,15 +80,17 @@ async def get_pending_email_batches(
         await asyncio.sleep(1)
 
 
-async def process_email_batch_results(results: Sequence[EmailResult]) -> None:
+async def process_email_batch_results(
+    database: Database, results: Sequence[EmailResult]
+) -> None:
     """Processes the results of an email batch dispatch
 
     Args:
         results: the results of an email batch dispatch
     """
-    successful_ids: List[PydanticObjectId] = []
-    failed_ids: List[PydanticObjectId] = []
-    retry_ids: List[PydanticObjectId] = []
+    successful_ids: List[str] = []
+    failed_ids: List[str] = []
+    retry_ids: List[str] = []
 
     for result in results:
         if result.is_success:
@@ -92,32 +100,20 @@ async def process_email_batch_results(results: Sequence[EmailResult]) -> None:
         else:
             failed_ids.append(result.ref_id)
 
-    # update successful
     now = get_current_timestamp()
-    success_task = (
-        Notice.find(In(Notice.id, successful_ids))
-        .inc({Notice.email_attempts: 1})
-        .set(
-            {
-                Notice.email_status: EmailStatus.SENT,
-                Notice.updated_at: now,
-            }
-        )
+    attempted = [Inc("email_attempts", 1), Set("updated_at", now)]
+    success_task = database.update_many(
+        Notice,
+        where=In("id", successful_ids),
+        changes=[*attempted, Set("email_status", EmailStatus.SENT)],
     )
-    failure_task = (
-        Notice.find(In(Notice.id, failed_ids))
-        .inc({Notice.email_attempts: 1})
-        .set(
-            {
-                Notice.email_status: EmailStatus.FAILED,
-                Notice.updated_at: now,
-            }
-        )
+    failure_task = database.update_many(
+        Notice,
+        where=In("id", failed_ids),
+        changes=[*attempted, Set("email_status", EmailStatus.FAILED)],
     )
-    retry_task = (
-        Notice.find(In(Notice.id, retry_ids))
-        .inc({Notice.email_attempts: 1})
-        .set({Notice.updated_at: now})
+    retry_task = database.update_many(
+        Notice, where=In("id", retry_ids), changes=attempted
     )
     if failed_ids:
         logger.error(f"failed to email notice ids: {failed_ids}")
@@ -130,7 +126,7 @@ async def process_email_batch_results(results: Sequence[EmailResult]) -> None:
         logger.exception(f"errors updating notices: {errs}")
 
 
-async def _find_notices_pending_email(limit: int) -> List[Notice]:
+async def _find_notices_pending_email(database: Database, limit: int) -> List[Notice]:
     """Gets the notices that are yet to be sent as emails
 
     Args:
@@ -140,23 +136,24 @@ async def _find_notices_pending_email(limit: int) -> List[Notice]:
         the list of notices that are yet to be sent as emails
     """
     now = get_utc_now()
-
-    return (
-        await Notice.find(
-            {
-                "email_status": EmailStatus.PENDING,
-                "user_id": {"$ne": None},
-                "$or": [{"expires_at": None}, {"expires_at": {"$gt": now}}],
-            },
-            limit=limit,
-        )
-        .sort("updated_at")
-        .to_list()
+    return await database.find(
+        Notice,
+        where=And(
+            Eq("email_status", EmailStatus.PENDING),
+            Ne("user_id", None),
+            Or(Eq("expires_at", None), Range("expires_at", gt=now)),
+        ),
+        sort=[Sort("updated_at")],
+        page=Page(limit=limit),
     )
 
 
 async def _to_email_details(
-    notices: Sequence[Notice], dashboard_url: str, app_name: str, max_attempts: int
+    database: Database,
+    notices: Sequence[Notice],
+    dashboard_url: str,
+    app_name: str,
+    max_attempts: int,
 ) -> List[EmailDetails]:
     """Converts a given list of notice objects to a list of EmailDetails
 
@@ -172,19 +169,23 @@ async def _to_email_details(
     Returns:
         the list of EmailDetails
     """
+    # imported here to avoid a circular import, as the auth service imports this one
+    from beanie import PydanticObjectId
+
     from services.auth.users.dtos import User
 
-    user_ids = [notice.user_id for notice in notices]
-    users = await User.find({"_id": {"$in": list(set(user_ids))}}).to_list()
-    user_emails_map = {v.id: v.email for v in users}
+    user_ids = {PydanticObjectId(notice.user_id) for notice in notices}
+    users = await User.find({"_id": {"$in": list(user_ids)}}).to_list()
+    user_emails_map = {str(v.id): v.email for v in users}
 
     unreachable_ids = [v.id for v in notices if v.user_id not in user_emails_map]
     if unreachable_ids:
         await process_email_batch_results(
+            database,
             [
                 EmailResult(error=KeyError("no such user"), ref_id=v, can_retry=False)
                 for v in unreachable_ids
-            ]
+            ],
         )
 
     return [

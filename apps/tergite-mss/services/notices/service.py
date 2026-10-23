@@ -10,26 +10,39 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 #
-from copy import deepcopy
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
+from functools import partial
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Tuple
 
-import pymongo
 from beanie import PydanticObjectId
 from loguru import logger
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
+from libs.storage import (
+    ALL,
+    AddToSet,
+    And,
+    Database,
+    Eq,
+    Filter,
+    In,
+    Ne,
+    NotIn,
+    Or,
+    Page,
+    Pull,
+    Range,
+    Set,
+    SetOnInsert,
+    Sort,
+    Update,
+)
 from services.external.email.service import Emailer
-from utils import mongodb as mongodb_utils
 from utils.config import NoticesConfig
 from utils.date_time import get_current_timestamp, get_utc_now
 from utils.exc import NotFoundError
-from utils.mongodb import init_strict_beanie
 
 from .dtos import (
-    NOTICE_DB_COLLECTION,
-    TEMPLATE_DB_COLLECTION,
     BaseNoticeContext,
     CustomNoticeCreate,
     EmailStatus,
@@ -50,21 +63,24 @@ from .emails import (
 if TYPE_CHECKING:
     from services.auth import User
 
-# on_startup replaces both with what the app is configured with
+# on_startup replaces these with what the app is configured with
 _conf = NoticesConfig()
 _is_email_enabled = False
+# FIXME: create_system_notice and clear_notices_by_reference use this Database because
+#   their callers in auth and requests have none to pass yet; they take one as an
+#   argument once those callers do (step 5)
+_database: Optional[Database] = None
+_IS_BROADCAST = Eq("type", NoticeType.CUSTOM_BROADCAST.id)
+_IS_NOT_BROADCAST = Ne("type", NoticeType.CUSTOM_BROADCAST.id)
 
 
 async def set_read_status(
-    db: AsyncIOMotorDatabase,
-    pk: PydanticObjectId,
-    user_id: PydanticObjectId | str,
-    is_read: bool,
+    database: Database, pk: str, user_id: str, is_read: bool
 ) -> Notice:
     """Sets the read status of the notice for the given user
 
     Args:
-        db: the mongo database where the notices are stored
+        database: the database where the notices are stored
         pk: the id of the notice
         user_id: the ID of the user to dismiss the notice for
         is_read: whether the notice was read or not
@@ -75,24 +91,21 @@ async def set_read_status(
     Raises:
         NotFoundError: if the notice does not exist or is not addressed to the user
     """
-    user_id = PydanticObjectId(user_id)
-    notice = await db[NOTICE_DB_COLLECTION].find_one_and_update(
-        {"_id": pk, "user_id": {"$in": [user_id, None]}},
-        _get_read_status_update(user_id, is_read=is_read),
-        return_document=pymongo.ReturnDocument.AFTER,
-    )
-
-    if notice is None:
-        raise NotFoundError(f"notice of ID '{pk}' not found")
-
-    return Notice.model_validate(notice)
+    user_id = str(user_id)
+    where = And(Eq("id", str(pk)), In("user_id", [user_id, None]))
+    for kind, changes in _build_read_status_changes(user_id, is_read=is_read):
+        notice = await database.update_one(
+            Notice, where=And(where, kind), changes=changes
+        )
+        if notice is not None:
+            return notice
+    raise NotFoundError(f"notice of ID '{pk}' not found")
 
 
 async def set_read_status_many(
-    db: AsyncIOMotorDatabase,
-    user_id: PydanticObjectId | str,
+    database: Database,
+    user_id: str,
     is_read: bool,
-    filters: Optional[Dict[str, Any]] = None,
     min_start_utc: Optional[datetime] = None,
     max_start_utc: Optional[datetime] = None,
     min_expires_utc: Optional[datetime] = None,
@@ -102,10 +115,9 @@ async def set_read_status_many(
     """Marks many of the user's notices read or unread
 
     Args:
-        db: the mongo database from which to get the records
+        database: the database where the notices are stored
         user_id: the recipient whose notices are to be updated
         is_read: True to mark read, False to mark unread
-        filters: the mongodb-like filters to use to extract the notices
         min_start_utc: the minimum UTC timestamp that the notice should start
         max_start_utc: the maximum UTC timestamp that the notice should start
         min_expires_utc: the minimum UTC timestamp that the notice should expire
@@ -115,27 +127,24 @@ async def set_read_status_many(
     Returns:
         the number of notices updated
     """
-    user_id = PydanticObjectId(user_id)
-    filters = _merge_filters(
-        filters,
+    user_id = str(user_id)
+    where = build_filter(
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
         min_expires_utc=min_expires_utc,
         max_expires_utc=max_expires_utc,
-        include_dismissed=True,
+        should_include_dismissed=True,
         types=types,
         is_read=not is_read,
     )
-    result = await db[NOTICE_DB_COLLECTION].update_many(
-        filters, _get_read_status_update(user_id, is_read=is_read)
-    )
-    return result.modified_count
+    count = 0
+    for kind, changes in _build_read_status_changes(user_id, is_read=is_read):
+        count += await database.update_many(Notice, And(where, kind), changes)
+    return count
 
 
-async def clear_notices_by_reference(
-    ref_type_ids_map: Dict[RefType, List[PydanticObjectId]]
-) -> int:
+async def clear_notices_by_reference(ref_type_ids_map: Dict[RefType, List[str]]) -> int:
     """Marks read every unread notice associated with the given reference ids per type
 
     This is useful in bulk clearing notices that no longer have any consequence,
@@ -154,91 +163,67 @@ async def clear_notices_by_reference(
 
     now = get_utc_now()
     timestamp = get_current_timestamp()
-    is_broadcast = {"$eq": ["$type", NoticeType.CUSTOM_BROADCAST.id]}
-    filters = {
-        "read_at": None,
-        "$and": [
-            {
-                "$or": [
-                    {"ref_id": {"$in": ref_ids}, "ref_type": ref_type}
-                    for ref_type, ref_ids in ref_type_ids_map.items()
-                ]
-            },
-            {"$or": [{"expires_at": None}, {"expires_at": {"$gte": now}}]},
-        ],
-    }
-    update = [
-        {
-            "$set": {
-                "read_at": {"$cond": [is_broadcast, None, timestamp]},
-                "dismissed_by": {
-                    "$cond": [
-                        is_broadcast,
-                        "$dismissed_by",
-                        {"$setUnion": ["$dismissed_by", ["$user_id"]]},
-                    ]
-                },
-                "updated_at": timestamp,
-                "expires_at": now,
-            }
-        }
-    ]
+    where = And(
+        Eq("read_at", None),
+        Or(
+            *(
+                And(In("ref_id", [str(v) for v in ref_ids]), Eq("ref_type", ref_type))
+                for ref_type, ref_ids in ref_type_ids_map.items()
+            )
+        ),
+        Or(Eq("expires_at", None), Range("expires_at", gte=now)),
+    )
+    expire_now = [Set("updated_at", timestamp), Set("expires_at", now)]
+    count = await _database.update_many(Notice, And(where, _IS_BROADCAST), expire_now)
 
-    result = await Notice.get_motor_collection().update_many(filters, update)
-    return result.modified_count
+    # a recipient's notice is read when it holds its own user_id in dismissed_by
+    user_ids = await _database.find_distinct(
+        Notice, "user_id", where=And(where, _IS_NOT_BROADCAST)
+    )
+    for user_id in user_ids:
+        count += await _database.update_many(
+            Notice,
+            And(where, _IS_NOT_BROADCAST, Eq("user_id", user_id)),
+            [AddToSet("dismissed_by", user_id), Set("read_at", timestamp), *expire_now],
+        )
+    return count
 
 
-async def delete_notice(db: AsyncIOMotorDatabase, pk: PydanticObjectId) -> Notice:
+async def delete_notice(database: Database, pk: str) -> Notice:
     """Deletes the notice
-
-    Args:
-        db: the mongo database where the notices are stored
-        pk: the id of the notice
-
-    Returns:
-        the deleted notice
 
     Raises:
         NotFoundError: if the notice does not exist
     """
-    notice = await db[NOTICE_DB_COLLECTION].find_one_and_delete({"_id": pk})
+    notice = await database.delete_one(Notice, where=Eq("id", str(pk)))
     if notice is None:
         raise NotFoundError(f"notice of ID '{pk}' not found")
-
-    return Notice.model_validate(notice)
+    return notice
 
 
 async def publish_custom_notice(
-    db: AsyncIOMotorDatabase,
-    current_user_id: PydanticObjectId | str,
-    payload: CustomNoticeCreate,
+    database: Database, current_user_id: str, payload: CustomNoticeCreate
 ) -> List[Notice]:
-    """Creates a new notice in the database
+    """Creates the custom notice, one per target user, or one broadcast
 
     Args:
-        db: the mongo database where the notices are stored
+        database: the database where the notices are stored
         current_user_id: the ID of the current user
         payload: the notice payload
 
     Returns:
-        the created notice
+        the created notices
     """
-    current_user_id = PydanticObjectId(current_user_id)
-    notices = await payload.to_documents(db, created_by=current_user_id)
-    resp = await Notice.insert_many(notices)
-    # beanie's insert_many leaves the ids of the documents unset
-    for i, pk in enumerate(resp.inserted_ids):
-        notices[i].id = pk
-
-    return notices
+    notices = await payload.to_documents(database, created_by=str(current_user_id))
+    return await database.insert_many(Notice, notices)
 
 
 async def create_system_notice(
-    user_ids: Sequence[PydanticObjectId],
+    user_ids: Sequence[str],
     notice_type: NoticeTypeId,
     context: Optional[BaseNoticeContext] = None,
     ref_type: Optional[RefType] = None,
-    ref_id: Optional[PydanticObjectId] = None,
+    ref_id: Optional[str] = None,
     **kwargs,
 ) -> List[Notice]:
     """Creates a system notice for the given users.
@@ -261,12 +246,12 @@ async def create_system_notice(
         return []
 
     try:
+        user_ids = [str(v) for v in user_ids]
         context = await _with_project_name(context)
-        template = await NoticeTemplate.find_one(NoticeTemplate.type == notice_type)
+        template = await _database.get(NoticeTemplate, notice_type)
         email_prefs_map = await get_email_preferences_map(
-            notice_type, user_ids=user_ids
+            _database, notice_type, user_ids=user_ids
         )
-
         email_status_map = {
             user_id: (
                 EmailStatus.PENDING
@@ -275,9 +260,7 @@ async def create_system_notice(
             )
             for user_id in user_ids
         }
-
         expires_at = get_utc_now() + timedelta(_conf.retention_days)
-
         records = [
             Notice.from_template(
                 template=template,
@@ -285,226 +268,184 @@ async def create_system_notice(
                 user_id=user_id,
                 type=notice_type,
                 ref_type=ref_type,
-                ref_id=ref_id,
+                ref_id=None if ref_id is None else str(ref_id),
                 email_status=email_status_map[user_id],
                 expires_at=expires_at,
             )
             for user_id in user_ids
         ]
-        await Notice.insert_many(records)
-        return records
+        return await _database.insert_many(Notice, records)
     except Exception:
         logger.exception(f"failed to emit {notice_type} notification")
         return []
 
 
 async def find_many(
-    db: AsyncIOMotorDatabase,
-    filters: Optional[Dict[str, Any]] = None,
-    limit: Optional[int] = None,
-    skip: int = 0,
-    sort: tuple[str, ...] = (),
-    user_id: Optional[PydanticObjectId | str] = None,
-    min_start_utc: Optional[datetime] = None,
-    max_start_utc: Optional[datetime] = None,
-    min_expires_utc: Optional[datetime] = None,
-    max_expires_utc: Optional[datetime] = None,
-    include_dismissed: bool = False,
-    types: Optional[Sequence[NoticeTypeId]] = None,
-    is_read: Optional[bool] = None,
+    database: Database,
+    where: Filter = ALL,
+    sort: Sequence[Sort] = (),
+    page: Page = Page(),
 ) -> List[Notice]:
-    """Gets many notices from the db
-
-    Args:
-        db: the mongo database from which to get the records
-        filters: the mongodb-like filters to use to extract the notices
-        limit: the number of results to return: default = None meaning all of them
-        skip: the number of records to skip; default = 0
-        sort: the fields to sort by, prefixing any with a '-' means descending; default = ()
-        user_id: the ID of the user whose notices we might be interested in
-        min_start_utc: the minimum UTC timestamp that the notice should start
-        max_start_utc: the maximum UTC timestamp that the notice should start
-        min_expires_utc: the minimum UTC timestamp that the notice should expire
-        max_expires_utc: the maximum UTC timestamp that the notice should expire
-        include_dismissed: whether to include dismissed notices; defaults to False
-        types: the notice types to filter by; default = None i.e. any
-        is_read: whether to have notices that are read or not; defaults to None
-
-    Returns:
-        a list of the notices got
+    """Gets the notices that match the filter, which build_filter makes
 
     Raises:
         ValidationError: final results are not valid Notice objects
     """
-    if user_id:
-        user_id = PydanticObjectId(user_id)
-
-    filters = _merge_filters(
-        filters,
-        user_id=user_id,
-        min_start_utc=min_start_utc,
-        max_start_utc=max_start_utc,
-        min_expires_utc=min_expires_utc,
-        max_expires_utc=max_expires_utc,
-        include_dismissed=include_dismissed,
-        types=types,
-        is_read=is_read,
-    )
-    return await mongodb_utils.find(
-        db[NOTICE_DB_COLLECTION],
-        filters=filters,
-        limit=limit,
-        skip=skip,
-        sort=sort,
-        schema=Notice,
-    )
+    return await database.find(Notice, where=where, sort=sort, page=page)
 
 
 async def count_many(
-    db: AsyncIOMotorDatabase,
+    database: Database,
     requester: "User",
-    filters: Optional[Dict[str, Any]] = None,
-    user_id: Optional[PydanticObjectId | str] = None,
+    user_id: Optional[str] = None,
     min_start_utc: Optional[datetime] = None,
     max_start_utc: Optional[datetime] = None,
     min_expires_utc: Optional[datetime] = None,
     max_expires_utc: Optional[datetime] = None,
-    include_dismissed: bool = False,
+    should_include_dismissed: bool = False,
     types: Optional[Sequence[NoticeTypeId]] = None,
     is_read: Optional[bool] = None,
 ) -> int:
-    """Gets the number of notices that match the given query
+    """Gets the number of notices that match the given constraints, as build_filter takes them
 
     Args:
-        db: the mongo database from which to get the records
+        database: the database where the notices are stored
         requester: the user asking; anyone but a superuser counts only their own notices
-        filters: the mongodb-like filters to use to extract the notices
         user_id: the ID of the user whose notices we might be interested in
         min_start_utc: the minimum UTC timestamp that the notice should start
         max_start_utc: the maximum UTC timestamp that the notice should start
         min_expires_utc: the minimum UTC timestamp that the notice should expire
         max_expires_utc: the maximum UTC timestamp that the notice should expire
-        include_dismissed: whether to include dismissed notices; defaults to False
+        should_include_dismissed: whether to include dismissed notices; defaults to False
         types: the notice types to filter by; default = None i.e. any
         is_read: whether to have notices that are read or not; defaults to None
-
-    Returns:
-        a number of matched records
     """
     if not requester.is_superuser:
         user_id = requester.id
-
-    if user_id:
-        user_id = PydanticObjectId(user_id)
-
-    filters = _merge_filters(
-        filters,
+    where = build_filter(
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
         min_expires_utc=min_expires_utc,
         max_expires_utc=max_expires_utc,
-        include_dismissed=include_dismissed,
+        should_include_dismissed=should_include_dismissed,
         types=types,
         is_read=is_read,
     )
-    return await db[NOTICE_DB_COLLECTION].count_documents(filters)
+    return await database.count(Notice, where=where)
 
 
-async def get_one(db: AsyncIOMotorDatabase, pk: PydanticObjectId) -> Notice:
+async def get_one(database: Database, pk: str) -> Notice:
     """Gets the notice of the given pk
 
-    Args:
-        db: the mongo database where the notice information is stored
-        pk: the ID of the notice to return
-
-    Returns:
-        the notice
-
     Raises:
-        ValidationError: if the final result could not be validated as a Notice
         NotFoundError: no matches for {_id: '<pk>'}
     """
-    return await mongodb_utils.find_one(
-        db[NOTICE_DB_COLLECTION], {"_id": pk}, schema=Notice
-    )
+    notice = await database.get(Notice, str(pk))
+    if notice is None:
+        raise NotFoundError(f"no matches for '{ {'_id': str(pk)} }'")
+    return notice
 
 
 async def get_email_preferences(
-    user_id: PydanticObjectId | str,
+    database: Database, user_id: str
 ) -> Dict[NoticeTypeId, bool]:
-    """The user's effective preferences, with defaults filled in for every type
-
-    Args:
-        user_id: the user whose preferences are wanted
-
-    Returns:
-        a full map of type to preferences
-    """
-    user_id = PydanticObjectId(user_id)
-    record = await NoticePreferences.find_one({"user_id": user_id})
+    """The user's effective preferences, with defaults filled in for every type"""
+    record = await database.get(NoticePreferences, str(user_id))
     prefs_in_db = record.email_prefs if record is not None else {}
-
     return _with_default_email_preferences(prefs_in_db)
 
 
 async def set_email_preferences(
-    user_id: PydanticObjectId | str, prefs: Dict[NoticeTypeId, bool]
+    database: Database, user_id: str, prefs: Dict[NoticeTypeId, bool]
 ) -> Dict[NoticeTypeId, bool]:
     """Applies a partial preference update
-
-    Args:
-        user_id: the user whose preferences are updated
-        prefs: the types to change; types not named keep their current value
 
     Returns:
         the user's full effective preferences after the update
     """
-    user_id = PydanticObjectId(user_id)
-    record = await NoticePreferences.find_one({"user_id": user_id})
+    user_id = str(user_id)
+    record = await database.get(NoticePreferences, user_id)
     current = record.email_prefs if record is not None else {}
     current.update(prefs)
-    await NoticePreferences.find_one({"user_id": user_id}).upsert(
-        {
-            "$set": {
-                "email_prefs": current,
-                "updated_at": get_current_timestamp(),
-            }
-        },
-        on_insert=NoticePreferences(user_id=user_id, email_prefs=current),
+    timestamp = get_current_timestamp()
+    await database.update_one(
+        NoticePreferences,
+        where=Eq("user_id", user_id),
+        changes=[
+            Set("email_prefs", current),
+            Set("updated_at", timestamp),
+            SetOnInsert("created_at", timestamp),
+        ],
+        should_upsert=True,
     )
     return _with_default_email_preferences(current)
 
 
+def build_filter(
+    user_id: Optional[str] = None,
+    min_start_utc: Optional[datetime] = None,
+    max_start_utc: Optional[datetime] = None,
+    min_expires_utc: Optional[datetime] = None,
+    max_expires_utc: Optional[datetime] = None,
+    should_include_dismissed: bool = False,
+    types: Optional[Sequence[NoticeTypeId]] = None,
+    is_read: Optional[bool] = None,
+) -> Filter:
+    """Builds the filter of the notices that fit the given constraints
+
+    Args:
+        user_id: the user whose notices, direct or broadcast, are wanted
+        min_start_utc: the minimum UTC timestamp that the notice should start
+        max_start_utc: the maximum UTC timestamp that the notice should start
+        min_expires_utc: the minimum UTC timestamp that the notice should expire
+        max_expires_utc: the maximum UTC timestamp that the notice should expire
+        should_include_dismissed: whether to include notices the user dismissed
+        types: the notice types to match; default = None i.e. any
+        is_read: whether the notices should be read; default = None i.e. either
+    """
+    user_id = None if user_id is None else str(user_id)
+    filters: List[Filter] = []
+    if user_id:
+        if not should_include_dismissed:
+            filters.append(NotIn("dismissed_by", [user_id]))
+        # either broadcast notices or those sent directly to user
+        filters.append(In("user_id", [user_id, None]))
+    if min_start_utc or max_start_utc:
+        filters.append(Range("starts_at", gte=min_start_utc, lte=max_start_utc))
+    if min_expires_utc or max_expires_utc:
+        filters.append(Range("expires_at", gte=min_expires_utc, lte=max_expires_utc))
+    if types:
+        filters.append(In("type", list(types)))
+    if is_read is False:
+        filters.append(NotIn("dismissed_by", [user_id]))
+    elif is_read:
+        filters.append(In("dismissed_by", [user_id]))
+    return And(*filters)
+
+
 async def on_startup(
-    db: AsyncIOMotorDatabase, emailer: Optional[Emailer], conf: NoticesConfig
-):
+    database: Database, emailer: Optional[Emailer], conf: NoticesConfig
+) -> None:
     """Runs init operations when the application is starting up
 
     Args:
-        db: the mongo database where the notice information is stored
+        database: the database where the notices are stored
         emailer: the emailer instance that sends emails; None if email is not configured
         conf: the notices configuration
     """
-    global _conf, _is_email_enabled
+    global _conf, _is_email_enabled, _database
     _conf = conf
     _is_email_enabled = emailer is not None
+    _database = database
 
-    await init_strict_beanie(
-        database=db,
-        document_models=[
-            Notice,
-            NoticePreferences,
-            NoticeTemplate,
-        ],
-    )
-
-    await _init_notice_templates_in_db(db)
+    await _init_notice_templates_in_db(database)
 
     if emailer is None:
         return
 
     batch_generator = get_pending_email_batches(
+        database,
         batch_size=50,
         dashboard_url=conf.dashboard_url,
         app_name=conf.app_name,
@@ -514,147 +455,45 @@ async def on_startup(
         "notices",
         interval=conf.email_sweep_interval,
         batch_generator=batch_generator,
-        batch_callback=process_email_batch_results,
+        batch_callback=partial(process_email_batch_results, database),
         ignore_errors=True,
     )
 
 
-def _merge_filters(
-    filters: Optional[Dict[str, Any]] = None,
-    user_id: Optional[PydanticObjectId] = None,
-    min_start_utc: Optional[datetime] = None,
-    max_start_utc: Optional[datetime] = None,
-    min_expires_utc: Optional[datetime] = None,
-    max_expires_utc: Optional[datetime] = None,
-    include_dismissed: bool = False,
-    types: Optional[Sequence[NoticeTypeId]] = None,
-    is_read: Optional[bool] = None,
-) -> Dict[str, Any]:
-    """Combines the filters with the key-word arguments passed"""
-    result = deepcopy(filters)
-    if result is None:
-        result = {}
-
-    if user_id:
-        if not include_dismissed:
-            _nested_append(result, path=("dismissed_by", "$nin"), value=user_id)
-
-        # either broadcast notices or those sent directly to user
-        _nested_append(result, path=("user_id", "$in"), value=user_id)
-        _nested_append(result, path=("user_id", "$in"), value=None)
-
-    if min_start_utc:
-        _nested_insert(result, path=("starts_at", "$gte"), value=min_start_utc)
-
-    if max_start_utc:
-        _nested_insert(result, path=("starts_at", "$lte"), value=max_start_utc)
-
-    if min_expires_utc:
-        _nested_insert(result, path=("expires_at", "$gte"), value=min_expires_utc)
-
-    if max_expires_utc:
-        _nested_insert(result, path=("expires_at", "$lte"), value=max_expires_utc)
-
-    if types:
-        _nested_insert(result, path=("type", "$in"), value=types)
-
-    if is_read is False:
-        # filter for the unread
-        _nested_append(result, path=("dismissed_by", "$nin"), value=user_id)
-    elif is_read:
-        # filter for the read
-        _nested_append(result, path=("dismissed_by", "$in"), value=user_id)
-
-    return result
-
-
-def _nested_append(dst: Dict[str, Any], path: Tuple[str, ...], value: Any):
-    """Appends a value to a list at a given path in a nested dict
-
-    Args:
-        dst: the nested dict in which to insert the value
-        path: the path of the value to append
-        value: the value to append
-    """
-    collection = dst
-    for segment in path[:-1]:
-        collection = collection.setdefault(segment, {})
-
-    inner_list = collection.setdefault(path[-1], [])
-    inner_list.append(value)
-
-
-def _nested_insert(dst: Dict[str, Any], path: Tuple[str, ...], value: Any):
-    """Inserts a value at a given path in a nested dict
-
-    Args:
-        dst: the nested dict in which to insert the value
-        path: the path of the value to insert
-        value: the value to insert
-    """
-    collection = dst
-    for segment in path[:-1]:
-        collection = collection.setdefault(segment, {})
-
-    collection[path[-1]] = value
-
-
-async def _init_notice_templates_in_db(db: AsyncIOMotorDatabase):
+async def _init_notice_templates_in_db(database: Database) -> None:
     """Initializes the notice templates in the database with the default templates"""
-    result = await db[TEMPLATE_DB_COLLECTION].find(projection={"type": 1}).to_list()
-    existing_types = {item["type"] for item in result}
+    existing_types = set(await database.find_distinct(NoticeTemplate, "type"))
     new_records = [
         NoticeTemplate.from_notice_type(v)
         for v in NoticeType
         if v.id not in existing_types
     ]
-
     if new_records:
-        await NoticeTemplate.insert_many(new_records)
+        await database.insert_many(NoticeTemplate, new_records)
         logger.info(f"Initialized {len(new_records)} new notice template(s) in db.")
 
 
-def _get_read_status_update(
-    user_id: PydanticObjectId, is_read: bool
-) -> List[Dict[str, Any]]:
-    """Gets the update pipeline that marks notices read or unread for the given user
+def _build_read_status_changes(
+    user_id: str, is_read: bool
+) -> List[Tuple[Filter, List[Update]]]:
+    """Gets, per kind of notice, the changes that mark it read or unread for the user
 
     Broadcast notices are shared by many users, so their read state lives in
     'dismissed_by' alone and 'read_at' stays None.
-
-    Args:
-        user_id: the ID of the user reading the notices
-        is_read: True to mark read, False to mark unread
-
-    Returns:
-        the aggregation pipeline to pass to the mongodb update
     """
     now = get_current_timestamp()
-    is_broadcast = {"$eq": ["$type", NoticeType.CUSTOM_BROADCAST.id]}
-    set_operator = "$setUnion" if is_read else "$setDifference"
-
+    member_change = AddToSet if is_read else Pull
+    changes = [member_change("dismissed_by", user_id), Set("updated_at", now)]
     return [
-        {
-            "$set": {
-                "read_at": {"$cond": [is_broadcast, None, now if is_read else None]},
-                "dismissed_by": {set_operator: ["$dismissed_by", [user_id]]},
-                "updated_at": now,
-            }
-        }
+        (_IS_BROADCAST, changes),
+        (_IS_NOT_BROADCAST, [*changes, Set("read_at", now if is_read else None)]),
     ]
 
 
 def _with_default_email_preferences(
     prefs: Dict[NoticeTypeId, bool]
 ) -> Dict[NoticeTypeId, bool]:
-    """Fills in the default email preference for every notice type missing in prefs
-
-    Args:
-        prefs: the email preferences that were explicitly set
-
-    Returns:
-        a full map of notice type to email preference
-    """
+    """Fills in the default email preference for every notice type missing in prefs"""
     return {v.id: prefs.get(v.id, True) for v in NoticeType}
 
 
@@ -665,12 +504,6 @@ async def _with_project_name(
 
     Deleted projects are searched too, as approving a close-project request deletes
     the project before its requester is told.
-
-    Args:
-        context: the context of the notice
-
-    Returns:
-        the context, with the project name filled in if it was missing and could be found
     """
     is_name_missing = (
         isinstance(context, ProjectRequestContext)
@@ -690,7 +523,6 @@ async def _with_project_name(
         )
         if project is not None:
             return context.model_copy(update={"project_name": project.name})
-
     return context
 
 

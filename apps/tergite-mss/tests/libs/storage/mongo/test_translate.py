@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 import pymongo
 import pytest
 from bson import ObjectId
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 from libs.storage import (
     ALL,
@@ -213,3 +213,20 @@ def test_the_validator_speaks_bson():
     assert {"bsonType": "objectId"} in properties["owner_id"]["anyOf"]
     assert properties["friend_ids"]["items"] == {"bsonType": "objectId"}
     assert {"bsonType": "date"} in properties["created_at"]["anyOf"]
+
+
+def test_computed_fields_are_not_stored():
+    class WithComputed(Schema):
+        __storage__ = StorageSpec(table="computed")
+
+        id: Id
+        seconds: int = 60
+
+        @computed_field
+        @property
+        def minutes(self) -> int:
+            return self.seconds // 60
+
+    document = convert_to_document(WithComputed, WithComputed(id=_OWNER_ID))
+
+    assert document == {"_id": ObjectId(_OWNER_ID), "seconds": 60}

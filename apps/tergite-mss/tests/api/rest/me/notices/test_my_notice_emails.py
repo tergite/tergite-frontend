@@ -184,11 +184,11 @@ def test_sweeper_survives_a_failing_sweep(
     real_find = emails._find_notices_pending_email
     calls = []
 
-    async def fail_once(limit: int):
+    async def fail_once(database, limit: int):
         calls.append(limit)
         if len(calls) == 1:
             raise RuntimeError("boom")
-        return await real_find(limit)
+        return await real_find(database, limit)
 
     mocker.patch.object(emails, "_find_notices_pending_email", side_effect=fail_once)
 

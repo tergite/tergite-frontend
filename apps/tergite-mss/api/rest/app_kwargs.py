@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
         private_key_password=settings.CONFIG.private_key_password,
         qpu_seconds_low_threshold=settings.CONFIG.projects.qpu_seconds_low_threshold,
     )
-    await notices_service.on_startup(db, emailer, conf=settings.CONFIG.notices)
+    await notices_service.on_startup(database, emailer, conf=settings.CONFIG.notices)
     await requests_service.on_startup(db)
     if emailer is not None:
         emailer.start()

@@ -15,7 +15,7 @@ from typing import Dict
 
 from fastapi import APIRouter
 
-from api.rest.dependencies import CurrentUserIdDep
+from api.rest.dependencies import CurrentUserIdDep, DatabaseDep
 from services import notices as notices_service
 from services.notices import NoticeTypeId
 
@@ -24,30 +24,34 @@ router = APIRouter()
 
 @router.get("/")
 async def get_my_email_preferences(
-    user_id: CurrentUserIdDep,
+    database: DatabaseDep, user_id: CurrentUserIdDep
 ) -> Dict[NoticeTypeId, bool]:
     """Gets the current user's delivery preferences, with defaults filled in
 
     Args:
+        database: the database where the preferences are stored
         user_id: the ID of the current signed-in user
 
     Returns:
         a map of notice type to its email preference
     """
-    return await notices_service.get_email_preferences(user_id)
+    return await notices_service.get_email_preferences(database, user_id)
 
 
 @router.put("/")
 async def update_my_email_preferences(
-    body: Dict[NoticeTypeId, bool], user_id: CurrentUserIdDep
+    database: DatabaseDep, body: Dict[NoticeTypeId, bool], user_id: CurrentUserIdDep
 ) -> Dict[NoticeTypeId, bool]:
     """Updates the named preferences, leaving the rest untouched
 
     Args:
+        database: the database where the preferences are stored
         body: the types to change and their wanted preferences
         user_id: the ID of the current signed-in user
 
     Returns:
         the user's full effective preferences after the update
     """
-    return await notices_service.set_email_preferences(user_id=user_id, prefs=body)
+    return await notices_service.set_email_preferences(
+        database, user_id=user_id, prefs=body
+    )

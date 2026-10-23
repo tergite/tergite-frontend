@@ -121,8 +121,10 @@ def convert_to_bson_value(schema: Type[Schema], field: str, value: Any) -> Any:
 
 
 def convert_to_document(schema: Type[Schema], record: Schema) -> Dict[str, Any]:
-    """Converts the record into the document MongoDB stores"""
-    document = _convert_to_document_values(schema, record.model_dump(mode="python"))
+    """Converts the record into the document MongoDB stores; computed fields are not stored"""
+    computed = set(type(record).model_computed_fields)
+    data = record.model_dump(mode="python", exclude=computed or None)
+    document = _convert_to_document_values(schema, data)
     if "id" in document:
         document[KEY_FIELD] = document.pop("id")
     return document

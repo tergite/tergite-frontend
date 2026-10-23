@@ -21,7 +21,6 @@ from api.rest.dependencies import (
     CurrentSuperuserDep,
     CurrentUserDep,
     DatabaseDep,
-    MongoDbDep,
 )
 from services import jobs as jobs_service
 from services import notices as notices_service
@@ -33,7 +32,7 @@ router = APIRouter(prefix="/counts", tags=["counts"])
 
 @router.get("/notices")
 async def get_notice_count(
-    db: MongoDbDep,
+    database: DatabaseDep,
     current_user: CurrentUserDep,
     user_id: PydanticObjectId = Query(
         None, description="User ID whose notice count is requested"
@@ -49,7 +48,7 @@ async def get_notice_count(
     """Gets the number of notices that fulfill the given filters
 
     Args:
-        db: the MongoDB database where the notices are stored
+        database: the database where the notices are stored
         current_user: the current logged in user
         user_id: The IDs of the users to retrieve notices for; only superusers can set it
         min_start_utc: The minimum UTC timestamp the notice should start
@@ -61,14 +60,14 @@ async def get_notice_count(
         is_read: filter on read state; default = None i.e. either
     """
     count = await notices_service.count_many(
-        db,
+        database,
         requester=current_user,
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
         min_expires_utc=min_expires_utc,
         max_expires_utc=max_expires_utc,
-        include_dismissed=include_dismissed,
+        should_include_dismissed=include_dismissed,
         types=types,
         is_read=is_read,
     )

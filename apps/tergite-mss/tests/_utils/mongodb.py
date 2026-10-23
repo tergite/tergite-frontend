@@ -79,7 +79,7 @@ def insert_if_not_exist(db: database.Database, schema: Type[T], data: Dict[str, 
         data: the document to insert
     """
     try:
-        col: collection.Collection = db[schema.Settings.name]
+        col: collection.Collection = db[_get_collection_name(schema)]
         col.insert_one(data)
     except errors.DuplicateKeyError:
         pass
@@ -92,7 +92,7 @@ def get_db_record(
     _filter: Optional[dict] = None,
 ) -> Optional[dict]:
     """Gets a given auth document from the database or None if it does not exist"""
-    col: collection.Collection = db[schema.Settings.name]
+    col: collection.Collection = db[_get_collection_name(schema)]
     filter_obj = {"_id": PydanticObjectId(_id)} if _id else {}
     if _filter is not None:
         filter_obj.update(_filter)
@@ -107,7 +107,7 @@ def update_db_record(
     update: Optional[dict] = None,
 ) -> Optional[dict]:
     """Updates the given auth document"""
-    col: collection.Collection = db[schema.Settings.name]
+    col: collection.Collection = db[_get_collection_name(schema)]
     filter_obj = {"_id": PydanticObjectId(_id)} if _id else {}
     if _filter is not None:
         filter_obj.update(_filter)
@@ -115,3 +115,9 @@ def update_db_record(
     return col.find_one_and_update(
         filter_obj, payload, return_document=ReturnDocument.AFTER
     )
+
+
+def _get_collection_name(schema: Type[T]) -> str:
+    """The collection of a storage Schema or of a beanie Document"""
+    storage = getattr(schema, "__storage__", None)
+    return storage.table if storage is not None else schema.Settings.name
