@@ -203,7 +203,6 @@ class JobStatusResponse(BaseModel):
         return cls(status=job.status)
 
 
-# Derived models
 JobQuery = create_partial_model("JobQuery", original=Job, default=Query(None))
 JobUpdate = create_partial_model(
     "JobUpdate", original=Job, exclude=("duration_in_secs",)

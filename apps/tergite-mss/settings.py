@@ -33,7 +33,6 @@ CONFIG: AppConfig = AppConfig.from_json_str(_MSS_CONFIG_JSON_STR)
 
 _is_production = CONFIG.environment == "production"
 
-# Logger
 if _is_production:
     _logger_level = logging.INFO
 elif CONFIG.environment == "test":

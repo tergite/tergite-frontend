@@ -189,7 +189,6 @@ class DeviceEvent(BaseModel):
         return value
 
 
-# derived models
 DeviceQuery = create_partial_model(
     "DeviceQuery",
     original=Device,

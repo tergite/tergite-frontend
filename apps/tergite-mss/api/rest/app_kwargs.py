@@ -44,7 +44,6 @@ def get_app_kwargs() -> Dict[str, Any]:
         lifespan=lifespan,
     )
 
-    # hide the docs if not in development
     if settings.CONFIG.environment.lower() != "development":
         kwargs["docs_url"] = None
         kwargs["redoc_url"] = None
@@ -55,7 +54,6 @@ def get_app_kwargs() -> Dict[str, Any]:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # on startup
     logger.info("Initializing Tergite MSS database connections and client services...")
     email_conf = settings.CONFIG.email
     emailer = Emailer(config=email_conf) if email_conf is not None else None
@@ -81,7 +79,6 @@ async def lifespan(_app: FastAPI):
     logger.info("Tergite MSS startup sequence completed successfully.")
 
     yield
-    # on shutdown
     logger.info(
         "Tergite MSS shutting down. Closing active connections and cleaning up..."
     )

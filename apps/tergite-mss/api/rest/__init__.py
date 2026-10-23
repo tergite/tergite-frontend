@@ -51,12 +51,10 @@ from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
 
-# Initialize logging
 setup_logging(settings.CONFIG.environment)
 
 set_datetime_precision(settings.CONFIG.datetime_precision)
 
-# application
 app = FastAPI(**get_app_kwargs())
 
 app.add_middleware(RequestIDMiddleware)
@@ -68,7 +66,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# exception handlers
 app.add_exception_handler(NotFoundError, make_http_error_handler(404))
 app.add_exception_handler(
     ValueError, make_http_error_handler(500, "Unexpected server error")
@@ -101,7 +98,6 @@ app.add_exception_handler(
     ExceptionGroup, make_exception_group_handler(app.exception_handlers)
 )
 
-# routes
 include_auth_router(app)
 app.include_router(calibrations_router)
 app.include_router(devices_router)

@@ -150,7 +150,6 @@ class DeviceCalibrationLog(DeviceCalibration):
         ]
 
 
-# derived models
 DeviceCalibrationQuery = create_partial_model(
     "DeviceCalibrationQuery",
     original=DeviceCalibration,
