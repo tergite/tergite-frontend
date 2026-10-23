@@ -18,13 +18,13 @@ from fastapi import APIRouter, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
 from services import notices as notices_service
-from services.notices import NoticeTypeId
+from services.notices import Notice, NoticeTypeId
 from utils.api import GeneralMessage, PaginatedListResponse
 
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("/", responses={200: {"model": PaginatedListResponse[Notice]}})
 async def get_my_notices(
     db: MongoDbDep,
     user_id: CurrentUserIdDep,

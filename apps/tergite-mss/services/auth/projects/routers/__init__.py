@@ -59,6 +59,7 @@ def get_my_projects_router(
     @router.get(
         "/",
         name="projects:my_many_projects",
+        responses={200: {"model": PaginatedListResponse[project_schema]}},
     )
     async def get_projects(
         user_id: str = Depends(get_current_user_id),
@@ -96,6 +97,7 @@ def get_my_projects_router(
     @router.get(
         "/{id}",
         name="projects:my_single_project",
+        responses={200: {"model": project_schema}},
     )
     async def get_project(
         id: str,
@@ -247,6 +249,7 @@ def get_projects_router(
         dependencies=[Depends(get_current_superuser)],
         name="projects:single_project",
         responses={
+            status.HTTP_200_OK: {"model": ProjectAdminView},
             status.HTTP_401_UNAUTHORIZED: {
                 "description": "Missing token or inactive project.",
             },

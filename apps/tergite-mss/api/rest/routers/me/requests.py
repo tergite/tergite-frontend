@@ -51,7 +51,7 @@ async def create(body: RequestPostBody, requester: CurrentUserDep) -> Request:
     return await requests_service.create(request_body=body, requester=requester)
 
 
-@router.get("/")
+@router.get("/", responses={200: {"model": PaginatedListResponse[Request]}})
 async def get_many(
     user: CurrentUserDep,
     role: RequestRole = Query("approver"),

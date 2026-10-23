@@ -121,6 +121,13 @@ def get_oauth_router(
         "/callback",
         name=callback_route_name,
         description="The response varies based on the authentication backend used.",
+        status_code=status.HTTP_204_NO_CONTENT,
+        responses={
+            **backend.transport.get_openapi_login_responses_success(),
+            status.HTTP_307_TEMPORARY_REDIRECT: {
+                "description": "Logged in; redirects to the `next` URL in the state."
+            },
+        },
     )
     async def callback(
         request: Request,
@@ -193,7 +200,12 @@ def get_auth_router(
         active=True, verified=requires_verification
     )
 
-    @router.post("/logout", name=f"auth:{backend.name}.logout")
+    @router.post(
+        "/logout",
+        name=f"auth:{backend.name}.logout",
+        status_code=status.HTTP_204_NO_CONTENT,
+        responses=backend.transport.get_openapi_logout_responses_success(),
+    )
     async def logout(
         user_token: Tuple[models.UP, str] = Depends(get_current_user_token),
         strategy: Strategy[models.UP, models.ID] = Depends(backend.get_strategy),

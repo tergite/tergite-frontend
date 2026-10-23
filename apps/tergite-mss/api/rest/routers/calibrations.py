@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, Query
 from api.rest.dependencies import MongoDbDep
 from services import calibration as calibration_service
 from services.calibration import (
+    DeviceCalibration,
     DeviceCalibrationCreate,
     DeviceCalibrationQuery,
 )
@@ -30,7 +31,7 @@ from utils.api import PaginatedListResponse
 router = APIRouter(prefix="/calibrations", tags=["calibrations"])
 
 
-@router.get("/")
+@router.get("/", responses={200: {"model": PaginatedListResponse[DeviceCalibration]}})
 async def get_many(
     db: MongoDbDep,
     query: DeviceCalibrationQuery = Depends(),
@@ -61,7 +62,7 @@ async def get_many(
     )
 
 
-@router.get("/{name}")
+@router.get("/{name}", responses={200: {"model": DeviceCalibration}})
 async def read_one(db: MongoDbDep, name: str):
     record = await calibration_service.get_one(db, name)
     return record.model_dump(mode="json")

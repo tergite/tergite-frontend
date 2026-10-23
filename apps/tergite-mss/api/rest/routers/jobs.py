@@ -31,13 +31,19 @@ from api.rest.dependencies import (
 from services import jobs as jobs_service
 from services.external import bcc
 from services.external.bcc import CancellationDetails
-from services.jobs import JobCreate, JobQuery, JobStatusResponse
+from services.jobs import (
+    CreatedJobResponse,
+    Job,
+    JobCreate,
+    JobQuery,
+    JobStatusResponse,
+)
 from utils.api import GeneralMessage, PaginatedListResponse
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 
-@router.get("/")
+@router.get("/", responses={200: {"model": PaginatedListResponse[Job]}})
 async def get_many(
     db: MongoDbDep,
     project_and_user: CurrentLaxProjectAndUserDep,
@@ -71,7 +77,7 @@ async def get_many(
     )
 
 
-@router.get("/{job_id}")
+@router.get("/{job_id}", responses={200: {"model": Job}})
 async def get_one(
     db: MongoDbDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
 ):
@@ -91,7 +97,7 @@ async def get_one(
 @router.get("/{job_id}/status")
 async def get_job_status(
     db: MongoDbDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
-):
+) -> JobStatusResponse:
     """Gets the status of the job for the given job_id
 
     Args:
@@ -118,7 +124,7 @@ async def create_one(
     project_user_id_pair: CurrentStrictProjectUserIdsDep,
     payload: JobCreate,
     request_id: RequestIdDep,
-):
+) -> CreatedJobResponse:
     """Creates a job in the given backend and given calibration_date in the body"""
     project_id, user_id = project_user_id_pair
     return await jobs_service.create_job(

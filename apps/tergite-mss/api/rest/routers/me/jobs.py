@@ -15,13 +15,13 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query
 
 from api.rest.dependencies import CurrentUserIdDep, MongoDbDep
-from services.jobs import JobQuery, get_latest_many
+from services.jobs import Job, JobQuery, get_latest_many
 from utils.api import PaginatedListResponse
 
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("/", responses={200: {"model": PaginatedListResponse[Job]}})
 async def get_my_jobs(
     db: MongoDbDep,
     user_id: CurrentUserIdDep,

@@ -28,7 +28,7 @@ from api.rest.dependencies import MongoDbDep, ProjectDbDep
 from api.rest.utils import get_verified_device_name
 from services import devices
 from services.auth import ProjectDatabase
-from services.devices import DeviceEvent, DeviceQuery
+from services.devices import Device, DeviceEvent, DeviceQuery
 from utils.api import (
     EventResponse,
     PaginatedListResponse,
@@ -42,7 +42,7 @@ router = APIRouter(prefix="/devices", tags=["devices"])
 ws_manager = WebsocketConnectionManager()
 
 
-@router.get("/")
+@router.get("/", responses={200: {"model": PaginatedListResponse[Device]}})
 async def read_many(
     db: MongoDbDep,
     query: DeviceQuery = Depends(),
@@ -74,7 +74,7 @@ async def read_many(
     )
 
 
-@router.get("/{name}")
+@router.get("/{name}", responses={200: {"model": Device}})
 async def read_one(db: MongoDbDep, name: str):
     record = await devices.get_device(db, name=name)
     return record.model_dump(mode="json")

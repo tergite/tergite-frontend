@@ -211,14 +211,10 @@ type-hints: services/devices/events.py::on_device_recalibrated_event
 type-hints: services/devices/events.py::on_device_switched_off_event
 type-hints: services/devices/events.py::on_device_switched_on_event
 type-hints: services/devices/events.py::on_job_updated_event
-type-hints: api/rest/routers/jobs.py::create_one
-type-hints: api/rest/routers/jobs.py::get_job_status
 type-hints: api/rest/routers/jobs.py::get_many
 type-hints: api/rest/routers/jobs.py::get_one
 type-hints: api/rest/routers/me/jobs.py::get_my_jobs
 type-hints: api/rest/routers/me/notices/notices.py::get_my_notices
-type-hints: api/rest/routers/me/notices/preferences.py::get_my_email_preferences
-type-hints: api/rest/routers/me/notices/preferences.py::update_my_email_preferences
 type-hints: api/rest/routers/me/profile.py::get_my_user_profile
 type-hints: api/rest/routers/me/requests.py::get_many
 type-hints: api/rest/utils.py::_is_valid_uuid4

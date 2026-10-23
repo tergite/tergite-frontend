@@ -132,6 +132,7 @@ def get_app_tokens_router(
     @router.post(
         "/",
         name=f"app_tokens:{backend.name}.generate_token",
+        responses=backend.transport.get_openapi_login_responses_success(),
     )
     async def generate_app_token(
         request: Request,
@@ -158,6 +159,7 @@ def get_app_tokens_router(
     @router.put(
         "/{_id}",
         name=f"app_tokens:{backend.name}.update_token",
+        responses={200: {"model": AppTokenRead}},
     )
     async def update_app_token(
         _id: PydanticObjectId,
@@ -181,6 +183,7 @@ def get_app_tokens_router(
     @router.delete(
         "/{_id}",
         name=f"app_tokens:{backend.name}.destroy_token",
+        status_code=status.HTTP_204_NO_CONTENT,
     )
     async def destroy(
         _id: PydanticObjectId,

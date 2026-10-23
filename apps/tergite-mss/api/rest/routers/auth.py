@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, FastAPI, Query
 from loguru import logger
 
 import settings
-from services.auth import JWT_AUTH, JWT_COOKIE_BACKEND, providers
+from services.auth import JWT_AUTH, JWT_COOKIE_BACKEND, AuthProvider, providers
 from services.auth.providers.dtos import AuthProviderQuery
 from services.auth.service import register_oauth2_client
 from utils.api import PaginatedListResponse
@@ -54,7 +54,9 @@ def include_auth_router(root_router: Union[APIRouter, FastAPI]):
         tags=["auth"],
     )
 
-    @router.get("/providers/")
+    @router.get(
+        "/providers/", responses={200: {"model": PaginatedListResponse[AuthProvider]}}
+    )
     def get_auth_providers(
         query: AuthProviderQuery = Depends(),
         skip: int = 0,
