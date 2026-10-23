@@ -19,7 +19,8 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from api.rest.dependencies import MongoDbDep
+from api.rest.dependencies import DatabaseDep
+from libs.storage import Page, parse_sort
 from services import calibration as calibration_service
 from services.calibration import (
     DeviceCalibration,
@@ -32,7 +33,7 @@ router = APIRouter(prefix="/calibrations", tags=["calibrations"])
 
 @router.get("/", responses={200: {"model": PaginatedListResponse[DeviceCalibration]}})
 async def get_many(
-    db: MongoDbDep,
+    database: DatabaseDep,
     query: DeviceCalibrationQuery = Depends(),
     skip: int = 0,
     limit: Optional[int] = None,
@@ -41,7 +42,7 @@ async def get_many(
     """Gets a paginated list of calibration result sets that fulfill a given set of filters
 
     Args:
-        db: the mongo db database from which to get the calibration results
+        database: the database where the calibrations are stored
         query: the query params for getting the calibration result sets
         skip: the number of records to skip
         limit: the maximum number of records to return
@@ -51,15 +52,16 @@ async def get_many(
     Returns:
         the paginated result of the matched device calibration results
     """
-    filters = query.model_dump()
-
     data = await calibration_service.find_latest_calibrations(
-        db, filters=filters, limit=limit, skip=skip, sort=sort
+        database,
+        where=calibration_service.build_filter(query),
+        sort=parse_sort(sort),
+        page=Page(skip=skip, limit=limit),
     )
     return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 
 
 @router.get("/{name}", responses={200: {"model": DeviceCalibration}})
-async def read_one(db: MongoDbDep, name: str):
-    record = await calibration_service.get_one(db, name)
+async def read_one(database: DatabaseDep, name: str):
+    record = await calibration_service.get_one(database, name)
     return record.model_dump(mode="json")

@@ -240,8 +240,6 @@ type-hints: services/auth/users/routers.py::get_oauth_router.callback
 type-hints: services/auth/users/validators.py::EmailRegexValidator.validate
 type-hints: services/auth/users/validators.py::Validator.validate
 type-hints: services/auth/utils.py::get_oauth2_client
-type-hints: services/calibration/service.py::on_startup
-type-hints: services/calibration/dtos.py::DeviceCalibration.serialize_id
 type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
 type-hints: services/external/bcc/dtos.py::Booking.validate_username
 type-hints: services/external/bcc/service.py::BccClient._request

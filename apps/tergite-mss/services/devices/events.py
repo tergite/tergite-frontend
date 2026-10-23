@@ -13,8 +13,6 @@
 """Module containing event handlers"""
 from typing import Dict
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
-
 from libs.storage import Database
 from services import calibration as calibration_service
 from services import jobs as jobs_service
@@ -149,14 +147,14 @@ async def on_device_switched_on_event(
 
 
 async def on_device_recalibrated_event(
-    device: str, data: DeviceCalibration, db: AsyncIOMotorDatabase, **kwargs
+    device: str, data: DeviceCalibration, database: Database, **kwargs
 ) -> GeneralMessage:
     """Handles the device event of device recalibrated
 
     Args:
         device: the name of the device
         data: the new device calibration data
-        db: the mongo db instance where the calibration data is stored
+        database: the database where the calibrations are stored
 
     Returns:
         the general message with the upserted calibration data
@@ -169,7 +167,9 @@ async def on_device_recalibrated_event(
     if data.name != device:
         raise ForbiddenError(f"editing '{data.name}' is not allowed")
 
-    upserted_record = await calibration_service.create_calibration(db, record=data)
+    upserted_record = await calibration_service.create_calibration(
+        database, record=data
+    )
     return {
         "status": "success",
         "data": upserted_record.model_dump(mode="json"),

@@ -912,9 +912,6 @@
       "DeviceCalibration": {
         "description": "Schema for the calibration data of a given device",
         "properties": {
-          "_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
-          },
           "couplers": {
             "anyOf": [
               {
@@ -940,6 +937,11 @@
               }
             ],
             "title": "Discriminators"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Id",
+            "type": "string"
           },
           "last_calibrated": {
             "anyOf": [
@@ -994,7 +996,6 @@
           }
         },
         "required": [
-          "_id",
           "name",
           "version",
           "qubits"
@@ -5921,7 +5922,7 @@
     },
     "/calibrations/": {
       "get": {
-        "description": "Gets a paginated list of calibration result sets that fulfill a given set of filters\n\nArgs:\n    db: the mongo db database from which to get the calibration results\n    query: the query params for getting the calibration result sets\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-last_calibrated\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\"\n\nReturns:\n    the paginated result of the matched device calibration results",
+        "description": "Gets a paginated list of calibration result sets that fulfill a given set of filters\n\nArgs:\n    database: the database where the calibrations are stored\n    query: the query params for getting the calibration result sets\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-last_calibrated\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\"\n\nReturns:\n    the paginated result of the matched device calibration results",
         "operationId": "get_many_calibrations__get",
         "parameters": [
           {
@@ -5963,39 +5964,6 @@
               },
               "title": "Sort",
               "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "$ref": "#/components/schemas/PydanticObjectId"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "revision_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Revision Id"
             }
           },
           {
@@ -6044,6 +6012,22 @@
                 }
               ],
               "title": "Last Calibrated"
+            }
+          },
+          {
+            "in": "query",
+            "name": "id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Id"
             }
           },
           {

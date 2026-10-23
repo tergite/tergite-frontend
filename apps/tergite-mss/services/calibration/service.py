@@ -16,112 +16,82 @@
 #
 # Refactored by Martin Ahindura on 2023-11-08
 """Service that handles calibration functionality"""
-from typing import Any, Dict, List, Optional
+from typing import List, Sequence
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo import ReturnDocument
-
-from utils import mongodb as mongodb_utils
-from utils.mongodb import init_strict_beanie
+from libs.storage import ALL, And, Database, Eq, Filter, Page, Set, SetOnInsert, Sort
+from utils.date_time import get_current_timestamp
+from utils.exc import NotFoundError
 
 from .dtos import (
-    CALIBRATION_LOGS_COLLECTION,
-    CALIBRATIONS_COLLECTION,
     DeviceCalibration,
     DeviceCalibrationCreate,
     DeviceCalibrationLog,
+    DeviceCalibrationQuery,
 )
 
 
 async def create_calibration(
-    db: AsyncIOMotorDatabase, record: DeviceCalibrationCreate
+    database: Database, record: DeviceCalibrationCreate
 ) -> DeviceCalibration:
-    """Inserts into the database a new calibration result set
+    """Makes the calibration its device's current one, and logs it once
 
     Args:
-        db: the mongo database
-        record: the data to be inserted
+        database: the database where the calibrations are stored
+        record: the calibration results
 
     Returns:
-        the inserted document
+        the device's current calibration
     """
-    document = record.model_dump()
-    # Save historical calibrations
-    # We use insert_one_if_not_exists to ensure idempotency
-    await mongodb_utils.insert_one_if_not_exists(
-        collection=db[CALIBRATION_LOGS_COLLECTION],
-        document={**document},
-        unique_fields=("name", "last_calibrated"),
+    fields = record.model_dump()
+    # setting only on insert makes logging the same calibration twice a no-op
+    await database.update_one(
+        DeviceCalibrationLog,
+        where=And(
+            Eq("name", record.name), Eq("last_calibrated", record.last_calibrated)
+        ),
+        changes=[SetOnInsert(field, value) for field, value in fields.items()],
+        should_upsert=True,
     )
-
-    # Save current calibration
-    record = await mongodb_utils.update_one(
-        collection=db[CALIBRATIONS_COLLECTION],
-        _filter={"name": document["name"]},
-        payload=document,
-        return_document=ReturnDocument.AFTER,
-        upsert=True,
+    return await database.update_one(
+        DeviceCalibration,
+        where=Eq("name", record.name),
+        changes=[
+            *(Set(field, value) for field, value in fields.items()),
+            Set("updated_at", get_current_timestamp()),
+        ],
+        should_upsert=True,
     )
-
-    return DeviceCalibration.model_validate(record)
 
 
 async def find_latest_calibrations(
-    db: AsyncIOMotorDatabase,
-    filters: Optional[Dict[str, Any]] = None,
-    limit: Optional[int] = None,
-    skip: int = 0,
-    sort: List[str] = (),
+    database: Database,
+    where: Filter = ALL,
+    sort: Sequence[Sort] = (),
+    page: Page = Page(),
 ) -> List[DeviceCalibration]:
-    """Gets the current calibration results for all available devices
+    """Gets the current calibration of every device that matches the filter
 
     Args:
-        db: the mongo database
-        filters: the mongodb-like filters to use to extract the calibrations
-        limit: the number of results to return: default = None meaning all of them
-        skip: the number of records to skip; default = 0
-        sort: the fields to sort by, prefixing any with a '-' means descending; default = ()
-
-    Returns:
-        the list of calibration results
+        database: the database where the calibrations are stored
+        where: the filter every returned calibration matches
+        sort: the order of the calibrations
+        page: which slice of the matched calibrations to return
     """
-    return await mongodb_utils.find(
-        db[CALIBRATIONS_COLLECTION],
-        filters=filters,
-        limit=limit,
-        skip=skip,
-        sort=sort,
-        schema=DeviceCalibration,
-    )
+    return await database.find(DeviceCalibration, where=where, sort=sort, page=page)
 
 
-async def get_one(db: AsyncIOMotorDatabase, name: str) -> DeviceCalibration:
-    """Gets the current calibration results of the given device
+async def get_one(database: Database, name: str) -> DeviceCalibration:
+    """Gets the current calibration of the given device
 
-    Args:
-        db: the mongo database
-        name: the name of the device
-
-    Returns:
-        the dict of the calibration results
+    Raises:
+        NotFoundError: no matches for {'name': name}
     """
-    return await mongodb_utils.find_one(
-        db[CALIBRATIONS_COLLECTION],
-        {"name": name},
-        schema=DeviceCalibration,
-    )
+    calibration = await database.get(DeviceCalibration, name)
+    if calibration is None:
+        raise NotFoundError(f"no matches for '{ {'name': name} }'")
+    return calibration
 
 
-async def on_startup(db: AsyncIOMotorDatabase):
-    """Initializes the collections for the calibrations service
-
-    Args:
-        db: the mongodb database instance
-    """
-    await init_strict_beanie(
-        database=db,
-        document_models=[
-            DeviceCalibration,
-            DeviceCalibrationLog,
-        ],
-    )
+def build_filter(query: DeviceCalibrationQuery) -> Filter:
+    """Turns the query's set fields into a filter matching each of them"""
+    return And(*(Eq(field, value) for field, value in query.model_dump().items()))

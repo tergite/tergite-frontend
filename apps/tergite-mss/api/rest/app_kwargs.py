@@ -22,7 +22,6 @@ from fastapi import FastAPI
 from loguru import logger
 
 import settings
-from services import calibration as calib_service
 from services import jobs as jobs_service
 from services import requests as requests_service
 from services.auth import service as auth_service
@@ -68,7 +67,6 @@ async def lifespan(app: FastAPI):
     await auth_service.on_startup(
         db, conf=settings.CONFIG.auth, projects_conf=settings.CONFIG.projects
     )
-    await calib_service.on_startup(db)
     await jobs_service.on_startup(
         private_key_file=settings.PRIVATE_KEY_FILE,
         private_key_password=settings.CONFIG.private_key_password,

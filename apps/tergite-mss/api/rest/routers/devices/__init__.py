@@ -19,12 +19,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, WebSocketException
 from fastapi.websockets import WebSocket
 from loguru import logger
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocketDisconnect
 
-from api.rest.dependencies import DatabaseDep, MongoDbDep, ProjectDbDep
+from api.rest.dependencies import DatabaseDep, ProjectDbDep
 from api.rest.utils import get_verified_device_name
 from libs.storage import Database, Page, parse_sort
 from services import devices
@@ -85,7 +84,6 @@ async def read_one(database: DatabaseDep, name: str):
 async def handle_device_events(
     websocket: WebSocket,
     name: str,
-    db: MongoDbDep,
     database: DatabaseDep,
     project_db: ProjectDbDep,
     verified_name: str = Depends(get_verified_device_name),
@@ -95,8 +93,7 @@ async def handle_device_events(
     Args:
         websocket: the websocket instance
         name: the name of the device
-        db: the mongo db instance
-        database: the database holding the jobs
+        database: the database holding the devices, calibrations and jobs
         project_db: the database containing the project
         verified_name: the verified name of the device
     """
@@ -113,7 +110,6 @@ async def handle_device_events(
             response = await _handle_frame(
                 data,
                 device=verified_name,
-                db=db,
                 database=database,
                 project_db=project_db,
             )
@@ -130,7 +126,6 @@ async def handle_device_events(
 async def _handle_frame(
     data: dict,
     device: str,
-    db: AsyncIOMotorDatabase,
     database: Database,
     project_db: ProjectDatabase,
 ) -> EventResponse:
@@ -144,7 +139,6 @@ async def _handle_frame(
             await handler(
                 device=device,
                 data=event.data,
-                db=db,
                 database=database,
                 project_db=project_db,
             )

@@ -18,11 +18,12 @@ from fastapi import FastAPI
 from starlette.requests import HTTPConnection
 
 from libs.storage import Database, Schema
-from services import devices, jobs, request_log
+from services import calibration, devices, jobs, request_log
 from utils.config import DatabaseConfig
 
 # each service adds its schemas here as it moves onto the storage layer
 SCHEMAS: Tuple[Type[Schema], ...] = (
+    *calibration.SCHEMAS,
     *devices.SCHEMAS,
     *jobs.SCHEMAS,
     *request_log.SCHEMAS,
