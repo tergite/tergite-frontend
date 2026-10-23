@@ -274,12 +274,16 @@ def _get_column(tables: SchemaTables, field_name: str) -> ColumnElement:
     """Gets the column of a field
 
     Raises:
-        QueryError: the field is in a JSON column, or a list kept in a child table
+        QueryError: the field is in a JSON column, a list kept in a child table, or
+            undeclared
     """
     if field_name in tables.list_tables:
         raise QueryError(f"list field '{field_name}' is matched by element")
     if "." in field_name or field_name in tables.json_fields:
         raise QueryError(f"'{field_name}' is in a JSON column, which is read whole")
+    if field_name not in tables.table.c:
+        # a schema that allows extra fields declares no column for them
+        raise QueryError(f"'{field_name}' is not a column of {tables.table.name}")
     return tables.table.c[field_name]
 
 
