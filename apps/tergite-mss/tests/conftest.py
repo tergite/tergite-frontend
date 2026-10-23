@@ -46,7 +46,6 @@ from tests._utils.auth import (
     TEST_USER_DICT,
     TEST_USER_ID,
     get_auth_cookie,
-    get_jwt_token,
     init_test_auth,
 )
 from tests._utils.fixtures import load_json_fixture

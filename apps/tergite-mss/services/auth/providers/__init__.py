@@ -40,7 +40,7 @@ def get_many(
 
     data = _filter_by_equality(_ALL_AUTH_PROVIDERS, filters=filters)
     if len(data) == 0:
-        raise NotFoundError(f"Not Found")
+        raise NotFoundError("Not Found")
 
     data = _order_by_many(data, fields=sort)
     sliced_data = data[skip : skip + limit]

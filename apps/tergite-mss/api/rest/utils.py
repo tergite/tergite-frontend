@@ -52,7 +52,7 @@ async def get_request_id(request: Request) -> str:
             )
         return request_id
     except AttributeError:
-        raise InvalidRequestIDError(f"The request ID '' is not a valid UUID4")
+        raise InvalidRequestIDError("The request ID '' is not a valid UUID4")
 
 
 def get_verified_device_name(websocket: WebSocket) -> str:

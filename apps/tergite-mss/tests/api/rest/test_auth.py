@@ -252,7 +252,7 @@ def test_login(client):
     """POST to /auth/login returns 404"""
     # using context manager to ensure on_startup runs
     with client as client:
-        response = client.post(f"/auth/login", json={})
+        response = client.post("/auth/login", json={})
 
         got = response.json()
         assert response.status_code == 404

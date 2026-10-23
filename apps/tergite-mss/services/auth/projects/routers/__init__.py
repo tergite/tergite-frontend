@@ -175,7 +175,7 @@ def get_my_projects_router(
     @router.delete(
         "/{_id}",
         status_code=status.HTTP_204_NO_CONTENT,
-        name=f"projects:destroy_my_administered_project",
+        name="projects:destroy_my_administered_project",
     )
     async def destroy(
         _id: PydanticObjectId,

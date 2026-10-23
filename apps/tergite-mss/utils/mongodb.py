@@ -13,7 +13,6 @@ import asyncio
 from contextlib import suppress
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type
 
-import pymongo
 from beanie import Document, SortDirection, init_beanie
 from loguru import logger
 from motor.motor_asyncio import (
@@ -120,7 +119,6 @@ def get_mongodb(url: str, name: str) -> AsyncIOMotorDatabase:
     Returns:
         a AsyncIOMotorDatabase instance that can be used to extract collections
     """
-    global _CONNECTIONS
 
     try:
         client = _CONNECTIONS[url]

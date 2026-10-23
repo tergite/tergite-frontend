@@ -134,7 +134,6 @@ def _get_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey
     Returns:
         the private key of the MSS
     """
-    global _MSS_PRIVATE_KEYS
 
     key_file_str = str(key_file)
 

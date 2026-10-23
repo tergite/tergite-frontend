@@ -40,7 +40,6 @@ from utils.exc import (
 )
 from utils.logging import setup_logging
 
-from . import app_kwargs
 from .app_kwargs import get_app_kwargs
 from .routers.admin import router as admin_router
 from .routers.auth import include_auth_router
@@ -50,7 +49,6 @@ from .routers.counts import router as counts_router
 from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
-from .utils import get_default_mongodb
 
 # Initialize logging
 setup_logging(settings.CONFIG.environment)

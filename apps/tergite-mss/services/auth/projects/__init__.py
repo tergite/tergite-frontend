@@ -15,7 +15,6 @@ from fastapi import APIRouter, Depends
 from fastapi_users.authentication import BearerTransport
 
 import settings
-from utils.config import ProjectsConfig
 
 from ..app_tokens.auth_backend import AppTokenAuthenticationBackend
 from ..app_tokens.authenticator import AppTokenAuthenticator
@@ -29,8 +28,6 @@ from ..users.manager import UserManagerDependency
 from . import routers
 from .database import ProjectDatabase
 from .dtos import (
-    Project,
-    ProjectAdminView,
     ProjectCreate,
     ProjectRead,
     ProjectUpdate,

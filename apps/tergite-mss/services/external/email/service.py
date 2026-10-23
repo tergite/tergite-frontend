@@ -19,7 +19,6 @@ from typing import (
     Dict,
     List,
     Optional,
-    Sequence,
 )
 
 import aiosmtplib

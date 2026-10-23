@@ -23,7 +23,6 @@ from api.rest.dependencies import MongoDbDep
 from services import calibration as calibration_service
 from services.calibration import (
     DeviceCalibration,
-    DeviceCalibrationCreate,
     DeviceCalibrationQuery,
 )
 from utils.api import PaginatedListResponse, build_paginated_json

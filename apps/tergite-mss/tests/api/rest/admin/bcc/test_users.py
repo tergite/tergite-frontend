@@ -97,7 +97,7 @@ def test_admin_remove_bcc_user(client, backend, admin_jwt_cookie, mock_bcc):
         url = f"/admin/bcc/users/{backend}/USER_ID_PLACEHOLDER"
         response = client.delete(url, cookies=admin_jwt_cookie)
         assert response.status_code == 200
-        assert response.json() == {"status": "success", "detail": f"User deleted"}
+        assert response.json() == {"status": "success", "detail": "User deleted"}
 
 
 @pytest.mark.parametrize("backend", BACKEND_SLUGS)

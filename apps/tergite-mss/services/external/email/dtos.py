@@ -21,7 +21,7 @@ from typing import (
     TypeAlias,
 )
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel
 
 BatchEmailCallback: TypeAlias = Callable[[Sequence["EmailResult"]], Awaitable[None]]
 """The asynchronous Callback called after every batch of emails is processed

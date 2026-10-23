@@ -85,7 +85,6 @@ async def create_clients(configs: List[BccConfig]):
 
 async def close_clients():
     """Closes the Bcc clients"""
-    global _BCC_CLIENTS
     for client in _BCC_CLIENTS.values():
         await client.close()
 
@@ -787,7 +786,7 @@ class BccClient:
                 raise BccHttpError(response.status_code, message)
 
             return response.json()
-        except (httpx.ConnectError, httpx.TimeoutException) as exp:
+        except (httpx.ConnectError, httpx.TimeoutException):
             logger.exception("BCC connection failed")
             raise ServiceUnavailableError("device is currently unavailable")
 

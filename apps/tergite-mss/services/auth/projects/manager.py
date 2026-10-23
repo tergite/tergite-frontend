@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """FastAPIUsers-inspired logic for managing projects"""
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 
 from beanie import PydanticObjectId
 from fastapi.requests import Request
@@ -27,7 +27,7 @@ from ..users.database import UserDatabase
 from ..users.dtos import User
 from . import exc
 from .database import ProjectDatabase
-from .dtos import DeletedProject, Project, ProjectCreate, ProjectPartial, ProjectUpdate
+from .dtos import DeletedProject, Project, ProjectPartial
 
 
 class ProjectAppTokenManager(ObjectIDIDMixin):

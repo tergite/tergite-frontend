@@ -20,9 +20,7 @@ from fastapi_users.authentication import AuthenticationBackend, Authenticator, S
 from fastapi_users.exceptions import UserAlreadyExists
 from fastapi_users.jwt import SecretType, decode_jwt
 from fastapi_users.manager import UserManagerDependency
-from fastapi_users.openapi import OpenAPIResponseType
 from fastapi_users.router import ErrorCode
-from fastapi_users.router.common import ErrorModel
 from fastapi_users.router.oauth import (
     STATE_TOKEN_AUDIENCE,
     OAuth2AuthorizeResponse,

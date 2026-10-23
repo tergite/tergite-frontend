@@ -19,7 +19,7 @@ from typing import Dict, NotRequired, Optional, TypedDict
 import httpx
 import jwt
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives import hashes, padding, serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from jwt import InvalidTokenError
@@ -158,7 +158,7 @@ def get_user_job_id_pair_from_token(token: str) -> tuple[str, str]:
             raise ValueError("user_id is None")
 
         return user_id, job_id
-    except (InvalidTokenError, KeyError, ValueError) as exp:
+    except (InvalidTokenError, KeyError, ValueError):
         raise ValueError("not authenticated")
 
 
@@ -233,7 +233,6 @@ def _get_bcc_private_key(device) -> RSAPrivateKey:
     Returns:
         the private key of the BCC device
     """
-    global _BCC_PRIVATE_KEYS
 
     private_key_path = _BCC_PRIVATE_KEY_PATHS[device]
 

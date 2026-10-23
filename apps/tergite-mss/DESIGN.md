@@ -292,18 +292,17 @@ import time; keep that ordering when adding fixtures.
 - The `db` fixture drops its database afterwards and `redis_client` flushes — tests must not
   assume a clean store beyond what those give them.
 
-CI runs `black --check .` then `pytest` on Python 3.12 and 3.13.
+CI runs `black --check .`, `pyflakes`, then `pytest` on Python 3.12 and 3.13.
 
 ## 8. Python style
 
 On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
 
-- **`black` is authoritative** for formatting (pinned `black==23.11.0`, and the only CI
-  gate); `isort` for imports, configured with `profile = "black"` so the two agree —
+- **`black` is authoritative** for formatting (pinned `black==23.11.0`, a CI gate); `isort` for imports, configured with `profile = "black"` so the two agree —
   without it isort emits a style black then reformats, churning unrelated files. Run both
   before committing; neither needs flags.
-- **`pyflakes`** finds unused imports and variables: `python -m pyflakes <files>` on what you
-  changed. It is not a CI gate yet.
+- **`pyflakes`** finds unused imports and variables; CI runs it over `api services utils
+  settings.py tests dev` and fails on any finding.
 - **Constants go at the top of the file**, after imports — not buried between functions. The
   exception is a constant built from a function or class defined in the same file, which
   stays after it (e.g. `EVENT_HANDLERS` after the handlers, `ProjectPartial`

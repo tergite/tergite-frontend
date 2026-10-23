@@ -15,7 +15,6 @@ from inspect import Parameter, Signature
 from typing import Any, Awaitable, Callable, List, Optional, Sequence, Tuple, cast
 
 from fastapi import Depends, HTTPException, status
-from fastapi_users.authentication import AuthenticationBackend
 from fastapi_users.authentication.authenticator import (
     DuplicateBackendNamesError,
     name_to_strategy_variable_name,
@@ -23,7 +22,6 @@ from fastapi_users.authentication.authenticator import (
 )
 from makefun import with_signature
 
-import settings
 from utils.config import UserRole
 
 from ..projects.dtos import Project

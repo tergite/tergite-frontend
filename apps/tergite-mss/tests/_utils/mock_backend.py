@@ -223,7 +223,7 @@ def cancel_job(request: httpx.Request):
     try:
         job_id = re.match(r"^.*/jobs/(.*)/cancel$", f"{request.url}").group(1)
         get_bcc_client_verified_headers(request)
-        body = CancellationDetails.model_validate_json(request.content)
+        CancellationDetails.model_validate_json(request.content)
         # FIXME: We don't check anything, we just always just cancel. We could have checked if admin or owner but
         #   that would almost be a full app and would require this function to have access to the database.
         return httpx.Response(

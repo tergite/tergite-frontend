@@ -23,10 +23,9 @@ from httpx_oauth.oauth2 import BaseOAuth2
 
 import settings
 
-from . import exc, routers
+from . import routers
 from .authenticator import UserAuthenticator
 from .database import UserDatabase
-from .dtos import ID, UP, CurrentUserDependency, OAuthAccount, User
 from .manager import UserManager
 from .strategy import CustomJWTStrategy
 from .transport import JwtCookieTransport

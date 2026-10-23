@@ -227,7 +227,7 @@ def test_create_job(
 
     # using context manager to ensure on_startup runs
     with client as client:
-        response = client.post(f"/jobs/", json=payload, headers=app_token_header)
+        response = client.post("/jobs/", json=payload, headers=app_token_header)
         json_response = response.json()
         new_job_id = json_response["job_id"]
         jobs_after_creation = find_in_collection(
@@ -270,7 +270,7 @@ def test_create_job_without_bcc(db, client, payload, app_token_header, bcc):
     """Post to /jobs/ error out if BCC is not available"""
     # using context manager to ensure on_startup runs
     with client as client:
-        response = client.post(f"/jobs/", json=payload, headers=app_token_header)
+        response = client.post("/jobs/", json=payload, headers=app_token_header)
         jobs_after_creation = find_in_collection(
             db,
             collection_name=_COLLECTION,
@@ -290,7 +290,7 @@ def test_create_job_with_invalid_request_id(db, client, payload, app_token_heade
 
     # using context manager to ensure on_startup runs
     with client as client:
-        response = client.post(f"/jobs/", json=payload, headers=headers)
+        response = client.post("/jobs/", json=payload, headers=headers)
 
     assert response.status_code == 400
     assert response.json() == {
