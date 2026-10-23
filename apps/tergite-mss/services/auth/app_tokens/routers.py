@@ -18,10 +18,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.requests import Request
 from fastapi_users import schemas
 
+from utils.exc import TooManyListQueryParams
+
 from ..projects.manager import ProjectAppTokenManager, ProjectManagerDependency
 from ..users.dtos import CurrentUserIdDependency
 from ..users.manager import UserManager, UserManagerDependency
-from ..utils import MAX_LIST_QUERY_LEN, TooManyListQueryParams
+from ..utils import MAX_LIST_QUERY_LEN
 from .auth_backend import AppTokenAuthenticationBackend
 from .dtos import AppTokenCreate, AppTokenListResponse, AppTokenRead, AppTokenUpdate
 from .strategy import AppTokenStrategy

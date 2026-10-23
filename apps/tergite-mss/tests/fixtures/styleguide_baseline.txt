@@ -163,7 +163,6 @@ import-layering: services/jobs/__init__.py::import settings
 import-layering: services/notices/service.py::import settings
 import-layering: utils/api.py::import settings
 import-layering: utils/date_time.py::import settings
-facade-import: api/rest/__init__.py::import services.auth.utils
 facade-import: api/rest/app_kwargs.py::import services.external.email
 facade-import: api/rest/dependencies.py::import services.auth.service
 facade-import: api/rest/dependencies.py::import services.auth.users
@@ -210,16 +209,11 @@ facade-import: services/requests/dtos.py::import services.notices.dtos
 facade-import: services/requests/service.py::import services.auth.projects.dtos
 facade-import: services/requests/service.py::import services.auth.users.dtos
 http-exception: services/auth/app_tokens/authenticator.py
-http-exception: services/auth/app_tokens/exc.py
 http-exception: services/auth/app_tokens/routers.py
 http-exception: services/auth/projects/routers/__init__.py
 http-exception: services/auth/users/authenticator.py
-http-exception: services/auth/users/exc.py
 http-exception: services/auth/users/routers.py
-http-exception: services/auth/utils.py
-http-exception: services/external/bcc/service.py
 http-exception: utils/api.py
-http-exception: utils/date_time.py
 type-hints: api/rest/__init__.py::health
 type-hints: api/rest/app_kwargs.py::lifespan
 type-hints: api/rest/middleware.py::RequestIDMiddleware.dispatch

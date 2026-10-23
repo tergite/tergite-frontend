@@ -26,7 +26,7 @@ from pymongo import ReturnDocument
 from pymongo.errors import CollectionInvalid
 
 from .date_time import get_current_timestamp
-from .exc import NotFoundError
+from .exc import DatabaseError, NotFoundError
 from .models import ModelOrDict, parse_record
 
 _CONNECTIONS = {}
@@ -240,14 +240,14 @@ async def insert_one(collection: AsyncIOMotorCollection, document: Dict[str, Any
         the inserted document
 
     Raises:
-        ValueError: server failed to insert document
+        DatabaseError: server failed to insert document
     """
     result = await collection.insert_one(document)
     if result.acknowledged:
         document["_id"] = str(result.inserted_id)
         return document
 
-    raise ValueError("server failed to insert document")
+    raise DatabaseError("server failed to insert document")
 
 
 async def insert_one_if_not_exists(
@@ -266,7 +266,7 @@ async def insert_one_if_not_exists(
         the inserted document
 
     Raises:
-        ValueError: server failed to replace or insert document
+        DatabaseError: server failed to replace or insert document
     """
     _filter = _extract_filter_obj(document=document, unique_fields=unique_fields)
     doc_exists = await collection.count_documents(_filter, limit=1) == 1
@@ -291,14 +291,14 @@ async def update_many(
         the number of documents that were modified
 
     Raises:
-        ValueError: server failed updating documents
+        DatabaseError: server failed updating documents
         NotFoundError: no matches for {filter}
     """
     update = {"$set": {**payload, "updated_at": get_current_timestamp()}}
     result = await collection.update_many(filter=_filter, update=update)
 
     if not result.acknowledged:
-        raise ValueError("server failed updating documents")
+        raise DatabaseError("server failed updating documents")
 
     if result.matched_count == 0:
         raise NotFoundError(f"no matches for {_filter}")
@@ -354,13 +354,13 @@ async def delete_many(collection: AsyncIOMotorCollection, _filter: dict):
         the number of documents that were deleted
 
     Raises:
-        ValueError: server failed deleting documents
+        DatabaseError: server failed deleting documents
         NotFoundError: no matches for {filter}
     """
     result = await collection.delete_many(filter=_filter)
 
     if not result.acknowledged:
-        raise ValueError("server failed deleting documents")
+        raise DatabaseError("server failed deleting documents")
 
     if result.deleted_count == 0:
         raise NotFoundError(f"no matches for {_filter}")
@@ -402,12 +402,12 @@ def _extract_filter_obj(document: Dict[str, Any], unique_fields: Tuple[str, ...]
         a dict that can be used to find the given document within a mongodb collection
 
     Raises:
-        ValueError: property '{unique_field_name}' is required
+        DatabaseError: property '{unique_field_name}' is required
     """
     try:
         return {k: document[k] for k in unique_fields}
     except KeyError as exp:
-        raise ValueError(f"property '{exp}' is required")
+        raise DatabaseError(f"property '{exp}' is required")
 
 
 async def _set_jsonschema_validator(

@@ -64,3 +64,35 @@ class ConflictError(BaseMssException):
 
 class TooManyRequestsError(BaseMssException):
     """Exception when a client has exceeded a rate limit"""
+
+
+class UnauthorizedError(BaseMssException):
+    """Exception when a request carries no valid credentials"""
+
+
+class InvalidInputError(BaseMssException):
+    """Exception when a client sends a value that cannot be used"""
+
+
+class TooManyListQueryParams(InvalidInputError):
+    """Exception when a list query param has more items than a mongodb $in handles well
+
+    https://www.mongodb.com/docs/manual/reference/operator/query/in/#syntax
+    """
+
+    def __init__(self, query_param: str, expected: int, got: int):
+        super().__init__(
+            f"too many items passed to query {query_param}; expected {expected}, got {got}"
+        )
+
+
+class BccHttpError(BaseMssException):
+    """Exception when a BCC answers with an HTTP error"""
+
+    def __init__(self, status_code: int, message: str = ""):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class DatabaseError(BaseMssException):
+    """Exception when the database fails to carry out an operation"""

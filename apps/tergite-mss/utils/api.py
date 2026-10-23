@@ -44,6 +44,7 @@ from redis import Redis
 import settings
 from utils.crypto import get_uuid4_str
 from utils.date_time import get_current_timestamp
+from utils.exc import BccHttpError, UnauthorizedError
 from utils.logging import err_logger as access_logger
 from utils.redis_store import Collection, Schema
 
@@ -213,7 +214,7 @@ def get_bearer_token(request: Request, raise_if_error: bool = True) -> Optional[
         raise_if_error: whether an error should be raised if it occurs
 
     Raises:
-        HTTPException: Unauthorized
+        UnauthorizedError: no bearer token in the request
 
     Returns:
         the bearer token as a string or None if it does not exist and `raise_if_error` is False
@@ -223,7 +224,7 @@ def get_bearer_token(request: Request, raise_if_error: bool = True) -> Optional[
         return authorization_header.split("Bearer ")[1].strip()
     except (KeyError, IndexError):
         if raise_if_error:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+            raise UnauthorizedError()
 
 
 def to_http_error(
@@ -255,6 +256,11 @@ def to_http_error(
         return await http_exception_handler(request, http_exp)
 
     return handler
+
+
+async def handle_bcc_http_error(request: Request, exp: BccHttpError) -> Response:
+    """An error handler that answers with the status code and message the BCC gave"""
+    return await to_http_error(exp.status_code)(request, exp)
 
 
 def unwrap_exception_group(

@@ -44,6 +44,7 @@ from .service import (
 )
 from .users import UserDatabase
 from .users.dtos import User, UserCreate, UserRead, UserUpdate
+from .users.exc import UnsupportedOauthException
 
 __all__ = [
     # DTOs
@@ -82,4 +83,5 @@ __all__ = [
     on_startup,
     get_project_db,
     get_user_emails,
+    "UnsupportedOauthException",
 ]

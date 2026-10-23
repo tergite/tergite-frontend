@@ -16,9 +16,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
-from fastapi import HTTPException
-
 import settings
+from utils.exc import InvalidInputError
 
 
 def parse_datetime_string(datetime_str: str) -> datetime:
@@ -31,9 +30,7 @@ def parse_datetime_string(datetime_str: str) -> datetime:
         # RFC3339 standard specifies Z appended on the timestring. ISO8601 uses offset from UTC.
         return datetime.fromisoformat(datetime_str.replace("Z", "+00:00"))
     except:
-        raise HTTPException(
-            status_code=400, detail=f'"{datetime_str}" is not a valid date.'
-        )
+        raise InvalidInputError(f'"{datetime_str}" is not a valid date.')
 
 
 def to_datetime(timestamp: str) -> datetime:

@@ -116,10 +116,14 @@ websockets, and marks every device disconnected.
    `RequestIdDep`, …). Routers depend on those aliases, never on the raw `Depends(...)`
    expression. Add new injectables there.
 4. **Exception handlers** — domain exceptions from `utils/exc.py` are mapped to status codes
-   centrally in `api/rest/__init__.py`: `NotFoundError` → 404, `ForbiddenError` → 403,
-   `ServiceUnavailableError` → 503, `UnknownBccError` / `TooManyListQueryParams` → 400, and
-   `ValueError` / `TypeError` / `RuntimeError` / `DbValidationError` / bare `Exception` → 500
-   with a generic message. **Raise domain exceptions from services; do not raise
+   centrally in `api/rest/__init__.py`: `InvalidInputError` (and its `TooManyListQueryParams`)
+   / `UnknownBccError` / `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,
+   `ForbiddenError` → 403, `NotFoundError` → 404, `ConflictError` → 409,
+   `TooManyRequestsError` → 429, `ServiceUnavailableError` → 503, `BccHttpError` → the BCC's
+   own status, and `ValueError` / `TypeError` / `RuntimeError` / `DbValidationError` /
+   `DatabaseError` / bare `Exception` → 500 with a generic message, and
+   `UnsupportedOauthException` → 500 with its own. Other service exceptions subclass these
+   and need no mapping of their own. **Raise domain exceptions from services; do not raise
    `HTTPException` there.**
 
 ## 3. Authentication and authorization
@@ -169,7 +173,7 @@ The interaction diagram for the full flow (via MyAccessID) is in
 
 Every outbound call goes through `BccClient._request`, which signs the request
 (`x-mss-request-id`, `x-mss-timestamp`, `x-mss-signature`, `x-mss-user-id`, optional
-`x-mss-is-admin`), maps BCC error responses to `HTTPException` with the same status, and
+`x-mss-is-admin`), raises `BccHttpError` with the status of a BCC error response, and
 turns connection/timeout failures into `ServiceUnavailableError` → 503. Client methods:
 `get_token`, `cancel_job`, `delete_job`, `view_users`, `create_user`, `delete_user`,
 `create_booking`, `cancel_booking`, `view_bookings`, `view_bookings_configs`,
@@ -202,7 +206,7 @@ to a handler in `events.py`:
 
 Handlers reply with an `EventResponse` per frame and never kill the socket: validation
 errors become `{"status": "error", "detail": …}`, and a device attempting to edit another
-device's record raises `PermissionError` → `forbidden`. Adding an event means adding an
+device's record raises `ForbiddenError` → `forbidden`. Adding an event means adding an
 enum member in `services/devices/dtos.py`, a handler in `events.py`, and an entry in
 `_EVENT_HANDLER_MAP`.
 

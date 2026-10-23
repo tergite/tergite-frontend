@@ -11,24 +11,12 @@
 # that they have been altered from the originals.
 
 """Exceptions for auth with respect to the users submodule"""
-from typing import Any, Dict, Optional
-
-from fastapi import HTTPException, status
+from utils.exc import BaseMssException, ForbiddenError
 
 
-class InvalidEmailException(HTTPException):
-    def __init__(self, detail: Any, headers: Optional[Dict[str, Any]] = None):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=detail,
-            headers=headers,
-        )
+class InvalidEmailException(ForbiddenError):
+    pass
 
 
-class UnsupportedOauthException(HTTPException):
-    def __init__(self, detail: Any, headers: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=detail,
-            headers=headers,
-        )
+class UnsupportedOauthException(BaseMssException):
+    pass

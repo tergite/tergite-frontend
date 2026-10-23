@@ -31,7 +31,6 @@ from uuid import UUID
 
 import httpx
 from beanie import PydanticObjectId
-from fastapi.exceptions import HTTPException
 from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
 from httpx._client import UseClientDefault
 from loguru import logger
@@ -50,7 +49,7 @@ from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils.api import GeneralMessage
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
-from utils.exc import ServiceUnavailableError
+from utils.exc import BccHttpError, ServiceUnavailableError
 
 _BCC_CLIENTS: Dict[str, "BccClient"] = {}
 
@@ -137,7 +136,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         response = await self._request(
             "POST",
@@ -178,7 +177,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         payload = body.model_dump(mode="json")
         return await self._request(
@@ -213,7 +212,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         return await self._request(
             "DELETE",
@@ -248,7 +247,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         params: Dict[str, Any] = {"skip": skip}
         if limit is not None:
@@ -287,7 +286,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         return await self._request(
             "POST",
@@ -321,7 +320,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         return await self._request(
             "DELETE",
@@ -356,7 +355,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         booking = await self._request(
             "POST",
@@ -394,7 +393,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         return await self._request(
             "POST",
@@ -439,7 +438,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         params: Dict[str, Any] = {"skip": skip, "sort": sort}
         if limit is not None:
@@ -494,7 +493,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: unauthenticated user
+            BccHttpError: unauthenticated user
         """
         response = await self._request(
             "GET",
@@ -747,7 +746,7 @@ class BccClient:
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
-            HTTPException: an HTTP exception
+            BccHttpError: the BCC answered with an HTTP error
         """
         try:
             headers = _create_headers(
@@ -774,7 +773,7 @@ class BccClient:
                 logger.warning(
                     f"BCC returned HTTP error {response.status_code}: {message}"
                 )
-                raise HTTPException(status_code=response.status_code, detail=message)
+                raise BccHttpError(response.status_code, message)
 
             return response.json()
         except (httpx.ConnectError, httpx.TimeoutException) as exp:

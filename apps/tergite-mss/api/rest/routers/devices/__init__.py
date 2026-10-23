@@ -37,7 +37,7 @@ from utils.api import (
     WebsocketConnectionManager,
     get_websocket_json,
 )
-from utils.exc import InvalidWebsocketDataTypeError
+from utils.exc import ForbiddenError, InvalidWebsocketDataTypeError
 
 from .events import (
     on_device_initialized_event,
@@ -140,7 +140,7 @@ async def handle_device_events(
                 event_response.update(
                     {"status": "error", "detail": f"invalid data: {exp}"}
                 )
-            except PermissionError as exp:
+            except ForbiddenError as exp:
                 event_response.update(
                     {"status": "error", "detail": f"forbidden: {exp}"}
                 )

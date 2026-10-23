@@ -22,6 +22,7 @@ from services.devices import DeviceUpsert
 from services.devices.dtos import DeviceSwitchData
 from services.jobs import JobUpdate
 from utils.api import GeneralMessage
+from utils.exc import ForbiddenError
 
 
 async def on_job_updated_event(
@@ -78,12 +79,12 @@ async def on_device_initialized_event(
         the general message with the updated job
 
     Raises:
-        PermissionError: editing '{another device}' is not allowed
+        ForbiddenError: editing '{another device}' is not allowed
         ValueError: could not insert '{payload['name']}' document
         ValidationError: if the final object could not be validated
     """
     if data.name != device:
-        raise PermissionError(f"editing '{data.name}' is not allowed")
+        raise ForbiddenError(f"editing '{data.name}' is not allowed")
 
     upserted_record = await devices_service.upsert_device(db, payload=data)
     return {
@@ -170,12 +171,12 @@ async def on_device_recalibrated_event(
         the general message with the upserted calibration data
 
     Raises:
-        PermissionError: editing '{another device}' is not allowed
+        ForbiddenError: editing '{another device}' is not allowed
         ValueError: could not insert '{payload['name']}' document
         ValidationError: if the final object could not be validated
     """
     if data.name != device:
-        raise PermissionError(f"editing '{data.name}' is not allowed")
+        raise ForbiddenError(f"editing '{data.name}' is not allowed")
 
     upserted_record = await calibration_service.insert_one(db, record=data)
     return {

@@ -108,6 +108,21 @@ def test_filter_projects_by_others_members(
         )
 
 
+def test_filter_by_too_many_ids(client, user_jwt_cookie):
+    """Filtering by more ids than a MongoDB $in handles well answers 400"""
+    ids = [str(PydanticObjectId()) for _ in range(100)]
+
+    with client as client:
+        response = client.get(
+            "/me/projects/", params={"id": ids}, cookies=user_jwt_cookie
+        )
+
+        assert response.status_code == 400
+        assert response.json() == {
+            "detail": "too many items passed to query id; expected 99, got 100"
+        }
+
+
 @pytest.mark.parametrize("user_id, cookies", _USER_ID_COOKIES_FIXTURE)
 def test_view_own_projects_in_less_detail(
     user_id, cookies, client, inserted_project_ids

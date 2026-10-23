@@ -142,7 +142,7 @@ class AppTokenDatabase(BeanieAccessTokenDatabase):
         """
         result = await AppToken.find_one(filters).delete()
         if result.deleted_count == 0:
-            raise exc.AppTokenNotFound(detail="app token does not exist.")
+            raise exc.AppTokenNotFound("app token does not exist.")
 
     @staticmethod
     async def get_many(

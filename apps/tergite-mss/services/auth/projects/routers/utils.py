@@ -19,10 +19,11 @@ from pydantic import BaseModel, Field
 
 from services import notices
 from services.notices import NoticeType
+from utils.exc import TooManyListQueryParams
 
 from ....notices.dtos import ProjectRequestContext, RefType
 from ...users.dtos import User
-from ...utils import MAX_LIST_QUERY_LEN, TooManyListQueryParams
+from ...utils import MAX_LIST_QUERY_LEN
 from ..dtos import (
     Project,
     ProjectAdminView,

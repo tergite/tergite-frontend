@@ -19,16 +19,20 @@ from fastapi import FastAPI
 
 import settings
 from api.rest.middleware import RequestIDMiddleware, TergiteCORSMiddleware
-from services.auth.utils import TooManyListQueryParams
-from utils.api import to_http_error, unwrap_exception_group
+from services.auth import UnsupportedOauthException
+from utils.api import handle_bcc_http_error, to_http_error, unwrap_exception_group
 from utils.exc import (
+    BccHttpError,
     ConflictError,
+    DatabaseError,
     DbValidationError,
     ForbiddenError,
+    InvalidInputError,
     InvalidRequestIDError,
     NotFoundError,
     ServiceUnavailableError,
     TooManyRequestsError,
+    UnauthorizedError,
     UnknownBccError,
 )
 from utils.logging import setup_logging
@@ -69,10 +73,14 @@ app.add_exception_handler(RuntimeError, to_http_error(500, "Unexpected server er
 app.add_exception_handler(
     DbValidationError, to_http_error(500, "Unexpected server error")
 )
+app.add_exception_handler(DatabaseError, to_http_error(500, "Unexpected server error"))
+app.add_exception_handler(UnsupportedOauthException, to_http_error(500))
 app.add_exception_handler(ServiceUnavailableError, to_http_error(503))
 app.add_exception_handler(UnknownBccError, to_http_error(400))
+app.add_exception_handler(BccHttpError, handle_bcc_http_error)
 app.add_exception_handler(InvalidRequestIDError, to_http_error(400))
-app.add_exception_handler(TooManyListQueryParams, to_http_error(400))
+app.add_exception_handler(InvalidInputError, to_http_error(400))
+app.add_exception_handler(UnauthorizedError, to_http_error(401))
 app.add_exception_handler(ForbiddenError, to_http_error(403))
 app.add_exception_handler(ConflictError, to_http_error(409))
 app.add_exception_handler(TooManyRequestsError, to_http_error(429))
