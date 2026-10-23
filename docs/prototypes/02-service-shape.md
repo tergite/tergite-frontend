@@ -36,9 +36,10 @@ tick it. The step is signed off when every box is ticked, or a failure is writte
 - [ ] **2.8: the schema describes every body.** `python -m dev.openapi.export` leaves
       `git status` clean, and this prints `0`:
       `jq '[.paths[][].responses | to_entries[] | select(.key | test("^2")) | select(.key != "204") | select((.value.content["application/json"].schema // {}) == {})] | length' dev/openapi/openapi.json`
-- [ ] **2.9: utils/api.py holds response shapes only.** The exception handlers are in
-      `api/rest/errors.py`, `verify_ws_signature` in `utils/crypto.py`, and every list route
-      returns `build_paginated_json(...)`.
+- [ ] **2.9: utils/api.py is split.** The exception handlers are in `api/rest/errors.py` and
+      `verify_ws_signature` in `utils/crypto.py`; `utils/api.py` keeps the response shapes and the
+      websocket helpers. No route calls `PaginatedListResponse(...).model_dump(`: the list routes
+      that did return `build_paginated_json(...)`, and the rest return a model.
 - [ ] **2.10–2.11: dead code and dependencies are gone.**
       `grep -nE '"(requests|aiohttp|tomli)' pyproject.toml` finds nothing, and
       `tests/_utils/aiohttp.py` is gone.
