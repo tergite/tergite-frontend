@@ -26,7 +26,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from api.rest.dependencies import DatabaseDep, MongoDbDep, ProjectDbDep
 from api.rest.utils import get_verified_device_name
-from libs.storage import Database
+from libs.storage import Database, Page, parse_sort
 from services import devices
 from services.auth import ProjectDatabase
 from services.devices import Device, DeviceEvent, DeviceQuery
@@ -46,7 +46,7 @@ ws_manager = WebsocketConnectionManager()
 
 @router.get("/", responses={200: {"model": PaginatedListResponse[Device]}})
 async def read_many(
-    db: MongoDbDep,
+    database: DatabaseDep,
     query: DeviceQuery = Depends(),
     skip: int = 0,
     limit: Optional[int] = None,
@@ -55,7 +55,7 @@ async def read_many(
     """Gets a paginated list of devices that fulfill a given set of filters
 
     Args:
-        db: the mongo db database from which to get the device data
+        database: the database where the devices are stored
         query: the query params for getting the device data
         skip: the number of records to skip
         limit: the maximum number of records to return
@@ -65,18 +65,19 @@ async def read_many(
     Returns:
         the paginated result of the matched device data
     """
-    filters = query.model_dump()
-
     data = await devices.find_devices(
-        db, filters=filters, skip=skip, limit=limit, sort=sort
+        database,
+        where=devices.build_filter(query),
+        sort=parse_sort(sort),
+        page=Page(skip=skip, limit=limit),
     )
 
     return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 
 
 @router.get("/{name}", responses={200: {"model": Device}})
-async def read_one(db: MongoDbDep, name: str):
-    record = await devices.get_device(db, name=name)
+async def read_one(database: DatabaseDep, name: str):
+    record = await devices.get_device(database, name=name)
     return record.model_dump(mode="json")
 
 
@@ -104,7 +105,7 @@ async def handle_device_events(
 
     # a device not yet registered registers itself with its 'initialized' event
     with suppress(NotFoundError):
-        await devices.mark_device_online(db, name=name)
+        await devices.mark_device_online(database, name=name)
     await ws_manager.connect(websocket)
     try:
         while True:
@@ -122,7 +123,7 @@ async def handle_device_events(
         ws_manager.disconnect(websocket)
         with suppress(NotFoundError):
             await devices.mark_device_offline(
-                db, name=name, last_online=get_current_timestamp()
+                database, name=name, last_online=get_current_timestamp()
             )
 
 

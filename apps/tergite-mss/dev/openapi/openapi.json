@@ -633,9 +633,6 @@
         "additionalProperties": true,
         "description": "The Schema for the devices",
         "properties": {
-          "_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
-          },
           "basis_gates": {
             "items": {
               "type": "string"
@@ -746,6 +743,11 @@
               }
             ],
             "title": "Gates"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Id",
+            "type": "string"
           },
           "is_active": {
             "anyOf": [
@@ -902,7 +904,7 @@
           "characterized",
           "open_pulse",
           "meas_map",
-          "_id"
+          "id"
         ],
         "title": "Device",
         "type": "object"
@@ -6336,7 +6338,7 @@
     },
     "/devices/": {
       "get": {
-        "description": "Gets a paginated list of devices that fulfill a given set of filters\n\nArgs:\n    db: the mongo db database from which to get the device data\n    query: the query params for getting the device data\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-created_at\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\"\n\nReturns:\n    the paginated result of the matched device data",
+        "description": "Gets a paginated list of devices that fulfill a given set of filters\n\nArgs:\n    database: the database where the devices are stored\n    query: the query params for getting the device data\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-created_at\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\"\n\nReturns:\n    the paginated result of the matched device data",
         "operationId": "read_many_devices__get",
         "parameters": [
           {
@@ -6611,7 +6613,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "$ref": "#/components/schemas/PydanticObjectId"
+                  "type": "string"
                 },
                 {
                   "type": "null"

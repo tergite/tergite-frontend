@@ -31,11 +31,11 @@ from typing import (
     Union,
 )
 
-from beanie import PydanticObjectId
 from fastapi import Query
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
 from pydantic.main import IncEx
 
+from libs.storage import Id, Schema, StorageSpec
 from utils.api import GeneralMessage
 from utils.models import create_partial_model
 
@@ -123,15 +123,16 @@ class DeviceUpsert(BaseModel):
         )
 
 
-class Device(DeviceUpsert):
+class Device(Schema, DeviceUpsert):
     """The Schema for the devices"""
 
+    __storage__ = StorageSpec(table="devices", key="name", indexes=("name",))
     model_config = ConfigDict(
         from_attributes=True,
         extra="allow",
     )
 
-    id: PydanticObjectId = Field(alias="_id")
+    id: Id
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

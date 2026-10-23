@@ -13,182 +13,143 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Sequence
 
-import pymongo
-from motor.motor_asyncio import AsyncIOMotorDatabase
-
-from utils import mongodb as mongodb_utils
+from libs.storage import ALL, And, Database, Eq, Filter, Page, Set, SetOnInsert, Sort
 from utils.date_time import get_current_timestamp
 from utils.exc import NotFoundError
 
-from .dtos import Device, DeviceUpsert
-
-# FIXME: Add init_strict_beanie and an on_startup function
+from .dtos import Device, DeviceQuery, DeviceUpsert
 
 
 async def find_devices(
-    db: AsyncIOMotorDatabase,
-    filters: Optional[Dict[str, Any]] = None,
-    limit: Optional[int] = None,
-    skip: int = 0,
-    sort: List[str] = (),
+    database: Database,
+    where: Filter = ALL,
+    sort: Sequence[Sort] = (),
+    page: Page = Page(),
 ) -> List[Device]:
-    """Gets all devices in the devices collection
+    """Gets the devices that match the filter
 
     Args:
-        db: the mongo database from which to get the databases
-        filters: the mongodb-like filters to use to extract the devices
-        limit: the number of results to return: default = None meaning all of them
-        skip: the number of records to skip; default = 0
-        sort: the fields to sort by, prefixing any with a '-' means descending; default = ()
-
-    Returns:
-        a list of all devices found in the devices collection
+        database: the database where the devices are stored
+        where: the filter every returned device matches
+        sort: the order of the devices
+        page: which slice of the matched devices to return
 
     Raises:
         ValidationError: final results are not valid Device objects
     """
-    return await mongodb_utils.find(
-        db.devices, filters=filters, limit=limit, skip=skip, sort=sort, schema=Device
-    )
+    return await database.find(Device, where=where, sort=sort, page=page)
 
 
-async def get_device(db: AsyncIOMotorDatabase, name: str) -> Device:
+async def get_device(database: Database, name: str) -> Device:
     """Gets the device of the given name
-
-    Args:
-        db: the mongo database where the device information is stored
-        name: the name of the device to return
-
-    Returns:
-        the device as a dictionary
 
     Raises:
         ValidationError: if the final result could not be validated as a Device
         NotFoundError: no matches for {name: '<name>'}
     """
-    return await mongodb_utils.find_one(db.devices, {"name": name}, schema=Device)
+    device = await database.get(Device, name)
+    if device is None:
+        raise NotFoundError(f"no matches for '{ {'name': name} }'")
+    return device
 
 
-async def upsert_device(db: AsyncIOMotorDatabase, payload: DeviceUpsert) -> Device:
+async def upsert_device(database: Database, payload: DeviceUpsert) -> Device:
     """Creates a new device or updates it if it exists
 
     Args:
-        db: the mongo database where the device information is stored
+        database: the database where the devices are stored
         payload: the device
 
     Returns:
         the new device
 
     Raises:
-        ValueError: could not insert '{payload['name']}' document
         ValidationError: if the final object could not be validated
     """
     timestamp = get_current_timestamp()
     payload.updated_at = timestamp
-
-    device = await db.devices.find_one_and_update(
-        {"name": payload.name},
-        {"$set": payload.model_dump(), "$setOnInsert": {"created_at": timestamp}},
-        upsert=True,
-        return_document=pymongo.ReturnDocument.AFTER,
+    changes = [Set(field, value) for field, value in payload.model_dump().items()]
+    return await database.update_one(
+        Device,
+        where=Eq("name", payload.name),
+        changes=[*changes, SetOnInsert("created_at", timestamp)],
+        should_upsert=True,
     )
-
-    if device is None:
-        raise ValueError(
-            f"could not insert '{payload.name}' document.",
-        )
-
-    return Device.model_validate(device)
 
 
 async def patch_device(
-    db: AsyncIOMotorDatabase, name: str, payload: Dict[str, Any]
+    database: Database, name: str, payload: Dict[str, Any]
 ) -> Device:
-    """Patches the devices data for the device of the given name
+    """Patches the data of the device of the given name
 
     Args:
-        db: the mongo database from where to get the job
+        database: the database where the devices are stored
         name: the name of the device
         payload: the new data to patch into the device data
 
     Returns:
-        the number of documents that were modified
+        the updated device
 
     Raises:
-        ValueError: server failed updating documents
         NotFoundError: device {name} not found
         ValidationError: if the final object is not validated
     """
-    device = await db.devices.find_one_and_update(
-        {"name": name},
-        {"$set": {**payload, "updated_at": get_current_timestamp()}},
-        return_document=pymongo.ReturnDocument.AFTER,
+    changes = [Set(field, value) for field, value in payload.items()]
+    device = await database.update_one(
+        Device,
+        where=Eq("name", name),
+        changes=[*changes, Set("updated_at", get_current_timestamp())],
     )
-
     if device is None:
         raise NotFoundError(f"device '{name}' not found")
+    return device
 
-    return Device.model_validate(device)
 
-
-async def mark_device_online(db: AsyncIOMotorDatabase, name: str) -> Device:
+async def mark_device_online(database: Database, name: str) -> Device:
     """Marks the device of the given name as online
-
-    Args:
-        db: the mongo database where the device data is stored
-        name: the name of the device
-
-    Returns:
-        the updated device
 
     Raises:
         NotFoundError: device {name} not found
     """
     return await patch_device(
-        db, name=name, payload={"last_online": None, "is_online": True}
+        database, name=name, payload={"last_online": None, "is_online": True}
     )
 
 
 async def mark_device_offline(
-    db: AsyncIOMotorDatabase, name: str, last_online: str
+    database: Database, name: str, last_online: str
 ) -> Device:
     """Marks the device of the given name as offline since the given time
 
     Args:
-        db: the mongo database where the device data is stored
+        database: the database where the devices are stored
         name: the name of the device
         last_online: the timestamp when the device was last online
-
-    Returns:
-        the updated device
 
     Raises:
         NotFoundError: device {name} not found
     """
     return await patch_device(
-        db, name=name, payload={"last_online": last_online, "is_online": False}
+        database, name=name, payload={"last_online": last_online, "is_online": False}
     )
 
 
-async def disconnect_all(db: AsyncIOMotorDatabase):
-    """Disconnects all connected devices
-
-    Args:
-        db: the mongo database where to register the device
-
-    Returns:
-        the number of updated records
-    """
-    result = await db.devices.update_many(
-        {},
-        {
-            "$set": {
-                "last_online": get_current_timestamp(),
-                "is_online": False,
-                "updated_at": get_current_timestamp(),
-            }
-        },
+async def disconnect_all(database: Database) -> int:
+    """Marks every device offline, returning how many changed"""
+    timestamp = get_current_timestamp()
+    return await database.update_many(
+        Device,
+        where=ALL,
+        changes=[
+            Set("last_online", timestamp),
+            Set("is_online", False),
+            Set("updated_at", timestamp),
+        ],
     )
-    return result.modified_count
+
+
+def build_filter(query: DeviceQuery) -> Filter:
+    """Turns the query's set fields into a filter matching each of them"""
+    return And(*(Eq(field, value) for field, value in query.model_dump().items()))

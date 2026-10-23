@@ -13,7 +13,7 @@
 from typing import Any, Dict, List, Optional
 
 import pytest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from libs.storage import (
     ALL,
@@ -235,3 +235,17 @@ def test_parse_sort_reads_a_leading_minus_as_descending():
         Sort("created_at", is_descending=True),
         Sort("name"),
     ]
+
+
+async def test_a_schema_allowing_extra_fields_takes_undeclared_ones(store):
+    class Open(Schema):
+        __storage__ = StorageSpec(table="open")
+        model_config = ConfigDict(extra="allow")
+
+        id: Id = Field(default_factory=generate_id)
+
+    database = Database("memory://", schemas=[Open])
+
+    await database.update_many(Open, where=Eq("colour", "red"), changes=[Set("x", 1)])
+
+    assert store.calls[0][0] == "update_many"

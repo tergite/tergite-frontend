@@ -55,6 +55,8 @@ class Schema(BaseModel):
 def resolve_field(schema: Type[BaseModel], path: str) -> Optional[FieldInfo]:
     """Gets the field a dotted path names, or None for a path into a free-form mapping
 
+    A model that allows extra fields is free-form beyond the fields it declares.
+
     Raises:
         UnknownFieldError: the schema has no such field
     """
@@ -64,6 +66,9 @@ def resolve_field(schema: Type[BaseModel], path: str) -> Optional[FieldInfo]:
         model = find_nested_model(annotation)
         if model is None and _is_open_mapping(annotation):
             return None
+        if model is not None and part not in model.model_fields:
+            if model.model_config.get("extra") == "allow":
+                return None
         if model is None or part not in model.model_fields:
             raise UnknownFieldError(f"{schema.__name__} has no field '{path}'")
         field_info = model.model_fields[part]

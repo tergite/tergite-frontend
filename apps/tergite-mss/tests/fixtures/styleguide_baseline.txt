@@ -243,7 +243,6 @@ type-hints: services/auth/utils.py::get_oauth2_client
 type-hints: services/calibration/service.py::on_startup
 type-hints: services/calibration/dtos.py::DeviceCalibration.serialize_id
 type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
-type-hints: services/devices/service.py::disconnect_all
 type-hints: services/external/bcc/dtos.py::Booking.validate_username
 type-hints: services/external/bcc/service.py::BccClient._request
 type-hints: services/external/bcc/service.py::BccClient.close

@@ -13,6 +13,7 @@
 from .dtos import Device, DeviceEvent, DeviceQuery, DeviceUpsert
 from .events import EVENT_HANDLERS
 from .service import (
+    build_filter,
     disconnect_all,
     find_devices,
     get_device,
@@ -22,7 +23,11 @@ from .service import (
     upsert_device,
 )
 
+SCHEMAS = (Device,)
+
 __all__ = [
+    "SCHEMAS",
+    "build_filter",
     "Device",
     "DeviceEvent",
     "DeviceQuery",

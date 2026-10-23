@@ -71,14 +71,14 @@ async def on_job_updated_event(
 
 
 async def on_device_initialized_event(
-    device: str, data: DeviceUpsert, db: AsyncIOMotorDatabase, **kwargs
+    device: str, data: DeviceUpsert, database: Database, **kwargs
 ) -> GeneralMessage:
     """Handles the device event of device initialized
 
     Args:
         device: the name of the device
         data: the new device parameters
-        db: the mongo db instance where device data is stored
+        database: the database where the devices are stored
 
     Returns:
         the general message with the updated job
@@ -91,7 +91,7 @@ async def on_device_initialized_event(
     if data.name != device:
         raise ForbiddenError(f"editing '{data.name}' is not allowed")
 
-    upserted_record = await upsert_device(db, payload=data)
+    upserted_record = await upsert_device(database, payload=data)
     return {
         "status": "success",
         "data": upserted_record.model_dump(mode="json"),
@@ -99,14 +99,14 @@ async def on_device_initialized_event(
 
 
 async def on_device_switched_off_event(
-    device: str, data: DeviceSwitchData, db: AsyncIOMotorDatabase, **kwargs
+    device: str, data: DeviceSwitchData, database: Database, **kwargs
 ) -> GeneralMessage:
     """Handles the device event of device switched off event
 
     Args:
         device: the name of the device
         data: the extra information about the event
-        db: the mongo db instance where device data is stored
+        database: the database where the devices are stored
 
     Returns:
         the general message with the updated job
@@ -116,7 +116,7 @@ async def on_device_switched_off_event(
         ValidationError: if the final object is not validated
     """
     patched_record = await mark_device_offline(
-        db, name=device, last_online=data.date.isoformat()
+        database, name=device, last_online=data.date.isoformat()
     )
     return {
         "status": "success",
@@ -125,14 +125,14 @@ async def on_device_switched_off_event(
 
 
 async def on_device_switched_on_event(
-    device: str, data: DeviceSwitchData, db: AsyncIOMotorDatabase, **kwargs
+    device: str, data: DeviceSwitchData, database: Database, **kwargs
 ) -> GeneralMessage:
     """Handles the device event of device switched on event
 
     Args:
         device: the name of the device
         data: the extra information about the event
-        db: the mongo db instance where device data is stored
+        database: the database where the devices are stored
 
     Returns:
         the general message with the updated job
@@ -141,7 +141,7 @@ async def on_device_switched_on_event(
         NotFoundError: device {device} not found
         ValidationError: if the final object is not validated
     """
-    patched_record = await mark_device_online(db, name=device)
+    patched_record = await mark_device_online(database, name=device)
     return {
         "status": "success",
         "data": patched_record.model_dump(mode="json"),

@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
         private_key_file=settings.PRIVATE_KEY_FILE,
         private_key_password=settings.CONFIG.private_key_password,
     )
-    await open_database(app, settings.CONFIG.database)
+    database = await open_database(app, settings.CONFIG.database)
     db = await get_default_mongodb()
     await auth_service.on_startup(
         db, conf=settings.CONFIG.auth, projects_conf=settings.CONFIG.projects
@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
     )
     await bcc.close_clients()
     await devices_ws_manager.close_all(reason="server shutting down")
-    await devices_service.disconnect_all(db)
+    await devices_service.disconnect_all(database)
     if emailer is not None:
         emailer.close()
     await close_database(app)
