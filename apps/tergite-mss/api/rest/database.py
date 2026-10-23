@@ -36,7 +36,7 @@ SCHEMAS: Tuple[Type[Schema], ...] = (
 
 async def open_database(app: FastAPI, conf: DatabaseConfig) -> Database:
     """Opens the Database with every service's schemas and keeps it on the app's state"""
-    database = Database(build_database_url(conf), schemas=SCHEMAS)
+    database = Database(get_database_url(conf), schemas=SCHEMAS)
     await database.setup()
     app.state.database = database
     return database
@@ -44,7 +44,7 @@ async def open_database(app: FastAPI, conf: DatabaseConfig) -> Database:
 
 def open_users_database(app: FastAPI, conf: DatabaseConfig) -> AsyncIOMotorDatabase:
     """Opens the Motor database Beanie keeps the users in, until they move onto the Database"""
-    client = AsyncIOMotorClient(build_database_url(conf), tz_aware=True)
+    client = AsyncIOMotorClient(get_database_url(conf), tz_aware=True)
     app.state.users_client = client
     return client.get_default_database()
 
@@ -59,7 +59,7 @@ def get_database(connection: HTTPConnection) -> Database:
     return connection.app.state.database
 
 
-def build_database_url(conf: DatabaseConfig) -> str:
+def get_database_url(conf: DatabaseConfig) -> str:
     """Gets the URL of the configured database: its url, with the name as the path if it has none"""
     parts = urlsplit(str(conf.url))
     if parts.path in ("", "/"):

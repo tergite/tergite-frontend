@@ -19,7 +19,7 @@ from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, DatabaseDep
 from libs.storage import Id
 from services import notices as notices_service
 from services.notices import Notice, NoticeTypeId
-from utils.api import GeneralMessage, PaginatedListResponse, build_paginated_json
+from utils.api import GeneralMessage, PaginatedListResponse, get_paginated_json
 
 router = APIRouter()
 
@@ -56,7 +56,7 @@ async def get_my_notices(
         skip=skip,
         limit=limit,
     )
-    return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
+    return get_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 
 
 @router.post("/{notice_id}/dismiss")

@@ -12,7 +12,7 @@
 
 import pytest
 
-from api.rest.database import build_database_url
+from api.rest.database import get_database_url
 from libs.storage import Database
 from utils.config import DatabaseConfig
 
@@ -30,7 +30,7 @@ from utils.config import DatabaseConfig
     ],
 )
 def test_the_database_name_fills_a_url_without_a_path(url, expected):
-    assert build_database_url(DatabaseConfig(name="tergite", url=url)) == expected
+    assert get_database_url(DatabaseConfig(name="tergite", url=url)) == expected
 
 
 def test_the_app_holds_one_database_while_it_runs(client):

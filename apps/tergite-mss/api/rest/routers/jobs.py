@@ -38,7 +38,7 @@ from services.jobs import (
     JobQuery,
     JobStatusResponse,
 )
-from utils.api import GeneralMessage, PaginatedListResponse, build_paginated_json
+from utils.api import GeneralMessage, PaginatedListResponse, get_paginated_json
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -67,7 +67,7 @@ async def get_many(
     data = await jobs_service.get_latest_many(
         database, query, reader=user, sort=sort, skip=skip, limit=limit
     )
-    return build_paginated_json(data, skip=skip, limit=limit)
+    return get_paginated_json(data, skip=skip, limit=limit)
 
 
 @router.get("/{job_id}", responses={200: {"model": Job}})

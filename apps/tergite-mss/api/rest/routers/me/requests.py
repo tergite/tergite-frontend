@@ -30,7 +30,7 @@ from services.requests import (
     RequestType,
     RequestUpdate,
 )
-from utils.api import PaginatedListResponse, build_paginated_json
+from utils.api import PaginatedListResponse, get_paginated_json
 
 router = APIRouter()
 
@@ -92,7 +92,7 @@ async def get_many(
         limit=limit,
     )
 
-    return build_paginated_json(data, skip=skip, limit=limit)
+    return get_paginated_json(data, skip=skip, limit=limit)
 
 
 @router.put("/{_id}", response_model_by_alias=False)

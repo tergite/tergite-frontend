@@ -36,7 +36,6 @@ VERBS = frozenset(
         "authenticate",
         "authorize",
         "broadcast",
-        "build",
         "cancel",
         "check",
         "choose",
@@ -252,7 +251,7 @@ def test_checks_catch_what_they_describe(tmp_path: Path):
     (tmp_path / "utils").mkdir()
     (tmp_path / "utils" / "sample.py").write_text(
         "import settings\n"
-        "def _build_limit() -> None: ...\n"
+        "def _get_limit() -> None: ...\n"
         "def job_status(active: bool) -> None: ...\n"
         "# ---- jobs ----\n"
         "LIMIT = 5\n"

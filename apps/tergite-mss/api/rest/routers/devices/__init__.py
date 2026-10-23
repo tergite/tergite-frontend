@@ -33,7 +33,7 @@ from utils.api import (
     EventResponse,
     PaginatedListResponse,
     WebsocketConnectionManager,
-    build_paginated_json,
+    get_paginated_json,
     get_websocket_json,
 )
 from utils.date_time import get_current_timestamp
@@ -72,7 +72,7 @@ async def read_many(
         limit=limit,
     )
 
-    return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
+    return get_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 
 
 @router.get("/{name}", responses={200: {"model": Device}})

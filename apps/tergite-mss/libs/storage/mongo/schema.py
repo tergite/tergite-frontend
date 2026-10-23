@@ -84,21 +84,21 @@ def get_indexes(schema: Type[Schema]) -> List[IndexModel]:
     spec = schema.__storage__
     candidates: List[Tuple[List[Tuple[str, int]], Dict[str, Any]]] = []
     for group in spec.unique:
-        keys = _build_keys(group)
+        keys = _get_index_keys(group)
         candidates.append((keys, {"unique": True, **_get_index_collation(spec, keys)}))
     for field in spec.case_insensitive:
-        candidates.append((_build_keys(field), {"collation": CASE_INSENSITIVE}))
+        candidates.append((_get_index_keys(field), {"collation": CASE_INSENSITIVE}))
     if spec.expires is not None:
-        candidates.append((_build_keys(spec.expires), {"expireAfterSeconds": 0}))
+        candidates.append((_get_index_keys(spec.expires), {"expireAfterSeconds": 0}))
     list_references = [
         field
         for field in spec.references
         if is_list_field(resolve_field(schema, field))
     ]
     for field in (*list_references, *spec.indexed_lists):
-        candidates.append((_build_keys(field), {}))
+        candidates.append((_get_index_keys(field), {}))
     for group in spec.indexes:
-        candidates.append((_build_keys(group), {}))
+        candidates.append((_get_index_keys(group), {}))
 
     indexes: Dict[tuple, IndexModel] = {}
     for keys, options in candidates:
@@ -107,7 +107,7 @@ def get_indexes(schema: Type[Schema]) -> List[IndexModel]:
     return list(indexes.values())
 
 
-def _build_keys(group: str | Tuple[str, ...]) -> List[Tuple[str, int]]:
+def _get_index_keys(group: str | Tuple[str, ...]) -> List[Tuple[str, int]]:
     fields = (group,) if isinstance(group, str) else group
     return [
         (

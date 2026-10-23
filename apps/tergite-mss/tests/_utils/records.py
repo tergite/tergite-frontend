@@ -409,7 +409,7 @@ class PaginationInfo(TypedDict):
     limit: Optional[float]
 
 
-def build_project_record(item: Dict[str, Any]) -> Dict[str, Any]:
+def get_project_record(item: Dict[str, Any]) -> Dict[str, Any]:
     """Converts a project from the JSON fixtures into the record stored in the db"""
     return {
         **item,
@@ -419,7 +419,7 @@ def build_project_record(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_app_token_record(item: Dict[str, Any]) -> Dict[str, Any]:
+def get_app_token_record(item: Dict[str, Any]) -> Dict[str, Any]:
     """Converts an app token from the JSON fixtures into the record stored in the db"""
     return {
         **item,
@@ -429,7 +429,7 @@ def build_app_token_record(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_notice_record(item: Dict[str, Any]) -> Dict[str, Any]:
+def get_notice_record(item: Dict[str, Any]) -> Dict[str, Any]:
     """Converts a notice from the JSON fixtures into the record stored in the db"""
     object_id_fields = ("_id", "user_id", "created_by", "ref_id")
     return {
@@ -439,7 +439,7 @@ def build_notice_record(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_request_record(item: Dict[str, Any]) -> Dict[str, Any]:
+def get_request_record(item: Dict[str, Any]) -> Dict[str, Any]:
     """Converts a user request from the JSON fixtures into the record stored in the db"""
     object_id_fields = ("_id", "resource_id", "requester_id", "approver_id")
     return {

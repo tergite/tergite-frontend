@@ -20,7 +20,7 @@ import settings
 from api.rest.auth import JWT_AUTH, JWT_COOKIE_BACKEND
 from services.auth import AuthProvider, providers, register_oauth2_client
 from services.auth.providers.dtos import AuthProviderQuery
-from utils.api import PaginatedListResponse, build_paginated_json
+from utils.api import PaginatedListResponse, get_paginated_json
 from utils.config import Oauth2ClientConfig
 
 
@@ -67,7 +67,7 @@ def include_auth_router(root_router: Union[APIRouter, FastAPI]):
         filters = query.model_dump()
         data = providers.get_many(filters=filters, skip=skip, limit=limit, sort=sort)
 
-        return build_paginated_json(
+        return get_paginated_json(
             data, skip=skip, limit=limit, should_exclude_none=False
         )
 

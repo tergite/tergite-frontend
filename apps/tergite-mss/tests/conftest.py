@@ -58,10 +58,10 @@ from tests._utils.mongodb import (
     insert_if_not_exist,
 )
 from tests._utils.records import (
-    build_app_token_record,
-    build_notice_record,
-    build_project_record,
-    build_request_record,
+    get_app_token_record,
+    get_notice_record,
+    get_project_record,
+    get_request_record,
     with_offset_datetimes,
 )
 
@@ -175,7 +175,7 @@ def inserted_projects(db) -> Dict[str, Dict[str, Any]]:
     projects = {}
     for item in PROJECT_LIST:
         projects[item["_id"]] = {**item}
-        insert_if_not_exist(db, Project, build_project_record(item))
+        insert_if_not_exist(db, Project, get_project_record(item))
 
     yield projects
 
@@ -217,7 +217,7 @@ def unallocated_projects(db) -> Dict[str, Dict[str, Any]]:
         qpu_seconds = int(random.uniform(-54000, 0))
         projects[item["_id"]] = {**item, "qpu_seconds": qpu_seconds}
         insert_if_not_exist(
-            db, Project, {**build_project_record(item), "qpu_seconds": qpu_seconds}
+            db, Project, {**get_project_record(item), "qpu_seconds": qpu_seconds}
         )
 
     yield projects
@@ -234,7 +234,7 @@ def app_tokens_with_timestamps(db) -> Generator[List[Dict[str, Any]], Any, None]
 
         # ensure you don't mutate the original item in APP_TOKEN_LIST
         tokens.append({**item, "created_at": created_at})
-        db_item = {**build_app_token_record(item), "created_at": created_at}
+        db_item = {**get_app_token_record(item), "created_at": created_at}
         insert_if_not_exist(db, AppToken, db_item)
 
     yield tokens
@@ -249,7 +249,7 @@ def inserted_app_tokens(db) -> Generator[List[Dict[str, Any]], Any, None]:
     for item in APP_TOKEN_LIST:
         # ensure you don't mutate the original item in APP_TOKEN_LIST
         tokens.append({**item})
-        insert_if_not_exist(db, AppToken, build_app_token_record(item))
+        insert_if_not_exist(db, AppToken, get_app_token_record(item))
 
     yield tokens
 
@@ -260,7 +260,7 @@ def inserted_notices(db) -> Generator[List[Dict[str, Any]], Any, None]:
     from services.notices import Notice
 
     records = with_offset_datetimes(
-        [build_notice_record(item) for item in NOTICE_LIST],
+        [get_notice_record(item) for item in NOTICE_LIST],
         {
             "starts_at": "starts_at_offset_hours",
             "expires_at": "expires_at_offset_hours",
@@ -277,7 +277,7 @@ def inserted_requests(db) -> Generator[List[Dict[str, Any]], Any, None]:
     """A list of inserted user requests"""
     from services.requests import Request
 
-    records = [build_request_record(item) for item in USER_REQUEST_LIST]
+    records = [get_request_record(item) for item in USER_REQUEST_LIST]
     for record in records:
         insert_if_not_exist(db, Request, record)
 

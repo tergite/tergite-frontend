@@ -41,7 +41,7 @@ class PaginatedListResponse(BaseModel, Generic[ITEM]):
     data: List[ITEM] = []
 
 
-def build_paginated_json(
+def get_paginated_json(
     data: Sequence[BaseModel],
     skip: int,
     limit: Optional[int],

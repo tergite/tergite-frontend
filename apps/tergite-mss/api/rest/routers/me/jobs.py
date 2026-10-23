@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Query
 
 from api.rest.dependencies import CurrentUserIdDep, DatabaseDep
 from services.jobs import Job, JobQuery, get_latest_many
-from utils.api import PaginatedListResponse, build_paginated_json
+from utils.api import PaginatedListResponse, get_paginated_json
 
 router = APIRouter()
 
@@ -46,4 +46,4 @@ async def get_my_jobs(
     data = await get_latest_many(
         database, query, user_id=user_id, sort=sort, skip=skip, limit=limit
     )
-    return build_paginated_json(data, skip=skip, limit=limit)
+    return get_paginated_json(data, skip=skip, limit=limit)

@@ -256,7 +256,7 @@ Codified in [docs/api-design.md](./docs/api-design.md); the short version:
 
 - URLs are `/{resource}/({id})`. Every resource has a DTO named after it.
 - List endpoints return `{"skip": int, "limit": int | null, "data": [...]}` — build it with
-  `build_paginated_json(data, skip, limit)`, and declare `PaginatedListResponse[Item]` as the
+  `get_paginated_json(data, skip, limit)`, and declare `PaginatedListResponse[Item]` as the
   route's response.
 - Action endpoints return `{"status": ..., "message": ...}` (`GeneralMessage`).
 - Errors return `{"detail": "..."}` with a non-2xx status — produced by the central handlers,
