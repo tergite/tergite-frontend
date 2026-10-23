@@ -13,6 +13,7 @@
 # that they have been altered from the originals.
 #
 # Refactored by Martin Ahindura - 2023-11-08, 2024-08-01
+from contextlib import suppress
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, WebSocketException
@@ -32,7 +33,8 @@ from utils.api import (
     WebsocketConnectionManager,
     get_websocket_json,
 )
-from utils.exc import ForbiddenError, InvalidWebsocketDataTypeError
+from utils.date_time import get_current_timestamp
+from utils.exc import ForbiddenError, InvalidWebsocketDataTypeError, NotFoundError
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 ws_manager = WebsocketConnectionManager()
@@ -61,7 +63,7 @@ async def read_many(
     """
     filters = query.model_dump()
 
-    data = await devices.get_all_devices(
+    data = await devices.find_devices(
         db, filters=filters, skip=skip, limit=limit, sort=sort
     )
 
@@ -72,7 +74,7 @@ async def read_many(
 
 @router.get("/{name}")
 async def read_one(db: MongoDbDep, name: str):
-    record = await devices.get_one_device(db, name=name)
+    record = await devices.get_device(db, name=name)
     return record.model_dump(mode="json")
 
 
@@ -96,7 +98,9 @@ async def handle_device_events(
     if verified_name != name:
         raise WebSocketException(code=WS_1008_POLICY_VIOLATION, reason="forbidden")
 
-    await devices.try_connect_device(db, name=name)
+    # a device not yet registered registers itself with its 'initialized' event
+    with suppress(NotFoundError):
+        await devices.mark_device_online(db, name=name)
     await ws_manager.connect(websocket)
     try:
         while True:
@@ -133,4 +137,7 @@ async def handle_device_events(
 
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
-        await devices.try_disconnect_device(db, name=name)
+        with suppress(NotFoundError):
+            await devices.mark_device_offline(
+                db, name=name, last_online=get_current_timestamp()
+            )

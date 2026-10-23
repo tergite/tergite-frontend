@@ -27,7 +27,7 @@ from .dtos import Device, DeviceUpsert
 # FIXME: Add init_strict_beanie and an on_startup function
 
 
-async def get_all_devices(
+async def find_devices(
     db: AsyncIOMotorDatabase,
     filters: Optional[Dict[str, Any]] = None,
     limit: Optional[int] = None,
@@ -54,7 +54,7 @@ async def get_all_devices(
     )
 
 
-async def get_one_device(db: AsyncIOMotorDatabase, name: str) -> Device:
+async def get_device(db: AsyncIOMotorDatabase, name: str) -> Device:
     """Gets the device of the given name
 
     Args:
@@ -170,44 +170,6 @@ async def mark_device_offline(
     return await patch_device(
         db, name=name, payload={"last_online": last_online, "is_online": False}
     )
-
-
-async def try_connect_device(db: AsyncIOMotorDatabase, name: str):
-    """Tries to connect the given device to this API
-
-    It ignores devices that do not exist
-
-    Args:
-        db: the mongo database where the device data is stored
-        name: the name of the device
-
-    Returns:
-        the updated device
-    """
-    try:
-        return await mark_device_online(db, name=name)
-    except NotFoundError:
-        pass
-
-
-async def try_disconnect_device(db: AsyncIOMotorDatabase, name: str):
-    """Tries to disconnect the given device from this API
-
-    It ignores devices that do not exist
-
-    Args:
-        db: the mongo database where the device data is stored
-        name: the name of the device
-
-    Returns:
-        the updated device
-    """
-    try:
-        return await mark_device_offline(
-            db, name=name, last_online=get_current_timestamp()
-        )
-    except NotFoundError:
-        pass
 
 
 async def disconnect_all(db: AsyncIOMotorDatabase):
