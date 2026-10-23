@@ -1,33 +1,41 @@
 # UAT: step 3, the storage layer, MongoDB first
 
 Step 3 puts every MSS service except the Beanie `User` behind one `Database` in `libs/storage`,
-and drops Redis. The API behaves as before, with two visible differences: ids in the OpenAPI
+queried in MongoDB's own dialect, and keeps the request log in Redis behind a `Database` of
+its own. The API behaves as before, with two visible differences: ids in the OpenAPI
 schema carry their 24-hex pattern, and listing jobs fails on a malformed job instead of
 silently skipping it. Run each check and tick it. The step is signed off when every box is
 ticked, or a failure is written beside its box.
 
 ## Start
 
-- In `apps/tergite-mss`, with MongoDB on 27017 (Redis is no longer needed), and the `.venv`
-  synced with `uv sync --all-extras` (step 3 drops redis and hiredis).
+- In `apps/tergite-mss`, with MongoDB on 27017 and Redis on 6379, and the `.venv` synced
+  with `uv sync --all-extras`.
 
 ## Checks
 
 - [ ] **3.1–3.7: CI's checks pass.** `.venv/bin/black --check .` and
       `.venv/bin/python -m pyflakes api services utils libs settings.py tests dev` report nothing, and
-      `.venv/bin/pytest tests` (about 18 minutes) gives 931 passed.
+      `.venv/bin/pytest tests` (about 18 minutes) gives 1013 passed.
 - [ ] **3.1: libs depends on nothing above it.**
       `git grep -nE "^(from|import) (api|services|settings)" -- libs` finds nothing, and
       `.venv/bin/pytest tests/libs` passes, including
       `test_derive_id_gives_the_ids_generate_linked_id_did`, which pins the personal project ids.
-- [ ] **3.2: one store names MongoDB.** `git grep -lE "pymongo|bson" -- libs` lists only
-      `libs/storage/mongo/*` and `libs/storage/base/ids.py`, which borrows bson's ObjectId
-      shape to generate ids.
+- [ ] **3.2: one store names each database.** `git grep -lE "pymongo|bson" -- libs` lists
+      only `libs/storage/mongo/*` and `libs/storage/base/ids.py`, which borrows bson's
+      ObjectId shape to generate ids; `git grep -l "import redis" -- api services utils libs`
+      lists only `libs/storage/redis/store.py`.
+- [ ] **3.2: the dialect is MongoDB's.**
+      `git grep -nE "\b(Eq|Ne|In|NotIn|Range|And|Or|Set|Inc|AddToSet|Pull)\(" -- api services`
+      finds nothing, `git grep -nE "def _?build_|\bwhere *=" -- api services libs` finds
+      nothing, and `tests/libs/storage/test_database.py` shows unknown operators refused.
 - [ ] **3.3: routes get the Database.** `git grep -n "MongoDbDep\|get_default_mongodb" -- .`
       finds nothing, and `api/rest/dependencies.py` defines `DatabaseDep`.
-- [ ] **3.4: Redis is gone.**
-      `git grep -il redis -- api services utils libs settings.py pyproject.toml` finds nothing,
-      and `services/request_log/` holds `record_request` and `is_request_recorded`.
+- [ ] **3.4: the request log is in Redis.** `api/rest/database.py` opens it a `Database` on
+      `database.redis_url`, `services/request_log/` holds `record_request` and
+      `is_request_recorded`, and `tests/api/rest/test_middleware.py` finds each request in the
+      `request_logs` hash with an expiry. `tests/libs/storage/redis` is the old
+      `tests/test_store.py`, ported.
 - [ ] **3.5, 3.7: Beanie keeps only the users.** `utils/mongodb.py` is gone,
       `git grep -n "init_beanie(" -- .` finds one call, in `services/auth/service.py`, with
       `document_models=[User]`, and `git grep -n "(Document)" -- services` lists only `User`.
@@ -44,12 +52,13 @@ ticked, or a failure is written beside its box.
       unchanged code have moved per-route p95 by up to 13 ms and peak MongoDB connections by up
       to 3, past the 10 ms and 2-connection noise floors; if this run fails only on such a
       measure, rerun it once before reading it as a regression.
-      **Failed on 2026-10-23:** per-route p95 rose to about twice the baselines (GET
-      `/me/notices/` 110 ms against 22, GET `/devices/` 74 against 25, GET `/jobs/` 110 against
-      56) and peak MongoDB connections to 32 against 17, with no failed requests. Step 2's
-      commit, recorded the same day, stayed within noise, so the cost is step 3's. The storage
-      layer's own calls take under 1 ms on these lists; the suspects are the request-log insert
-      every request now awaits (3.4) and the second client Beanie's users keep (3.7).
+      **2026-10-24, after the request log moved to Redis: fails on two measures.** GET `/jobs/`
+      p95 is 69 ms against 56, within the 13 ms noise. Peak MongoDB connections are 26 against
+      17, which is not noise: MSS holds two clients until step 7, PyMongo's for the `Database`
+      and Motor's for Beanie's users, each with its own pool. Every other route is within
+      noise (GET `/me/notices/` 28 ms, GET `/devices/` 26 ms), and no request failed. The first
+      run, with the request log in MongoDB, had doubled p95 (GET `/me/notices/` 110 ms) and
+      peaked at 32 connections.
 
 ## Not covered here
 
