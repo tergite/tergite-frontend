@@ -48,4 +48,4 @@ async def record_request(
 
 
 async def is_request_recorded(database: Database, request_id: str) -> bool:
-    return await database.count(RequestLog, filter={"request_id": request_id}) > 0
+    return await database.get(RequestLog, request_id) is not None

@@ -228,7 +228,8 @@ enum member in `services/devices/dtos.py`, and a handler and its entry in `EVENT
 ## 5. Data
 
 MongoDB, reached through `libs/storage`: one `Database`, opened in the lifespan with every
-service's `SCHEMAS` and handed to routes as `DatabaseDep`. A schema is a Pydantic `Schema`
+service's `SCHEMAS` and handed to routes as `DatabaseDep`, beside the request log's own on
+Redis (below). A schema is a Pydantic `Schema`
 whose `__storage__` names its table, key, unique fields and indexes. Services query it in
 MongoDB's own dialect, kept to what every store can translate: `filter={"user_id": {"$in":
 [user_id, None]}}`, `update={"$set": {…}, "$inc": {…}}`, `sort=["-created_at"]`, `skip`,
@@ -246,9 +247,11 @@ indexed on `(name, last_calibrated desc)`), `notices` (TTL index on `expires_at`
 Deleting a project moves it to `deleted_auth_projects` rather than dropping it.
 
 **Request logs** (`services/request_log`) remember each request id and websocket nonce for
-`request_log_ttl` seconds, in `request_logs`, where `request_id` is unique and a TTL index
-expires them. `record_request` returns False for an id already recorded: that is how a
-replayed nonce is refused, in one write.
+`request_log_ttl` seconds. They are written on every request, so they live in a cache: a
+`Database` of their own on `database.redis_url`, whose `RedisStore` keeps them in the
+`request_logs` hash keyed by `request_id`, each expiring with its `expires_at`.
+`record_request` returns False for an id already recorded: that is how a replayed nonce is
+refused, in one write.
 
 ## 6. REST conventions
 

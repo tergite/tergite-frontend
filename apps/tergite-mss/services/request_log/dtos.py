@@ -14,17 +14,14 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import Field
-
-from libs.storage import Id, Schema, StorageSpec, generate_id
+from libs.storage import Schema, StorageSpec
 
 
 class RequestLog(Schema):
     __storage__ = StorageSpec(
-        table="request_logs", unique=("request_id",), expires="expires_at"
+        table="request_logs", key="request_id", expires="expires_at"
     )
 
-    id: Id = Field(default_factory=generate_id)
     request_id: str
     # the x-id header, which names the device on a BCC websocket
     client_name: Optional[str] = None

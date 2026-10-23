@@ -30,6 +30,8 @@ request_log_ttl = 1209600
 name = "sample-database"
 # database URI
 url = "mongodb://user:pass@host:port"
+# the database of the request log, which a cache suits; default=redis://tergite-redis:6379/0
+redis_url = "redis://tergite-redis:6379/0"
 
 
 # Add backends in the form: Note: [[...]] creates an array of tables

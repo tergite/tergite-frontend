@@ -21,7 +21,7 @@ end-to-end test harness, and the release tag.
 
 | App | Path | Stack | Role |
 | --- | --- | --- | --- |
-| **MSS** (Main Service Server) | `apps/tergite-mss` | Python 3.12+, FastAPI, MongoDB | The public REST API. Owns all persistence, authn/authz, and all traffic to the quantum backends. |
+| **MSS** (Main Service Server) | `apps/tergite-mss` | Python 3.12+, FastAPI, MongoDB, Redis | The public REST API. Owns all persistence, authn/authz, and all traffic to the quantum backends. |
 | **Dashboard** | `apps/tergite-dashboard` | Node 20, Vite, React 18, TypeScript, Tailwind + shadcn/ui | The browser client for MSS. No backend of its own — it is a static bundle served by nginx. |
 
 Everything the dashboard shows comes from MSS. MSS has no knowledge of the dashboard
@@ -40,6 +40,7 @@ flowchart LR
       Dash["tergite-dashboard<br/>nginx :80 → :3000"]
       MSS["tergite-mss<br/>uvicorn :80 → :8002"]
       Mongo[("MongoDB")]
+      Redis[("Redis<br/>request-log store")]
     end
 
     subgraph backends ["Quantum backends (separate repos)"]
@@ -54,6 +55,7 @@ flowchart LR
     Browser -->|"REST + cookie"| MSS
     SDK -->|"REST + Bearer app token"| MSS
     MSS --> Mongo
+    MSS --> Redis
     MSS <-->|"signed HTTP"| BCC1
     MSS <-->|"signed HTTP"| BCC2
     BCC1 -->|"websocket events"| MSS
@@ -63,7 +65,8 @@ flowchart LR
 ```
 
 MongoDB is **not** part of the compose stacks in this repo — it is expected to already
-exist and is reached via `database.url` in `mss-config.toml`.
+exist and is reached via `database.url` in `mss-config.toml`. Redis *is* in the stacks
+(service `tergite-redis`).
 
 ## 3. The two apps, and the seam between them
 
@@ -117,7 +120,7 @@ Two distinct trust directions, both asymmetric-key based:
 - **BCC → MSS**: on the websocket handshake BCC sends `x-id`, `x-request-id`, `x-timestamp`,
   `x-signature`; MSS verifies against that backend's `public_key_path`, checks the source IP
   (unless `is_strict_ip = false`), rejects stale nonces (`bcc_nonce_ttl`) and replayed ones
-  (the `request_logs` collection, where a nonce is unique). See `get_verified_device_name` in
+  (the request log in Redis, where a nonce is the key). See `get_verified_device_name` in
   [api/rest/utils.py](apps/tergite-mss/api/rest/utils.py).
 
 ## 4. Configuration
@@ -149,8 +152,8 @@ they are not runtime configuration. `.env.development` / `.env.test` also carry
 
 ## 5. Deployment
 
-Two compose stacks at the repo root, both with services `mss`, `dashboard`,
-`grafana-alloy`:
+Two compose stacks at the repo root, both with services `tergite-redis`, `mss`,
+`dashboard`, `grafana-alloy`:
 
 - [fresh-docker-compose.yml](fresh-docker-compose.yml) — builds both images from source.
 - [prebuilt-docker-compose.yml](prebuilt-docker-compose.yml) — pulls tagged images from
@@ -160,7 +163,8 @@ Two compose stacks at the repo root, both with services `mss`, `dashboard`,
 docker compose -f fresh-docker-compose.yml up -d
 ```
 
-MSS is exposed on `8002`, the dashboard on `3000`. `dashboard` waits on a healthy MSS (`GET /health` returning 200). Both `/health`
+MSS is exposed on `8002`, the dashboard on `3000`. `mss` waits on a healthy Redis;
+`dashboard` waits on a healthy MSS (`GET /health` returning 200). Both `/health`
 endpoints are deliberately outside the request log — MSS skips them in
 `request_logging_middleware`, nginx with `access_log off` — because a ten-second probe
 otherwise buries real traffic.
@@ -178,7 +182,7 @@ using `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID` ([config.alloy](config.alloy)).
 
 | Level | Where | Command |
 | --- | --- | --- |
-| MSS unit/integration | `apps/tergite-mss/tests` — pytest against a real MongoDB | `pytest` |
+| MSS unit/integration | `apps/tergite-mss/tests` — pytest against real MongoDB + Redis | `pytest` |
 | Dashboard component | `apps/tergite-dashboard/src/**/__tests__` — vitest + happy-dom | `npm run test` |
 | Dashboard e2e | `apps/tergite-dashboard/cypress/e2e` — cypress against the **mock** API | `npm run e2e` |
 | Full-stack e2e | [dev/e2e_test.sh](dev/e2e_test.sh) — cypress against real MSS + real backend in docker | `./dev/e2e_test.sh` |
@@ -205,7 +209,7 @@ Both GitHub Actions ([.github/workflows](.github/workflows)) and GitLab CI
 a mirror — see §8).
 
 - `mss-ci.yml` / `test mss` — `black --check .`, `pyflakes`, then `pytest` on Python 3.12 and
-  3.13 against a `mongo` service. Path-filtered to `apps/tergite-mss/**`.
+  3.13 against `mongo` and `redis` services. Path-filtered to `apps/tergite-mss/**`.
 - `dashboard-ci.yml` / `lint dashboard`, `test dashboard`, `e2e test dashboard` —
   eslint, vitest, cypress. Path-filtered to `apps/tergite-dashboard/**`.
 - `frontend-ci.yml` / `full e2e` — the cross-app `dev/e2e_test.sh`, on `main`, on `v*` tags, or

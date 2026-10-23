@@ -1,13 +1,6 @@
 ---
 services:
-  # the BCCs need Redis; MSS does not
   tergite-redis:
-    image: redis:${REDIS_VERSION:-8.4.0}
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 1s
-      timeout: 3s
-      retries: 30
     networks:
       - tergite-frontend-e2e
   mss:
@@ -15,6 +8,8 @@ services:
     pull_policy: never
     depends_on:
       tergite-mongo:
+        condition: service_healthy
+      tergite-redis:
         condition: service_healthy
     networks:
       - tergite-frontend-e2e

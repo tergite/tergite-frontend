@@ -30,7 +30,7 @@ from utils.config import get_ip_addr
 from utils.crypto import verify_ws_signature
 from utils.exc import InvalidRequestIDError
 
-from .database import get_database
+from .database import get_request_log_database
 
 
 async def get_request_id(request: Request) -> str:
@@ -58,7 +58,7 @@ async def get_request_id(request: Request) -> str:
 
 
 async def get_verified_device_name(
-    websocket: WebSocket, database: Database = Depends(get_database)
+    websocket: WebSocket, database: Database = Depends(get_request_log_database)
 ) -> str:
     """Returns the device name as got from BCC passed through special headers
 

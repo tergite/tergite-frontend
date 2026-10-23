@@ -22,7 +22,7 @@ from services import request_log
 from utils.crypto import get_uuid4_str
 from utils.logging import UNLOGGED_PATHS
 
-from .database import get_database
+from .database import get_request_log_database
 
 
 class TergiteCORSMiddleware(CORSMiddleware):
@@ -66,7 +66,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         await request_log.record_request(
-            get_database(request),
+            get_request_log_database(request),
             request_id,
             ttl=settings.CONFIG.request_log_ttl,
             client_name=request.headers.get("x-id"),

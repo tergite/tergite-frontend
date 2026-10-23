@@ -13,6 +13,7 @@
 from tests._utils.env import (
     TEST_DB_NAME,
     TEST_MONGODB_URL,
+    TEST_REDIS_URL,
     setup_test_env,
 )
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
@@ -35,6 +36,7 @@ from typing import Any, Dict, Generator, List
 import aiosmtplib
 import pymongo.database
 import pytest
+import redis
 from beanie import PydanticObjectId
 from fastapi.testclient import TestClient
 
@@ -86,7 +88,19 @@ def db() -> pymongo.database.Database:
 
 
 @pytest.fixture
-def client(db, mock_socket_gethostbyname) -> Generator[TestClient, Any, None]:
+def request_log_db() -> redis.Redis:
+    """The redis database of the request log for testing"""
+    client = redis.Redis.from_url(TEST_REDIS_URL, decode_responses=True)
+    yield client
+    # clean up
+    client.flushdb()
+    client.close()
+
+
+@pytest.fixture
+def client(
+    db, request_log_db, mock_socket_gethostbyname
+) -> Generator[TestClient, Any, None]:
     """A test client for fast api"""
     from api.rest import app
 

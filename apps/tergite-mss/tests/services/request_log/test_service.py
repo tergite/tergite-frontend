@@ -11,20 +11,22 @@
 # that they have been altered from the originals.
 
 from datetime import timedelta
+from urllib.parse import urlsplit, urlunsplit
 
 import pytest
 
 from libs.storage import Database
 from services import request_log
 from services.request_log import RequestLog
-from tests._utils.env import TEST_MONGODB_URL
+from tests._utils.env import TEST_REDIS_URL
 
-_DATABASE_NAME = "tergite-request-log-test"
+# the app's tests use the URL's own database; these take another
+_DATABASE_URL = urlunsplit(urlsplit(TEST_REDIS_URL)._replace(path="/14"))
 
 
 @pytest.fixture
 async def database():
-    database = Database(f"{TEST_MONGODB_URL}/{_DATABASE_NAME}", schemas=[RequestLog])
+    database = Database(_DATABASE_URL, schemas=[RequestLog])
     await database.setup()
     yield database
     await database.delete_many(RequestLog, filter={})

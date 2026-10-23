@@ -112,6 +112,8 @@ sample_resources() {
       | sed "s|^|$now,|" >> "$OUT_PATH/docker-stats.csv"
     echo "$now,mongodb,$("${COMPOSE[@]}" exec -T tergite-mongo mongosh --quiet \
       --eval 'db.serverStatus().connections.current')" >> "$OUT_PATH/connections.csv"
+    echo "$now,redis,$("${COMPOSE[@]}" exec -T tergite-redis redis-cli info clients \
+      | awk -F: '/^connected_clients/ {print $2}' | tr -d '\r')" >> "$OUT_PATH/connections.csv"
     sleep "$SAMPLE_INTERVAL_SECONDS"
   done
 }

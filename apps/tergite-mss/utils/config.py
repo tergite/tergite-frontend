@@ -51,6 +51,9 @@ class DatabaseConfig(BaseModel):
     name: str
     # any URL a storage backend supports, e.g. mongodb://host:27017
     url: AnyUrl
+    # the database of the request log, read and written on every request, so a cache
+    # suits it; default=redis://tergite-redis:6379/0
+    redis_url: AnyUrl = "redis://tergite-redis:6379/0"
 
 
 class BccConfig(BaseModel):

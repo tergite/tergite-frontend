@@ -29,7 +29,12 @@ from services.external import bcc
 from services.external.email import Emailer
 from services.notices import service as notices_service
 
-from .database import close_database, open_database, open_users_database
+from .database import (
+    close_database,
+    open_database,
+    open_request_log_database,
+    open_users_database,
+)
 from .routers.devices import ws_manager as devices_ws_manager
 
 
@@ -61,6 +66,7 @@ async def lifespan(app: FastAPI):
         private_key_password=settings.CONFIG.private_key_password,
     )
     database = await open_database(app, settings.CONFIG.database)
+    await open_request_log_database(app, settings.CONFIG.database)
     users_db = open_users_database(app, settings.CONFIG.database)
     await auth_service.on_startup(
         users_db,

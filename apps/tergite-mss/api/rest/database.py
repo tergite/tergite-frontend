@@ -29,7 +29,6 @@ SCHEMAS: Tuple[Type[Schema], ...] = (
     *devices.SCHEMAS,
     *jobs.SCHEMAS,
     *notices.SCHEMAS,
-    *request_log.SCHEMAS,
     *requests.SCHEMAS,
 )
 
@@ -42,6 +41,14 @@ async def open_database(app: FastAPI, conf: DatabaseConfig) -> Database:
     return database
 
 
+async def open_request_log_database(app: FastAPI, conf: DatabaseConfig) -> Database:
+    """Opens the Database the request log is kept in and keeps it on the app's state"""
+    database = Database(str(conf.redis_url), schemas=request_log.SCHEMAS)
+    await database.setup()
+    app.state.request_log_database = database
+    return database
+
+
 def open_users_database(app: FastAPI, conf: DatabaseConfig) -> AsyncIOMotorDatabase:
     """Opens the Motor database Beanie keeps the users in, until they move onto the Database"""
     client = AsyncIOMotorClient(get_database_url(conf), tz_aware=True)
@@ -51,12 +58,18 @@ def open_users_database(app: FastAPI, conf: DatabaseConfig) -> AsyncIOMotorDatab
 
 async def close_database(app: FastAPI) -> None:
     await app.state.database.close()
+    await app.state.request_log_database.close()
     app.state.users_client.close()
 
 
 def get_database(connection: HTTPConnection) -> Database:
     """Dependency injector of the app's Database, for HTTP routes and websockets alike"""
     return connection.app.state.database
+
+
+def get_request_log_database(connection: HTTPConnection) -> Database:
+    """Dependency injector of the request log's Database"""
+    return connection.app.state.request_log_database
 
 
 def get_database_url(conf: DatabaseConfig) -> str:

@@ -1,8 +1,23 @@
 ---
 services:
+  tergite-redis:
+    restart: unless-stopped
+    image: redis:${REDIS_VERSION:-8.4.0}
+    logging:
+      driver: ${LOGGING_DRIVER}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   mss:
     restart: unless-stopped
     depends_on:
+      tergite-redis:
+        condition: service_healthy
       mailpit:
         condition: service_healthy
     image: "tergite/tergite-mss:${MSS_VERSION:-v0.4.0}"
