@@ -12,7 +12,7 @@
 #
 from copy import deepcopy
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 import pymongo
 from beanie import PydanticObjectId
@@ -47,6 +47,9 @@ from .emails import (
     get_pending_email_batches,
     process_email_batch_results,
 )
+
+if TYPE_CHECKING:
+    from services.auth import User
 
 
 async def set_read_status(
@@ -359,6 +362,7 @@ async def find_many(
 
 async def count_many(
     db: AsyncIOMotorDatabase,
+    requester: "User",
     filters: Optional[Dict[str, Any]] = None,
     user_id: Optional[PydanticObjectId | str] = None,
     min_start_utc: Optional[datetime] = None,
@@ -373,6 +377,7 @@ async def count_many(
 
     Args:
         db: the mongo database from which to get the records
+        requester: the user asking; anyone but a superuser counts only their own notices
         filters: the mongodb-like filters to use to extract the notices
         user_id: the ID of the user whose notices we might be interested in
         min_start_utc: the minimum UTC timestamp that the notice should start
@@ -386,6 +391,9 @@ async def count_many(
     Returns:
         a number of matched records
     """
+    if not requester.is_superuser:
+        user_id = requester.id
+
     if user_id:
         user_id = PydanticObjectId(user_id)
 

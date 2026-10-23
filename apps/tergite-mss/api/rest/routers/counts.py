@@ -56,12 +56,9 @@ async def get_notice_count(
         types: the types to filter by; repeat the param for many
         is_read: filter on read state; default = None i.e. either
     """
-    # Make sure for ordinary users, the user id is always of the current user
-    if not current_user.is_superuser:
-        user_id = current_user.id
-
     count = await notices_service.count_many(
         db,
+        requester=current_user,
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
