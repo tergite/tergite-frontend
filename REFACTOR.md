@@ -220,7 +220,7 @@ Only a new `DbStore`, so no service changes. One rule decides the tables: **a fi
 | devices | `devices` | `basis_gates`, `coupling_map`, `coordinates`, `coupling_dict`, `meas_map`, `qubit_ids`, `meas_lo_freq`, `qubit_lo_freq`, `gates`, `qubit_ids_coupler_map` | — |
 | calibrations, calibration logs | `calibrations`, `calibration_logs` | `qubits`, `resonators`, `couplers`, `discriminators` | — |
 | notices | `notices`, `notice_users` (dismissals) | `context` | notices are filtered by who dismissed them (`notices/service.py:528-554`); each dismissal is one write |
-| notice preferences | `notice_preferences(user_id, notice_type, is_email_enabled)` | — | one notice type is switched at a time (`set_email_preferences`). Today that rewrites the whole map after reading it, so two concurrent changes can lose one; a row per type makes it a single upsert |
+| notice preferences | `notice_preferences` | `email_prefs` | kept as one map per user in step 4: a row per type would change the shape MongoDB holds too, which needs a data migration. Until then two concurrent `set_email_preferences` calls can lose one change, as on MongoDB |
 | notice templates | `notice_templates` | — | — |
 | user requests | `requests`, `request_users` (targets) | `metadata` | requests are found by target (`requests/service.py:109, 147, 204`) |
 | request logs | `request_logs` | — | — |

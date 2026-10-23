@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import PurePath
 from types import NoneType, UnionType
 from typing import (
+    Annotated,
     Any,
     Dict,
     List,
@@ -31,6 +32,7 @@ from typing import (
     Sequence,
     Tuple,
     Type,
+    TypeAliasType,
     Union,
     get_args,
     get_origin,
@@ -299,10 +301,15 @@ def _is_none_allowed(annotation: Any) -> bool:
 
 
 def _unwrap_optional(annotation: Any) -> Any:
+    """Gets the type an annotation names: through `type` aliases, Annotated and Optional"""
+    if isinstance(annotation, TypeAliasType):
+        return _unwrap_optional(annotation.__value__)
+    if get_origin(annotation) is Annotated:
+        return _unwrap_optional(get_args(annotation)[0])
     if get_origin(annotation) in (Union, UnionType):
         args = [arg for arg in get_args(annotation) if arg is not NoneType]
         if len(args) == 1:
-            return args[0]
+            return _unwrap_optional(args[0])
     return annotation
 
 
