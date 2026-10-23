@@ -17,9 +17,11 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.types import Message, Send
 
-from utils.api import WebsocketRequestLog, get_request_logs_store
+from utils.api import WebsocketRequestLog
 from utils.crypto import get_uuid4_str
 from utils.logging import UNLOGGED_PATHS
+
+from .utils import get_request_logs_store
 
 
 class TergiteCORSMiddleware(CORSMiddleware):

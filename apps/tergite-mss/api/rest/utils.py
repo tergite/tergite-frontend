@@ -15,20 +15,25 @@
 
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from cryptography.exceptions import InvalidSignature
 from fastapi import WebSocketException
 from loguru import logger
+from redis import Redis
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocket
 
 import settings
-from utils.api import get_request_logs_store
+from utils.api import WebsocketRequestLog
 from utils.config import get_ip_addr
 from utils.crypto import verify_ws_signature
 from utils.exc import InvalidRequestIDError
 from utils.mongodb import get_mongodb
+from utils.redis_store import Collection
+
+_REQUEST_LOGS_STORE: Optional[Collection[WebsocketRequestLog]] = None
 
 
 async def get_request_id(request: Request) -> str:
@@ -111,6 +116,21 @@ def get_verified_device_name(websocket: WebSocket) -> str:
     except (KeyError, InvalidSignature, ValueError, AttributeError) as exp:
         logger.warning(f"WebSocket signature/nonce validation failed: {exp}")
         raise WebSocketException(code=WS_1008_POLICY_VIOLATION, reason="unauthorized")
+
+
+def get_request_logs_store() -> Collection[WebsocketRequestLog]:
+    """Gets the Redis store of the websocket request logs, connecting on first use"""
+    global _REQUEST_LOGS_STORE
+    if _REQUEST_LOGS_STORE is None:
+        connection = Redis.from_url(url=f"{settings.CONFIG.database.redis_url}")
+        _REQUEST_LOGS_STORE = Collection(
+            connection=connection,
+            schema=WebsocketRequestLog,
+            default_ttl=settings.CONFIG.request_log_ttl,
+            cleanup_interval=settings.CONFIG.request_log_clean_interval,
+        )
+
+    return _REQUEST_LOGS_STORE
 
 
 def _is_valid_uuid4(value):

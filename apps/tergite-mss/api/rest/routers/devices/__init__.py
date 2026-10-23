@@ -25,7 +25,7 @@ from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocketDisconnect
 
 from api.rest.dependencies import MongoDbDep, ProjectDbDep
-from api.rest.utils import get_verified_device_name
+from api.rest.utils import get_request_logs_store, get_verified_device_name
 from services import devices
 from services.auth import ProjectDatabase
 from services.devices import Device, DeviceEvent, DeviceQuery
@@ -102,7 +102,7 @@ async def handle_device_events(
     # a device not yet registered registers itself with its 'initialized' event
     with suppress(NotFoundError):
         await devices.mark_device_online(db, name=name)
-    await ws_manager.connect(websocket)
+    await ws_manager.connect(websocket, request_logs=get_request_logs_store())
     try:
         while True:
             data = await get_websocket_json(websocket, data_type="text")

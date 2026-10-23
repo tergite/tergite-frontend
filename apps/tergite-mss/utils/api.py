@@ -27,15 +27,12 @@ from fastapi import WebSocketException, status
 from fastapi.websockets import WebSocket
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
-from redis import Redis
 
-import settings
 from utils.crypto import get_uuid4_str
 from utils.date_time import get_current_timestamp
 from utils.redis_store import Collection, Schema
 
 ITEM = TypeVar("ITEM", bound=BaseModel)
-_REQUEST_LOGS_STORE: Optional[Collection["WebsocketRequestLog"]] = None
 
 
 class PaginatedListResponse(BaseModel, Generic[ITEM]):
@@ -133,16 +130,17 @@ class WebsocketConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
 
-    async def connect(self, websocket: WebSocket):
-        """Allows a connection to be established"""
+    async def connect(
+        self, websocket: WebSocket, request_logs: Collection[WebsocketRequestLog]
+    ):
+        """Allows a connection to be established, logging its request once"""
         request_id = websocket.headers.get("x-request-id")
         if request_id is None:
             request_id = get_uuid4_str()
 
         websocket.state.request_id = request_id
-        requests_store = get_request_logs_store()
-        if not requests_store.exists(request_id):
-            requests_store.insert(WebsocketRequestLog.from_request(websocket))
+        if not request_logs.exists(request_id):
+            request_logs.insert(WebsocketRequestLog.from_request(websocket))
 
         await websocket.accept(headers=[(b"x-request-id", request_id.encode("utf8"))])
         self.active_connections.append(websocket)
@@ -192,22 +190,3 @@ async def get_websocket_json(
             code=status.WS_1008_POLICY_VIOLATION,
             reason=f"invalid data type: websocket only supports {data_type} data",
         )
-
-
-def get_request_logs_store() -> Collection[WebsocketRequestLog]:
-    """Gets the store for the given url for the request logs
-
-    Returns:
-        the RedisCollection containing the jobs
-    """
-    global _REQUEST_LOGS_STORE
-    if _REQUEST_LOGS_STORE is None:
-        connection = Redis.from_url(url=f"{settings.CONFIG.database.redis_url}")
-        _REQUEST_LOGS_STORE = Collection(
-            connection=connection,
-            schema=WebsocketRequestLog,
-            default_ttl=settings.CONFIG.request_log_ttl,
-            cleanup_interval=settings.CONFIG.request_log_clean_interval,
-        )
-
-    return _REQUEST_LOGS_STORE
