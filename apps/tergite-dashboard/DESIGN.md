@@ -282,6 +282,28 @@ npm run e2e     # build --mode test, serve, run cypress headless
 npm run visual-e2e   # same, with the cypress UI
 ```
 
+Each feature's happy path, and the spec that walks it:
+
+| Feature | Spec |
+| --- | --- |
+| Login | `login.cy.ts` |
+| Layout: sidebar, top bar, project switch, app token | `dashboard.cy.ts` |
+| Home: devices, jobs, bookings | `home.cy.ts` |
+| Devices | `devices.cy.ts` |
+| Device detail, bookings and calibrations | `device-detail.cy.ts` |
+| Projects, QPU-time and access requests | `projects.cy.ts` |
+| Tokens | `tokens.cy.ts` |
+| My requests | `my-requests.cy.ts` |
+| Approvals | `approvals.cy.ts` |
+| Notices | `notices.cy.ts` |
+| Settings | `settings.cy.ts` |
+| Admin projects | `admin-projects.cy.ts` |
+| Admin requests | `admin-requests.cy.ts` |
+| Admin control | `admin-control.cy.ts` |
+| Error page | `error-alert.cy.ts` |
+
+Job submission has no UI; its happy path is the MSS pytest flow in `tests/api/rest/test_jobs.py`.
+
 Component tests are the thin layer: `vite.config.ts` restricts them to `__tests__`
 directories, and only pure-ish primitives are covered there (`ui/__tests__/donut-chart.test.tsx`).
 The real coverage is the cypress suite, which drives the app through the mock API. Specs
