@@ -18,9 +18,13 @@
 from fastapi import FastAPI
 
 import settings
+from api.rest.errors import (
+    handle_bcc_http_error,
+    make_exception_group_handler,
+    make_http_error_handler,
+)
 from api.rest.middleware import RequestIDMiddleware, TergiteCORSMiddleware
 from services.auth import UnsupportedOauthException
-from utils.api import handle_bcc_http_error, to_http_error, unwrap_exception_group
 from utils.exc import (
     BccHttpError,
     ConflictError,
@@ -65,27 +69,37 @@ app.add_middleware(
 )
 
 # exception handlers
-app.add_exception_handler(NotFoundError, to_http_error(404))
-app.add_exception_handler(ValueError, to_http_error(500, "Unexpected server error"))
-app.add_exception_handler(TypeError, to_http_error(500, "Unexpected server error"))
-app.add_exception_handler(RuntimeError, to_http_error(500, "Unexpected server error"))
+app.add_exception_handler(NotFoundError, make_http_error_handler(404))
 app.add_exception_handler(
-    DbValidationError, to_http_error(500, "Unexpected server error")
+    ValueError, make_http_error_handler(500, "Unexpected server error")
 )
-app.add_exception_handler(DatabaseError, to_http_error(500, "Unexpected server error"))
-app.add_exception_handler(UnsupportedOauthException, to_http_error(500))
-app.add_exception_handler(ServiceUnavailableError, to_http_error(503))
-app.add_exception_handler(UnknownBccError, to_http_error(400))
-app.add_exception_handler(BccHttpError, handle_bcc_http_error)
-app.add_exception_handler(InvalidRequestIDError, to_http_error(400))
-app.add_exception_handler(InvalidInputError, to_http_error(400))
-app.add_exception_handler(UnauthorizedError, to_http_error(401))
-app.add_exception_handler(ForbiddenError, to_http_error(403))
-app.add_exception_handler(ConflictError, to_http_error(409))
-app.add_exception_handler(TooManyRequestsError, to_http_error(429))
-app.add_exception_handler(Exception, to_http_error(500, "Unexpected server error"))
 app.add_exception_handler(
-    ExceptionGroup, unwrap_exception_group(app.exception_handlers)
+    TypeError, make_http_error_handler(500, "Unexpected server error")
+)
+app.add_exception_handler(
+    RuntimeError, make_http_error_handler(500, "Unexpected server error")
+)
+app.add_exception_handler(
+    DbValidationError, make_http_error_handler(500, "Unexpected server error")
+)
+app.add_exception_handler(
+    DatabaseError, make_http_error_handler(500, "Unexpected server error")
+)
+app.add_exception_handler(UnsupportedOauthException, make_http_error_handler(500))
+app.add_exception_handler(ServiceUnavailableError, make_http_error_handler(503))
+app.add_exception_handler(UnknownBccError, make_http_error_handler(400))
+app.add_exception_handler(BccHttpError, handle_bcc_http_error)
+app.add_exception_handler(InvalidRequestIDError, make_http_error_handler(400))
+app.add_exception_handler(InvalidInputError, make_http_error_handler(400))
+app.add_exception_handler(UnauthorizedError, make_http_error_handler(401))
+app.add_exception_handler(ForbiddenError, make_http_error_handler(403))
+app.add_exception_handler(ConflictError, make_http_error_handler(409))
+app.add_exception_handler(TooManyRequestsError, make_http_error_handler(429))
+app.add_exception_handler(
+    Exception, make_http_error_handler(500, "Unexpected server error")
+)
+app.add_exception_handler(
+    ExceptionGroup, make_exception_group_handler(app.exception_handlers)
 )
 
 # routes

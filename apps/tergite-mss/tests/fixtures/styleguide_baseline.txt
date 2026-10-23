@@ -38,11 +38,7 @@ verb: services/notices/service.py::_with_project_name
 verb: services/requests/dtos.py::Request.from_post_body
 verb: services/requests/dtos.py::RequestPostBody.has_right_metadata_type
 verb: services/requests/service.py::_has_resource_access
-verb: utils/api.py::PaginatedListResponse.model_dump
 verb: utils/api.py::WebsocketRequestLog.from_request
-verb: utils/api.py::to_http_error
-verb: utils/api.py::to_http_error.handler
-verb: utils/api.py::unwrap_exception_group.handler
 verb: utils/config.py::AppConfig.dashboard_url_required_for_email
 verb: utils/config.py::AppConfig.from_json_str
 verb: utils/date_time.py::datetime_to_zulu
@@ -97,12 +93,6 @@ boolean: services/jobs/dtos.py::Job.model_dump(serialize_as_any)
 boolean: services/notices/service.py::_merge_filters(include_dismissed)
 boolean: services/notices/service.py::count_many(include_dismissed)
 boolean: services/notices/service.py::find_many(include_dismissed)
-boolean: utils/api.py::PaginatedListResponse.model_dump(by_alias)
-boolean: utils/api.py::PaginatedListResponse.model_dump(exclude_data_none_fields)
-boolean: utils/api.py::PaginatedListResponse.model_dump(exclude_defaults)
-boolean: utils/api.py::PaginatedListResponse.model_dump(exclude_unset)
-boolean: utils/api.py::PaginatedListResponse.model_dump(round_trip)
-boolean: utils/api.py::PaginatedListResponse.model_dump(serialize_as_any)
 boolean: utils/api.py::get_bearer_token(raise_if_error)
 boolean: utils/config.py::EmailConfig.start_tls
 boolean: utils/config.py::EmailConfig.use_tls
@@ -131,7 +121,6 @@ constant-position: services/auth/users/dtos.py::ID
 constant-position: utils/date_time.py::DEFAULT_FROM_DATETIME_STR
 constant-position: utils/date_time.py::DEFAULT_TO_DATETIME_STR
 private-helper-position: api/rest/utils.py::get_default_mongodb
-private-helper-position: utils/api.py::get_request_logs_store
 license-header: api/__init__.py
 license-header: api/rest/routers/__init__.py
 license-header: services/__init__.py
@@ -192,7 +181,6 @@ http-exception: services/auth/app_tokens/routers.py
 http-exception: services/auth/projects/routers/__init__.py
 http-exception: services/auth/users/authenticator.py
 http-exception: services/auth/users/routers.py
-http-exception: utils/api.py
 type-hints: api/rest/__init__.py::health
 type-hints: api/rest/app_kwargs.py::lifespan
 type-hints: api/rest/middleware.py::RequestIDMiddleware.dispatch
@@ -325,13 +313,11 @@ type-hints: services/notices/service.py::create_system_notice
 type-hints: services/notices/service.py::on_startup
 type-hints: services/requests/dtos.py::Request.serialize_ids
 type-hints: services/requests/service.py::on_startup
-type-hints: utils/api.py::PaginatedListResponse.model_dump
 type-hints: utils/api.py::WebsocketConnectionManager.broadcast
 type-hints: utils/api.py::WebsocketConnectionManager.close_all
 type-hints: utils/api.py::WebsocketConnectionManager.connect
 type-hints: utils/api.py::WebsocketConnectionManager.disconnect
 type-hints: utils/api.py::WebsocketConnectionManager.reply
-type-hints: utils/api.py::_get_bcc_public_key
 type-hints: utils/config.py::BccConfig.validate_public_key_path
 type-hints: utils/crypto.py::get_uuid4_str
 type-hints: utils/date_time.py::datetime_to_zulu

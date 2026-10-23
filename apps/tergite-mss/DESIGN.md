@@ -27,6 +27,7 @@ apps/tergite-mss/
 │       ├── __init__.py      # the FastAPI app: middleware, exception handlers, routers
 │       ├── app_kwargs.py    # app metadata + lifespan (startup/shutdown)
 │       ├── dependencies.py  # every injectable, as an Annotated alias
+│       ├── errors.py        # the exception handlers
 │       ├── middleware.py    # TergiteCORSMiddleware
 │       ├── utils.py         # router-level helpers (request id, BCC ws verification)
 │       └── routers/         # one module per URL prefix
@@ -119,8 +120,9 @@ websockets, and marks every device disconnected.
    that only needs the check still names the parameter (`requester: CurrentSuperuserDep`).
    Add new injectables there.
 4. **Exception handlers** — domain exceptions from `utils/exc.py` are mapped to status codes
-   centrally in `api/rest/__init__.py`: `InvalidInputError` (and its `TooManyListQueryParams`)
-   / `UnknownBccError` / `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,
+   centrally in `api/rest/__init__.py`, with the handlers `api/rest/errors.py` makes:
+   `InvalidInputError` (and its `TooManyListQueryParams`) / `UnknownBccError` /
+   `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,
    `ForbiddenError` → 403, `NotFoundError` → 404, `ConflictError` → 409,
    `TooManyRequestsError` → 429, `ServiceUnavailableError` → 503, `BccHttpError` → the BCC's
    own status, and `ValueError` / `TypeError` / `RuntimeError` / `DbValidationError` /
@@ -241,7 +243,8 @@ Codified in [docs/api-design.md](./docs/api-design.md); the short version:
 
 - URLs are `/{resource}/({id})`. Every resource has a DTO named after it.
 - List endpoints return `{"skip": int, "limit": int | null, "data": [...]}` — build it with
-  `PaginatedListResponse` and `.model_dump(mode="json")`.
+  `build_paginated_json(data, skip, limit)`, and declare `PaginatedListResponse[Item]` as the
+  route's response.
 - Action endpoints return `{"status": ..., "message": ...}` (`GeneralMessage`).
 - Errors return `{"detail": "..."}` with a non-2xx status — produced by the central handlers,
   not per-route try/except.

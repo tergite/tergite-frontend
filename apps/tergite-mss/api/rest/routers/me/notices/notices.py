@@ -19,7 +19,7 @@ from fastapi import APIRouter, Query
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
 from services import notices as notices_service
 from services.notices import Notice, NoticeTypeId
-from utils.api import GeneralMessage, PaginatedListResponse
+from utils.api import GeneralMessage, PaginatedListResponse, build_paginated_json
 
 router = APIRouter()
 
@@ -56,9 +56,7 @@ async def get_my_notices(
         types=types,
         is_read=is_read,
     )
-    return PaginatedListResponse(skip=skip, limit=limit, data=data).model_dump(
-        mode="json", exclude_data_none_fields=False
-    )
+    return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 
 
 @router.post("/{notice_id}/dismiss")

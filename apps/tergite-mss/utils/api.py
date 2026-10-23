@@ -10,46 +10,33 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Utility functions for API related code"""
-import base64
-from inspect import isawaitable
-from pathlib import Path
 from typing import (
     Any,
-    Awaitable,
-    Callable,
     Dict,
     Generic,
     List,
     Literal,
-    Mapping,
     NotRequired,
     Optional,
+    Sequence,
     TypedDict,
     TypeVar,
-    Union,
 )
 
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
-from fastapi import HTTPException, Response, WebSocketException, status
-from fastapi.exception_handlers import http_exception_handler
+from fastapi import WebSocketException, status
 from fastapi.requests import Request
 from fastapi.websockets import WebSocket
-from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic.main import IncEx
 from redis import Redis
 
 import settings
 from utils.crypto import get_uuid4_str
 from utils.date_time import get_current_timestamp
-from utils.exc import BccHttpError, UnauthorizedError
+from utils.exc import UnauthorizedError
 from utils.logging import err_logger as access_logger
 from utils.redis_store import Collection, Schema
 
 ITEM = TypeVar("ITEM", bound=BaseModel)
-_BCC_PUBLIC_KEYS: Dict[str, RSAPublicKey] = {}
 _REQUEST_LOGS_STORE: Optional[Collection["WebsocketRequestLog"]] = None
 
 
@@ -60,44 +47,32 @@ class PaginatedListResponse(BaseModel, Generic[ITEM]):
     limit: Optional[int] = None
     data: List[ITEM] = []
 
-    def model_dump(
-        self,
-        *,
-        mode: Literal["json", "python"] | str = "python",
-        include: IncEx | None = None,
-        exclude: IncEx | None = None,
-        context: Any | None = None,
-        by_alias: bool | None = None,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_data_none_fields: bool = True,
-        round_trip: bool = False,
-        warnings: bool | Literal["none", "warn", "error"] = True,
-        fallback: Callable[[Any], Any] | None = None,
-        serialize_as_any: bool = False,
-        **kwargs,
-    ) -> dict[str, Any]:
-        return {
-            "skip": self.skip,
-            "limit": self.limit,
-            "data": [
-                item.model_dump(
-                    mode=mode,
-                    include=include,
-                    exclude=exclude,
-                    context=context,
-                    by_alias=by_alias,
-                    exclude_unset=exclude_unset,
-                    exclude_defaults=exclude_defaults,
-                    exclude_none=exclude_data_none_fields,
-                    round_trip=round_trip,
-                    warnings=warnings,
-                    fallback=fallback,
-                    serialize_as_any=serialize_as_any,
-                )
-                for item in self.data
-            ],
-        }
+
+def build_paginated_json(
+    data: Sequence[BaseModel],
+    skip: int,
+    limit: Optional[int],
+    should_exclude_none: bool = True,
+) -> Dict[str, Any]:
+    """Builds the JSON body of a paginated list, shaped as PaginatedListResponse
+
+    Args:
+        data: the items on this page
+        skip: the number of items skipped
+        limit: the maximum number of items asked for
+        should_exclude_none: whether to drop the items' fields that are None
+
+    Returns:
+        the JSON-able dict of the list
+    """
+    return {
+        "skip": skip,
+        "limit": limit,
+        "data": [
+            item.model_dump(mode="json", exclude_none=should_exclude_none)
+            for item in data
+        ],
+    }
 
 
 class GeneralMessage(TypedDict):
@@ -227,93 +202,6 @@ def get_bearer_token(request: Request, raise_if_error: bool = True) -> Optional[
             raise UnauthorizedError()
 
 
-def to_http_error(
-    status_code: int, custom_message: Optional[str] = None
-) -> Callable[[Request, Exception], Union[Response, Awaitable[Response]]]:
-    """An error handler that converts the exception to an HTTPException
-
-    The details in the http error are got from the exception itself.
-    It also logs the original error.
-
-    Args:
-        status_code: the HTTP status code
-        custom_message: a custom message to send to the client
-
-    Returns:
-        an HTTP exception handler function
-    """
-
-    async def handler(request: Request, exp: Exception) -> Response:
-        if status_code >= 500:
-            logger.exception(f"HTTP Server Error {status_code}: {exp}")
-        else:
-            logger.warning(f"HTTP Client Error {status_code}: {exp}")
-        message = custom_message
-        if message is None:
-            message = f"{exp}"
-
-        http_exp = HTTPException(status_code, message)
-        return await http_exception_handler(request, http_exp)
-
-    return handler
-
-
-async def handle_bcc_http_error(request: Request, exp: BccHttpError) -> Response:
-    """An error handler that answers with the status code and message the BCC gave"""
-    return await to_http_error(exp.status_code)(request, exp)
-
-
-def unwrap_exception_group(
-    handlers: Mapping[Any, Callable[[Request, Exception], Any]],
-) -> Callable[[Request, ExceptionGroup], Awaitable[Response]]:
-    """An error handler that answers an exception group of one error as that error
-
-    A group of several errors is answered as any other unexpected exception.
-
-    Args:
-        handlers: the app's exception handlers, which must include one for Exception;
-            read when an error is handled, so handlers added later are used
-
-    Returns:
-        an exception group handler function
-    """
-
-    async def handler(request: Request, exp: ExceptionGroup) -> Response:
-        error = exp.exceptions[0] if len(exp.exceptions) == 1 else exp
-        error_cls = next(cls for cls in type(error).__mro__ if cls in handlers)
-        if error_cls is ExceptionGroup:
-            error_cls = Exception
-
-        response = handlers[error_cls](request, error)
-        if isawaitable(response):
-            response = await response
-        return response
-
-    return handler
-
-
-def verify_ws_signature(signature: str, message: str, key_path: Path) -> None:
-    """Verifies that the given message is from an approved source, given the signature
-
-    Args:
-        signature: the signature of the message signed by BCC
-        message: the message from MSS
-        key_path: the file path to the RSA public key PEM file
-
-    Raises:
-        InvalidSignature: if signature does not match with what would be expected from MSS
-    """
-    mss_pub_key = _get_bcc_public_key(key_path=key_path)
-    mss_pub_key.verify(
-        base64.b64decode(signature),
-        message.encode(),
-        padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
-        ),
-        hashes.SHA256(),
-    )
-
-
 async def get_websocket_json(
     websocket: WebSocket, data_type: Literal["text", "binary"]
 ) -> dict:
@@ -333,26 +221,6 @@ async def get_websocket_json(
             code=status.WS_1008_POLICY_VIOLATION,
             reason=f"invalid data type: websocket only supports {data_type} data",
         )
-
-
-def _get_bcc_public_key(key_path: Path):
-    """Loads the public key for BCC given the path to the key file
-
-    Args:
-        key_path: the file path to the RSA public key PEM file
-
-    Returns:
-        the public key of the MSS
-    """
-    global _BCC_PUBLIC_KEYS
-    key_path_str = str(key_path)
-
-    if key_path_str not in _BCC_PUBLIC_KEYS:
-        with open(key_path, "rb") as key_file:
-            data = key_file.read()
-            _BCC_PUBLIC_KEYS[key_path_str] = serialization.load_pem_public_key(data)
-
-    return _BCC_PUBLIC_KEYS[key_path_str]
 
 
 def get_request_logs_store() -> Collection[WebsocketRequestLog]:

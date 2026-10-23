@@ -20,9 +20,10 @@ from beanie import PydanticObjectId
 from bson import ObjectId
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 
 _MSS_PRIVATE_KEYS: Dict[str, RSAPrivateKey] = {}
+_BCC_PUBLIC_KEYS: Dict[str, RSAPublicKey] = {}
 
 
 def sign_message(key_file: Path, message: str, password: Optional[bytes]) -> str:
@@ -45,6 +46,28 @@ def sign_message(key_file: Path, message: str, password: Optional[bytes]) -> str
         hashes.SHA256(),
     )
     return base64.b64encode(signature).decode()
+
+
+def verify_ws_signature(signature: str, message: str, key_path: Path) -> None:
+    """Verifies that the given message is from an approved source, given the signature
+
+    Args:
+        signature: the signature of the message signed by BCC
+        message: the message from MSS
+        key_path: the file path to the RSA public key PEM file
+
+    Raises:
+        InvalidSignature: if signature does not match with what would be expected from MSS
+    """
+    bcc_public_key = _get_bcc_public_key(key_path=key_path)
+    bcc_public_key.verify(
+        base64.b64decode(signature),
+        message.encode(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256(),
+    )
 
 
 def decrypt_message(
@@ -123,3 +146,22 @@ def _get_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey
                 file.read(), password=password
             )
         return key
+
+
+def _get_bcc_public_key(key_path: Path) -> RSAPublicKey:
+    """Loads the public key of the BCC from the given PEM file, once per path
+
+    Args:
+        key_path: the file path to the RSA public key PEM file
+
+    Returns:
+        the public key of the BCC
+    """
+    key_path_str = str(key_path)
+
+    if key_path_str not in _BCC_PUBLIC_KEYS:
+        with open(key_path, "rb") as key_file:
+            data = key_file.read()
+            _BCC_PUBLIC_KEYS[key_path_str] = serialization.load_pem_public_key(data)
+
+    return _BCC_PUBLIC_KEYS[key_path_str]

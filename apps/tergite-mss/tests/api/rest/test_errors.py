@@ -9,14 +9,14 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Module containing tests for the API utilities"""
+"""Tests for the exception handlers of the REST API"""
 from typing import List
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from utils.api import to_http_error, unwrap_exception_group
+from api.rest.errors import make_exception_group_handler, make_http_error_handler
 from utils.exc import ConflictError, NotFoundError
 
 
@@ -33,7 +33,7 @@ from utils.exc import ConflictError, NotFoundError
         ),
     ],
 )
-def test_unwrap_exception_group(errors: List[Exception], status_code, detail):
+def test_exception_group_handler(errors: List[Exception], status_code, detail):
     """An exception group of one error answers as that error, of several as unexpected"""
     client = TestClient(_get_app(ExceptionGroup("errors", errors)))
 
@@ -46,11 +46,13 @@ def test_unwrap_exception_group(errors: List[Exception], status_code, detail):
 def _get_app(error: Exception) -> FastAPI:
     """Gets an app whose only route raises the given error"""
     app = FastAPI()
-    app.add_exception_handler(NotFoundError, to_http_error(404))
-    app.add_exception_handler(ConflictError, to_http_error(409))
-    app.add_exception_handler(Exception, to_http_error(500, "Unexpected server error"))
+    app.add_exception_handler(NotFoundError, make_http_error_handler(404))
+    app.add_exception_handler(ConflictError, make_http_error_handler(409))
     app.add_exception_handler(
-        ExceptionGroup, unwrap_exception_group(app.exception_handlers)
+        Exception, make_http_error_handler(500, "Unexpected server error")
+    )
+    app.add_exception_handler(
+        ExceptionGroup, make_exception_group_handler(app.exception_handlers)
     )
 
     @app.get("/")

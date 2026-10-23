@@ -24,8 +24,9 @@ from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocket
 
 import settings
-from utils.api import get_request_logs_store, verify_ws_signature
+from utils.api import get_request_logs_store
 from utils.config import get_ip_addr
+from utils.crypto import verify_ws_signature
 from utils.exc import InvalidRequestIDError
 from utils.mongodb import get_mongodb
 

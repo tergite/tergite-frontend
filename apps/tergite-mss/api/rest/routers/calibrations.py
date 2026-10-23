@@ -26,7 +26,7 @@ from services.calibration import (
     DeviceCalibrationCreate,
     DeviceCalibrationQuery,
 )
-from utils.api import PaginatedListResponse
+from utils.api import PaginatedListResponse, build_paginated_json
 
 router = APIRouter(prefix="/calibrations", tags=["calibrations"])
 
@@ -57,9 +57,7 @@ async def get_many(
     data = await calibration_service.find_latest_calibrations(
         db, filters=filters, limit=limit, skip=skip, sort=sort
     )
-    return PaginatedListResponse(skip=skip, limit=limit, data=data).model_dump(
-        mode="json", exclude_data_none_fields=False
-    )
+    return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 
 
 @router.get("/{name}", responses={200: {"model": DeviceCalibration}})

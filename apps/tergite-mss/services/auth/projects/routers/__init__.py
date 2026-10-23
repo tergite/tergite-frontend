@@ -22,7 +22,7 @@ from fastapi_users import exceptions, schemas
 
 from services import notices
 from services.notices import NoticeType
-from utils.api import PaginatedListResponse
+from utils.api import PaginatedListResponse, build_paginated_json
 
 from ....notices.dtos import ProjectRequestContext, RefType
 from ...users.dtos import CurrentSuperUserDependency, CurrentUserIdDependency, User
@@ -90,9 +90,7 @@ def get_my_projects_router(
         )
 
         data = [schemas.model_validate(project_schema, project) for project in projects]
-        return PaginatedListResponse(data=data, skip=skip, limit=limit).model_dump(
-            mode="json"
-        )
+        return build_paginated_json(data, skip=skip, limit=limit)
 
     @router.get(
         "/{id}",
