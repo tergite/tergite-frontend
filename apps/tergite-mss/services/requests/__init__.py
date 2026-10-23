@@ -10,7 +10,14 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from .dtos import Request, RequestPostBody, RequestStatus, RequestType, RequestUpdate
+from .dtos import (
+    Request,
+    RequestPostBody,
+    RequestRole,
+    RequestStatus,
+    RequestType,
+    RequestUpdate,
+)
 from .service import (
     ALL_REQ_STATUSES,
     ALL_REQ_TYPES,
@@ -25,6 +32,7 @@ __all__ = [
     "ALL_REQ_STATUSES",
     "ALL_REQ_TYPES",
     "Request",
+    "RequestRole",
     "RequestStatus",
     "RequestType",
     "RequestUpdate",

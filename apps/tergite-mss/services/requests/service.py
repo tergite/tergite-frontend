@@ -29,6 +29,7 @@ from . import actions
 from .dtos import (
     Request,
     RequestPostBody,
+    RequestRole,
     RequestStatus,
     RequestTarget,
     RequestType,
@@ -117,20 +118,20 @@ async def get_one(pk: PydanticObjectId, current_user_id: PydanticObjectId) -> Re
 
 
 async def get_many(
-    filter_obj: Dict[str, Any],
     current_user_id: PydanticObjectId,
+    role: RequestRole,
+    statuses: Tuple[RequestStatus, ...] = ALL_REQ_STATUSES,
     request_types: Tuple[RequestType, ...] = ALL_REQ_TYPES,
     sort: tuple[str, ...] = ("-created_at",),
     skip: int = 0,
     limit: Optional[int] = None,
 ) -> List[Request]:
-    """Gets multiple requests that match the given filter and request types and can be viewed by current user
-
-    Requesters and target users of a given request can view it
+    """Gets the requests the current user made, or those awaiting their decision
 
     Args:
-        filter_obj: the PyMongo-like filter object e.g. `{"approver_id": "some-guys-id"}`.
         current_user_id: the identifier of the current user
+        role: "requester" for the user's own requests, "approver" for those targeting them
+        statuses: the statuses of request to return. default = ALL_REQ_STATUSES
         request_types: the types of request to return. default = ALL_REQ_TYPES
         sort: the sort order of the returned results
         skip: the number of matched records to skip
@@ -140,13 +141,11 @@ async def get_many(
     Returns:
         the list of request objects
     """
+    user_field = "target_user_ids" if role == "approver" else "requester_id"
     _filter = {
-        **filter_obj,
+        user_field: current_user_id,
+        "status": {"$in": statuses},
         "type": {"$in": request_types},
-        "$or": [
-            {"target_user_ids": current_user_id},
-            {"requester_id": current_user_id},
-        ],
     }
     return await Request.find(
         _filter,

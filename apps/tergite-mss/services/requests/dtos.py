@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 import enum
-from typing import Any, List, Optional, Self, Tuple, Type
+from typing import Any, List, Literal, Optional, Self, Tuple, Type
 
 from beanie import Document, PydanticObjectId
 from pydantic import (
@@ -59,6 +59,10 @@ class RequestTarget(str, enum.Enum):
     PROJECT = "project"
     # we probably don't need users as targets of requests
     # USER = "user"
+
+
+type RequestRole = Literal["requester", "approver"]
+"""Whose requests to list: the ones the user made, or those awaiting their decision"""
 
 
 class RequestStatus(str, enum.Enum):

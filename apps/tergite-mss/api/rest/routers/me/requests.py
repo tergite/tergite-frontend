@@ -12,7 +12,7 @@
 
 """Routes for the current user's requests, as requester or as approver"""
 
-from typing import Literal, Optional, Tuple
+from typing import Optional, Tuple
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
@@ -26,12 +26,12 @@ from services.requests import (
     ALL_REQ_TYPES,
     Request,
     RequestPostBody,
+    RequestRole,
     RequestStatus,
     RequestType,
     RequestUpdate,
 )
 from utils.api import PaginatedListResponse
-from utils.exc import NotFoundError
 
 router = APIRouter()
 
@@ -54,7 +54,7 @@ async def create(body: RequestPostBody, requester: User = CurrentUserDep) -> Req
 
 @router.get("/")
 async def get_many(
-    role: Literal["requester", "approver"] = Query("approver"),
+    role: RequestRole = Query("approver"),
     status: Tuple[RequestStatus, ...] = Query(ALL_REQ_STATUSES),
     types: Tuple[RequestType, ...] = Query(ALL_REQ_TYPES, alias="type"),
     sort: tuple[str, ...] = Query(("-created_at",)),
@@ -76,15 +76,10 @@ async def get_many(
     Returns:
         the paginated list of matched requests, newest first
     """
-    filter_obj: dict = {"status": {"$in": status}}
-    if role == "approver":
-        filter_obj["target_user_ids"] = user.id
-    else:
-        filter_obj["requester_id"] = user.id
-
     data = await requests_service.get_many(
-        filter_obj,
         current_user_id=user.id,
+        role=role,
+        statuses=status,
         request_types=types,
         skip=skip,
         sort=sort,
@@ -115,12 +110,9 @@ async def update(
         the updated request
 
     Raises:
-        404: {_id} not found
+        NotFoundError: no pending request of that id awaits the user's decision
     """
     result = await requests_service.update(
         {"_id": _id}, payload=body, current_user=user, limit=1
     )
-    if len(result) == 0:
-        raise NotFoundError(f"{_id} not found")
-
     return result[0]
