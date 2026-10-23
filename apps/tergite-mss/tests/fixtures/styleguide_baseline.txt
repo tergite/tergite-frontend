@@ -139,7 +139,6 @@ import-layering: services/auth/projects/__init__.py::import settings
 import-layering: services/auth/providers/__init__.py::import settings
 import-layering: services/auth/service.py::import settings
 import-layering: services/auth/users/__init__.py::import settings
-import-layering: services/external/bcc/service.py::import settings
 import-layering: utils/api.py::import settings
 facade-import: api/rest/dependencies.py::import services.auth.service
 facade-import: api/rest/dependencies.py::import services.auth.users
@@ -267,24 +266,8 @@ type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
 type-hints: services/devices/service.py::disconnect_all
 type-hints: services/external/bcc/dtos.py::Booking.validate_username
 type-hints: services/external/bcc/service.py::BccClient._request
-type-hints: services/external/bcc/service.py::BccClient.cancel_booking
-type-hints: services/external/bcc/service.py::BccClient.cancel_job
 type-hints: services/external/bcc/service.py::BccClient.close
-type-hints: services/external/bcc/service.py::BccClient.create_booking
-type-hints: services/external/bcc/service.py::BccClient.create_user
-type-hints: services/external/bcc/service.py::BccClient.delete_job
-type-hints: services/external/bcc/service.py::BccClient.delete_user
-type-hints: services/external/bcc/service.py::BccClient.get_recalibration_info
-type-hints: services/external/bcc/service.py::BccClient.get_token
-type-hints: services/external/bcc/service.py::BccClient.init_recalibration
-type-hints: services/external/bcc/service.py::BccClient.stop_recalibration
-type-hints: services/external/bcc/service.py::BccClient.switch_off
-type-hints: services/external/bcc/service.py::BccClient.switch_on
-type-hints: services/external/bcc/service.py::BccClient.view_bookings
-type-hints: services/external/bcc/service.py::BccClient.view_bookings_configs
-type-hints: services/external/bcc/service.py::BccClient.view_users
 type-hints: services/external/bcc/service.py::close_clients
-type-hints: services/external/bcc/service.py::create_clients
 type-hints: services/external/email/service.py::Emailer.from_value
 type-hints: services/external/email/service.py::Emailer.register_batch_schedule
 type-hints: services/external/email/service.py::Emailer.send

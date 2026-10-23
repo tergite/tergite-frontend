@@ -59,7 +59,11 @@ async def lifespan(_app: FastAPI):
     logger.info("Initializing Tergite MSS database connections and client services...")
     email_conf = settings.CONFIG.email
     emailer = Emailer(config=email_conf) if email_conf is not None else None
-    await bcc.create_clients(configs=settings.CONFIG.backends)
+    await bcc.create_clients(
+        configs=settings.CONFIG.backends,
+        private_key_file=settings.PRIVATE_KEY_FILE,
+        private_key_password=settings.CONFIG.private_key_password,
+    )
     db = await get_default_mongodb()
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)

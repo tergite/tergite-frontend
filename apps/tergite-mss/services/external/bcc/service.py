@@ -35,7 +35,6 @@ from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
 from httpx._client import UseClientDefault
 from loguru import logger
 
-import settings
 from services.auth import User
 from services.auth.users import UserDatabase
 from services.external.bcc.dtos import (
@@ -46,7 +45,6 @@ from services.external.bcc.dtos import (
     NewBookingInfo,
     RecalibrationInfo,
 )
-from settings import PRIVATE_KEY_FILE
 from utils.api import GeneralMessage
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
@@ -67,17 +65,27 @@ BccClientHeaders = TypedDict(
 """The headers sent via the BCC http client"""
 
 
-async def create_clients(configs: List[BccConfig]):
+async def create_clients(
+    configs: List[BccConfig],
+    private_key_file: Path,
+    private_key_password: Optional[bytes],
+) -> None:
     """Creates the Bcc clients for the given BCC configs
 
     Args:
         configs: the configs for the Tergite backends
+        private_key_file: the MSS private key, which signs every request to a BCC
+        private_key_password: the password of that key's PEM file
     """
     global _BCC_CLIENTS
     await close_clients()
     _BCC_CLIENTS = {
         item.name: BccClient(
-            f"{item.url}", name=item.name, public_base_url=f"{item.public_url}"
+            f"{item.url}",
+            name=item.name,
+            public_base_url=f"{item.public_url}",
+            private_key_file=private_key_file,
+            private_key_password=private_key_password,
         )
         for item in configs
     }
@@ -118,19 +126,27 @@ class BccClient:
         public_base_url: the base URL that can be accessed publicly
     """
 
-    def __init__(self, base_url: str, name: str, public_base_url: str):
+    def __init__(
+        self,
+        base_url: str,
+        name: str,
+        public_base_url: str,
+        private_key_file: Path,
+        private_key_password: Optional[bytes],
+    ):
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
         self.name = name
         self.public_base_url = public_base_url.rstrip("/")
+        # MSS signs its requests to the BCC and decrypts the job tokens it gets with this key
+        self._private_key_file = private_key_file
+        self._private_key_password = private_key_password
 
     async def get_token(
         self,
         job_id: str,
         user_id: str,
         request_id: str,
-        private_key_file=PRIVATE_KEY_FILE,
-        key_password: Optional[bytes] = settings.CONFIG.private_key_password,
     ) -> Tuple[str, str]:
         """Retrieves the JWT for the given job_id and user_id from BCC
 
@@ -138,8 +154,6 @@ class BccClient:
             job_id: the id of the job
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
-            key_password: the password used to encrypt the private key PEM file
 
         Returns:
             the pair of the encrypted JWT and the plain JWT
@@ -157,9 +171,9 @@ class BccClient:
         )
         encrypted_token = response["access_token"]
         token = decrypt_message(
-            private_key_file=private_key_file,
+            private_key_file=self._private_key_file,
             msg=encrypted_token,
-            password=key_password,
+            password=self._private_key_password,
         )
         return encrypted_token, token
 
@@ -169,7 +183,6 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         body: CancellationDetails,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Attempts to cancel the job
@@ -179,7 +192,6 @@ class BccClient:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             body: the payload to post when cancelling
-            private_key_file: the path to the private key file
             is_admin: whether the user is an admin
 
         Returns:
@@ -196,7 +208,6 @@ class BccClient:
             user_id=user_id,
             request_id=request_id,
             json=payload,
-            private_key_file=private_key_file,
             is_admin=is_admin,
         )
 
@@ -205,7 +216,6 @@ class BccClient:
         job_id: str | UUID,
         user_id: str | PydanticObjectId,
         request_id: str,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Attempts to delete the job
@@ -214,7 +224,6 @@ class BccClient:
             job_id: the id of the job
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
             is_admin: whether the user is an admin
 
         Returns:
@@ -229,7 +238,6 @@ class BccClient:
             f"/jobs/{job_id}",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
         )
 
@@ -237,7 +245,6 @@ class BccClient:
         self,
         user_id: str | PydanticObjectId,
         request_id: str,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
         skip: int = 0,
         limit: Optional[int] = None,
@@ -247,7 +254,6 @@ class BccClient:
         Args:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
             is_admin: whether the current user is an admin
             skip: the number of records to skip
             limit: the maximum number of records to return
@@ -267,7 +273,6 @@ class BccClient:
             "/users",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             params=params,
             is_admin=is_admin,
         )
@@ -277,7 +282,6 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         data: NewBCCUserInfo,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
     ) -> dict:
         """Creates a user given the name and email
@@ -287,7 +291,6 @@ class BccClient:
         Args:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
             data: the information about the new user
             is_admin: whether the current user is an admin
 
@@ -303,7 +306,6 @@ class BccClient:
             "/users",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             json=data.model_dump(mode="json"),
             is_admin=is_admin,
         )
@@ -313,7 +315,6 @@ class BccClient:
         bcc_user_id: str | UUID,
         user_id: str | PydanticObjectId,
         request_id: str,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Attempts to delete the user
@@ -322,7 +323,6 @@ class BccClient:
             bcc_user_id: the id of the user
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
             is_admin: whether the current user is an admin
 
         Returns:
@@ -337,7 +337,6 @@ class BccClient:
             f"/users/{bcc_user_id}",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
         )
 
@@ -347,7 +346,6 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         data: NewBookingInfo,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
     ) -> Booking:
         """Creates a booking for the user of the given token
@@ -356,7 +354,6 @@ class BccClient:
             user_db: the user database from which to get user full names
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
             data: the information about the new booking
             is_admin: whether the current user is an admin
 
@@ -372,7 +369,6 @@ class BccClient:
             "/bookings",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             json=data.model_dump(mode="json"),
             is_admin=is_admin,
         )
@@ -386,7 +382,6 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         booking_id: str,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Cancels a booking of given id for the user
@@ -394,7 +389,6 @@ class BccClient:
         Args:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
             booking_id: the unique identifier of the booking to cancel
             is_admin: whether the current user is an admin
 
@@ -410,7 +404,6 @@ class BccClient:
             f"/bookings/{booking_id}/cancel",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
         )
 
@@ -419,7 +412,6 @@ class BccClient:
         user_db: UserDatabase,
         requester_id: str | PydanticObjectId,
         request_id: str,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
         skip: int = 0,
         limit: Optional[int] = None,
@@ -434,7 +426,6 @@ class BccClient:
             user_db: the user database from which to get user full names
             requester_id: the unique identifier of the user making this request
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
             is_admin: whether the current user is an admin
             skip: the number of records to skip
             limit: the maximum number of records to return
@@ -465,7 +456,6 @@ class BccClient:
             "/bookings",
             user_id=requester_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             params=params,
             is_admin=is_admin,
         )
@@ -487,7 +477,6 @@ class BccClient:
         self,
         user_id: str | PydanticObjectId,
         request_id: str,
-        private_key_file=PRIVATE_KEY_FILE,
         is_admin: Optional[bool] = None,
     ) -> BookingsConfig:
         """Views the configuration for the booking service in the backend
@@ -495,7 +484,6 @@ class BccClient:
         Args:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            private_key_file: the path to the private key file
             is_admin: whether the current user is an admin
 
         Returns:
@@ -510,7 +498,6 @@ class BccClient:
             "/bookings/config",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
         )
         return BookingsConfig.model_validate({**response, "backend": self.name})
@@ -522,7 +509,6 @@ class BccClient:
         is_admin: bool,
         start_timestamp: Optional[datetime] = None,
         interval: Optional[float] = None,
-        private_key_file=PRIVATE_KEY_FILE,
     ) -> GeneralMessage:
         """Initializes recalibration of the given backend
 
@@ -534,7 +520,6 @@ class BccClient:
             is_admin: whether the current user is an admin
             start_timestamp: the start time of the recalibration; default = None i.e. straight away
             interval: the recalibration interval; default = None i.e. no repeat
-            private_key_file: the path to the private key file
 
         Returns:
             the status of the recalibration
@@ -550,7 +535,6 @@ class BccClient:
             "/recalibration/init",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
             params=params,
         )
@@ -561,7 +545,6 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         is_admin: bool,
-        private_key_file=PRIVATE_KEY_FILE,
     ) -> RecalibrationInfo:
         """Gets the current information about the recalibration of the given backend
 
@@ -571,7 +554,6 @@ class BccClient:
             user_id: the ID of the user requesting this operation
             request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
-            private_key_file: the path to the private key file
 
         Returns:
             the information about the recalibration
@@ -581,7 +563,6 @@ class BccClient:
             "/recalibration/info",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
         )
         return response
@@ -592,7 +573,6 @@ class BccClient:
         request_id: str,
         is_admin: bool,
         ignore_errors: Optional[bool] = None,
-        private_key_file=PRIVATE_KEY_FILE,
     ) -> GeneralMessage:
         """Cancels recalibration on this device
 
@@ -603,7 +583,6 @@ class BccClient:
             request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
             ignore_errors: whether to ignore errors during recalibration
-            private_key_file: the path to the private key file
 
         Returns:
             general information on the status of the request
@@ -617,7 +596,6 @@ class BccClient:
             "/recalibration/cancel",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
             params=params,
         )
@@ -628,7 +606,6 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         is_admin: bool,
-        private_key_file=PRIVATE_KEY_FILE,
     ) -> GeneralMessage:
         """Switches off this BCC device
 
@@ -638,7 +615,6 @@ class BccClient:
             user_id: the ID of the user requesting this operation
             request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
-            private_key_file: the path to the private key file
 
         Returns:
             general information on the status of the request
@@ -649,7 +625,6 @@ class BccClient:
             "/switch/off",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
         )
         return response
@@ -659,7 +634,6 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         is_admin: bool,
-        private_key_file=PRIVATE_KEY_FILE,
     ) -> GeneralMessage:
         """Switches on this BCC device
 
@@ -669,7 +643,6 @@ class BccClient:
             user_id: the ID of the user requesting this operation
             request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
-            private_key_file: the path to the private key file
 
         Returns:
             general information on the status of the request
@@ -680,7 +653,6 @@ class BccClient:
             "/switch/on",
             user_id=user_id,
             request_id=request_id,
-            private_key_file=private_key_file,
             is_admin=is_admin,
         )
         return response
@@ -692,7 +664,6 @@ class BccClient:
         user_id: str | PydanticObjectId,
         request_id: str,
         json: Optional[dict] = None,
-        private_key_file=PRIVATE_KEY_FILE,
         files: Mapping[
             str,
             IO[bytes]
@@ -732,7 +703,6 @@ class BccClient:
         | Timeout
         | UseClientDefault = USE_CLIENT_DEFAULT,
         is_admin: Optional[bool] = None,
-        key_password: Optional[bytes] = settings.CONFIG.private_key_password,
         **kwargs,
     ) -> dict:
         """Attempts to cancel the job
@@ -743,12 +713,10 @@ class BccClient:
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             json: the payload to post when cancelling
-            private_key_file: the path to the private key file
             files: files to pass in the request
             params: the query params to add to the request
             timeout: the timeout for the request
             is_admin: whether the request is from an admin user
-            key_password: the password used to encrypt the PEM key file
             kwargs: the extra key-word arguments for sending the request
 
         Returns:
@@ -760,11 +728,11 @@ class BccClient:
         """
         try:
             headers = _create_headers(
-                private_key_file=private_key_file,
+                private_key_file=self._private_key_file,
                 request_id=request_id,
                 user_id=f"{user_id}",
                 is_admin=is_admin,
-                key_password=key_password,
+                key_password=self._private_key_password,
             )
             logger.debug(f"Sending request to BCC: {method} {url}")
             response = await self._client.request(
