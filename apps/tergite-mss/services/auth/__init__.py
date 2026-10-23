@@ -18,7 +18,13 @@ from .app_tokens.dtos import (
     AppTokenListResponse,
     AppTokenRead,
 )
-from .projects import ProjectDatabase, get_project_db
+from .projects import (
+    ProjectBasedAuth,
+    ProjectDatabase,
+    get_app_token_backend,
+    get_project_db,
+    get_project_manager,
+)
 from .projects.dtos import (
     DeletedProject,
     Project,
@@ -28,21 +34,15 @@ from .projects.dtos import (
     ProjectUpdate,
 )
 from .providers.dtos import AuthProvider
-from .service import (
-    APP_TOKEN_AUTH,
-    APP_TOKEN_BACKEND,
-    GET_CURRENT_LAX_PROJECT,
-    GET_CURRENT_PROJECT,
-    GET_CURRENT_SUPERUSER,
-    GET_CURRENT_USER,
-    GET_CURRENT_USER_ID,
-    JWT_AUTH,
-    JWT_COOKIE_BACKEND,
-    JWT_HEADER_BACKEND,
-    get_user_emails,
-    on_startup,
+from .service import get_user_emails, on_startup, register_oauth2_client
+from .users import (
+    UserBasedAuth,
+    UserDatabase,
+    get_jwt_cookie_backend,
+    get_jwt_header_backend,
+    get_user_db,
+    get_user_manager,
 )
-from .users import UserDatabase
 from .users.dtos import User, UserCreate, UserRead, UserUpdate
 from .users.exc import UnsupportedOauthException
 
@@ -70,18 +70,17 @@ __all__ = [
     AuthProvider,
     # service
     "service",
-    JWT_HEADER_BACKEND,
-    JWT_COOKIE_BACKEND,
-    JWT_AUTH,
-    GET_CURRENT_USER,
-    GET_CURRENT_USER_ID,
-    GET_CURRENT_SUPERUSER,
-    APP_TOKEN_BACKEND,
-    APP_TOKEN_AUTH,
-    GET_CURRENT_PROJECT,
-    GET_CURRENT_LAX_PROJECT,
     on_startup,
     get_project_db,
     get_user_emails,
     "UnsupportedOauthException",
+    "ProjectBasedAuth",
+    "UserBasedAuth",
+    "get_app_token_backend",
+    "get_jwt_cookie_backend",
+    "get_jwt_header_backend",
+    "get_project_manager",
+    "get_user_db",
+    "get_user_manager",
+    "register_oauth2_client",
 ]

@@ -16,26 +16,31 @@ from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing_extensions import Annotated
 
-from services.auth import Project, ProjectDatabase, User, get_project_db
+from services.auth import (
+    Project,
+    ProjectDatabase,
+    User,
+    UserDatabase,
+    get_project_db,
+    get_user_db,
+)
 
 # from api.database import get_mongodb
-from services.auth.service import (
+from services.external import bcc
+
+from .auth import (
     GET_CURRENT_LAX_PROJECT_AND_USER,
     GET_CURRENT_PROJECT_USER_IDS,
     GET_CURRENT_SUPERUSER,
     GET_CURRENT_USER,
     GET_CURRENT_USER_ID,
-    GET_USER_DB,
 )
-from services.auth.users import UserDatabase
-from services.external import bcc
-
 from .utils import get_default_mongodb, get_request_id
 
 CurrentUserDep = Annotated[User, Depends(GET_CURRENT_USER)]
 CurrentSuperuserDep = Annotated[User, Depends(GET_CURRENT_SUPERUSER)]
 CurrentUserIdDep = Annotated[str, Depends(GET_CURRENT_USER_ID)]
-UserDbDep = Annotated[UserDatabase, Depends(GET_USER_DB)]
+UserDbDep = Annotated[UserDatabase, Depends(get_user_db)]
 CurrentLaxProjectAndUserDep = Annotated[
     Tuple[Project, User], Depends(GET_CURRENT_LAX_PROJECT_AND_USER)
 ]

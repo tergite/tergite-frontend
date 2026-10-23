@@ -14,7 +14,7 @@
 
 from fastapi import APIRouter
 
-from services.auth import APP_TOKEN_AUTH
+from api.rest.auth import APP_TOKEN_AUTH
 
 from .bcc import router as bcc_router
 from .notices import router as notices_router

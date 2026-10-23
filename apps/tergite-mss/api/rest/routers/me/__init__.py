@@ -14,7 +14,7 @@
 
 from fastapi import APIRouter
 
-from services.auth import APP_TOKEN_AUTH, APP_TOKEN_BACKEND
+from api.rest.auth import APP_TOKEN_AUTH, APP_TOKEN_BACKEND
 
 from .jobs import router as jobs_router
 from .notices import router as notices_router

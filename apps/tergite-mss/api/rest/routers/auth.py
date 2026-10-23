@@ -17,9 +17,9 @@ from fastapi import APIRouter, Depends, FastAPI, Query
 from loguru import logger
 
 import settings
-from services.auth import JWT_AUTH, JWT_COOKIE_BACKEND, AuthProvider, providers
+from api.rest.auth import JWT_AUTH, JWT_COOKIE_BACKEND
+from services.auth import AuthProvider, providers, register_oauth2_client
 from services.auth.providers.dtos import AuthProviderQuery
-from services.auth.service import register_oauth2_client
 from utils.api import PaginatedListResponse, build_paginated_json
 from utils.config import Oauth2ClientConfig
 

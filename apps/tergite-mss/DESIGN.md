@@ -26,6 +26,7 @@ apps/tergite-mss/
 │   └── rest/
 │       ├── __init__.py      # the FastAPI app: middleware, exception handlers, routers
 │       ├── app_kwargs.py    # app metadata + lifespan (startup/shutdown)
+│       ├── auth.py          # the auth backends and current-user dependencies
 │       ├── dependencies.py  # every injectable, as an Annotated alias
 │       ├── errors.py        # the exception handlers
 │       ├── middleware.py    # TergiteCORSMiddleware
@@ -150,7 +151,9 @@ Built on [fastapi-users](https://fastapi-users.github.io/) with Beanie, extended
 - Two backends over the same JWT strategy: **cookie** (`JWT_COOKIE_BACKEND`, the dashboard)
   and **bearer header** (`JWT_HEADER_BACKEND`). Roles are `user`, `researcher`, `admin`,
   `partner`, `system`; `is_superuser` is derived from having `admin`.
-- Dependencies: `GET_CURRENT_USER`, `GET_CURRENT_USER_ID`, `GET_CURRENT_SUPERUSER`.
+- Dependencies: `GET_CURRENT_USER`, `GET_CURRENT_USER_ID`, `GET_CURRENT_SUPERUSER`. They and
+  the backends are built in `api/rest/auth.py` from the auth config, with the builders
+  `services.auth` exports; routers use them through `api/rest/dependencies.py`.
 
 ### Projects and app tokens — what you may spend
 
@@ -159,10 +162,9 @@ Built on [fastapi-users](https://fastapi-users.github.io/) with Beanie, extended
   components use.
 - A **project** carries `qpu_seconds`. Creating a job requires an active project with
   positive `qpu_seconds`. Job completion decrements it via `update_qpu_usage`.
-- Dependencies: `GET_CURRENT_PROJECT` (strict — enforces QPU seconds),
-  `GET_CURRENT_LAX_PROJECT` (`ignore_qpu_seconds=True`, for reads),
-  `GET_CURRENT_SYSTEM_USER_PROJECT` (requires the `system` role),
-  `GET_CURRENT_PROJECT_USER_IDS`.
+- Dependencies, also in `api/rest/auth.py`: `GET_CURRENT_PROJECT_USER_IDS` (strict — enforces
+  QPU seconds) and `GET_CURRENT_LAX_PROJECT_AND_USER` (`should_ignore_qpu_seconds=True`, for
+  reads).
 - A JWT is **not** interchangeable with an app token: a JWT works on `/auth…`, `/me…` and
   admin routes; an app token works on the resource routes. Using the wrong one yields
   401/403, which is the single most common confusion when testing by hand.
