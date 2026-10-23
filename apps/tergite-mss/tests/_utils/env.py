@@ -12,18 +12,17 @@
 
 """Test utilities for environment variables"""
 import json
+import tomllib
 from os import environ
 from pathlib import Path
 from typing import Dict, List, NotRequired, TypedDict
-
-import tomli
 
 from .fixtures import get_fixture_path
 
 TEST_MSS_CONFIG_FILE = get_fixture_path("config.test.toml")
 
 with Path(TEST_MSS_CONFIG_FILE).open(mode="rb") as _oauth_conf_file:
-    TEST_APP_CONFIG = tomli.load(_oauth_conf_file)
+    TEST_APP_CONFIG = tomllib.load(_oauth_conf_file)
     TEST_MSS_CONFIG_JSON_STR = json.dumps(TEST_APP_CONFIG)
 
 TEST_MSS_PUBLIC_KEY_PATH = get_fixture_path("mss_public_key.pem")
