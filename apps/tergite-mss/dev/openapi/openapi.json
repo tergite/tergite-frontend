@@ -3638,8 +3638,9 @@
             "name": "user_id",
             "required": false,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId",
-              "description": "User ID whose notice count is requested"
+              "description": "User ID whose notice count is requested",
+              "title": "User Id",
+              "type": "string"
             }
           },
           {
@@ -3806,7 +3807,9 @@
             "name": "notice_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": "Notice Id",
+              "type": "string"
             }
           }
         ],
@@ -6204,8 +6207,9 @@
             "name": "user_id",
             "required": false,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId",
-              "description": "User ID whose notice count is requested"
+              "description": "User ID whose notice count is requested",
+              "title": "User Id",
+              "type": "string"
             }
           },
           {
@@ -7906,7 +7910,9 @@
             "name": "notice_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": "Notice Id",
+              "type": "string"
             }
           }
         ],
@@ -7957,7 +7963,9 @@
             "name": "notice_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": "Notice Id",
+              "type": "string"
             }
           }
         ],
@@ -8529,7 +8537,9 @@
             "name": "_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": " Id",
+              "type": "string"
             }
           }
         ],

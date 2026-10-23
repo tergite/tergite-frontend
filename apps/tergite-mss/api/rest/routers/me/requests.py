@@ -14,12 +14,11 @@
 
 from typing import Optional, Tuple
 
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 from fastapi import status as http_status
 
 from api.rest.dependencies import CurrentUserDep, DatabaseDep
-from libs.storage import Eq, Page, parse_sort
+from libs.storage import Eq, Id, Page, parse_sort
 from services import requests as requests_service
 from services.requests import (
     ALL_REQ_STATUSES,
@@ -98,7 +97,7 @@ async def get_many(
 @router.put("/{_id}", response_model_by_alias=False)
 async def update(
     database: DatabaseDep,
-    _id: PydanticObjectId,
+    _id: Id,
     body: RequestUpdate,
     user: CurrentUserDep,
 ) -> Request:

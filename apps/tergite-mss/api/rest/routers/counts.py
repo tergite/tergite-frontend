@@ -14,7 +14,6 @@
 from datetime import datetime
 from typing import List, Optional
 
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
 from api.rest.dependencies import (
@@ -22,6 +21,7 @@ from api.rest.dependencies import (
     CurrentUserDep,
     DatabaseDep,
 )
+from libs.storage import Id
 from services import jobs as jobs_service
 from services import notices as notices_service
 from services.notices import NoticeTypeId
@@ -34,9 +34,7 @@ router = APIRouter(prefix="/counts", tags=["counts"])
 async def get_notice_count(
     database: DatabaseDep,
     current_user: CurrentUserDep,
-    user_id: PydanticObjectId = Query(
-        None, description="User ID whose notice count is requested"
-    ),
+    user_id: Id = Query(None, description="User ID whose notice count is requested"),
     min_start_utc: datetime = Query(None),
     max_start_utc: datetime = Query(None),
     min_expires_utc: datetime = Query(None),

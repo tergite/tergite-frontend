@@ -14,10 +14,9 @@
 from datetime import datetime
 from typing import List, Optional
 
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
-from libs.storage import Page, parse_sort
+from libs.storage import Id, Page, parse_sort
 from services import notices as notices_service
 from services.notices import CustomNoticeCreate, Notice, NoticeTypeId
 from utils.api import PaginatedListResponse
@@ -60,7 +59,7 @@ async def publish_notice(
 async def delete_notice(
     database: DatabaseDep,
     requester: CurrentSuperuserDep,
-    notice_id: PydanticObjectId,
+    notice_id: Id,
 ) -> Notice:
     """Deletes a notice
 
@@ -84,9 +83,7 @@ async def get_many_notices(
     skip: int = 0,
     limit: Optional[int] = None,
     sort: List[str] = Query(("starts_at",)),
-    user_id: PydanticObjectId = Query(
-        None, description="User ID whose notice count is requested"
-    ),
+    user_id: Id = Query(None, description="User ID whose notice count is requested"),
     min_start_utc: datetime = Query(None),
     max_start_utc: datetime = Query(None),
     min_expires_utc: datetime = Query(None),

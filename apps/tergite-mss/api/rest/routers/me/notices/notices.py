@@ -13,11 +13,10 @@
 """Routes for the current user's notices"""
 from typing import List, Optional
 
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, DatabaseDep
-from libs.storage import Page, Sort
+from libs.storage import Id, Page, Sort
 from services import notices as notices_service
 from services.notices import Notice, NoticeTypeId
 from utils.api import GeneralMessage, PaginatedListResponse, build_paginated_json
@@ -62,7 +61,7 @@ async def get_my_notices(
 @router.post("/{notice_id}/dismiss")
 async def dismiss_my_notice(
     database: DatabaseDep,
-    notice_id: PydanticObjectId,
+    notice_id: Id,
     current_user: CurrentUserDep,
 ) -> GeneralMessage:
     """Dismisses a notice
@@ -87,7 +86,7 @@ async def dismiss_my_notice(
 @router.post("/{notice_id}/unread")
 async def unread_my_notice(
     database: DatabaseDep,
-    notice_id: PydanticObjectId,
+    notice_id: Id,
     current_user: CurrentUserDep,
 ) -> GeneralMessage:
     """Marks a notice unread
