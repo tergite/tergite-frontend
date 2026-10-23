@@ -318,7 +318,7 @@ On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
   without it isort emits a style black then reformats, churning unrelated files. Run both
   before committing; neither needs flags.
 - **`pyflakes`** finds unused imports and variables; CI runs it over `api services utils
-  settings.py tests dev` and fails on any finding.
+  libs settings.py tests dev` and fails on any finding.
 - **Constants go at the top of the file**, after imports — not buried between functions. The
   exception is a constant built from a function or class defined in the same file, which
   stays after it (e.g. `EVENT_HANDLERS` after the handlers, `ProjectPartial`
@@ -332,6 +332,12 @@ On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
   raises domain exceptions the codebase uses the Google style already present —
   `Args:` / `Returns:` / `Raises:`, listing the exception messages callers can expect. That
   is the useful case; a short obvious helper needs nothing.
+- **Names say what a thing is.** Variables are nouns naming their content (`notice_filter`,
+  never `where`). No `build_*` functions: a constructed thing is a class's constructor,
+  anything else a `get_*`; `tests/test_styleguide.py` rejects `build` as a verb.
+- **Obvious beats clever.** An `if`/`else` returning each whole literal, one explicit `if`
+  per optional field; not loops over tuples of fields, comprehensions that build operators,
+  merged dicts, or one helper returning two things to pull apart.
 - **Type hints everywhere**, including `async def` return types. DTOs are Pydantic models,
   never bare dicts crossing a service boundary.
 - **License header** on every new file: copy the block from a neighbouring module and add
