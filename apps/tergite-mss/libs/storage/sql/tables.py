@@ -99,6 +99,8 @@ class SchemaTables:
     table: Table
     list_tables: Dict[str, ListTable]
     json_fields: Tuple[str, ...]
+    # fields that cannot hold None, whose NULL means MongoDB's missing field: the default
+    non_null_fields: Tuple[str, ...]
 
 
 def get_schema_tables(
@@ -201,11 +203,17 @@ def _get_tables_of(
         field: _get_list_table(metadata, schema, table, field, schema_tables)
         for field in child_fields
     }
+    non_null_fields = tuple(
+        name
+        for name, field_info in schema.model_fields.items()
+        if not _is_none_allowed(field_info.annotation)
+    )
     return SchemaTables(
         schema=schema,
         table=table,
         list_tables=list_tables,
         json_fields=tuple(json_fields),
+        non_null_fields=non_null_fields,
     )
 
 
@@ -280,6 +288,14 @@ def _get_element_field(schema: Type[Schema], field: str) -> FieldInfo:
     annotation = _unwrap_optional(schema.model_fields[field].annotation)
     (element_annotation,) = get_args(annotation) or (Any,)
     return FieldInfo.from_annotation(element_annotation)
+
+
+def _is_none_allowed(annotation: Any) -> bool:
+    if annotation in (Any, None, NoneType):
+        return True
+    return get_origin(annotation) in (Union, UnionType) and NoneType in get_args(
+        annotation
+    )
 
 
 def _unwrap_optional(annotation: Any) -> Any:

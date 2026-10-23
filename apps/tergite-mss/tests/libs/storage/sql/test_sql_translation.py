@@ -158,11 +158,10 @@ def test_update_splits_into_column_values_and_child_writes(pets):
 @pytest.mark.parametrize(
     "update",
     [
-        {"$set": {"id": _OWNER_ID}},
         {"$inc": {"stats.walks": 1}},
         {"$addToSet": {"name": "x"}},
     ],
 )
-def test_an_update_of_the_key_into_json_or_of_a_scalar_list_is_refused(pets, update):
+def test_an_update_into_json_or_of_a_scalar_list_is_refused(pets, update):
     with pytest.raises(QueryError):
         translate_update(pets, update)

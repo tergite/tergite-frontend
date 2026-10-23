@@ -70,16 +70,11 @@ def translate_update(tables: SchemaTables, update: Update) -> Changes:
     """Translates the update into column values and child-table writes
 
     Raises:
-        QueryError: the update changes the key, or reaches into a JSON field
+        QueryError: the update reaches into a JSON field
     """
     changes = Changes()
-    key = tables.schema.__storage__.key
     for operator, fields in update.items():
         for field_name, value in fields.items():
-            if field_name == key and operator != "$setOnInsert":
-                raise QueryError(
-                    f"an update cannot change {tables.schema.__name__}.{key}"
-                )
             if operator == "$set" and field_name in tables.list_tables:
                 changes.list_replacements[field_name] = [
                     convert_to_column_value(item) for item in value

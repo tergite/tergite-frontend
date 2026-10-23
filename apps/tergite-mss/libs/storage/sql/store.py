@@ -27,7 +27,8 @@ from sqlalchemy import MetaData, delete, distinct, event, func, insert, select, 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
-from ..base.exc import DuplicateKeyError, StorageError
+from ..base.exc import DuplicateKeyError, QueryError, StorageError
+from ..base.ids import generate_id, is_id_field
 from ..base.query import LOGICAL_OPERATORS, Filter, is_operator_map
 from ..base.schema import Schema
 from ..base.store import DbStore
@@ -270,6 +271,9 @@ async def _find_records(
     records = []
     for row in rows:
         del row[ROW_ID]
+        for name in tables.non_null_fields:
+            if name in row and row[name] is None:
+                del row[name]
         records.append(tables.schema.model_validate(row))
     return records
 
@@ -348,6 +352,10 @@ async def _insert_upserted_record(
     for field, element in update.get("$addToSet", {}).items():
         values[field] = [element]
 
+    # as MongoDB gives an upserted document an _id
+    id_field = tables.schema.model_fields.get("id")
+    if "id" not in values and is_id_field(id_field):
+        values["id"] = generate_id()
     record = tables.schema.model_validate(values)
     try:
         async with conn.begin_nested():
@@ -364,11 +372,19 @@ async def _insert_upserted_record(
 async def _write_changes(
     conn: AsyncConnection, tables: SchemaTables, key: Any, changes: Changes
 ) -> None:
-    """Writes the changes to the record of the key and to its child rows"""
-    key_column = tables.table.c[tables.schema.__storage__.key]
-    if changes.values:
+    """Writes the changes to the record of the key and to its child rows
+
+    Raises:
+        QueryError: the changes give the record another key
+    """
+    key_name = tables.schema.__storage__.key
+    if key_name in changes.values and changes.values[key_name] != key:
+        raise QueryError(f"an update cannot change {tables.schema.__name__}.{key_name}")
+    values = {name: value for name, value in changes.values.items() if name != key_name}
+    if values:
+        key_column = tables.table.c[key_name]
         await conn.execute(
-            update(tables.table).where(key_column == key).values(**changes.values)
+            update(tables.table).where(key_column == key).values(**values)
         )
 
     for field, elements in changes.list_replacements.items():

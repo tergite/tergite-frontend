@@ -24,6 +24,7 @@ from libs.storage import (
     Database,
     DuplicateKeyError,
     Id,
+    QueryError,
     Returning,
     Schema,
     StorageSpec,
@@ -77,7 +78,15 @@ class _Job(Schema):
     status: str = "pending"
 
 
-_SCHEMAS = [_Owner, _Pet, _Job]
+class _Device(Schema):
+    __storage__ = StorageSpec(table="devices", key="name")
+
+    id: Id
+    name: str
+    version: str = ""
+
+
+_SCHEMAS = [_Owner, _Pet, _Job, _Device]
 
 
 @pytest.fixture(params=["mongodb", *SQL_DATABASE_KINDS])
@@ -189,6 +198,30 @@ async def test_update_one_returns_the_record_before_or_after(database):
     assert before.age == 0
     assert after.age == 1 and after.stats.walks == 2
     assert missing is None
+
+
+async def test_an_update_may_set_the_key_it_has_but_not_another(database):
+    await database.insert(_Job, _Job(job_id="j-1"))
+
+    same = await database.update_one(
+        _Job, {"job_id": "j-1"}, {"$set": {"job_id": "j-1", "status": "done"}}
+    )
+
+    assert same == _Job(job_id="j-1", status="done")
+    with pytest.raises(QueryError):
+        await database.update_one(_Job, {"job_id": "j-1"}, {"$set": {"job_id": "j-2"}})
+
+
+async def test_an_upsert_generates_the_id_of_a_schema_keyed_by_another_field(database):
+    created = await database.update_one(
+        _Device,
+        filter={"name": "Loke"},
+        update={"$set": {"name": "Loke", "version": "1"}},
+        should_upsert=True,
+    )
+
+    assert created.name == "Loke" and len(created.id) == 24
+    assert await database.get(_Device, "Loke") == created
 
 
 async def test_update_one_upserts(database):

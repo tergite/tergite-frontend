@@ -18,7 +18,7 @@ from .base.exc import StorageError, StorageSpecError, UnknownSchemaError
 from .base.query import Filter, check_filter, check_sort
 from .base.schema import Schema, StorageSpec, is_list_field, resolve_field
 from .base.store import DbStore
-from .base.update import Returning, Update, check_update
+from .base.update import Returning, Update, check_key_kept, check_update
 
 T = TypeVar("T", bound=Schema)
 
@@ -161,6 +161,7 @@ class Database:
         check_sort(schema, sort)
         if update is not None:
             check_update(schema, update)
+            check_key_kept(schema, filter, update)
         return schema
 
 

@@ -16,10 +16,10 @@ when an upsert creates the record), `$inc`, `$addToSet` and `$pull` (an equal va
 """
 import enum
 from numbers import Number
-from typing import Any, Mapping, Type
+from typing import Any, Mapping, Optional, Type
 
 from .exc import QueryError
-from .query import is_operator_map
+from .query import Filter, is_operator_map
 from .schema import Schema, resolve_field
 
 Update = Mapping[str, Mapping[str, Any]]
@@ -52,3 +52,30 @@ def check_update(schema: Type[Schema], update: Update) -> None:
                 raise QueryError(f"$inc on '{field}' takes a number")
             if operator == "$pull" and is_operator_map(value):
                 raise QueryError(f"$pull on '{field}' takes a value, not operators")
+
+
+def check_key_kept(
+    schema: Type[Schema], query_filter: Optional[Filter], update: Update
+) -> None:
+    """Checks that an update sets a record's key only to the key the filter matches
+
+    A store may hold a record by its key, so no store lets an update move it. Setting it
+    on insert, or to the very value matched, changes nothing and is allowed.
+
+    Raises:
+        QueryError: the update would give a record another key
+    """
+    key = schema.__storage__.key
+    for operator, changes in update.items():
+        if key not in changes or operator == "$setOnInsert":
+            continue
+        if operator != "$set":
+            raise QueryError(f"{operator} cannot change {schema.__name__}.{key}")
+
+        condition = (query_filter or {}).get(key)
+        if is_operator_map(condition):
+            matched_key = condition.get("$eq")
+        else:
+            matched_key = condition
+        if matched_key is None or changes[key] != matched_key:
+            raise QueryError(f"an update cannot change {schema.__name__}.{key}")
