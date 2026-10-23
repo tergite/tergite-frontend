@@ -19,7 +19,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from api.rest.dependencies import CurrentSystemUserProjectDep, MongoDbDep
+from api.rest.dependencies import MongoDbDep
 from services import calibration as calibration_service
 from services.calibration import (
     DeviceCalibrationCreate,

@@ -112,9 +112,11 @@ websockets, and marks every device disconnected.
    request carries it, logs start/finish with duration, records the request in the Redis
    request-log store, and echoes `x-request-id` back on the response.
 3. **Dependencies** — everything injectable is a named `Annotated` alias in
-   `api/rest/dependencies.py` (`MongoDbDep`, `CurrentProjectDep`, `BccClientDep`,
-   `RequestIdDep`, …). Routers depend on those aliases, never on the raw `Depends(...)`
-   expression. Add new injectables there.
+   `api/rest/dependencies.py` (`MongoDbDep`, `CurrentUserDep`, `BccClientDep`,
+   `RequestIdDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
+   parameters (`user: CurrentUserDep`), never the raw `Depends(...)` expression, and a route
+   that only needs the check still names the parameter (`requester: CurrentSuperuserDep`).
+   Add new injectables there.
 4. **Exception handlers** — domain exceptions from `utils/exc.py` are mapped to status codes
    centrally in `api/rest/__init__.py`: `InvalidInputError` (and its `TooManyListQueryParams`)
    / `UnknownBccError` / `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,

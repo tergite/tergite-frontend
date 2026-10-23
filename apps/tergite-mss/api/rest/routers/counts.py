@@ -20,7 +20,6 @@ from fastapi import APIRouter, Query
 from api.rest.dependencies import CurrentSuperuserDep, CurrentUserDep, MongoDbDep
 from services import jobs as jobs_service
 from services import notices as notices_service
-from services.auth import User
 from services.notices import NoticeTypeId
 from utils.api import CountsResponse
 
@@ -30,7 +29,7 @@ router = APIRouter(prefix="/counts", tags=["counts"])
 @router.get("/notices")
 async def get_notice_count(
     db: MongoDbDep,
-    current_user: User = CurrentUserDep,
+    current_user: CurrentUserDep,
     user_id: PydanticObjectId = Query(
         None, description="User ID whose notice count is requested"
     ),
@@ -74,10 +73,10 @@ async def get_notice_count(
 @router.get(
     "/job-submitters",
     response_model=CountsResponse,
-    dependencies=[CurrentSuperuserDep],
 )
 async def get_job_submitters_count(
     db: MongoDbDep,
+    requester: CurrentSuperuserDep,
     start_utc: datetime = Query(...),
     end_utc: datetime = Query(...),
     should_count_distinct: bool = Query(True, alias="count_distinct"),
@@ -86,6 +85,7 @@ async def get_job_submitters_count(
 
     Args:
         db: the MongoDB database where the jobs are stored
+        requester: the superuser making the request; anyone else gets a 403
         start_utc: the start of the window, inclusive
         end_utc: the end of the window, exclusive
         should_count_distinct: whether to count each submitter once; otherwise every job counts

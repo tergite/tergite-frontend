@@ -18,7 +18,6 @@ from fastapi import APIRouter, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
 from services import notices as notices_service
-from services.auth import User
 from services.notices import NoticeTypeId
 from utils.api import GeneralMessage, PaginatedListResponse
 
@@ -28,7 +27,7 @@ router = APIRouter()
 @router.get("/")
 async def get_my_notices(
     db: MongoDbDep,
-    user_id: str = CurrentUserIdDep,
+    user_id: CurrentUserIdDep,
     types: List[NoticeTypeId] = Query((), alias="type"),
     is_read: Optional[bool] = Query(None),
     skip: int = Query(0),
@@ -66,7 +65,7 @@ async def get_my_notices(
 async def dismiss_my_notice(
     db: MongoDbDep,
     notice_id: PydanticObjectId,
-    current_user: User = CurrentUserDep,
+    current_user: CurrentUserDep,
 ) -> GeneralMessage:
     """Dismisses a notice
 
@@ -91,7 +90,7 @@ async def dismiss_my_notice(
 async def unread_my_notice(
     db: MongoDbDep,
     notice_id: PydanticObjectId,
-    current_user: User = CurrentUserDep,
+    current_user: CurrentUserDep,
 ) -> GeneralMessage:
     """Marks a notice unread
 
@@ -115,7 +114,7 @@ async def unread_my_notice(
 @router.post("/dismiss")
 async def dismiss_all_my_notices(
     db: MongoDbDep,
-    user_id: str = CurrentUserIdDep,
+    user_id: CurrentUserIdDep,
 ) -> GeneralMessage:
     """Marks every one of the current user's notices read
 
@@ -135,7 +134,7 @@ async def dismiss_all_my_notices(
 @router.post("/unread")
 async def unread_all_my_notices(
     db: MongoDbDep,
-    user_id: str = CurrentUserIdDep,
+    user_id: CurrentUserIdDep,
 ) -> GeneralMessage:
     """Marks every one of the current user's notices unread
 

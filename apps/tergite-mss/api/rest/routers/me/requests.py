@@ -20,7 +20,6 @@ from fastapi import status as http_status
 
 from api.rest.dependencies import CurrentUserDep
 from services import requests as requests_service
-from services.auth import User
 from services.requests import (
     ALL_REQ_STATUSES,
     ALL_REQ_TYPES,
@@ -39,7 +38,7 @@ router = APIRouter()
 @router.post(
     "/", status_code=http_status.HTTP_201_CREATED, response_model_by_alias=False
 )
-async def create(body: RequestPostBody, requester: User = CurrentUserDep) -> Request:
+async def create(body: RequestPostBody, requester: CurrentUserDep) -> Request:
     """Creates a request of the type named in the body
 
     Args:
@@ -54,13 +53,13 @@ async def create(body: RequestPostBody, requester: User = CurrentUserDep) -> Req
 
 @router.get("/")
 async def get_many(
+    user: CurrentUserDep,
     role: RequestRole = Query("approver"),
     status: Tuple[RequestStatus, ...] = Query(ALL_REQ_STATUSES),
     types: Tuple[RequestType, ...] = Query(ALL_REQ_TYPES, alias="type"),
     sort: tuple[str, ...] = Query(("-created_at",)),
     skip: int = Query(0),
     limit: Optional[int] = Query(None),
-    user: User = CurrentUserDep,
 ):
     """Gets the requests the current user made, or those awaiting their approval
 
@@ -95,7 +94,7 @@ async def get_many(
 async def update(
     _id: PydanticObjectId,
     body: RequestUpdate,
-    user: User = CurrentUserDep,
+    user: CurrentUserDep,
 ) -> Request:
     """Updates a request.
 

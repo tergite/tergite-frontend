@@ -20,8 +20,9 @@ from services.auth import service as auth_service
 router = APIRouter()
 
 
-@router.get("/emails/", tags=["users"], dependencies=[CurrentSuperuserDep])
+@router.get("/emails/", tags=["users"])
 async def get_user_emails(
+    requester: CurrentSuperuserDep,
     search: Optional[str] = Query(None),
     limit: int = Query(20, le=100),
 ) -> List[str]:
@@ -32,6 +33,7 @@ async def get_user_emails(
     user would be a disclosure. Returns addresses alone, never the user records.
 
     Args:
+        requester: the superuser making the request; anyone else gets a 403
         search: a case-insensitive substring of the address; omit for the first page
         limit: the maximum number of addresses to return
 

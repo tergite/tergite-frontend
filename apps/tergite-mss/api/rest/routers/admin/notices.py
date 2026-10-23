@@ -18,7 +18,6 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
 from services import notices as notices_service
-from services.auth import User
 from services.notices import CustomNoticeCreate, Notice, NoticeTypeId
 from utils.api import PaginatedListResponse
 
@@ -34,7 +33,7 @@ router = APIRouter()
 async def publish_notice(
     db: MongoDbDep,
     payload: CustomNoticeCreate,
-    current_user: User = CurrentSuperuserDep,
+    current_user: CurrentSuperuserDep,
 ) -> List[Notice]:
     """Publishes a notice
 
@@ -55,11 +54,11 @@ async def publish_notice(
 
 @router.delete(
     "/{notice_id}",
-    dependencies=[CurrentSuperuserDep],
     response_model_by_alias=False,
 )
 async def delete_notice(
     db: MongoDbDep,
+    requester: CurrentSuperuserDep,
     notice_id: PydanticObjectId,
 ) -> Notice:
     """Deletes a notice
@@ -68,6 +67,7 @@ async def delete_notice(
 
     Args:
         db: the MongoDB database where the notice will be stored
+        requester: the superuser making the request; anyone else gets a 403
         notice_id: the unique identifier of the notice
 
     Returns:
@@ -76,9 +76,10 @@ async def delete_notice(
     return await notices_service.delete_notice(db, pk=notice_id)
 
 
-@router.get("", response_model_by_alias=False, dependencies=[CurrentSuperuserDep])
+@router.get("", response_model_by_alias=False)
 async def get_many_notices(
     db: MongoDbDep,
+    requester: CurrentSuperuserDep,
     skip: int = 0,
     limit: Optional[int] = None,
     sort: List[str] = Query(("starts_at",)),
@@ -96,6 +97,7 @@ async def get_many_notices(
 
     Args:
         db: the MongoDB database where the notice will be stored
+        requester: the superuser making the request; anyone else gets a 403
         skip: the number of notices to skip
         limit: the maximum number of notices to return
         sort: the sort order

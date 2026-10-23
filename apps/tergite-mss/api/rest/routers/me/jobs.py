@@ -24,7 +24,7 @@ router = APIRouter()
 @router.get("/")
 async def get_my_jobs(
     db: MongoDbDep,
-    user_id: str = CurrentUserIdDep,
+    user_id: CurrentUserIdDep,
     query: JobQuery = Depends(),
     skip: int = 0,
     limit: Optional[int] = None,

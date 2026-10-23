@@ -26,7 +26,6 @@ from api.rest.dependencies import (
     RequestIdDep,
     UserDbDep,
 )
-from services.auth import User
 from services.external.bcc import (
     Booking,
     BookingsConfig,
@@ -43,7 +42,7 @@ async def create_booking(
     user_db: UserDbDep,
     data: NewBookingInfo,
     request_id: RequestIdDep,
-    user_id: str = CurrentUserIdDep,
+    user_id: CurrentUserIdDep,
 ) -> Booking:
     """Creates a booking for the user of the given token
 
@@ -70,7 +69,7 @@ async def cancel_booking(
     bcc_client: BccClientDep,
     booking_id: str,
     request_id: RequestIdDep,
-    user_id: str = CurrentUserIdDep,
+    user_id: CurrentUserIdDep,
 ) -> GeneralMessage:
     """Cancels a booking of given id for the user of the given token
 
@@ -99,7 +98,7 @@ async def view_bookings(
     bcc_client: BccClientDep,
     user_db: UserDbDep,
     request_id: RequestIdDep,
-    requester: User = CurrentUserDep,
+    requester: CurrentUserDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
     sort: Tuple[str, ...] = Query(default=()),
@@ -148,7 +147,7 @@ async def view_bookings(
 async def view_bookings_configs(
     bcc_client: BccClientDep,
     request_id: RequestIdDep,
-    requester: User = CurrentUserDep,
+    requester: CurrentUserDep,
 ):
     """Views bookings configuration for the given backend
 

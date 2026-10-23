@@ -20,12 +20,9 @@ from services.auth import Project, ProjectDatabase, User, get_project_db
 
 # from api.database import get_mongodb
 from services.auth.service import (
-    GET_CURRENT_LAX_PROJECT,
     GET_CURRENT_LAX_PROJECT_AND_USER,
-    GET_CURRENT_PROJECT,
     GET_CURRENT_PROJECT_USER_IDS,
     GET_CURRENT_SUPERUSER,
-    GET_CURRENT_SYSTEM_USER_PROJECT,
     GET_CURRENT_USER,
     GET_CURRENT_USER_ID,
     GET_USER_DB,
@@ -35,18 +32,14 @@ from services.external import bcc
 
 from .utils import get_default_mongodb, get_request_id
 
-CurrentSystemUserProjectDep = Annotated[User, Depends(GET_CURRENT_SYSTEM_USER_PROJECT)]
-CurrentProjectDep = Depends(GET_CURRENT_PROJECT)
-CurrentUserDep = Depends(GET_CURRENT_USER)
-CurrentSuperuserDep = Depends(GET_CURRENT_SUPERUSER)
-CurrentUserIdDep = Depends(GET_CURRENT_USER_ID)
+CurrentUserDep = Annotated[User, Depends(GET_CURRENT_USER)]
+CurrentSuperuserDep = Annotated[User, Depends(GET_CURRENT_SUPERUSER)]
+CurrentUserIdDep = Annotated[str, Depends(GET_CURRENT_USER_ID)]
 UserDbDep = Annotated[UserDatabase, Depends(GET_USER_DB)]
-CurrentLaxProjectDep = Annotated[Optional[Project], Depends(GET_CURRENT_LAX_PROJECT)]
 CurrentLaxProjectAndUserDep = Annotated[
     Tuple[Project, User], Depends(GET_CURRENT_LAX_PROJECT_AND_USER)
 ]
-CurrentStrictProjectDep = Annotated[Optional[Project], Depends(GET_CURRENT_PROJECT)]
-CurrentStrictProjectUserIds = Annotated[
+CurrentStrictProjectUserIdsDep = Annotated[
     Tuple[Optional[str], Optional[str]], Depends(GET_CURRENT_PROJECT_USER_IDS)
 ]
 ProjectDbDep = Annotated[ProjectDatabase, Depends(get_project_db)]

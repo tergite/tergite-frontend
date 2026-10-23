@@ -16,9 +16,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 
-from services.auth import (
-    User,
-)
 from services.external.bcc import RecalibrationInfo
 from utils.api import GeneralMessage
 
@@ -35,9 +32,9 @@ router = APIRouter()
 async def initialize_recalibration(
     bcc_client: BccClientDep,
     request_id: RequestIdDep,
+    requester: CurrentSuperuserDep,
     start_timestamp: Optional[datetime] = Query(None),
     interval: Optional[float] = Query(None),
-    requester: User = CurrentSuperuserDep,
 ) -> GeneralMessage:
     """Initializes recalibration of the given backend
 
@@ -67,7 +64,7 @@ async def initialize_recalibration(
 async def get_recalibration_info(
     bcc_client: BccClientDep,
     request_id: RequestIdDep,
-    requester: User = CurrentSuperuserDep,
+    requester: CurrentSuperuserDep,
 ) -> RecalibrationInfo:
     """Gets the current information about the recalibration of the given backend
 
@@ -93,8 +90,8 @@ async def get_recalibration_info(
 async def cancel_recalibration(
     bcc_client: BccClientDep,
     request_id: RequestIdDep,
+    requester: CurrentSuperuserDep,
     ignore_errors: bool = Query(False),
-    requester: User = CurrentSuperuserDep,
 ) -> GeneralMessage:
     """Cancels recalibration on this device
 

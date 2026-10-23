@@ -15,12 +15,12 @@
 from fastapi import APIRouter
 
 from api.rest.dependencies import CurrentUserDep
-from services.auth import User, UserRead
+from services.auth import UserRead
 
 router = APIRouter()
 
 
 @router.get("", response_model=UserRead)
-async def get_my_user_profile(user: User = CurrentUserDep):
+async def get_my_user_profile(user: CurrentUserDep):
     """Retrieves the information on the current user"""
     return UserRead.model_validate(user)

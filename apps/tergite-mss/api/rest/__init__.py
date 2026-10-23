@@ -39,7 +39,6 @@ from utils.logging import setup_logging
 
 from . import app_kwargs
 from .app_kwargs import get_app_kwargs
-from .dependencies import CurrentProjectDep, CurrentStrictProjectDep
 from .routers.admin import router as admin_router
 from .routers.auth import include_auth_router
 from .routers.booking import router as booking_router

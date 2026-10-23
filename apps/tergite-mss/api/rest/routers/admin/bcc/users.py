@@ -15,7 +15,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 
-from services.auth import User
 from services.external.bcc import BCCUserProfile, NewBCCUserInfo
 from utils.api import GeneralMessage, PaginatedListResponse
 
@@ -33,7 +32,7 @@ async def create_bcc_user(
     bcc_client: BccClientDep,
     data: NewBCCUserInfo,
     request_id: RequestIdDep,
-    requester: User = CurrentSuperuserDep,
+    requester: CurrentSuperuserDep,
 ) -> dict:
     """Creates a user in the given backend for info
 
@@ -64,7 +63,7 @@ async def remove_bcc_user(
     bcc_client: BccClientDep,
     user_id: str,
     request_id: RequestIdDep,
-    requester: User = CurrentSuperuserDep,
+    requester: CurrentSuperuserDep,
 ) -> GeneralMessage:
     """Deletes the user of the given user_id
 
@@ -96,9 +95,9 @@ async def remove_bcc_user(
 async def view_bcc_users(
     bcc_client: BccClientDep,
     request_id: RequestIdDep,
+    requester: CurrentSuperuserDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
-    requester: User = CurrentSuperuserDep,
 ):
     """Views all users
 

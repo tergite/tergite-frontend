@@ -23,7 +23,7 @@ router = APIRouter()
 
 
 @router.get("/")
-async def get_my_email_preferences(user_id: str = CurrentUserIdDep):
+async def get_my_email_preferences(user_id: CurrentUserIdDep):
     """Gets the current user's delivery preferences, with defaults filled in
 
     Args:
@@ -37,7 +37,7 @@ async def get_my_email_preferences(user_id: str = CurrentUserIdDep):
 
 @router.put("/")
 async def update_my_email_preferences(
-    body: Dict[NoticeTypeId, bool], user_id: str = CurrentUserIdDep
+    body: Dict[NoticeTypeId, bool], user_id: CurrentUserIdDep
 ):
     """Updates the named preferences, leaving the rest untouched
 

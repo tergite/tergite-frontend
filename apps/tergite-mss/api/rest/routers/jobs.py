@@ -23,13 +23,12 @@ from fastapi.requests import Request
 
 from api.rest.dependencies import (
     CurrentLaxProjectAndUserDep,
-    CurrentStrictProjectUserIds,
+    CurrentStrictProjectUserIdsDep,
     CurrentUserDep,
     MongoDbDep,
     RequestIdDep,
 )
 from services import jobs as jobs_service
-from services.auth import User
 from services.external import bcc
 from services.external.bcc import CancellationDetails
 from services.jobs import JobCreate, JobQuery, JobStatusResponse
@@ -116,7 +115,7 @@ async def get_job_status(
 async def create_one(
     request: Request,
     db: MongoDbDep,
-    project_user_id_pair: CurrentStrictProjectUserIds,
+    project_user_id_pair: CurrentStrictProjectUserIdsDep,
     payload: JobCreate,
     request_id: RequestIdDep,
 ):
@@ -138,7 +137,7 @@ async def cancel_job(
     job_id: UUID,
     details: CancellationDetails,
     request_id: RequestIdDep,
-    user: User = CurrentUserDep,
+    user: CurrentUserDep,
 ) -> GeneralMessage:
     """Cancels the job of given job_id if job belongs to current user or if user is admin
 
@@ -173,7 +172,7 @@ async def remove_job(
     db: MongoDbDep,
     job_id: UUID,
     request_id: RequestIdDep,
-    user: User = CurrentUserDep,
+    user: CurrentUserDep,
 ) -> GeneralMessage:
     """Deletes the job of given job_id if job belongs to current user or if user is admin
 

@@ -14,9 +14,6 @@
 
 from fastapi import APIRouter
 
-from services.auth import (
-    User,
-)
 from utils.api import GeneralMessage
 
 from ....dependencies import (
@@ -32,7 +29,7 @@ router = APIRouter()
 async def switch_backend_off(
     bcc_client: BccClientDep,
     request_id: RequestIdDep,
-    requester: User = CurrentSuperuserDep,
+    requester: CurrentSuperuserDep,
 ) -> GeneralMessage:
     """Switches off the backend
 
@@ -58,7 +55,7 @@ async def switch_backend_off(
 async def switch_backend_on(
     bcc_client: BccClientDep,
     request_id: RequestIdDep,
-    requester: User = CurrentSuperuserDep,
+    requester: CurrentSuperuserDep,
 ) -> GeneralMessage:
     """Switches on the backend
 
