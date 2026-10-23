@@ -53,7 +53,7 @@ async def get_many(
     """
     filters = query.model_dump()
 
-    data = await calibration_service.get_latest_many(
+    data = await calibration_service.find_latest_calibrations(
         db, filters=filters, limit=limit, skip=skip, sort=sort
     )
     return PaginatedListResponse(skip=skip, limit=limit, data=data).model_dump(

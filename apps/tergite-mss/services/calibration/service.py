@@ -33,7 +33,7 @@ from .dtos import (
 )
 
 
-async def insert_one(
+async def create_calibration(
     db: AsyncIOMotorDatabase, record: DeviceCalibrationCreate
 ) -> DeviceCalibration:
     """Inserts into the database a new calibration result set
@@ -66,7 +66,7 @@ async def insert_one(
     return DeviceCalibration.model_validate(record)
 
 
-async def get_latest_many(
+async def find_latest_calibrations(
     db: AsyncIOMotorDatabase,
     filters: Optional[Dict[str, Any]] = None,
     limit: Optional[int] = None,

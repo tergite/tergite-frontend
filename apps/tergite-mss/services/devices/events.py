@@ -166,7 +166,7 @@ async def on_device_recalibrated_event(
     if data.name != device:
         raise ForbiddenError(f"editing '{data.name}' is not allowed")
 
-    upserted_record = await calibration_service.insert_one(db, record=data)
+    upserted_record = await calibration_service.create_calibration(db, record=data)
     return {
         "status": "success",
         "data": upserted_record.model_dump(mode="json"),

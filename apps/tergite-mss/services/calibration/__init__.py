@@ -12,10 +12,10 @@
 
 from .dtos import DeviceCalibration, DeviceCalibrationCreate, DeviceCalibrationQuery
 from .service import (
+    create_calibration,
+    find_latest_calibrations,
     get_historical_many,
-    get_latest_many,
     get_one,
-    insert_one,
     on_startup,
 )
 
@@ -24,8 +24,8 @@ __all__ = [
     "DeviceCalibrationCreate",
     "DeviceCalibrationQuery",
     "get_historical_many",
-    "get_latest_many",
+    "find_latest_calibrations",
     "get_one",
-    "insert_one",
+    "create_calibration",
     "on_startup",
 ]
