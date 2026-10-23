@@ -49,13 +49,13 @@ from .emails import (
 )
 
 
-async def toggle_read_status(
+async def set_read_status(
     db: AsyncIOMotorDatabase,
     pk: PydanticObjectId,
     user_id: PydanticObjectId | str,
     is_read: bool,
 ) -> Notice:
-    """Toggles the read status of the notice for the given user
+    """Sets the read status of the notice for the given user
 
     Args:
         db: the mongo database where the notices are stored
@@ -82,7 +82,7 @@ async def toggle_read_status(
     return Notice.model_validate(notice)
 
 
-async def toggle_read_status_many(
+async def set_read_status_many(
     db: AsyncIOMotorDatabase,
     user_id: PydanticObjectId | str,
     is_read: bool,

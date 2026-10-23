@@ -89,7 +89,7 @@ Target for each `services/<name>/`: `__init__.py` (re-exports, `__all__` as stri
    - `devices`: `get_all_devices` → `find_devices`; `get_one_device` → `get_device`; `try_connect_device` / `try_disconnect_device` → `mark_device_online` / `mark_device_offline`
    - `calibration`: `get_latest_many` → `find_latest_calibrations`; `insert_one` → `create_calibration`
    - `jobs`: `get_one(is_token_decrypted=)` → `get_job(should_decrypt_token=)`; `remove_job` → `delete_job`
-   - `notices`: `toggle_read_status(is_read=)` → `set_read_status`
+   - `notices`: `toggle_read_status(is_read=)` → `set_read_status`; `toggle_read_status_many(is_read=)` → `set_read_status_many`
 6. **Routers resolve, call, wrap.**
    - `routers/jobs.py`: create, cancel and delete orchestration → `jobs.create_job`, `jobs.cancel_job(db, bcc_client, job_id, user_id, request_id, details)`, `jobs.delete_job`. One `bcc.get_client(name)` raising `UnknownBccError` replaces the three inline lookups and `api/rest/utils.get_bcc_client`.
    - `routers/devices/__init__.py:101`: the loop receives and replies; each frame goes through `_handle_frame(data, device, db) -> EventResponse`.
@@ -315,7 +315,7 @@ Every commit keeps the step 1.1 contract; `dev/e2e_test.sh` runs after the last 
 | `notices.create_system_notice` | 66 | pure `_build_email_status_map(user_ids, preferences, is_email_enabled)`, `_render_notices` |
 | `jobs.update_qpu_usage` | 65 | pure `_choose_qpu_notice(before, after, threshold)`, `_notify_project` |
 | `email._send_on_repeat` | 64 | `_send_batch(smtp, batch, sender, should_ignore_errors)` |
-| `notices.find_many` | 60 | a `NoticeFilter` model shared with `count_many` and `toggle_read_status_many` |
+| `notices.find_many` | 60 | a `NoticeFilter` model shared with `count_many` and `set_read_status_many` |
 | `storage.mongo._to_mongo_json_schema`, renamed `_build_mongo_json_schema` | 57 | `_resolve_ref`, `_map_to_bson_type`, `_keep_mongo_keywords` |
 | `api/rest/utils.get_verified_device_name` | 56 | `_read_signed_headers`, `_check_client_ip`, pure `_check_nonce_age(timestamp, now, ttl)`, `_check_nonce_unused` |
 | `logging.setup_logging` | 56 | `get_log_level(env)` (shared with `settings.py`), `_add_sink`, `_route_std_logging` |

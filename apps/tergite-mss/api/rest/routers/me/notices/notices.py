@@ -81,7 +81,7 @@ async def dismiss_my_notice(
     Raises:
         404: notification of ID '{pk}' not found
     """
-    await notices_service.toggle_read_status(
+    await notices_service.set_read_status(
         db, pk=notice_id, user_id=current_user.id, is_read=True
     )
     return {"status": "success"}
@@ -106,7 +106,7 @@ async def unread_my_notice(
     Raises:
         404: notification of ID '{pk}' not found
     """
-    await notices_service.toggle_read_status(
+    await notices_service.set_read_status(
         db, pk=notice_id, user_id=current_user.id, is_read=False
     )
     return {"status": "success"}
@@ -126,7 +126,7 @@ async def dismiss_all_my_notices(
     Returns:
         a general message reporting how many were updated
     """
-    counts = await notices_service.toggle_read_status_many(
+    counts = await notices_service.set_read_status_many(
         db, user_id=user_id, is_read=True
     )
     return {"status": "success", "detail": f"{counts} notices updated"}
@@ -146,7 +146,7 @@ async def unread_all_my_notices(
     Returns:
         a general message reporting how many were updated
     """
-    counts = await notices_service.toggle_read_status_many(
+    counts = await notices_service.set_read_status_many(
         db, user_id=user_id, is_read=False
     )
     return {"status": "success", "detail": f"{counts} notices updated"}

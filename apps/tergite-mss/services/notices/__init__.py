@@ -31,8 +31,8 @@ from .service import (
     on_startup,
     publish_custom_notice,
     set_email_preferences,
-    toggle_read_status,
-    toggle_read_status_many,
+    set_read_status,
+    set_read_status_many,
 )
 
 __all__ = [
@@ -52,7 +52,7 @@ __all__ = [
     "create_system_notice",
     "publish_custom_notice",
     "on_startup",
-    "toggle_read_status_many",
+    "set_read_status_many",
     "set_email_preferences",
-    "toggle_read_status",
+    "set_read_status",
 ]
