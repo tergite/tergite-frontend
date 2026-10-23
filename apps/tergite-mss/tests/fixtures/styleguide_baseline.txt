@@ -131,7 +131,6 @@ facade-import: services/notices/dtos.py::import services.auth.users.dtos
 facade-import: services/notices/emails.py::import services.auth.users.dtos
 facade-import: services/notices/service.py::import services.auth.projects.dtos
 facade-import: services/notices/service.py::import services.external.email.service
-facade-import: services/requests/actions.py::import services.auth.app_tokens.database
 facade-import: services/requests/actions.py::import services.auth.projects
 facade-import: services/requests/actions.py::import services.auth.projects.dtos
 facade-import: services/requests/actions.py::import services.auth.projects.exc
@@ -182,10 +181,6 @@ type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.cur
 type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project.current_project_dependency
 type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids
 type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids.current_project_and_user_id_dependency
-type-hints: services/auth/app_tokens/database.py::AppTokenDatabase._find_one
-type-hints: services/auth/app_tokens/database.py::AppTokenDatabase.get
-type-hints: services/auth/app_tokens/database.py::AppTokenDatabase.get_by_token
-type-hints: services/auth/app_tokens/dtos.py::AppTokenCreate.serialize_object_id
 type-hints: services/auth/app_tokens/dtos.py::AppTokenRead.serialize_created_at
 type-hints: services/auth/app_tokens/dtos.py::AppTokenUpdate.serialize_expires_at
 type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router
@@ -194,8 +189,6 @@ type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.generate_
 type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.get_my_app_token
 type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.get_my_app_tokens
 type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.update_app_token
-type-hints: services/auth/app_tokens/strategy.py::AppTokenStrategy.destroy_token
-type-hints: services/auth/projects/__init__.py::get_app_token_db
 type-hints: services/auth/projects/__init__.py::get_project_manager
 type-hints: services/auth/projects/dtos.py::ProjectRead.model_dump
 type-hints: services/auth/projects/manager.py::ProjectAppTokenManager.create

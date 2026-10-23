@@ -9,7 +9,9 @@
             "type": "number"
           },
           "project_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Project Id",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -64,14 +66,18 @@
             "type": "string"
           },
           "id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Id",
+            "type": "string"
           },
           "lifespan_seconds": {
             "title": "Lifespan Seconds",
             "type": "number"
           },
           "project_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Project Id",
+            "type": "string"
           },
           "title": {
             "title": "Title",
@@ -8647,7 +8653,8 @@
               "anyOf": [
                 {
                   "items": {
-                    "$ref": "#/components/schemas/PydanticObjectId"
+                    "pattern": "^[0-9a-f]{24}$",
+                    "type": "string"
                   },
                   "type": "array"
                 },
@@ -8666,7 +8673,8 @@
               "anyOf": [
                 {
                   "items": {
-                    "$ref": "#/components/schemas/PydanticObjectId"
+                    "pattern": "^[0-9a-f]{24}$",
+                    "type": "string"
                   },
                   "type": "array"
                 },
@@ -8825,7 +8833,9 @@
             "name": "_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": " Id",
+              "type": "string"
             }
           }
         ],
@@ -8865,7 +8875,9 @@
             "name": "_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": " Id",
+              "type": "string"
             }
           }
         ],
@@ -8924,7 +8936,9 @@
             "name": "id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": "Id",
+              "type": "string"
             }
           }
         ],

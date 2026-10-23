@@ -23,7 +23,7 @@ from libs.storage import Database
 from utils.config import AuthConfig, Oauth2ClientConfig, ProjectsConfig
 from utils.mongodb import init_strict_beanie
 
-from . import app_tokens, projects, providers, users
+from . import projects, providers, users
 from .users.dtos import User
 from .utils import get_oauth2_client
 
@@ -37,8 +37,8 @@ async def on_startup(
     """Runs init operations when the application is starting up
 
     Args:
-        db: the mongo database where the users and app tokens are stored
-        database: the database where the projects are stored
+        db: the mongo database where the users are stored
+        database: the database where the projects and app tokens are stored
         conf: the auth configuration, whose clients decide who may sign in and how
         projects_conf: the projects configuration
     """
@@ -49,7 +49,6 @@ async def on_startup(
         database=db,
         document_models=[
             users.dtos.User,
-            app_tokens.dtos.AppToken,
         ],
     )
 

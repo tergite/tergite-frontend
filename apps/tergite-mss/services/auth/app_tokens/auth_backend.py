@@ -12,7 +12,6 @@
 """FastAPIUsers-specific definition of Authentication Backend"""
 from typing import Optional
 
-from beanie import PydanticObjectId
 from fastapi import status
 from fastapi.responses import Response
 from fastapi_users.authentication import Transport
@@ -53,7 +52,7 @@ class AppTokenAuthenticationBackend:
         self,
         strategy: AppTokenStrategy,
         payload: AppTokenCreate,
-        user_id: PydanticObjectId,
+        user_id: str,
         **kwargs,
     ) -> Response:
         """Generates a new token for the given user
@@ -72,8 +71,8 @@ class AppTokenAuthenticationBackend:
     async def destroy_token(
         self,
         strategy: AppTokenStrategy,
-        _id: PydanticObjectId,
-        user_id: PydanticObjectId,
+        _id: str,
+        user_id: str,
         **kwargs,
     ) -> Response:
         """Destroys a given token.
@@ -104,8 +103,8 @@ class AppTokenAuthenticationBackend:
     async def update_token(
         self,
         strategy: AppTokenStrategy,
-        _id: PydanticObjectId,
-        user_id: PydanticObjectId,
+        _id: str,
+        user_id: str,
         payload: AppTokenUpdate,
         **kwargs,
     ) -> Optional[AppTokenRead]:

@@ -37,12 +37,14 @@ from .manager import ProjectAppTokenManager, ProjectManagerDependency
 from .routers import CurrentSuperUserDependency, CurrentUserIdDependency
 
 _project_db: Optional[ProjectDatabase] = None
+_app_token_db: Optional[AppTokenDatabase] = None
 
 
 def on_startup(database: Database, conf: ProjectsConfig) -> None:
-    """Sets the database and config the projects are kept with"""
-    global _project_db
+    """Sets the database and config the projects and their app tokens are kept with"""
+    global _project_db, _app_token_db
     _project_db = ProjectDatabase(database, conf=conf)
+    _app_token_db = AppTokenDatabase(database)
 
 
 async def get_project_db() -> ProjectDatabase:
@@ -68,9 +70,9 @@ def get_app_token_backend(
     )
 
 
-async def get_app_token_db():
-    """Dependency injector for getting app token database"""
-    yield AppTokenDatabase()
+async def get_app_token_db() -> AppTokenDatabase:
+    """Dependency injector of the app tokens database"""
+    return _app_token_db
 
 
 async def get_project_manager(
@@ -118,7 +120,6 @@ class ProjectBasedAuth:
         return get_app_tokens_router(
             backend=backend,
             get_project_manager=self.get_project_manager,
-            get_user_manager=self.get_user_manager,
             get_current_user_id=self.get_current_user_id,
         )
 

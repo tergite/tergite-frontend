@@ -13,8 +13,9 @@
 import secrets
 from typing import Optional, Tuple
 
-from beanie import PydanticObjectId
 from fastapi_users.authentication.strategy import DatabaseStrategy
+
+from libs.storage import And, Eq
 
 from .. import AppTokenRead
 from ..projects.dtos import Project
@@ -22,7 +23,7 @@ from ..projects.exc import ProjectNotExists
 from ..projects.manager import ProjectAppTokenManager
 from ..users.dtos import User
 from .database import AppTokenDatabase
-from .dtos import AppTokenCreate, AppTokenUpdate
+from .dtos import AppToken, AppTokenCreate, AppTokenUpdate
 
 
 class AppTokenStrategy(DatabaseStrategy):
@@ -33,31 +34,25 @@ class AppTokenStrategy(DatabaseStrategy):
     def __init__(self, database: AppTokenDatabase):
         super().__init__(database)
 
-    async def write_token(
-        self, payload: AppTokenCreate, user_id: PydanticObjectId
-    ) -> str:
-        token_dict = payload.model_dump()
-        token_dict["token"] = secrets.token_urlsafe()
-        token_dict["user_id"] = user_id
-        access_token = await self.database.create(token_dict)
+    async def write_token(self, payload: AppTokenCreate, user_id: str) -> str:
+        access_token = AppToken(
+            **payload.model_dump(), token=secrets.token_urlsafe(), user_id=user_id
+        )
+        await self.database.create(access_token)
         return access_token.token
 
-    async def destroy_token(
-        self, _id: PydanticObjectId, user_id: PydanticObjectId, **filters
-    ) -> None:
+    async def destroy_token(self, _id: str, user_id: str) -> None:
         """Destroys the token of the given ID
 
         Args:
             _id: the ID of the token to destroy
             user_id: the id of the user this token should belong to
-            filters: other key-value filters to identify the token
 
         Raises:
             HTTPException: Forbidden 403 if token is not user's
                 or token does not exist or is expired already
         """
-        filters.update({"user_id": user_id, "_id": _id})
-        return await self.database.delete_one(filters)
+        await self.database.delete_one(And(Eq("id", _id), Eq("user_id", user_id)))
 
     async def read_token(
         self, token: Optional[str], project_manager: ProjectAppTokenManager
@@ -82,10 +77,8 @@ class AppTokenStrategy(DatabaseStrategy):
 
     async def update_token(
         self,
-        token_id: PydanticObjectId,
-        user_id: PydanticObjectId,
+        token_id: str,
+        user_id: str,
         payload: AppTokenUpdate,
     ) -> Optional[AppTokenRead]:
-        return await self.database.update(
-            token_id, filters=dict(user_id=user_id), payload=payload
-        )
+        return await self.database.update(token_id, user_id=user_id, payload=payload)

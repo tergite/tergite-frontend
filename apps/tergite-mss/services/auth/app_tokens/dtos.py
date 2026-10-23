@@ -10,15 +10,12 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Data Transfer Objects for app tokens submodule in the auth service"""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
-import pymongo
-from beanie import Document, PydanticObjectId
-from fastapi_users_db_beanie.access_token import BeanieBaseAccessToken
-from pydantic import BaseModel, ConfigDict, field_serializer
-from pymongo import IndexModel
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
+from libs.storage import Id, Schema, StorageSpec, generate_id
 from utils.date_time import datetime_to_zulu
 
 
@@ -26,13 +23,8 @@ class AppTokenCreate(BaseModel):
     """The payload passed when generating an app token"""
 
     title: str
-    project_id: PydanticObjectId
+    project_id: Id
     lifespan_seconds: float
-
-    @field_serializer("project_id", when_used="json")
-    def serialize_object_id(self, value: PydanticObjectId):
-        """Convert object ID to string when working with JSON"""
-        return str(value)
 
 
 class AppTokenRead(AppTokenCreate):
@@ -44,7 +36,7 @@ class AppTokenRead(AppTokenCreate):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: Id
     created_at: datetime
 
     @field_serializer("created_at", when_used="json")
@@ -64,16 +56,19 @@ class AppTokenUpdate(BaseModel):
         return datetime_to_zulu(expires_at)
 
 
-class AppToken(BeanieBaseAccessToken, AppTokenCreate, Document):
+class AppToken(AppTokenCreate, Schema):
     """App token stored in the database"""
 
-    class Settings(BeanieBaseAccessToken.Settings):
-        name = "auth_app_tokens"
-        indexes = BeanieBaseAccessToken.Settings.indexes + [
-            IndexModel(
-                [("project_id", pymongo.ASCENDING), ("user_id", pymongo.ASCENDING)],
-            ),
-        ]
+    __storage__ = StorageSpec(
+        table="auth_app_tokens",
+        unique=("token",),
+        indexes=(("project_id", "user_id"),),
+    )
+
+    id: Id = Field(default_factory=generate_id)
+    token: str
+    user_id: Id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AppTokenListResponse(BaseModel):

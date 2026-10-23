@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """FastAPIUsers-inspired logic for managing projects"""
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from beanie import PydanticObjectId
 from fastapi.requests import Request
@@ -19,7 +19,7 @@ from fastapi_users.models import ID
 from fastapi_users.types import DependencyCallable
 from fastapi_users_db_beanie import ObjectIDIDMixin
 
-from libs.storage import Filter, Page
+from libs.storage import And, Eq, Filter, NotIn, Page
 from utils.exc import ForbiddenError
 
 from ..app_tokens.database import AppTokenDatabase
@@ -74,7 +74,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         return project
 
     async def get_project_user_pair(
-        self, project_id: str | PydanticObjectId, user_id: str | PydanticObjectId
+        self, project_id: str, user_id: str
     ) -> Tuple[Project, User]:
         """
         Get a tuple of project and user for the given by project_id and user_id.
@@ -97,9 +97,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         if user is None:
             raise UserNotExists()
 
-        project = await self.project_db.get_if_member(
-            pk=str(project_id), user_id=str(user_id)
-        )
+        project = await self.project_db.get_if_member(pk=project_id, user_id=user_id)
 
         if project is None:
             raise exc.ProjectNotExists()
@@ -111,25 +109,10 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         return await self.project_db.get_many(where, page=page)
 
     async def get_many_app_tokens(
-        self, filter_obj: Mapping[str, Any], skip: int = 0, limit: Optional[int] = None
+        self, where: Filter, page: Page = Page()
     ) -> List[AppToken]:
-        """
-        Get a list of app tokens to basing on filter.
-
-        Args:
-            filter_obj: the PyMongo-like filter object e.g. `{"user_id": "uidufiud"}`.
-            skip: the number of matched records to skip
-            limit: the maximum number of records to return.
-                If None, all possible records are returned.
-
-        Returns:
-            the list of matched app tokens
-        """
-        return await self.app_token_db.get_many(
-            filter_obj,
-            skip=skip,
-            limit=limit,
-        )
+        """Get the app tokens that match the filter."""
+        return await self.app_token_db.get_many(where, page=page)
 
     async def create(
         self,
@@ -219,14 +202,12 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             new_updates: the new updates
         """
         if new_updates.user_ids:
-            # app tokens are still Beanie documents, keyed by ObjectIds
-            filter_obj = {
-                "user_id": {
-                    "$nin": [PydanticObjectId(v) for v in new_updates.user_ids]
-                },
-                "project_id": PydanticObjectId(original.id),
-            }
-            await self.app_token_db.delete_many(filter_obj)
+            await self.app_token_db.delete_many(
+                And(
+                    NotIn("user_id", new_updates.user_ids),
+                    Eq("project_id", original.id),
+                )
+            )
 
     async def on_before_delete(
         self, project: Project, request: Optional[Request] = None
@@ -239,14 +220,12 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             project: the project to be deleted
             request: Optional FastAPI request that triggered the operation
         """
-        await self.app_token_db.delete_many(
-            {"project_id": PydanticObjectId(project.id)}
-        )
+        await self.app_token_db.delete_many(Eq("project_id", project.id))
 
     async def authenticate(
         self,
         details: AppTokenCreate,
-        user_id: PydanticObjectId,
+        user_id: str,
     ) -> Optional[Project]:
         """
         Authenticate and return a project for the project_id of token and user_id.

@@ -16,8 +16,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Sequence, cast
 
 from beanie.odm.operators.find.comparison import In
 
-from services.auth.app_tokens.database import AppTokenDatabase
-from services.auth.projects import get_project_db
+from services.auth.projects import get_app_token_db, get_project_db
 from services.auth.projects.dtos import Project
 from services.auth.projects.exc import ProjectExists
 from services.auth.projects.manager import ProjectAppTokenManager
@@ -200,7 +199,7 @@ async def _get_project_manager() -> ProjectAppTokenManager:
     """Gets the manager of the projects"""
     return ProjectAppTokenManager(
         await get_project_db(),
-        app_token_db=AppTokenDatabase(),
+        app_token_db=await get_app_token_db(),
         user_db=UserDatabase(),
     )
 

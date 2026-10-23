@@ -46,7 +46,7 @@ from .users import (
 from .users.dtos import User, UserCreate, UserRead, UserUpdate
 from .users.exc import UnsupportedOauthException
 
-SCHEMAS = (Project, DeletedProject)
+SCHEMAS = (AppToken, Project, DeletedProject)
 
 __all__ = [
     "SCHEMAS",
