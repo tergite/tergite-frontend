@@ -17,7 +17,7 @@ from fastapi import APIRouter
 
 from api.rest.dependencies import CurrentUserIdDep
 from services import notices as notices_service
-from services.notices.dtos import NoticeTypeId
+from services.notices import NoticeTypeId
 
 router = APIRouter()
 

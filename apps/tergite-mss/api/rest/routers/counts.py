@@ -20,8 +20,8 @@ from fastapi import APIRouter, Query
 from api.rest.dependencies import CurrentSuperuserDep, CurrentUserDep, MongoDbDep
 from services import jobs as jobs_service
 from services import notices as notices_service
-from services.auth.users.dtos import User
-from services.notices.dtos import NoticeTypeId
+from services.auth import User
+from services.notices import NoticeTypeId
 from utils.api import CountsResponse
 
 router = APIRouter(prefix="/counts", tags=["counts"])

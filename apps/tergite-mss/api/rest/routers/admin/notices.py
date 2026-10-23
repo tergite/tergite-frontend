@@ -19,7 +19,7 @@ from fastapi import APIRouter, Query
 
 from services import notices as notices_service
 from services.auth import User
-from services.notices.dtos import CustomNoticeCreate, Notice, NoticeTypeId
+from services.notices import CustomNoticeCreate, Notice, NoticeTypeId
 from utils.api import PaginatedListResponse
 
 from ...dependencies import (

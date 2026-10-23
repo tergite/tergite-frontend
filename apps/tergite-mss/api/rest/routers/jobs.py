@@ -31,8 +31,8 @@ from api.rest.dependencies import (
 )
 from services import jobs as jobs_service
 from services.auth import User
-from services.external.bcc.dtos import CancellationDetails
-from services.jobs.dtos import (
+from services.external.bcc import CancellationDetails
+from services.jobs import (
     Job,
     JobCreate,
     JobQuery,

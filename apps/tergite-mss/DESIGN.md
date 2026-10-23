@@ -57,17 +57,17 @@ A service is a package. Its public surface is what `__init__.py` exposes; caller
 | File | Contains |
 | --- | --- |
 | `dtos.py` | Pydantic models — request bodies, responses, and Beanie `Document`s (which double as the persistence schema). Query-param models too. |
-| `service.py` *(or the functions in `__init__.py`)* | The business logic: module-level `async def` functions taking the db handle as their first argument. |
+| `service.py` | The business logic: module-level `async def` functions taking the db handle as their first argument. |
 | `database.py` | Only where a service needs a repository object rather than free functions (the `auth` submodules). |
 | `routers.py` | Only where the service owns routes that are mounted by an `api/rest/routers/*` module — used by `auth` for the fastapi-users-derived routers. |
 | `manager.py`, `authenticator.py`, `strategy.py`, `auth_backend.py` | fastapi-users extension points; `auth` only. |
 | `exc.py` | Service-specific exceptions. |
 | `on_startup(db)` | Index creation / Beanie init, called from the app lifespan. |
 
-Some services put their logic directly in `__init__.py` (`jobs`, `calibration`,
-`user_requests`), others in a `service.py` re-exported by `__init__.py` (`devices`,
-`notices`, `auth`, `external.bcc`). Both are current; prefer `service.py` for anything
-non-trivial and keep `__init__.py` as the facade.
+A service's `__init__.py` is its facade: it only re-exports, with `__all__` as strings. Code
+outside the service imports from the facade (`from services.jobs import Job`), never from its
+`dtos.py` or `service.py`; `tests/test_styleguide.py` checks this. Each `services/external/`
+package is a service of its own.
 
 ### Why the layering matters
 

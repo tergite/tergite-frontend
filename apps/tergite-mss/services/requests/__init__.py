@@ -11,9 +11,19 @@
 # that they have been altered from the originals.
 
 from .dtos import Request, RequestPostBody, RequestStatus, RequestType, RequestUpdate
-from .service import create, get_many, get_one, on_startup, update
+from .service import (
+    ALL_REQ_STATUSES,
+    ALL_REQ_TYPES,
+    create,
+    get_many,
+    get_one,
+    on_startup,
+    update,
+)
 
 __all__ = [
+    "ALL_REQ_STATUSES",
+    "ALL_REQ_TYPES",
     "Request",
     "RequestStatus",
     "RequestType",

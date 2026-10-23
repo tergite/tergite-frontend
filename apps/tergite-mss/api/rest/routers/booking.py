@@ -27,7 +27,7 @@ from api.rest.dependencies import (
     UserDbDep,
 )
 from services.auth import User
-from services.external.bcc.dtos import (
+from services.external.bcc import (
     Booking,
     BookingsConfig,
     NewBookingInfo,

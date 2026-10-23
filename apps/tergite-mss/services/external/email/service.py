@@ -26,9 +26,9 @@ import aiosmtplib
 from loguru import logger
 
 import settings
-from services.external.email import BatchEmailCallback, BatchEmailGenerator
-from services.external.email.dtos import EmailDetails, EmailResult
 from utils.config import EmailConfig
+
+from .dtos import BatchEmailCallback, BatchEmailGenerator, EmailDetails, EmailResult
 
 
 class Emailer:

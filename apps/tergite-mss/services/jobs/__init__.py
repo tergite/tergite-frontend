@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from .dtos import JobUpdate
+from .dtos import Job, JobCreate, JobQuery, JobStatus, JobStatusResponse, JobUpdate
 from .service import (
     build_readable_jobs_filter,
     count_job_submitters,
@@ -24,6 +24,11 @@ from .service import (
 )
 
 __all__ = [
+    "Job",
+    "JobCreate",
+    "JobQuery",
+    "JobStatus",
+    "JobStatusResponse",
     "JobUpdate",
     "build_readable_jobs_filter",
     "count_job_submitters",

@@ -22,13 +22,14 @@ from api.rest.dependencies import CurrentUserDep
 from services import requests as requests_service
 from services.auth import User
 from services.requests import (
+    ALL_REQ_STATUSES,
+    ALL_REQ_TYPES,
     Request,
     RequestPostBody,
     RequestStatus,
     RequestType,
     RequestUpdate,
 )
-from services.requests.service import ALL_REQ_STATUSES, ALL_REQ_TYPES
 from utils.api import PaginatedListResponse
 from utils.exc import NotFoundError
 

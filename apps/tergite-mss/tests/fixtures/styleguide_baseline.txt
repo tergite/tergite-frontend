@@ -138,9 +138,7 @@ license-header: api/rest/routers/__init__.py
 license-header: services/__init__.py
 license-header: services/auth/providers/__init__.py
 license-header: services/auth/providers/dtos.py
-license-header: services/devices/__init__.py
 license-header: services/external/__init__.py
-license-header: services/external/bcc/__init__.py
 license-header: tests/__init__.py
 license-header: tests/_utils/__init__.py
 license-header: tests/api/__init__.py
@@ -165,22 +163,8 @@ import-layering: utils/api.py::import settings
 import-layering: utils/date_time.py::import settings
 facade-import: api/rest/dependencies.py::import services.auth.service
 facade-import: api/rest/dependencies.py::import services.auth.users
-facade-import: api/rest/routers/admin/bcc/recalibration.py::import services.external.bcc.dtos
-facade-import: api/rest/routers/admin/bcc/users.py::import services.external.bcc.dtos
-facade-import: api/rest/routers/admin/notices.py::import services.notices.dtos
 facade-import: api/rest/routers/auth.py::import services.auth.providers.dtos
 facade-import: api/rest/routers/auth.py::import services.auth.service
-facade-import: api/rest/routers/booking.py::import services.external.bcc.dtos
-facade-import: api/rest/routers/calibrations.py::import services.calibration.dtos
-facade-import: api/rest/routers/counts.py::import services.auth.users.dtos
-facade-import: api/rest/routers/counts.py::import services.notices.dtos
-facade-import: api/rest/routers/devices/__init__.py::import services.devices.dtos
-facade-import: api/rest/routers/jobs.py::import services.external.bcc.dtos
-facade-import: api/rest/routers/jobs.py::import services.jobs.dtos
-facade-import: api/rest/routers/me/jobs.py::import services.jobs.dtos
-facade-import: api/rest/routers/me/notices/notices.py::import services.notices.dtos
-facade-import: api/rest/routers/me/notices/preferences.py::import services.notices.dtos
-facade-import: api/rest/routers/me/requests.py::import services.requests.service
 facade-import: services/auth/projects/routers/__init__.py::import services.notices.dtos
 facade-import: services/auth/projects/routers/utils.py::import services.notices.dtos
 facade-import: services/devices/dtos.py::import services.calibration.dtos

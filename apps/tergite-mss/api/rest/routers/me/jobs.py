@@ -15,8 +15,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, Query
 
 from api.rest.dependencies import CurrentUserIdDep, MongoDbDep
-from services.jobs import get_latest_many
-from services.jobs.dtos import JobQuery
+from services.jobs import JobQuery, get_latest_many
 from utils.api import PaginatedListResponse
 
 router = APIRouter()

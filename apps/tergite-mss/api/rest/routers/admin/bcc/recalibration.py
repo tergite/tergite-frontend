@@ -19,7 +19,7 @@ from fastapi import APIRouter, Query
 from services.auth import (
     User,
 )
-from services.external.bcc.dtos import RecalibrationInfo
+from services.external.bcc import RecalibrationInfo
 from utils.api import GeneralMessage
 
 from ....dependencies import (

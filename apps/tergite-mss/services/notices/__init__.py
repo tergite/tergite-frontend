@@ -12,11 +12,13 @@
 #
 
 from .dtos import (
+    CustomNoticeCreate,
     EmailStatus,
     Notice,
     NoticePreferences,
     NoticeSeverity,
     NoticeType,
+    NoticeTypeId,
 )
 from .service import (
     clear_notices_by_reference,
@@ -34,12 +36,16 @@ from .service import (
 )
 
 __all__ = [
+    "CustomNoticeCreate",
     "EmailStatus",
     "Notice",
     "NoticePreferences",
     "NoticeSeverity",
     "NoticeType",
+    "NoticeTypeId",
     "count_many",
+    "delete_notice",
+    "get_one",
     "find_many",
     "get_email_preferences",
     "clear_notices_by_reference",

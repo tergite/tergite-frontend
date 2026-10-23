@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from .dtos import DeviceCalibration
+from .dtos import DeviceCalibration, DeviceCalibrationCreate, DeviceCalibrationQuery
 from .service import (
     get_historical_many,
     get_latest_many,
@@ -21,6 +21,8 @@ from .service import (
 
 __all__ = [
     "DeviceCalibration",
+    "DeviceCalibrationCreate",
+    "DeviceCalibrationQuery",
     "get_historical_many",
     "get_latest_many",
     "get_one",

@@ -16,7 +16,7 @@ from typing import Optional
 from fastapi import APIRouter, Query
 
 from services.auth import User
-from services.external.bcc.dtos import BCCUserProfile, NewBCCUserInfo
+from services.external.bcc import BCCUserProfile, NewBCCUserInfo
 from utils.api import GeneralMessage, PaginatedListResponse
 
 from ....dependencies import (

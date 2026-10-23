@@ -25,7 +25,7 @@ from starlette.websockets import WebSocketDisconnect
 from api.rest.dependencies import MongoDbDep, ProjectDbDep
 from api.rest.utils import get_verified_device_name
 from services import devices
-from services.devices.dtos import DeviceEvent, DeviceQuery
+from services.devices import DeviceEvent, DeviceQuery
 from utils.api import (
     EventResponse,
     PaginatedListResponse,
