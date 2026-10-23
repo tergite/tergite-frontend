@@ -1,18 +1,24 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
-import settings
+from utils.config import Oauth2ClientConfig
 from utils.exc import NotFoundError
 
 from .dtos import AuthProvider, AuthProviderRead
 
-_ALL_AUTH_PROVIDERS = [
-    AuthProvider(
-        name=client.name,
-        email_domain=client.email_domain,
-        url=client.redirect_url.replace("/callback", "/auto-authorize"),
-    )
-    for client in settings.CONFIG.auth.clients
-]
+# set_auth_providers fills it from the configured auth clients
+_ALL_AUTH_PROVIDERS: List[AuthProvider] = []
+
+
+def set_auth_providers(clients: Sequence[Oauth2ClientConfig]) -> None:
+    """Sets the providers the login page can offer, one per auth client"""
+    _ALL_AUTH_PROVIDERS[:] = [
+        AuthProvider(
+            name=client.name,
+            email_domain=client.email_domain,
+            url=client.redirect_url.replace("/callback", "/auto-authorize"),
+        )
+        for client in clients
+    ]
 
 
 def get_many(

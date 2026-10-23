@@ -65,7 +65,9 @@ async def lifespan(_app: FastAPI):
         private_key_password=settings.CONFIG.private_key_password,
     )
     db = await get_default_mongodb()
-    await auth_service.on_startup(db)
+    await auth_service.on_startup(
+        db, conf=settings.CONFIG.auth, projects_conf=settings.CONFIG.projects
+    )
     await calib_service.on_startup(db)
     await jobs_service.on_startup(
         private_key_file=settings.PRIVATE_KEY_FILE,

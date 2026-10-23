@@ -135,9 +135,6 @@ license-header: tests/api/rest/me/__init__.py
 license-header: tests/api/rest/me/notices/__init__.py
 license-header: utils/__init__.py
 all-strings: services/auth/__init__.py::__all__
-import-layering: services/auth/projects/__init__.py::import settings
-import-layering: services/auth/providers/__init__.py::import settings
-import-layering: services/auth/users/__init__.py::import settings
 facade-import: api/rest/routers/auth.py::import services.auth.providers.dtos
 facade-import: services/auth/projects/routers/__init__.py::import services.notices.dtos
 facade-import: services/auth/projects/routers/utils.py::import services.notices.dtos
@@ -235,7 +232,6 @@ type-hints: services/auth/projects/routers/__init__.py::get_projects_router.get_
 type-hints: services/auth/projects/routers/__init__.py::get_projects_router.get_project
 type-hints: services/auth/projects/routers/__init__.py::get_projects_router.update_project
 type-hints: services/auth/providers/__init__.py::_order_by_many.get_key
-type-hints: services/auth/service.py::on_startup
 type-hints: services/auth/service.py::register_oauth2_client
 type-hints: services/auth/users/__init__.py::get_user_db
 type-hints: services/auth/users/__init__.py::get_user_manager

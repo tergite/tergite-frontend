@@ -21,7 +21,7 @@ from fastapi_users.manager import UserManagerDependency
 from fastapi_users_db_beanie import BeanieUserDatabase
 from httpx_oauth.oauth2 import BaseOAuth2
 
-import settings
+from utils.config import Oauth2ClientConfig
 
 from . import routers
 from .authenticator import UserAuthenticator
@@ -31,13 +31,19 @@ from .strategy import CustomJWTStrategy
 from .transport import JwtCookieTransport
 from .validators import EmailRegexValidator, Validator
 
-_AUTH_EMAIL_REGEX_MAP: Dict[str, Tuple[str, Union[re.RegexFlag, int]]] = {
-    f"{client.name}": (client.email_regex, 0) for client in settings.CONFIG.auth.clients
-}
+# set_auth_clients fills both from the configured auth clients
+_AUTH_EMAIL_REGEX_MAP: Dict[str, Tuple[str, Union[re.RegexFlag, int]]] = {}
+_AUTH_ROLES_MAP: Dict[str, Optional[Sequence[str]]] = {}
 
-_AUTH_ROLES_MAP: Dict[str, Optional[Sequence[str]]] = {
-    client.name: client.roles for client in settings.CONFIG.auth.clients
-}
+
+def set_auth_clients(clients: Sequence[Oauth2ClientConfig]) -> None:
+    """Sets the email pattern each auth client accepts and the roles it grants"""
+    _AUTH_EMAIL_REGEX_MAP.clear()
+    _AUTH_EMAIL_REGEX_MAP.update(
+        {client.name: (client.email_regex, 0) for client in clients}
+    )
+    _AUTH_ROLES_MAP.clear()
+    _AUTH_ROLES_MAP.update({client.name: client.roles for client in clients})
 
 
 def get_jwt_header_backend(
