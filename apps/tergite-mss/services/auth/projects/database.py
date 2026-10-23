@@ -13,19 +13,7 @@
 """Definition of the FastAPIUsers-inspired Database adapter for projects"""
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from libs.storage import (
-    AddToSet,
-    And,
-    Database,
-    DuplicateKeyError,
-    Eq,
-    Filter,
-    In,
-    Inc,
-    Page,
-    Set,
-    derive_id,
-)
+from libs.storage import Database, DuplicateKeyError, Filter, derive_id
 from utils.config import ProjectsConfig
 
 from .dtos import DeletedProject, Project
@@ -85,13 +73,15 @@ class ProjectDatabase:
         Returns:
             the project if it exists and user is a member or None
         """
-        return await self.database.find_one(
-            Project, And(Eq("id", pk), In("user_ids", [user_id]))
-        )
+        return await self.database.find_one(Project, {"id": pk, "user_ids": user_id})
 
-    async def get_many(self, where: Filter, page: Page = Page()) -> List[Project]:
+    async def get_many(
+        self, project_filter: Filter, skip: int = 0, limit: Optional[int] = None
+    ) -> List[Project]:
         """Get the projects that match the filter."""
-        return await self.database.find(Project, where=where, page=page)
+        return await self.database.find(
+            Project, filter=project_filter, skip=skip, limit=limit
+        )
 
     async def create(self, project: Project) -> Project:
         """Create a project.
@@ -106,12 +96,13 @@ class ProjectDatabase:
 
     async def update(self, project: Project, update_dict: Dict[str, Any]) -> Project:
         """Update a project."""
-        changes = [Set(key, value) for key, value in update_dict.items()]
-        return await self.database.update_one(Project, Eq("id", project.id), changes)
+        return await self.database.update_one(
+            Project, {"id": project.id}, {"$set": update_dict}
+        )
 
     async def delete(self, project: Project) -> None:
         """Delete a project, keeping a copy of it among the deleted projects."""
-        await self.database.delete_one(Project, Eq("id", project.id))
+        await self.database.delete_one(Project, {"id": project.id})
         deleted_project = DeletedProject(
             **project.model_dump(exclude={"created_at", "updated_at"})
         )
@@ -120,15 +111,15 @@ class ProjectDatabase:
     async def add_member(self, project_id: str, user_id: str) -> Optional[Project]:
         """Adds the user to the project's members, if not one already"""
         return await self.database.update_one(
-            Project, Eq("id", project_id), [AddToSet("user_ids", user_id)]
+            Project, {"id": project_id}, {"$addToSet": {"user_ids": user_id}}
         )
 
     async def set_admin(self, project_id: str, user_id: str) -> Optional[Project]:
         """Makes the user the project's admin, and a member if not one already"""
         return await self.database.update_one(
             Project,
-            Eq("id", project_id),
-            [Set("admin_id", user_id), AddToSet("user_ids", user_id)],
+            {"id": project_id},
+            {"$set": {"admin_id": user_id}, "$addToSet": {"user_ids": user_id}},
         )
 
     async def increment_qpu_seconds(
@@ -146,5 +137,5 @@ class ProjectDatabase:
         if project_id is None:
             return None
         return await self.database.update_one(
-            Project, Eq("id", project_id), [Inc("qpu_seconds", qpu_seconds)]
+            Project, {"id": project_id}, {"$inc": {"qpu_seconds": qpu_seconds}}
         )

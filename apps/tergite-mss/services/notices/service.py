@@ -12,36 +12,13 @@
 #
 from datetime import datetime, timedelta
 from functools import partial
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from loguru import logger
 
-from libs.storage import (
-    ALL,
-    AddToSet,
-    And,
-    Database,
-    Eq,
-    Filter,
-    In,
-    Ne,
-    NotIn,
-    Or,
-    Page,
-    Pull,
-    Range,
-    Set,
-    SetOnInsert,
-    Sort,
-    Update,
-    is_id,
-)
+from libs.storage import Database, Filter, Update, is_id
 from services.external.email.service import Emailer
-from utils.config import NoticesConfig
-from utils.date_time import get_current_timestamp, get_utc_now
-from utils.exc import NotFoundError
-
-from .dtos import (
+from services.notices.dtos import (
     BaseNoticeContext,
     CustomNoticeCreate,
     EmailStatus,
@@ -53,11 +30,14 @@ from .dtos import (
     ProjectRequestContext,
     RefType,
 )
-from .emails import (
+from services.notices.emails import (
     get_email_preferences_map,
     get_pending_email_batches,
     process_email_batch_results,
 )
+from utils.config import NoticesConfig
+from utils.date_time import get_current_timestamp, get_utc_now
+from utils.exc import NotFoundError
 
 if TYPE_CHECKING:
     from services.auth import User
@@ -69,8 +49,7 @@ _is_email_enabled = False
 #   their callers in auth and requests have none to pass yet; they take one as an
 #   argument once those callers do (step 5)
 _database: Optional[Database] = None
-_IS_BROADCAST = Eq("type", NoticeType.CUSTOM_BROADCAST.id)
-_IS_NOT_BROADCAST = Ne("type", NoticeType.CUSTOM_BROADCAST.id)
+_BROADCAST_TYPE = NoticeType.CUSTOM_BROADCAST.id
 
 
 async def set_read_status(
@@ -91,14 +70,18 @@ async def set_read_status(
         NotFoundError: if the notice does not exist or is not addressed to the user
     """
     user_id = str(user_id)
-    where = And(Eq("id", str(pk)), In("user_id", [user_id, None]))
-    for kind, changes in _build_read_status_changes(user_id, is_read=is_read):
+    notice_filter = {"id": str(pk), "user_id": {"$in": [user_id, None]}}
+    broadcast_update, direct_update = _get_read_status_updates(user_id, is_read)
+    notice = await database.update_one(
+        Notice, {**notice_filter, "type": _BROADCAST_TYPE}, broadcast_update
+    )
+    if notice is None:
         notice = await database.update_one(
-            Notice, where=And(where, kind), changes=changes
+            Notice, {**notice_filter, "type": {"$ne": _BROADCAST_TYPE}}, direct_update
         )
-        if notice is not None:
-            return notice
-    raise NotFoundError(f"notice of ID '{pk}' not found")
+    if notice is None:
+        raise NotFoundError(f"notice of ID '{pk}' not found")
+    return notice
 
 
 async def set_read_status_many(
@@ -127,7 +110,7 @@ async def set_read_status_many(
         the number of notices updated
     """
     user_id = str(user_id)
-    where = build_filter(
+    notice_filter = _get_notice_filter(
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
@@ -137,10 +120,16 @@ async def set_read_status_many(
         types=types,
         is_read=not is_read,
     )
-    count = 0
-    for kind, changes in _build_read_status_changes(user_id, is_read=is_read):
-        count += await database.update_many(Notice, And(where, kind), changes)
-    return count
+    broadcast_update, direct_update = _get_read_status_updates(user_id, is_read)
+    broadcast_count = await database.update_many(
+        Notice, {"$and": [notice_filter, {"type": _BROADCAST_TYPE}]}, broadcast_update
+    )
+    direct_count = await database.update_many(
+        Notice,
+        {"$and": [notice_filter, {"type": {"$ne": _BROADCAST_TYPE}}]},
+        direct_update,
+    )
+    return broadcast_count + direct_count
 
 
 async def clear_notices_by_reference(ref_type_ids_map: Dict[RefType, List[str]]) -> int:
@@ -162,28 +151,34 @@ async def clear_notices_by_reference(ref_type_ids_map: Dict[RefType, List[str]])
 
     now = get_utc_now()
     timestamp = get_current_timestamp()
-    where = And(
-        Eq("read_at", None),
-        Or(
-            *(
-                And(In("ref_id", [str(v) for v in ref_ids]), Eq("ref_type", ref_type))
-                for ref_type, ref_ids in ref_type_ids_map.items()
-            )
-        ),
-        Or(Eq("expires_at", None), Range("expires_at", gte=now)),
+    unread_filter = {
+        "read_at": None,
+        "$and": [
+            {
+                "$or": [
+                    {"ref_type": ref_type, "ref_id": {"$in": [str(v) for v in ref_ids]}}
+                    for ref_type, ref_ids in ref_type_ids_map.items()
+                ]
+            },
+            {"$or": [{"expires_at": None}, {"expires_at": {"$gte": now}}]},
+        ],
+    }
+    expire_now = {"updated_at": timestamp, "expires_at": now}
+    count = await _database.update_many(
+        Notice, {**unread_filter, "type": _BROADCAST_TYPE}, {"$set": expire_now}
     )
-    expire_now = [Set("updated_at", timestamp), Set("expires_at", now)]
-    count = await _database.update_many(Notice, And(where, _IS_BROADCAST), expire_now)
 
     # a recipient's notice is read when it holds its own user_id in dismissed_by
-    user_ids = await _database.find_distinct(
-        Notice, "user_id", where=And(where, _IS_NOT_BROADCAST)
-    )
+    direct_filter = {**unread_filter, "type": {"$ne": _BROADCAST_TYPE}}
+    user_ids = await _database.find_distinct(Notice, "user_id", filter=direct_filter)
     for user_id in user_ids:
         count += await _database.update_many(
             Notice,
-            And(where, _IS_NOT_BROADCAST, Eq("user_id", user_id)),
-            [AddToSet("dismissed_by", user_id), Set("read_at", timestamp), *expire_now],
+            {**direct_filter, "user_id": user_id},
+            {
+                "$addToSet": {"dismissed_by": user_id},
+                "$set": {"read_at": timestamp, **expire_now},
+            },
         )
     return count
 
@@ -194,7 +189,7 @@ async def delete_notice(database: Database, pk: str) -> Notice:
     Raises:
         NotFoundError: if the notice does not exist
     """
-    notice = await database.delete_one(Notice, where=Eq("id", str(pk)))
+    notice = await database.delete_one(Notice, filter={"id": str(pk)})
     if notice is None:
         raise NotFoundError(f"notice of ID '{pk}' not found")
     return notice
@@ -281,16 +276,50 @@ async def create_system_notice(
 
 async def find_many(
     database: Database,
-    where: Filter = ALL,
-    sort: Sequence[Sort] = (),
-    page: Page = Page(),
+    user_id: Optional[str] = None,
+    min_start_utc: Optional[datetime] = None,
+    max_start_utc: Optional[datetime] = None,
+    min_expires_utc: Optional[datetime] = None,
+    max_expires_utc: Optional[datetime] = None,
+    should_include_dismissed: bool = False,
+    types: Optional[Sequence[NoticeTypeId]] = None,
+    is_read: Optional[bool] = None,
+    sort: Sequence[str] = (),
+    skip: int = 0,
+    limit: Optional[int] = None,
 ) -> List[Notice]:
-    """Gets the notices that match the filter, which build_filter makes
+    """Gets the notices that fit the given constraints
+
+    Args:
+        database: the database where the notices are stored
+        user_id: the user whose notices, direct or broadcast, are wanted; None for anyone's
+        min_start_utc: the minimum UTC timestamp that the notice should start
+        max_start_utc: the maximum UTC timestamp that the notice should start
+        min_expires_utc: the minimum UTC timestamp that the notice should expire
+        max_expires_utc: the maximum UTC timestamp that the notice should expire
+        should_include_dismissed: whether to include notices the user dismissed
+        types: the notice types to match; default = None i.e. any
+        is_read: whether the notices should be read by the user; default = None i.e. either
+        sort: the fields to sort by; a leading '-' sorts descending
+        skip: the number of matched notices to skip
+        limit: the most notices to return; None returns all
 
     Raises:
         ValidationError: final results are not valid Notice objects
     """
-    return await database.find(Notice, where=where, sort=sort, page=page)
+    notice_filter = _get_notice_filter(
+        user_id=user_id,
+        min_start_utc=min_start_utc,
+        max_start_utc=max_start_utc,
+        min_expires_utc=min_expires_utc,
+        max_expires_utc=max_expires_utc,
+        should_include_dismissed=should_include_dismissed,
+        types=types,
+        is_read=is_read,
+    )
+    return await database.find(
+        Notice, filter=notice_filter, sort=sort, skip=skip, limit=limit
+    )
 
 
 async def count_many(
@@ -305,7 +334,7 @@ async def count_many(
     types: Optional[Sequence[NoticeTypeId]] = None,
     is_read: Optional[bool] = None,
 ) -> int:
-    """Gets the number of notices that match the given constraints, as build_filter takes them
+    """Gets the number of notices that fit the given constraints
 
     Args:
         database: the database where the notices are stored
@@ -321,7 +350,7 @@ async def count_many(
     """
     if not requester.is_superuser:
         user_id = requester.id
-    where = build_filter(
+    notice_filter = _get_notice_filter(
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
@@ -331,7 +360,7 @@ async def count_many(
         types=types,
         is_read=is_read,
     )
-    return await database.count(Notice, where=where)
+    return await database.count(Notice, filter=notice_filter)
 
 
 async def get_one(database: Database, pk: str) -> Notice:
@@ -370,57 +399,14 @@ async def set_email_preferences(
     timestamp = get_current_timestamp()
     await database.update_one(
         NoticePreferences,
-        where=Eq("user_id", user_id),
-        changes=[
-            Set("email_prefs", current),
-            Set("updated_at", timestamp),
-            SetOnInsert("created_at", timestamp),
-        ],
+        filter={"user_id": user_id},
+        update={
+            "$set": {"email_prefs": current, "updated_at": timestamp},
+            "$setOnInsert": {"created_at": timestamp},
+        },
         should_upsert=True,
     )
     return _with_default_email_preferences(current)
-
-
-def build_filter(
-    user_id: Optional[str] = None,
-    min_start_utc: Optional[datetime] = None,
-    max_start_utc: Optional[datetime] = None,
-    min_expires_utc: Optional[datetime] = None,
-    max_expires_utc: Optional[datetime] = None,
-    should_include_dismissed: bool = False,
-    types: Optional[Sequence[NoticeTypeId]] = None,
-    is_read: Optional[bool] = None,
-) -> Filter:
-    """Builds the filter of the notices that fit the given constraints
-
-    Args:
-        user_id: the user whose notices, direct or broadcast, are wanted
-        min_start_utc: the minimum UTC timestamp that the notice should start
-        max_start_utc: the maximum UTC timestamp that the notice should start
-        min_expires_utc: the minimum UTC timestamp that the notice should expire
-        max_expires_utc: the maximum UTC timestamp that the notice should expire
-        should_include_dismissed: whether to include notices the user dismissed
-        types: the notice types to match; default = None i.e. any
-        is_read: whether the notices should be read; default = None i.e. either
-    """
-    user_id = None if user_id is None else str(user_id)
-    filters: List[Filter] = []
-    if user_id:
-        if not should_include_dismissed:
-            filters.append(NotIn("dismissed_by", [user_id]))
-        # either broadcast notices or those sent directly to user
-        filters.append(In("user_id", [user_id, None]))
-    if min_start_utc or max_start_utc:
-        filters.append(Range("starts_at", gte=min_start_utc, lte=max_start_utc))
-    if min_expires_utc or max_expires_utc:
-        filters.append(Range("expires_at", gte=min_expires_utc, lte=max_expires_utc))
-    if types:
-        filters.append(In("type", list(types)))
-    if is_read is False:
-        filters.append(NotIn("dismissed_by", [user_id]))
-    elif is_read:
-        filters.append(In("dismissed_by", [user_id]))
-    return And(*filters)
 
 
 async def on_startup(
@@ -472,21 +458,62 @@ async def _init_notice_templates_in_db(database: Database) -> None:
         logger.info(f"Initialized {len(new_records)} new notice template(s) in db.")
 
 
-def _build_read_status_changes(
-    user_id: str, is_read: bool
-) -> List[Tuple[Filter, List[Update]]]:
-    """Gets, per kind of notice, the changes that mark it read or unread for the user
+def _get_notice_filter(
+    user_id: Optional[str] = None,
+    min_start_utc: Optional[datetime] = None,
+    max_start_utc: Optional[datetime] = None,
+    min_expires_utc: Optional[datetime] = None,
+    max_expires_utc: Optional[datetime] = None,
+    should_include_dismissed: bool = False,
+    types: Optional[Sequence[NoticeTypeId]] = None,
+    is_read: Optional[bool] = None,
+) -> Filter:
+    """Gets the filter of the notices that fit the given constraints, as find_many takes them
+
+    A notice is read by a user when it holds their id in dismissed_by.
+    """
+    user_id = None if user_id is None else str(user_id)
+    notice_filter: Dict[str, Any] = {}
+    if user_id:
+        # either broadcast notices or those sent directly to the user
+        notice_filter["user_id"] = {"$in": [user_id, None]}
+
+    dismissed_by: Dict[str, Any] = {}
+    if (user_id and not should_include_dismissed) or is_read is False:
+        dismissed_by["$nin"] = [user_id]
+    if is_read:
+        dismissed_by["$in"] = [user_id]
+    if dismissed_by:
+        notice_filter["dismissed_by"] = dismissed_by
+
+    for field, lowest, highest in (
+        ("starts_at", min_start_utc, max_start_utc),
+        ("expires_at", min_expires_utc, max_expires_utc),
+    ):
+        bounds = {"$gte": lowest, "$lte": highest}
+        bounds = {operator: value for operator, value in bounds.items() if value}
+        if bounds:
+            notice_filter[field] = bounds
+
+    if types:
+        notice_filter["type"] = {"$in": list(types)}
+    return notice_filter
+
+
+def _get_read_status_updates(user_id: str, is_read: bool) -> Tuple[Update, Update]:
+    """Gets the updates that mark a broadcast notice, and a direct one, read or unread
 
     Broadcast notices are shared by many users, so their read state lives in
     'dismissed_by' alone and 'read_at' stays None.
     """
     now = get_current_timestamp()
-    member_change = AddToSet if is_read else Pull
-    changes = [member_change("dismissed_by", user_id), Set("updated_at", now)]
-    return [
-        (_IS_BROADCAST, changes),
-        (_IS_NOT_BROADCAST, [*changes, Set("read_at", now if is_read else None)]),
-    ]
+    membership = {"$addToSet" if is_read else "$pull": {"dismissed_by": user_id}}
+    broadcast_update = {**membership, "$set": {"updated_at": now}}
+    direct_update = {
+        **membership,
+        "$set": {"updated_at": now, "read_at": now if is_read else None},
+    }
+    return broadcast_update, direct_update
 
 
 def _with_default_email_preferences(

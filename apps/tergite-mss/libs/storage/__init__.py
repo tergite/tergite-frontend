@@ -13,54 +13,26 @@
 """Storage that names no database technology: one Database, many backends"""
 from .base.exc import (
     DuplicateKeyError,
+    QueryError,
     StorageError,
     StorageSpecError,
     UnknownFieldError,
     UnknownSchemaError,
 )
 from .base.ids import Id, derive_id, generate_id, is_id
-from .base.query import (
-    ALL,
-    And,
-    Contains,
-    Eq,
-    Filter,
-    In,
-    Ne,
-    NotIn,
-    Or,
-    Page,
-    Range,
-    Sort,
-    parse_sort,
-)
+from .base.query import Filter
 from .base.schema import Schema, StorageSpec
-from .base.update import AddToSet, Inc, Pull, Returning, Set, SetOnInsert, Update
+from .base.update import Returning, Update
 from .database import Database
 
 __all__ = [
-    "ALL",
-    "AddToSet",
-    "And",
-    "Contains",
     "Database",
     "DuplicateKeyError",
-    "Eq",
     "Filter",
     "Id",
-    "In",
-    "Inc",
-    "Ne",
-    "NotIn",
-    "Or",
-    "Page",
-    "Pull",
-    "Range",
+    "QueryError",
     "Returning",
     "Schema",
-    "Set",
-    "SetOnInsert",
-    "Sort",
     "StorageError",
     "StorageSpec",
     "StorageSpecError",
@@ -70,5 +42,4 @@ __all__ = [
     "derive_id",
     "generate_id",
     "is_id",
-    "parse_sort",
 ]

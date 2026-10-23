@@ -14,7 +14,7 @@ from datetime import timedelta
 
 import pytest
 
-from libs.storage import ALL, Database
+from libs.storage import Database
 from services import request_log
 from services.request_log import RequestLog
 from tests._utils.env import TEST_MONGODB_URL
@@ -27,7 +27,7 @@ async def database():
     database = Database(f"{TEST_MONGODB_URL}/{_DATABASE_NAME}", schemas=[RequestLog])
     await database.setup()
     yield database
-    await database.delete_many(RequestLog, where=ALL)
+    await database.delete_many(RequestLog, filter={})
     await database.close()
 
 

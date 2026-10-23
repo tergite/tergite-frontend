@@ -22,19 +22,7 @@ from uuid import UUID
 
 from loguru import logger
 
-from libs.storage import (
-    ALL,
-    And,
-    Database,
-    Eq,
-    Filter,
-    In,
-    Page,
-    Range,
-    Returning,
-    Set,
-    Sort,
-)
+from libs.storage import Database, Returning
 from services import notices
 from services.external.bcc import BccClient, CancellationDetails
 from utils.api import GeneralMessage
@@ -142,9 +130,12 @@ async def create_job(
 
 async def get_latest_many(
     database: Database,
-    where: Filter = ALL,
-    sort: Sequence[Sort] = (),
-    page: Page = Page(),
+    query: JobQuery,
+    user_id: Optional[str] = None,
+    reader: Optional[User] = None,
+    sort: Sequence[str] = (),
+    skip: int = 0,
+    limit: Optional[int] = None,
     exclude: Tuple[str, ...] = ("access_token",),
 ) -> List[Job]:
     """Retrieves the latest jobs up to the given limit
@@ -154,12 +145,24 @@ async def get_latest_many(
 
     Args:
         database: the database where the jobs are stored
-        where: the filter every returned job matches
-        sort: the order of the jobs
-        page: which slice of the matched jobs to return
+        query: the values every returned job has; its unset fields match anything
+        user_id: the user whose jobs alone are wanted, in place of the query's user_id
+        reader: the user reading the jobs; only those they may read are returned
+        sort: the fields to sort by; a leading '-' sorts descending
+        skip: the number of matched jobs to skip
+        limit: the most jobs to return; None returns all
         exclude: the fields to leave out of each job
     """
-    jobs = await database.find(Job, where=where, sort=sort, page=page)
+    job_filter = query.model_dump()
+    if user_id is not None:
+        job_filter["user_id"] = str(user_id)
+    if reader is not None and not reader.is_superuser:
+        readable_filter = {"user_id": {"$in": [str(reader.id), None]}}
+        job_filter = {"$and": [job_filter, readable_filter]}
+
+    jobs = await database.find(
+        Job, filter=job_filter, sort=sort, skip=skip, limit=limit
+    )
     return [job.model_copy(update={field: None for field in exclude}) for job in jobs]
 
 
@@ -177,11 +180,12 @@ async def update_job(database: Database, job_id: str, payload: JobUpdate) -> Job
     Raises:
         NotFoundError: no documents matching {"job_id": job_id} were found
     """
-    changes = [Set(field, value) for field, value in payload.model_dump().items()]
     job = await database.update_one(
         Job,
-        where=Eq("job_id", job_id),
-        changes=[*changes, Set("updated_at", get_current_timestamp())],
+        filter={"job_id": job_id},
+        update={
+            "$set": {**payload.model_dump(), "updated_at": get_current_timestamp()}
+        },
         returning=Returning.BEFORE,
     )
     if job is None:
@@ -316,7 +320,7 @@ async def delete_job(
         job_id, user_id=user_id, request_id=request_id
     )
     if response["status"] == "success":
-        count = await database.delete_many(Job, where=Eq("job_id", str(job_id)))
+        count = await database.delete_many(Job, filter={"job_id": str(job_id)})
         if count == 0:
             raise NotFoundError(f"no matches for { {'job_id': str(job_id)} }")
 
@@ -368,26 +372,17 @@ async def count_job_submitters(
     Returns:
         the number of submitters, or of submitted jobs
     """
-    window = Range(
-        "created_at", gte=datetime_to_zulu(start_utc), lt=datetime_to_zulu(end_utc)
-    )
+    window_filter = {
+        "created_at": {
+            "$gte": datetime_to_zulu(start_utc),
+            "$lt": datetime_to_zulu(end_utc),
+        }
+    }
     if not should_count_distinct:
-        return await database.count(Job, where=window)
+        return await database.count(Job, filter=window_filter)
 
-    submitter_ids = await database.find_distinct(Job, "user_id", where=window)
+    submitter_ids = await database.find_distinct(Job, "user_id", filter=window_filter)
     return len([user_id for user_id in submitter_ids if user_id is not None])
-
-
-def build_filter(query: JobQuery) -> Filter:
-    """Turns the query's set fields into a filter matching each of them"""
-    return And(*(Eq(field, value) for field, value in query.model_dump().items()))
-
-
-def build_readable_jobs_filter(where: Filter, user: User) -> Filter:
-    """Narrows a jobs filter to the jobs the user may read"""
-    if user.is_superuser:
-        return where
-    return And(where, In("user_id", [str(user.id), None]))
 
 
 async def on_startup(

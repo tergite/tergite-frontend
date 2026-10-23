@@ -18,7 +18,7 @@ from fastapi import APIRouter, Query
 from fastapi import status as http_status
 
 from api.rest.dependencies import CurrentUserDep, DatabaseDep
-from libs.storage import Eq, Id, Page, parse_sort
+from libs.storage import Id
 from services import requests as requests_service
 from services.requests import (
     ALL_REQ_STATUSES,
@@ -87,8 +87,9 @@ async def get_many(
         role=role,
         statuses=status,
         request_types=types,
-        sort=parse_sort(sort),
-        page=Page(skip=skip, limit=limit),
+        sort=sort,
+        skip=skip,
+        limit=limit,
     )
 
     return build_paginated_json(data, skip=skip, limit=limit)
@@ -117,11 +118,6 @@ async def update(
     Raises:
         NotFoundError: no pending request of that id awaits the user's decision
     """
-    result = await requests_service.update(
-        database,
-        where=Eq("id", str(_id)),
-        payload=body,
-        current_user=user,
-        page=Page(limit=1),
+    return await requests_service.update(
+        database, pk=str(_id), payload=body, current_user=user
     )
-    return result[0]

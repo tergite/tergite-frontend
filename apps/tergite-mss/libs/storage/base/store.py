@@ -14,7 +14,7 @@
 import abc
 from typing import Any, List, Optional, Sequence, Type, TypeVar
 
-from .query import ALL, Filter, Page, Sort
+from .query import Filter
 from .schema import Schema
 from .update import Returning, Update
 
@@ -22,7 +22,10 @@ T = TypeVar("T", bound=Schema)
 
 
 class DbStore(abc.ABC):
-    """A database behind the Database, which gets only schemas it was created with"""
+    """A database behind the Database, which gets only schemas it was created with
+
+    Filters, updates and sorts reach a store already checked against the schema.
+    """
 
     @abc.abstractmethod
     async def setup(self) -> None:
@@ -36,19 +39,20 @@ class DbStore(abc.ABC):
     async def find(
         self,
         schema: Type[T],
-        where: Filter = ALL,
-        sort: Sequence[Sort] = (),
-        page: Page = Page(),
+        query_filter: Filter,
+        sort: Sequence[str],
+        skip: int,
+        limit: Optional[int],
     ) -> List[T]:
         ...
 
     @abc.abstractmethod
-    async def count(self, schema: Type[T], where: Filter = ALL) -> int:
+    async def count(self, schema: Type[T], query_filter: Filter) -> int:
         ...
 
     @abc.abstractmethod
     async def find_distinct(
-        self, schema: Type[T], field: str, where: Filter = ALL
+        self, schema: Type[T], field: str, query_filter: Filter
     ) -> List[Any]:
         ...
 
@@ -64,8 +68,8 @@ class DbStore(abc.ABC):
     async def update_one(
         self,
         schema: Type[T],
-        where: Filter,
-        changes: Sequence[Update],
+        query_filter: Filter,
+        update: Update,
         should_upsert: bool,
         returning: Returning,
     ) -> Optional[T]:
@@ -73,16 +77,16 @@ class DbStore(abc.ABC):
 
     @abc.abstractmethod
     async def update_many(
-        self, schema: Type[T], where: Filter, changes: Sequence[Update]
+        self, schema: Type[T], query_filter: Filter, update: Update
     ) -> int:
         ...
 
     @abc.abstractmethod
-    async def delete_one(self, schema: Type[T], where: Filter) -> Optional[T]:
+    async def delete_one(self, schema: Type[T], query_filter: Filter) -> Optional[T]:
         ...
 
     @abc.abstractmethod
-    async def delete_many(self, schema: Type[T], where: Filter) -> int:
+    async def delete_many(self, schema: Type[T], query_filter: Filter) -> int:
         ...
 
     @abc.abstractmethod

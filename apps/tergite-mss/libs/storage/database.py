@@ -15,10 +15,10 @@ from typing import Any, Iterator, List, Optional, Sequence, Type, TypeVar
 from urllib.parse import urlsplit
 
 from .base.exc import StorageError, StorageSpecError, UnknownSchemaError
-from .base.query import ALL, Filter, Page, Sort, extract_fields
+from .base.query import Filter, check_filter, check_sort
 from .base.schema import Schema, StorageSpec, is_list_field, resolve_field
 from .base.store import DbStore
-from .base.update import Returning, Update
+from .base.update import Returning, Update, check_update
 
 T = TypeVar("T", bound=Schema)
 
@@ -47,29 +47,45 @@ class Database:
     async def find(
         self,
         schema: Type[T],
-        where: Filter = ALL,
-        sort: Sequence[Sort] = (),
-        page: Page = Page(),
+        filter: Optional[Filter] = None,
+        sort: Sequence[str] = (),
+        skip: int = 0,
+        limit: Optional[int] = None,
     ) -> List[T]:
-        self.__ensure_known(schema, where=where, sort=sort)
-        return await self.__db_store.find(schema, where=where, sort=sort, page=page)
+        """Finds the records that match the filter, sorted, skipping and limiting them
+
+        Args:
+            schema: the schema of the records
+            filter: MongoDB-style, e.g. `{"status": {"$in": ["pending", "done"]}}`; None
+                matches every record
+            sort: the fields to sort by; a leading '-' sorts descending
+            skip: the number of matched records to skip
+            limit: the most records to return; None returns all
+
+        Raises:
+            QueryError: the filter or sort is not in the storage layer's dialect
+            UnknownFieldError: a field the schema does not have
+        """
+        self.__ensure_known(schema, filter=filter, sort=sort)
+        return await self.__db_store.find(schema, filter or {}, sort, skip, limit)
 
     async def find_one(
-        self, schema: Type[T], where: Filter = ALL, sort: Sequence[Sort] = ()
+        self, schema: Type[T], filter: Optional[Filter] = None, sort: Sequence[str] = ()
     ) -> Optional[T]:
-        records = await self.find(schema, where=where, sort=sort, page=Page(limit=1))
+        records = await self.find(schema, filter=filter, sort=sort, limit=1)
         return records[0] if records else None
 
-    async def count(self, schema: Type[T], where: Filter = ALL) -> int:
-        self.__ensure_known(schema, where=where)
-        return await self.__db_store.count(schema, where=where)
+    async def count(self, schema: Type[T], filter: Optional[Filter] = None) -> int:
+        self.__ensure_known(schema, filter=filter)
+        return await self.__db_store.count(schema, filter or {})
 
     async def find_distinct(
-        self, schema: Type[T], field: str, where: Filter = ALL
+        self, schema: Type[T], field: str, filter: Optional[Filter] = None
     ) -> List[Any]:
         """Gets the different values the field holds in the matched records"""
-        self.__ensure_known(schema, where=where, fields=(field,))
-        return await self.__db_store.find_distinct(schema, field, where=where)
+        self.__ensure_known(schema, filter=filter)
+        resolve_field(schema, field)
+        return await self.__db_store.find_distinct(schema, field, filter or {})
 
     async def insert(self, schema: Type[T], record: T) -> T:
         """Inserts the record
@@ -89,43 +105,44 @@ class Database:
     async def update_one(
         self,
         schema: Type[T],
-        where: Filter,
-        changes: Sequence[Update],
+        filter: Filter,
+        update: Update,
         *,
         should_upsert: bool = False,
         returning: Returning = Returning.AFTER,
     ) -> Optional[T]:
         """Updates the first matched record
 
+        Args:
+            schema: the schema of the record
+            filter: MongoDB-style, as `find` takes it
+            update: MongoDB update operators, e.g. `{"$set": {"status": "done"}}`
+            should_upsert: whether to create the record if none matched
+            returning: whether to return the record as it was before or after the update
+
         Returns:
             the record before or after the update, or None if none matched and none was
             upserted
         """
-        self.__ensure_known(schema, where=where, changes=changes)
+        self.__ensure_known(schema, filter=filter, update=update)
         return await self.__db_store.update_one(
-            schema,
-            where=where,
-            changes=changes,
-            should_upsert=should_upsert,
-            returning=returning,
+            schema, filter, update, should_upsert, returning
         )
 
-    async def update_many(
-        self, schema: Type[T], where: Filter, changes: Sequence[Update]
-    ) -> int:
+    async def update_many(self, schema: Type[T], filter: Filter, update: Update) -> int:
         """Updates every matched record, returning how many changed"""
-        self.__ensure_known(schema, where=where, changes=changes)
-        return await self.__db_store.update_many(schema, where=where, changes=changes)
+        self.__ensure_known(schema, filter=filter, update=update)
+        return await self.__db_store.update_many(schema, filter, update)
 
-    async def delete_one(self, schema: Type[T], where: Filter) -> Optional[T]:
+    async def delete_one(self, schema: Type[T], filter: Filter) -> Optional[T]:
         """Deletes the first matched record, returning it, or None if none matched"""
-        self.__ensure_known(schema, where=where)
-        return await self.__db_store.delete_one(schema, where=where)
+        self.__ensure_known(schema, filter=filter)
+        return await self.__db_store.delete_one(schema, filter)
 
-    async def delete_many(self, schema: Type[T], where: Filter) -> int:
+    async def delete_many(self, schema: Type[T], filter: Filter) -> int:
         """Deletes every matched record, returning how many were deleted"""
-        self.__ensure_known(schema, where=where)
-        return await self.__db_store.delete_many(schema, where=where)
+        self.__ensure_known(schema, filter=filter)
+        return await self.__db_store.delete_many(schema, filter)
 
     async def close(self) -> None:
         await self.__db_store.close()
@@ -133,22 +150,17 @@ class Database:
     def __ensure_known(
         self,
         schema: Type[T],
-        where: Filter = ALL,
-        sort: Sequence[Sort] = (),
-        changes: Sequence[Update] = (),
-        fields: Sequence[str] = (),
+        filter: Optional[Filter] = None,
+        sort: Sequence[str] = (),
+        update: Optional[Update] = None,
     ) -> Type[T]:
         if schema not in self.__schemas:
             raise UnknownSchemaError(f"{schema.__name__} is not in this Database")
 
-        named_fields = (
-            *extract_fields(where),
-            *(item.field for item in sort),
-            *(item.field for item in changes),
-            *fields,
-        )
-        for field in named_fields:
-            resolve_field(schema, field)
+        check_filter(schema, filter)
+        check_sort(schema, sort)
+        if update is not None:
+            check_update(schema, update)
         return schema
 
 

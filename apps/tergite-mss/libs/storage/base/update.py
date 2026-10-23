@@ -9,50 +9,21 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
+"""Updates, in MongoDB's own update operators, which every store translates
 
-"""Changes to a record: plain structs that each store translates for its database"""
+`{"$set": {"status": "done"}, "$inc": {"stats.walks": 1}}`: `$set`, `$setOnInsert` (only
+when an upsert creates the record), `$inc`, `$addToSet` and `$pull` (an equal value).
+"""
 import enum
-from dataclasses import dataclass
-from typing import Any, Union
+from numbers import Number
+from typing import Any, Mapping, Type
 
+from .exc import QueryError
+from .query import is_operator_map
+from .schema import Schema, resolve_field
 
-@dataclass(frozen=True)
-class Set:
-    field: str
-    value: Any
-
-
-@dataclass(frozen=True)
-class SetOnInsert:
-    """Sets the field only when an upsert creates the record"""
-
-    field: str
-    value: Any
-
-
-@dataclass(frozen=True)
-class Inc:
-    field: str
-    amount: float
-
-
-@dataclass(frozen=True)
-class AddToSet:
-    """Adds the value to a list field unless the list holds it already"""
-
-    field: str
-    value: Any
-
-
-@dataclass(frozen=True)
-class Pull:
-    """Removes every occurrence of the value from a list field"""
-
-    field: str
-    value: Any
-
-
-Update = Union[Set, SetOnInsert, Inc, AddToSet, Pull]
+Update = Mapping[str, Mapping[str, Any]]
+UPDATE_OPERATORS = frozenset({"$set", "$setOnInsert", "$inc", "$addToSet", "$pull"})
 
 
 class Returning(str, enum.Enum):
@@ -60,3 +31,24 @@ class Returning(str, enum.Enum):
 
     BEFORE = "before"
     AFTER = "after"
+
+
+def check_update(schema: Type[Schema], update: Update) -> None:
+    """Checks that the update uses only the dialect's operators on the schema's fields
+
+    Raises:
+        QueryError: no changes, an unknown operator, or a wrong operand
+        UnknownFieldError: a field the schema does not have
+    """
+    if not any(update.values()):
+        raise QueryError("an update needs at least one change")
+
+    for operator, changes in update.items():
+        if operator not in UPDATE_OPERATORS:
+            raise QueryError(f"unknown update operator '{operator}'")
+        for field, value in changes.items():
+            resolve_field(schema, field)
+            if operator == "$inc" and not isinstance(value, Number):
+                raise QueryError(f"$inc on '{field}' takes a number")
+            if operator == "$pull" and is_operator_map(value):
+                raise QueryError(f"$pull on '{field}' takes a value, not operators")

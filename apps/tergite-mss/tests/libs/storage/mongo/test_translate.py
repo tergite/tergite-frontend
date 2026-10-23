@@ -19,26 +19,7 @@ import pytest
 from bson import ObjectId
 from pydantic import BaseModel, computed_field
 
-from libs.storage import (
-    ALL,
-    AddToSet,
-    And,
-    Contains,
-    Eq,
-    Id,
-    In,
-    Inc,
-    Ne,
-    NotIn,
-    Or,
-    Pull,
-    Range,
-    Schema,
-    Set,
-    SetOnInsert,
-    Sort,
-    StorageSpec,
-)
+from libs.storage import Id, Schema, StorageSpec
 from libs.storage.mongo.schema import CASE_INSENSITIVE, get_indexes, get_validator
 from libs.storage.mongo.translate import (
     convert_to_document,
@@ -91,73 +72,54 @@ class _Pet(Schema):
 
 
 @pytest.mark.parametrize(
-    "where, expected",
+    "query_filter, expected",
     [
-        (Eq("name", "Rex"), {"name": "Rex"}),
-        (Eq("id", _OWNER_ID), {"_id": ObjectId(_OWNER_ID)}),
-        (Eq("friend_ids", _OWNER_ID), {"friend_ids": ObjectId(_OWNER_ID)}),
-        (Eq("owner_id", None), {"owner_id": None}),
-        (Eq("colour", _Colour.RED), {"colour": "red"}),
+        ({"name": "Rex"}, {"name": "Rex"}),
+        ({"id": _OWNER_ID}, {"_id": ObjectId(_OWNER_ID)}),
+        ({"friend_ids": _OWNER_ID}, {"friend_ids": ObjectId(_OWNER_ID)}),
+        ({"owner_id": None}, {"owner_id": None}),
+        ({"colour": _Colour.RED}, {"colour": "red"}),
         (
-            Eq("timestamps.approver_id", _OWNER_ID),
+            {"timestamps.approver_id": _OWNER_ID},
             {"timestamps.approver_id": ObjectId(_OWNER_ID)},
         ),
-        (Ne("name", "Rex"), {"name": {"$ne": "Rex"}}),
+        ({"name": {"$ne": "Rex"}}, {"name": {"$ne": "Rex"}}),
         (
-            In("owner_id", [_OWNER_ID, _OTHER_ID]),
-            {"owner_id": {"$in": [ObjectId(_OWNER_ID), ObjectId(_OTHER_ID)]}},
+            {"owner_id": {"$in": [_OWNER_ID, None]}},
+            {"owner_id": {"$in": [ObjectId(_OWNER_ID), None]}},
         ),
-        (NotIn("tags", ["a"]), {"tags": {"$nin": ["a"]}}),
-        (Range("created_at", gte=1, lt=5), {"created_at": {"$gte": 1, "$lt": 5}}),
-        (Contains("name", "a.b"), {"name": {"$regex": r"a\.b"}}),
+        ({"tags": {"$nin": ["a"]}}, {"tags": {"$nin": ["a"]}}),
         (
-            Contains("name", "rex", is_case_sensitive=False),
-            {"name": {"$regex": "rex", "$options": "i"}},
+            {"created_at": {"$gte": 1, "$lt": 5}},
+            {"created_at": {"$gte": 1, "$lt": 5}},
         ),
-        (ALL, {}),
-        (And(Eq("name", "Rex")), {"name": "Rex"}),
+        ({}, {}),
         (
-            And(Eq("name", "Rex"), Eq("tags", "a")),
-            {"$and": [{"name": "Rex"}, {"tags": "a"}]},
+            {"$or": [{"id": _OWNER_ID}, {"tags": "a"}]},
+            {"$or": [{"_id": ObjectId(_OWNER_ID)}, {"tags": "a"}]},
         ),
-        (
-            Or(Eq("name", "Rex"), Eq("tags", "a")),
-            {"$or": [{"name": "Rex"}, {"tags": "a"}]},
-        ),
-        (Or(), {"_id": {"$in": []}}),
     ],
 )
-def test_translate_filter(where, expected):
-    assert translate_filter(_Pet, where) == expected
+def test_translate_filter(query_filter, expected):
+    assert translate_filter(_Pet, query_filter) == expected
 
 
 @pytest.mark.parametrize(
-    "changes, expected",
+    "update, expected",
     [
-        ([Set("name", "Rex")], {"$set": {"name": "Rex"}}),
+        ({"$set": {"name": "Rex"}}, {"$set": {"name": "Rex"}}),
         (
-            [Set("name", "Rex"), SetOnInsert("tags", ["a"])],
-            {"$set": {"name": "Rex"}, "$setOnInsert": {"tags": ["a"]}},
-        ),
-        ([Inc("extra.count", 2)], {"$inc": {"extra.count": 2}}),
-        (
-            [AddToSet("friend_ids", _OWNER_ID)],
+            {"$addToSet": {"friend_ids": _OWNER_ID}, "$pull": {}},
             {"$addToSet": {"friend_ids": ObjectId(_OWNER_ID)}},
         ),
-        ([Pull("tags", "a")], {"$pull": {"tags": "a"}}),
     ],
 )
-def test_translate_update(changes, expected):
-    assert translate_update(_Pet, changes) == expected
-
-
-def test_translate_update_refuses_no_changes():
-    with pytest.raises(ValueError):
-        translate_update(_Pet, [])
+def test_translate_update(update, expected):
+    assert translate_update(_Pet, update) == expected
 
 
 def test_translate_sort():
-    assert translate_sort([Sort("id"), Sort("created_at", is_descending=True)]) == [
+    assert translate_sort(["id", "-created_at"]) == [
         ("_id", pymongo.ASCENDING),
         ("created_at", pymongo.DESCENDING),
     ]

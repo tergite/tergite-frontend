@@ -20,7 +20,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 
 from api.rest.dependencies import DatabaseDep
-from libs.storage import Page, parse_sort
 from services import calibration as calibration_service
 from services.calibration import (
     DeviceCalibration,
@@ -54,9 +53,10 @@ async def get_many(
     """
     data = await calibration_service.find_latest_calibrations(
         database,
-        where=calibration_service.build_filter(query),
-        sort=parse_sort(sort),
-        page=Page(skip=skip, limit=limit),
+        query=query,
+        sort=sort,
+        skip=skip,
+        limit=limit,
     )
     return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 

@@ -16,7 +16,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, DatabaseDep
-from libs.storage import Id, Page, Sort
+from libs.storage import Id
 from services import notices as notices_service
 from services.notices import Notice, NoticeTypeId
 from utils.api import GeneralMessage, PaginatedListResponse, build_paginated_json
@@ -46,14 +46,15 @@ async def get_my_notices(
     Returns:
         the paginated list of the user's notices
     """
-    where = notices_service.build_filter(
-        user_id=user_id, should_include_dismissed=True, types=types, is_read=is_read
-    )
     data = await notices_service.find_many(
         database,
-        where=where,
-        sort=[Sort("created_at", is_descending=True)],
-        page=Page(skip=skip, limit=limit),
+        user_id=user_id,
+        should_include_dismissed=True,
+        types=types,
+        is_read=is_read,
+        sort=["-created_at"],
+        skip=skip,
+        limit=limit,
     )
     return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
 

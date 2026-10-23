@@ -16,9 +16,9 @@
 #
 # Refactored by Martin Ahindura on 2023-11-08
 """Service that handles calibration functionality"""
-from typing import List, Sequence
+from typing import List, Optional, Sequence
 
-from libs.storage import ALL, And, Database, Eq, Filter, Page, Set, SetOnInsert, Sort
+from libs.storage import Database
 from utils.date_time import get_current_timestamp
 from utils.exc import NotFoundError
 
@@ -46,38 +46,41 @@ async def create_calibration(
     # setting only on insert makes logging the same calibration twice a no-op
     await database.update_one(
         DeviceCalibrationLog,
-        where=And(
-            Eq("name", record.name), Eq("last_calibrated", record.last_calibrated)
-        ),
-        changes=[SetOnInsert(field, value) for field, value in fields.items()],
+        filter={"name": record.name, "last_calibrated": record.last_calibrated},
+        update={"$setOnInsert": fields},
         should_upsert=True,
     )
     return await database.update_one(
         DeviceCalibration,
-        where=Eq("name", record.name),
-        changes=[
-            *(Set(field, value) for field, value in fields.items()),
-            Set("updated_at", get_current_timestamp()),
-        ],
+        filter={"name": record.name},
+        update={"$set": {**fields, "updated_at": get_current_timestamp()}},
         should_upsert=True,
     )
 
 
 async def find_latest_calibrations(
     database: Database,
-    where: Filter = ALL,
-    sort: Sequence[Sort] = (),
-    page: Page = Page(),
+    query: DeviceCalibrationQuery,
+    sort: Sequence[str] = (),
+    skip: int = 0,
+    limit: Optional[int] = None,
 ) -> List[DeviceCalibration]:
     """Gets the current calibration of every device that matches the filter
 
     Args:
         database: the database where the calibrations are stored
-        where: the filter every returned calibration matches
-        sort: the order of the calibrations
-        page: which slice of the matched calibrations to return
+        query: the values every returned calibration has; its unset fields match anything
+        sort: the fields to sort by; a leading '-' sorts descending
+        skip: the number of matched calibrations to skip
+        limit: the most calibrations to return; None returns all
     """
-    return await database.find(DeviceCalibration, where=where, sort=sort, page=page)
+    return await database.find(
+        DeviceCalibration,
+        filter=query.model_dump(),
+        sort=sort,
+        skip=skip,
+        limit=limit,
+    )
 
 
 async def get_one(database: Database, name: str) -> DeviceCalibration:
@@ -90,8 +93,3 @@ async def get_one(database: Database, name: str) -> DeviceCalibration:
     if calibration is None:
         raise NotFoundError(f"no matches for '{ {'name': name} }'")
     return calibration
-
-
-def build_filter(query: DeviceCalibrationQuery) -> Filter:
-    """Turns the query's set fields into a filter matching each of them"""
-    return And(*(Eq(field, value) for field, value in query.model_dump().items()))

@@ -16,23 +16,18 @@ import pytest
 from pydantic import BaseModel, ConfigDict, Field
 
 from libs.storage import (
-    ALL,
-    And,
     Database,
-    Eq,
     Id,
-    Page,
+    QueryError,
     Schema,
-    Set,
-    Sort,
     StorageError,
     StorageSpec,
     StorageSpecError,
     UnknownFieldError,
     UnknownSchemaError,
     generate_id,
-    parse_sort,
 )
+from libs.storage.base.query import parse_sort
 from libs.storage.base.store import DbStore
 
 
@@ -77,24 +72,29 @@ def database(store):
 
 
 async def test_calls_reach_the_store(database, store):
-    where = And(Eq("name", "Rex"), Eq("timestamps.started", None))
+    pet_filter = {"name": "Rex", "timestamps.started": None}
+    update = {"$set": {"extra.colour": "red"}}
 
-    await database.find(_Pet, where=where, sort=[Sort("name")], page=Page(skip=1))
-    await database.update_many(_Pet, where=ALL, changes=[Set("extra.colour", "red")])
+    await database.find(_Pet, filter=pet_filter, sort=["-name"], skip=1)
+    await database.update_many(_Pet, filter={}, update=update)
 
     assert store.calls == [
-        ("find", _Pet, {"where": where, "sort": [Sort("name")], "page": Page(skip=1)}),
-        ("update_many", _Pet, {"where": ALL, "changes": [Set("extra.colour", "red")]}),
+        (
+            "find",
+            _Pet,
+            {"filter": pet_filter, "sort": ["-name"], "skip": 1, "limit": None},
+        ),
+        ("update_many", _Pet, {"filter": {}, "update": update}),
     ]
 
 
 async def test_find_one_asks_for_one_record(database, store):
     store.found = [_Pet(name="Rex")]
 
-    got = await database.find_one(_Pet, where=Eq("name", "Rex"))
+    got = await database.find_one(_Pet, filter={"name": "Rex"})
 
     assert got is store.found[0]
-    assert store.calls[0][2]["page"] == Page(limit=1)
+    assert store.calls[0][2]["limit"] == 1
 
 
 @pytest.mark.parametrize(
@@ -103,7 +103,7 @@ async def test_find_one_asks_for_one_record(database, store):
         lambda db: db.get(_Stray, generate_id()),
         lambda db: db.find(_Stray),
         lambda db: db.count(_Stray),
-        lambda db: db.delete_many(_Stray, where=ALL),
+        lambda db: db.delete_many(_Stray, filter={}),
     ],
 )
 async def test_a_schema_the_database_was_not_given_is_refused(database, call):
@@ -114,14 +114,37 @@ async def test_a_schema_the_database_was_not_given_is_refused(database, call):
 @pytest.mark.parametrize(
     "call",
     [
-        lambda db: db.find(_Pet, where=Eq("nmae", "Rex")),
-        lambda db: db.find(_Pet, sort=[Sort("timestamps.ended")]),
-        lambda db: db.update_many(_Pet, where=ALL, changes=[Set("tag", "x")]),
+        lambda db: db.find(_Pet, filter={"nmae": "Rex"}),
+        lambda db: db.find(_Pet, filter={"$or": [{"name": "a"}, {"nmae": "b"}]}),
+        lambda db: db.find(_Pet, sort=["-timestamps.ended"]),
+        lambda db: db.update_many(_Pet, filter={}, update={"$set": {"tag": "x"}}),
         lambda db: db.find_distinct(_Pet, "owner"),
     ],
 )
 async def test_a_field_the_schema_does_not_have_is_refused(database, store, call):
     with pytest.raises(UnknownFieldError):
+        await call(database)
+
+    assert store.calls == []
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        lambda db: db.find(_Pet, filter={"name": {"$regex": "R"}}),
+        lambda db: db.find(_Pet, filter={"$where": "1"}),
+        lambda db: db.find(_Pet, filter={"name": {"$in": "Rex"}}),
+        lambda db: db.find(_Pet, filter={"$or": []}),
+        lambda db: db.update_many(_Pet, filter={}, update={"$rename": {"name": "x"}}),
+        lambda db: db.update_many(_Pet, filter={}, update={"$set": {}}),
+        lambda db: db.update_many(_Pet, filter={}, update={"$inc": {"name": "1"}}),
+        lambda db: db.update_many(
+            _Pet, filter={}, update={"$pull": {"tags": {"$in": ["a"]}}}
+        ),
+    ],
+)
+async def test_what_the_dialect_does_not_have_is_refused(database, store, call):
+    with pytest.raises(QueryError):
         await call(database)
 
     assert store.calls == []
@@ -190,18 +213,18 @@ class _RecordingStore(DbStore):
     async def get(self, schema, key):
         self.calls.append(("get", schema, {"key": key}))
 
-    async def find(self, schema, where=ALL, sort=(), page=Page()):
-        self.calls.append(
-            ("find", schema, {"where": where, "sort": sort, "page": page})
-        )
+    async def find(self, schema, query_filter, sort, skip, limit):
+        call = {"filter": query_filter, "sort": sort, "skip": skip, "limit": limit}
+        self.calls.append(("find", schema, call))
         return self.found
 
-    async def count(self, schema, where=ALL):
-        self.calls.append(("count", schema, {"where": where}))
+    async def count(self, schema, query_filter):
+        self.calls.append(("count", schema, {"filter": query_filter}))
         return len(self.found)
 
-    async def find_distinct(self, schema, field, where=ALL):
-        self.calls.append(("find_distinct", schema, {"field": field, "where": where}))
+    async def find_distinct(self, schema, field, query_filter):
+        call = {"field": field, "filter": query_filter}
+        self.calls.append(("find_distinct", schema, call))
         return []
 
     async def insert(self, schema, record):
@@ -212,18 +235,20 @@ class _RecordingStore(DbStore):
         self.calls.append(("insert_many", schema, {"records": records}))
         return list(records)
 
-    async def update_one(self, schema, where, changes, should_upsert, returning):
-        self.calls.append(("update_one", schema, {"where": where, "changes": changes}))
+    async def update_one(self, schema, query_filter, update, should_upsert, returning):
+        call = {"filter": query_filter, "update": update}
+        self.calls.append(("update_one", schema, call))
 
-    async def update_many(self, schema, where, changes):
-        self.calls.append(("update_many", schema, {"where": where, "changes": changes}))
+    async def update_many(self, schema, query_filter, update):
+        call = {"filter": query_filter, "update": update}
+        self.calls.append(("update_many", schema, call))
         return 0
 
-    async def delete_one(self, schema, where):
-        self.calls.append(("delete_one", schema, {"where": where}))
+    async def delete_one(self, schema, query_filter):
+        self.calls.append(("delete_one", schema, {"filter": query_filter}))
 
-    async def delete_many(self, schema, where):
-        self.calls.append(("delete_many", schema, {"where": where}))
+    async def delete_many(self, schema, query_filter):
+        self.calls.append(("delete_many", schema, {"filter": query_filter}))
         return 0
 
     async def close(self):
@@ -232,8 +257,8 @@ class _RecordingStore(DbStore):
 
 def test_parse_sort_reads_a_leading_minus_as_descending():
     assert parse_sort(["-created_at", "name"]) == [
-        Sort("created_at", is_descending=True),
-        Sort("name"),
+        ("created_at", True),
+        ("name", False),
     ]
 
 
@@ -246,6 +271,8 @@ async def test_a_schema_allowing_extra_fields_takes_undeclared_ones(store):
 
     database = Database("memory://", schemas=[Open])
 
-    await database.update_many(Open, where=Eq("colour", "red"), changes=[Set("x", 1)])
+    await database.update_many(
+        Open, filter={"colour": "red"}, update={"$set": {"x": 1}}
+    )
 
     assert store.calls[0][0] == "update_many"

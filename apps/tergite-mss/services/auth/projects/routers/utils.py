@@ -17,14 +17,11 @@ from beanie import PydanticObjectId
 from fastapi_users.password import PasswordHelper
 from pydantic import BaseModel, Field
 
-from libs.storage import And, Eq, Filter, In, Ne, Range
 from services import notices
 from services.notices import NoticeType
-from utils.exc import TooManyListQueryParams
 
 from ....notices.dtos import ProjectRequestContext, RefType
 from ...users.dtos import User
-from ...utils import MAX_LIST_QUERY_LEN
 from ..dtos import (
     Project,
     ProjectAdminView,
@@ -164,54 +161,6 @@ async def get_full_admin_project(
     user_emails = [id_email_map[v] for v in project.user_ids]
     admin_email = id_email_map[project.admin_id]
     return ProjectAdminView(**props, user_emails=user_emails, admin_email=admin_email)
-
-
-def get_projects_filter(
-    ids: Optional[List[str]] = None,
-    user_ids: Optional[List[str]] = None,
-    name: Optional[List[str]] = None,
-    is_active: Optional[bool] = None,
-    min_qpu_seconds: Optional[int] = None,
-    max_qpu_seconds: Optional[int] = None,
-) -> Filter:
-    """Gets the filter for the projects that match the given query params
-
-    Args:
-        ids: the IDs of the projects
-        user_ids: the IDs of users any of whom is a member
-        name: the names of the projects
-        is_active: whether the projects are active
-        min_qpu_seconds: the least QPU seconds the projects have
-        max_qpu_seconds: the most QPU seconds the projects have
-
-    Returns:
-        the filter of the projects
-
-    Raises:
-        TooManyListQueryParams: a list query param has more than MAX_LIST_QUERY_LEN items
-    """
-    filters = []
-    for query_param, field, values in (
-        ("id", "id", ids),
-        ("user_ids", "user_ids", user_ids),
-        ("name", "name", name),
-    ):
-        if values is None:
-            continue
-        if len(values) > MAX_LIST_QUERY_LEN:
-            raise TooManyListQueryParams(
-                query_param, expected=MAX_LIST_QUERY_LEN, got=len(values)
-            )
-        filters.append(In(field, values))
-
-    if is_active is not None:
-        # a project stored without is_active is active, as the field defaults to True
-        filters.append(Ne("is_active", False) if is_active else Eq("is_active", False))
-
-    if min_qpu_seconds is not None or max_qpu_seconds is not None:
-        filters.append(Range("qpu_seconds", gte=min_qpu_seconds, lte=max_qpu_seconds))
-
-    return And(*filters)
 
 
 class _TrimmedUser(BaseModel):

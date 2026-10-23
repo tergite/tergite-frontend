@@ -21,22 +21,11 @@ from pymongo import AsyncMongoClient, IndexModel
 from pymongo.errors import WriteError
 
 from libs.storage import (
-    AddToSet,
-    Contains,
     Database,
     DuplicateKeyError,
-    Eq,
     Id,
-    In,
-    Inc,
-    Page,
-    Pull,
-    Range,
     Returning,
     Schema,
-    Set,
-    SetOnInsert,
-    Sort,
     StorageSpec,
     generate_id,
 )
@@ -140,24 +129,21 @@ async def test_find_filters_sorts_and_pages(database):
     )
 
     got = await database.find(
-        _Pet,
-        where=Range("age", gte=1),
-        sort=[Sort("age", is_descending=True)],
-        page=Page(skip=1, limit=2),
+        _Pet, filter={"age": {"$gte": 1}}, sort=["-age"], skip=1, limit=2
     )
+    either = {"$or": [{"name": "a"}, {"age": {"$gt": 2}}]}
 
     assert [pet.name for pet in got] == ["c", "b"]
-    assert await database.count(_Pet, where=Eq("owner_id", owner_id)) == 4
-    assert (await database.find_one(_Pet, where=In("name", ["d"]))).age == 3
+    assert await database.count(_Pet, filter={"owner_id": owner_id}) == 4
+    assert await database.count(_Pet, filter=either) == 2
+    assert (await database.find_one(_Pet, filter={"name": {"$in": ["d"]}})).age == 3
     assert await database.find_distinct(_Pet, "owner_id") == [owner_id]
 
 
 async def test_case_insensitive_fields_match_without_case(database):
     await database.insert(_Owner, _Owner(email="ann@example.com"))
 
-    assert await database.count(_Owner, where=Eq("email", "ANN@EXAMPLE.COM")) == 1
-    assert await database.count(_Owner, where=Contains("email", "ANN", False)) == 1
-    assert await database.count(_Owner, where=Contains("email", "ANN")) == 0
+    assert await database.count(_Owner, filter={"email": "ANN@EXAMPLE.COM"}) == 1
 
 
 async def test_update_one_returns_the_record_before_or_after(database):
@@ -165,26 +151,27 @@ async def test_update_one_returns_the_record_before_or_after(database):
 
     before = await database.update_one(
         _Pet,
-        where=Eq("id", pet.id),
-        changes=[Inc("stats.walks", 1)],
+        filter={"id": pet.id},
+        update={"$inc": {"stats.walks": 1}},
         returning=Returning.BEFORE,
     )
     after = await database.update_one(
-        _Pet, where=Eq("id", pet.id), changes=[Set("age", 4)]
+        _Pet, filter={"id": pet.id}, update={"$set": {"age": 4}}
+    )
+    missing = await database.update_one(
+        _Pet, filter={"name": "Nobody"}, update={"$set": {"age": 1}}
     )
 
     assert before.stats.walks == 0
     assert after.stats.walks == 1 and after.age == 4
-    assert (
-        await database.update_one(_Pet, Eq("name", "Nobody"), [Set("age", 1)]) is None
-    )
+    assert missing is None
 
 
 async def test_update_one_upserts(database):
     created = await database.update_one(
         _Job,
-        where=Eq("job_id", "j-2"),
-        changes=[Set("status", "done"), SetOnInsert("job_id", "j-2")],
+        filter={"job_id": "j-2"},
+        update={"$set": {"status": "done"}, "$setOnInsert": {"job_id": "j-2"}},
         should_upsert=True,
     )
 
@@ -195,17 +182,18 @@ async def test_list_fields_take_and_drop_members(database):
     friend_id = generate_id()
     pet = await database.insert(_Pet, _Pet(name="Rex"))
 
+    pet_filter = {"id": pet.id}
     await database.update_many(
-        _Pet, Eq("id", pet.id), [AddToSet("friend_ids", friend_id)]
+        _Pet, pet_filter, {"$addToSet": {"friend_ids": friend_id}}
     )
     await database.update_many(
-        _Pet, Eq("id", pet.id), [AddToSet("friend_ids", friend_id)]
+        _Pet, pet_filter, {"$addToSet": {"friend_ids": friend_id}}
     )
     assert (await database.get(_Pet, pet.id)).friend_ids == [friend_id]
-    assert await database.count(_Pet, where=Eq("friend_ids", friend_id)) == 1
+    assert await database.count(_Pet, filter={"friend_ids": friend_id}) == 1
 
     count = await database.update_many(
-        _Pet, Eq("id", pet.id), [Pull("friend_ids", friend_id)]
+        _Pet, pet_filter, {"$pull": {"friend_ids": friend_id}}
     )
     assert count == 1
     assert (await database.get(_Pet, pet.id)).friend_ids == []
@@ -215,9 +203,9 @@ async def test_delete_one_and_many(database):
     rex = await database.insert(_Pet, _Pet(name="Rex"))
     await database.insert_many(_Pet, [_Pet(name="a", age=1), _Pet(name="b", age=1)])
 
-    assert await database.delete_one(_Pet, Eq("id", rex.id)) == rex
-    assert await database.delete_one(_Pet, Eq("id", rex.id)) is None
-    assert await database.delete_many(_Pet, Eq("age", 1)) == 2
+    assert await database.delete_one(_Pet, {"id": rex.id}) == rex
+    assert await database.delete_one(_Pet, {"id": rex.id}) is None
+    assert await database.delete_many(_Pet, {"age": 1}) == 2
     assert await database.count(_Pet) == 0
 
 

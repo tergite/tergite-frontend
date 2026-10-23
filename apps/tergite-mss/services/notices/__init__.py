@@ -22,7 +22,6 @@ from .dtos import (
     NoticeTypeId,
 )
 from .service import (
-    build_filter,
     clear_notices_by_reference,
     count_many,
     create_system_notice,
@@ -42,7 +41,6 @@ SCHEMAS = (Notice, NoticePreferences, NoticeTemplate)
 __all__ = [
     "SCHEMAS",
     "NoticeTemplate",
-    "build_filter",
     "CustomNoticeCreate",
     "EmailStatus",
     "Notice",

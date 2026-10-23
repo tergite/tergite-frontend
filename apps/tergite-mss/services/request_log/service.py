@@ -14,7 +14,7 @@
 from datetime import timedelta
 from typing import Optional
 
-from libs.storage import Database, DuplicateKeyError, Eq
+from libs.storage import Database, DuplicateKeyError
 from utils.date_time import get_utc_now
 
 from .dtos import RequestLog
@@ -48,4 +48,4 @@ async def record_request(
 
 
 async def is_request_recorded(database: Database, request_id: str) -> bool:
-    return await database.count(RequestLog, where=Eq("request_id", request_id)) > 0
+    return await database.count(RequestLog, filter={"request_id": request_id}) > 0

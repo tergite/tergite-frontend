@@ -13,9 +13,9 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
-from libs.storage import ALL, And, Database, Eq, Filter, Page, Set, SetOnInsert, Sort
+from libs.storage import Database
 from utils.date_time import get_current_timestamp
 from utils.exc import NotFoundError
 
@@ -24,22 +24,26 @@ from .dtos import Device, DeviceQuery, DeviceUpsert
 
 async def find_devices(
     database: Database,
-    where: Filter = ALL,
-    sort: Sequence[Sort] = (),
-    page: Page = Page(),
+    query: DeviceQuery,
+    sort: Sequence[str] = (),
+    skip: int = 0,
+    limit: Optional[int] = None,
 ) -> List[Device]:
     """Gets the devices that match the filter
 
     Args:
         database: the database where the devices are stored
-        where: the filter every returned device matches
-        sort: the order of the devices
-        page: which slice of the matched devices to return
+        query: the values every returned device has; its unset fields match anything
+        sort: the fields to sort by; a leading '-' sorts descending
+        skip: the number of matched devices to skip
+        limit: the most devices to return; None returns all
 
     Raises:
         ValidationError: final results are not valid Device objects
     """
-    return await database.find(Device, where=where, sort=sort, page=page)
+    return await database.find(
+        Device, filter=query.model_dump(), sort=sort, skip=skip, limit=limit
+    )
 
 
 async def get_device(database: Database, name: str) -> Device:
@@ -70,11 +74,13 @@ async def upsert_device(database: Database, payload: DeviceUpsert) -> Device:
     """
     timestamp = get_current_timestamp()
     payload.updated_at = timestamp
-    changes = [Set(field, value) for field, value in payload.model_dump().items()]
     return await database.update_one(
         Device,
-        where=Eq("name", payload.name),
-        changes=[*changes, SetOnInsert("created_at", timestamp)],
+        filter={"name": payload.name},
+        update={
+            "$set": payload.model_dump(),
+            "$setOnInsert": {"created_at": timestamp},
+        },
         should_upsert=True,
     )
 
@@ -96,11 +102,10 @@ async def patch_device(
         NotFoundError: device {name} not found
         ValidationError: if the final object is not validated
     """
-    changes = [Set(field, value) for field, value in payload.items()]
     device = await database.update_one(
         Device,
-        where=Eq("name", name),
-        changes=[*changes, Set("updated_at", get_current_timestamp())],
+        filter={"name": name},
+        update={"$set": {**payload, "updated_at": get_current_timestamp()}},
     )
     if device is None:
         raise NotFoundError(f"device '{name}' not found")
@@ -141,15 +146,12 @@ async def disconnect_all(database: Database) -> int:
     timestamp = get_current_timestamp()
     return await database.update_many(
         Device,
-        where=ALL,
-        changes=[
-            Set("last_online", timestamp),
-            Set("is_online", False),
-            Set("updated_at", timestamp),
-        ],
+        filter={},
+        update={
+            "$set": {
+                "last_online": timestamp,
+                "is_online": False,
+                "updated_at": timestamp,
+            }
+        },
     )
-
-
-def build_filter(query: DeviceQuery) -> Filter:
-    """Turns the query's set fields into a filter matching each of them"""
-    return And(*(Eq(field, value) for field, value in query.model_dump().items()))

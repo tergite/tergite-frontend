@@ -9,11 +9,9 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-import asyncio
-from collections import defaultdict
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
-from libs.storage import And, Database, Eq, Filter, In, Ne, Or, Page, Set, Sort
+from libs.storage import Database
 from services import notices
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
@@ -92,13 +90,13 @@ async def get_one(database: Database, pk: str, current_user_id: str) -> Request:
     current_user_id = str(current_user_id)
     record = await database.find_one(
         Request,
-        where=And(
-            Eq("id", str(pk)),
-            Or(
-                Eq("target_user_ids", current_user_id),
-                Eq("requester_id", current_user_id),
-            ),
-        ),
+        filter={
+            "id": str(pk),
+            "$or": [
+                {"target_user_ids": current_user_id},
+                {"requester_id": current_user_id},
+            ],
+        },
     )
     if record is None:
         raise NotFoundError(f"{pk} not found")
@@ -111,8 +109,9 @@ async def get_many(
     role: RequestRole,
     statuses: Tuple[RequestStatus, ...] = ALL_REQ_STATUSES,
     request_types: Tuple[RequestType, ...] = ALL_REQ_TYPES,
-    sort: Sequence[Sort] = (Sort("created_at", is_descending=True),),
-    page: Page = Page(),
+    sort: Sequence[str] = ("-created_at",),
+    skip: int = 0,
+    limit: Optional[int] = None,
 ) -> List[Request]:
     """Gets the requests the current user made, or those awaiting their decision
 
@@ -122,30 +121,28 @@ async def get_many(
         role: "requester" for the user's own requests, "approver" for those targeting them
         statuses: the statuses of request to return. default = ALL_REQ_STATUSES
         request_types: the types of request to return. default = ALL_REQ_TYPES
-        sort: the sort order of the returned results
-        page: which slice of the matched requests to return
+        sort: the fields to sort by; a leading '-' sorts descending
+        skip: the number of matched requests to skip
+        limit: the most requests to return; None returns all
 
     Returns:
         the list of request objects
     """
     user_field = "target_user_ids" if role == "approver" else "requester_id"
-    where = And(
-        Eq(user_field, str(current_user_id)),
-        In("status", list(statuses)),
-        In("type", list(request_types)),
+    request_filter = {
+        user_field: str(current_user_id),
+        "status": {"$in": list(statuses)},
+        "type": {"$in": list(request_types)},
+    }
+    return await database.find(
+        Request, filter=request_filter, sort=sort, skip=skip, limit=limit
     )
-    return await database.find(Request, where=where, sort=sort, page=page)
 
 
 async def update(
-    database: Database,
-    where: Filter,
-    payload: RequestUpdate,
-    current_user: User,
-    sort: Sequence[Sort] = (Sort("created_at", is_descending=True),),
-    page: Page = Page(),
-) -> List[Request]:
-    """Updates the matched requests.
+    database: Database, pk: str, payload: RequestUpdate, current_user: User
+) -> Request:
+    """Decides the pending request of the given id that awaits the current user
 
     Note: only approvers can update a request that has been made.
     Requesters can delete and create another.
@@ -156,20 +153,18 @@ async def update(
     for the same reason of the potential of misalignment. Better
     to make a new request.
 
-    Approval side effects are applied before the requests are marked decided, so that a
+    Approval side effects are applied before the request is marked decided, so that a
     failure leaves a retryable pending request rather than an approved request with
     nothing done.
 
     Args:
         database: the database where the requests are stored
-        where: the filter the updated requests match
-        payload: the update payload for the requests
+        pk: the id of the request
+        payload: the update payload for the request
         current_user: the logged-in user
-        sort: the sort order of the returned results
-        page: which slice of the matched requests to update
 
     Returns:
-        Returns all updated requests
+        the updated request
 
     Raises:
         NotFoundError: no match found
@@ -178,58 +173,44 @@ async def update(
         ConflictError: a project named '{name}' already exists
     """
     # only pending requests that target the user can be updated
-    where = And(
-        where,
-        Eq("target_user_ids", str(current_user.id)),
-        Eq("status", RequestStatus.PENDING),
+    record = await database.find_one(
+        Request,
+        filter={
+            "id": str(pk),
+            "target_user_ids": str(current_user.id),
+            "status": RequestStatus.PENDING,
+        },
     )
-    # found first, as approving needs them, and update_many can neither skip nor limit
-    matches = await database.find(Request, where=where, sort=sort, page=page)
-    if len(matches) == 0:
+    if record is None:
         raise NotFoundError("no match found")
 
     if payload.status == RequestStatus.APPROVED:
-        await actions.do_many_actions(matches, approver=current_user)
+        await actions.do_many_actions([record], approver=current_user)
 
     # updated_at is never set by the client, so exclude_unset would drop its default
-    update_dict = payload.model_dump(exclude_unset=True)
-    update_dict.update(
+    changes = payload.model_dump(exclude_unset=True)
+    changes.update(
         {
             "approver_id": str(current_user.id),
             "approver_name": current_user.username,
             "updated_at": payload.updated_at,
         }
     )
-    ids = [item.id for item in matches]
-    await database.update_many(
-        Request,
-        where=In("id", ids),
-        changes=[Set(field, value) for field, value in update_dict.items()],
-    )
-    result = [item.model_copy(update=update_dict) for item in matches]
+    await database.update_one(Request, {"id": record.id}, {"$set": changes})
+    updated_record = record.model_copy(update=changes)
 
     if payload.status in _DECIDED_STATUSES:
-        ref_type_ids_map = defaultdict(list)
-        for item in result:
-            ref_type_ids_map[item.metadata.resource].append(item.id)
-
+        resource = updated_record.metadata.resource
         # clear the notice for all possible approvers
-        await notices.clear_notices_by_reference(ref_type_ids_map)
-
-        # update requester
-        await asyncio.gather(
-            *(
-                notices.create_system_notice(
-                    user_ids=(item.requester_id,),
-                    notice_type=item.notice_type.id,
-                    ref_id=item.id,
-                    ref_type=item.metadata.resource,
-                    context=item.notice_context,
-                )
-                for item in result
-            )
+        await notices.clear_notices_by_reference({resource: [updated_record.id]})
+        await notices.create_system_notice(
+            user_ids=(updated_record.requester_id,),
+            notice_type=updated_record.notice_type.id,
+            ref_id=updated_record.id,
+            ref_type=resource,
+            context=updated_record.notice_context,
         )
-    return result
+    return updated_record
 
 
 async def _get_target_user_ids(
@@ -250,7 +231,7 @@ async def _get_target_user_ids(
     if request.target == RequestTarget.PROJECT:
         # personal projects answer as missing ones do, so they cannot be probed
         project = await database.find_one(
-            Project, And(Eq("id", request.resource_id), Ne("is_personal", True))
+            Project, {"id": request.resource_id, "is_personal": {"$ne": True}}
         )
         if project is None:
             raise NotFoundError(f"project {request.resource_id} not found")
@@ -283,13 +264,13 @@ async def _has_resource_access(
     elif request.type in (RequestType.CLOSE_PROJECT, RequestType.TRANSFER_PROJECT):
         project = await database.find_one(
             Project,
-            And(Eq("id", request.resource_id), Eq("admin_id", str(user.id))),
+            {"id": request.resource_id, "admin_id": str(user.id)},
         )
         return project is not None
     elif request.type == RequestType.PROJECT_QPU_SECONDS:
         project = await database.find_one(
             Project,
-            And(Eq("id", request.resource_id), In("user_ids", [str(user.id)])),
+            {"id": request.resource_id, "user_ids": str(user.id)},
         )
         return project is not None
     elif request.type == RequestType.PROJECT_ACCESS:

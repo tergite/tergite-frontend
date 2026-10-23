@@ -9,104 +9,76 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
+"""Filters and sorts, in MongoDB's own query dialect, which every store translates
 
-"""Filters, sorts and pages: plain structs that each store translates for its database
-
-Fields are named as on the schema, dotted for nested objects (`timestamps.started`). On a list
-field, `Eq` and `In` match a list holding the value, as a membership test.
+A filter maps schema fields, dotted for nested objects (`timestamps.started`), to a value or
+to field operators, and may hold `$and` and `$or` lists of filters:
+`{"id": pk, "user_id": {"$in": [user_id, None]}}`. As in MongoDB, a value or `$in` matches a
+list field that holds it. A sort lists fields; a leading '-' sorts descending.
 """
-from dataclasses import dataclass
-from typing import Any, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import Any, Iterator, List, Mapping, Optional, Sequence, Tuple, Type
+
+from .exc import QueryError
+from .schema import Schema, resolve_field
+
+Filter = Mapping[str, Any]
+FIELD_OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"})
+LIST_OPERATORS = frozenset({"$in", "$nin"})
+LOGICAL_OPERATORS = frozenset({"$and", "$or"})
 
 
-@dataclass(frozen=True)
-class Eq:
-    field: str
-    value: Any
+def check_filter(schema: Type[Schema], query_filter: Optional[Filter]) -> None:
+    """Checks that the filter names only the schema's fields and the dialect's operators
+
+    Raises:
+        QueryError: an operator the dialect does not have, or one given the wrong operand
+        UnknownFieldError: a field the schema does not have
+    """
+    for field, condition in (query_filter or {}).items():
+        if field in LOGICAL_OPERATORS:
+            if not isinstance(condition, (list, tuple)) or len(condition) == 0:
+                raise QueryError(f"{field} takes a non-empty list of filters")
+            for item in condition:
+                check_filter(schema, item)
+        elif field.startswith("$"):
+            raise QueryError(f"unknown operator '{field}'")
+        else:
+            resolve_field(schema, field)
+            _check_condition(field, condition)
 
 
-@dataclass(frozen=True)
-class Ne:
-    field: str
-    value: Any
+def check_sort(schema: Type[Schema], sort: Sequence[str]) -> None:
+    for field in sort:
+        resolve_field(schema, field.lstrip("-"))
 
 
-@dataclass(frozen=True)
-class In:
-    field: str
-    values: Sequence[Any]
-
-
-@dataclass(frozen=True)
-class NotIn:
-    field: str
-    values: Sequence[Any]
-
-
-@dataclass(frozen=True)
-class Range:
-    """Matches values within the given bounds; a bound left as None is open"""
-
-    field: str
-    gt: Any = None
-    gte: Any = None
-    lt: Any = None
-    lte: Any = None
-
-
-@dataclass(frozen=True)
-class Contains:
-    """Matches string values that contain the text"""
-
-    field: str
-    text: str
-    is_case_sensitive: bool = True
-
-
-@dataclass(frozen=True, init=False)
-class And:
-    filters: Tuple["Filter", ...]
-
-    def __init__(self, *filters: "Filter"):
-        object.__setattr__(self, "filters", filters)
-
-
-@dataclass(frozen=True, init=False)
-class Or:
-    filters: Tuple["Filter", ...]
-
-    def __init__(self, *filters: "Filter"):
-        object.__setattr__(self, "filters", filters)
-
-
-Filter = Union[Eq, Ne, In, NotIn, Range, Contains, And, Or]
-ALL = And()
-"""The filter every record matches"""
-
-
-@dataclass(frozen=True)
-class Sort:
-    field: str
-    is_descending: bool = False
-
-
-@dataclass(frozen=True)
-class Page:
-    skip: int = 0
-    limit: Optional[int] = None
-
-
-def parse_sort(fields: Sequence[str]) -> List[Sort]:
-    """Parses sort fields such as ("-created_at", "name"); a leading '-' sorts descending"""
-    return [
-        Sort(field.lstrip("-"), is_descending=field.startswith("-")) for field in fields
-    ]
-
-
-def extract_fields(where: Filter) -> Iterator[str]:
+def extract_fields(query_filter: Optional[Filter]) -> Iterator[str]:
     """Yields every field the filter names, nested filters included"""
-    if isinstance(where, (And, Or)):
-        for item in where.filters:
-            yield from extract_fields(item)
-    else:
-        yield where.field
+    for field, condition in (query_filter or {}).items():
+        if field in LOGICAL_OPERATORS:
+            for item in condition:
+                yield from extract_fields(item)
+        else:
+            yield field
+
+
+def parse_sort(sort: Sequence[str]) -> List[Tuple[str, bool]]:
+    """Parses sort fields such as ("-created_at", "name") into (field, is_descending) pairs"""
+    return [(field.lstrip("-"), field.startswith("-")) for field in sort]
+
+
+def is_operator_map(condition: Any) -> bool:
+    """Whether the condition is a map of field operators rather than a value to equal"""
+    return isinstance(condition, Mapping) and any(
+        str(key).startswith("$") for key in condition
+    )
+
+
+def _check_condition(field: str, condition: Any) -> None:
+    if not is_operator_map(condition):
+        return
+    for operator, operand in condition.items():
+        if operator not in FIELD_OPERATORS:
+            raise QueryError(f"unknown operator '{operator}' on '{field}'")
+        if operator in LIST_OPERATORS and not isinstance(operand, (list, tuple, set)):
+            raise QueryError(f"{operator} on '{field}' takes a list")

@@ -15,8 +15,6 @@ from typing import Optional, Tuple
 
 from fastapi_users.authentication.strategy import DatabaseStrategy
 
-from libs.storage import And, Eq
-
 from .. import AppTokenRead
 from ..projects.dtos import Project
 from ..projects.exc import ProjectNotExists
@@ -52,7 +50,7 @@ class AppTokenStrategy(DatabaseStrategy):
             HTTPException: Forbidden 403 if token is not user's
                 or token does not exist or is expired already
         """
-        await self.database.delete_one(And(Eq("id", _id), Eq("user_id", user_id)))
+        await self.database.delete_one({"id": _id, "user_id": user_id})
 
     async def read_token(
         self, token: Optional[str], project_manager: ProjectAppTokenManager

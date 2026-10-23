@@ -10,15 +10,13 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Translations between the storage layer's structs and MongoDB documents and operators
+"""Translations between the storage layer's dialect and MongoDB documents and operators
 
 Ids are strings above the storage layer and ObjectIds in MongoDB, so every value bound for an
 Id field becomes an ObjectId here, and every ObjectId read becomes a string.
 """
 import enum
-import re
 import uuid
-from collections import defaultdict
 from functools import lru_cache
 from pathlib import PurePath
 from typing import Any, Dict, List, Mapping, Sequence, Tuple, Type
@@ -28,83 +26,50 @@ from bson import ObjectId
 from pydantic import BaseModel
 
 from ..base.ids import is_id_field
-from ..base.query import And, Contains, Eq, Filter, In, Ne, NotIn, Or, Range, Sort
+from ..base.query import LOGICAL_OPERATORS, Filter, is_operator_map, parse_sort
 from ..base.schema import Schema, find_nested_model, resolve_field
-from ..base.update import AddToSet, Inc, Pull, Set, SetOnInsert, Update
+from ..base.update import Update
 
 KEY_FIELD = "_id"
-_MATCH_NOTHING = {KEY_FIELD: {"$in": []}}
-_UPDATE_OPERATORS = {
-    Set: "$set",
-    SetOnInsert: "$setOnInsert",
-    Inc: "$inc",
-    AddToSet: "$addToSet",
-    Pull: "$pull",
-}
 
 
-def translate_filter(schema: Type[Schema], where: Filter) -> Dict[str, Any]:
-    """Translates the filter into a MongoDB query document"""
-    if isinstance(where, (And, Or)):
-        parts = [translate_filter(schema, item) for item in where.filters]
-        if isinstance(where, Or):
-            return {"$or": parts} if parts else _MATCH_NOTHING
-        return {} if not parts else parts[0] if len(parts) == 1 else {"$and": parts}
-
-    name = get_document_field(where.field)
-    if isinstance(where, Eq):
-        return {name: convert_to_bson_value(schema, where.field, where.value)}
-    if isinstance(where, Ne):
-        return {name: {"$ne": convert_to_bson_value(schema, where.field, where.value)}}
-    if isinstance(where, In):
-        return {
-            name: {"$in": _convert_to_bson_values(schema, where.field, where.values)}
-        }
-    if isinstance(where, NotIn):
-        return {
-            name: {"$nin": _convert_to_bson_values(schema, where.field, where.values)}
-        }
-    if isinstance(where, Range):
-        bounds = {"gt": where.gt, "gte": where.gte, "lt": where.lt, "lte": where.lte}
-        return {
-            name: {
-                f"${op}": convert_to_bson_value(schema, where.field, value)
-                for op, value in bounds.items()
-                if value is not None
+def translate_filter(schema: Type[Schema], query_filter: Filter) -> Dict[str, Any]:
+    """Translates the filter into a MongoDB query: the same document, with MongoDB's values"""
+    query = {}
+    for field, condition in query_filter.items():
+        if field in LOGICAL_OPERATORS:
+            query[field] = [translate_filter(schema, item) for item in condition]
+        elif is_operator_map(condition):
+            query[get_document_field(field)] = {
+                operator: convert_to_bson_value(schema, field, operand)
+                for operator, operand in condition.items()
             }
+        else:
+            query[get_document_field(field)] = convert_to_bson_value(
+                schema, field, condition
+            )
+    return query
+
+
+def translate_update(schema: Type[Schema], update: Update) -> Dict[str, Any]:
+    """Translates the update into a MongoDB update, dropping operators with no changes"""
+    return {
+        operator: {
+            get_document_field(field): convert_to_bson_value(schema, field, value)
+            for field, value in changes.items()
         }
-    if isinstance(where, Contains):
-        options = {} if where.is_case_sensitive else {"$options": "i"}
-        return {name: {"$regex": re.escape(where.text), **options}}
-    raise TypeError(f"not a filter: {where!r}")
+        for operator, changes in update.items()
+        if changes
+    }
 
 
-def translate_update(schema: Type[Schema], changes: Sequence[Update]) -> Dict[str, Any]:
-    """Translates the changes into a MongoDB update document
-
-    Raises:
-        ValueError: there are no changes, which MongoDB refuses
-    """
-    if len(changes) == 0:
-        raise ValueError("an update needs at least one change")
-
-    update: Dict[str, Dict[str, Any]] = defaultdict(dict)
-    for change in changes:
-        operator = _UPDATE_OPERATORS[type(change)]
-        value = change.amount if isinstance(change, Inc) else change.value
-        update[operator][get_document_field(change.field)] = convert_to_bson_value(
-            schema, change.field, value
-        )
-    return dict(update)
-
-
-def translate_sort(sort: Sequence[Sort]) -> List[Tuple[str, int]]:
+def translate_sort(sort: Sequence[str]) -> List[Tuple[str, int]]:
     return [
         (
-            get_document_field(item.field),
-            pymongo.DESCENDING if item.is_descending else pymongo.ASCENDING,
+            get_document_field(field),
+            pymongo.DESCENDING if is_descending else pymongo.ASCENDING,
         )
-        for item in sort
+        for field, is_descending in parse_sort(sort)
     ]
 
 
@@ -142,12 +107,6 @@ def convert_to_record(schema: Type[Schema], document: Mapping[str, Any]) -> Sche
 @lru_cache(maxsize=None)
 def _is_id_path(schema: Type[Schema], field: str) -> bool:
     return is_id_field(resolve_field(schema, field))
-
-
-def _convert_to_bson_values(
-    schema: Type[Schema], field: str, values: Sequence[Any]
-) -> list:
-    return [convert_to_bson_value(schema, field, value) for value in values]
 
 
 def _convert_to_document_values(

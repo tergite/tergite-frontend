@@ -14,7 +14,7 @@ from typing import Dict, List, Sequence
 
 from loguru import logger
 
-from libs.storage import And, Database, Eq, In, Inc, Ne, Or, Page, Range, Set, Sort
+from libs.storage import Database
 from services.external.email import BatchEmailGenerator, EmailDetails, EmailResult
 from utils.date_time import get_current_timestamp, get_utc_now
 
@@ -36,7 +36,7 @@ async def get_email_preferences_map(
         a map of channel preferences for the given notice type keyed by user_id
     """
     records = await database.find(
-        NoticePreferences, where=In("user_id", list(user_ids))
+        NoticePreferences, filter={"user_id": {"$in": list(user_ids)}}
     )
     return {
         record.user_id: record.email_prefs.get(notice_type, True) for record in records
@@ -101,19 +101,27 @@ async def process_email_batch_results(
             failed_ids.append(result.ref_id)
 
     now = get_current_timestamp()
-    attempted = [Inc("email_attempts", 1), Set("updated_at", now)]
+    attempt_count = {"$inc": {"email_attempts": 1}}
     success_task = database.update_many(
         Notice,
-        where=In("id", successful_ids),
-        changes=[*attempted, Set("email_status", EmailStatus.SENT)],
+        filter={"id": {"$in": successful_ids}},
+        update={
+            **attempt_count,
+            "$set": {"updated_at": now, "email_status": EmailStatus.SENT},
+        },
     )
     failure_task = database.update_many(
         Notice,
-        where=In("id", failed_ids),
-        changes=[*attempted, Set("email_status", EmailStatus.FAILED)],
+        filter={"id": {"$in": failed_ids}},
+        update={
+            **attempt_count,
+            "$set": {"updated_at": now, "email_status": EmailStatus.FAILED},
+        },
     )
     retry_task = database.update_many(
-        Notice, where=In("id", retry_ids), changes=attempted
+        Notice,
+        filter={"id": {"$in": retry_ids}},
+        update={**attempt_count, "$set": {"updated_at": now}},
     )
     if failed_ids:
         logger.error(f"failed to email notice ids: {failed_ids}")
@@ -138,13 +146,13 @@ async def _find_notices_pending_email(database: Database, limit: int) -> List[No
     now = get_utc_now()
     return await database.find(
         Notice,
-        where=And(
-            Eq("email_status", EmailStatus.PENDING),
-            Ne("user_id", None),
-            Or(Eq("expires_at", None), Range("expires_at", gt=now)),
-        ),
-        sort=[Sort("updated_at")],
-        page=Page(limit=limit),
+        filter={
+            "email_status": EmailStatus.PENDING,
+            "user_id": {"$ne": None},
+            "$or": [{"expires_at": None}, {"expires_at": {"$gt": now}}],
+        },
+        sort=["updated_at"],
+        limit=limit,
     )
 
 

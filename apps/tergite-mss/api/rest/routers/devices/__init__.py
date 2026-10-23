@@ -25,7 +25,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from api.rest.dependencies import DatabaseDep, ProjectDbDep
 from api.rest.utils import get_verified_device_name
-from libs.storage import Database, Page, parse_sort
+from libs.storage import Database
 from services import devices
 from services.auth import ProjectDatabase
 from services.devices import Device, DeviceEvent, DeviceQuery
@@ -66,9 +66,10 @@ async def read_many(
     """
     data = await devices.find_devices(
         database,
-        where=devices.build_filter(query),
-        sort=parse_sort(sort),
-        page=Page(skip=skip, limit=limit),
+        query=query,
+        sort=sort,
+        skip=skip,
+        limit=limit,
     )
 
     return build_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)

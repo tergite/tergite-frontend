@@ -229,10 +229,13 @@ enum member in `services/devices/dtos.py`, and a handler and its entry in `EVENT
 
 MongoDB, reached through `libs/storage`: one `Database`, opened in the lifespan with every
 service's `SCHEMAS` and handed to routes as `DatabaseDep`. A schema is a Pydantic `Schema`
-whose `__storage__` names its table, key, unique fields and indexes; services query it with
-`Filter`s (`Eq`, `In`, `Range`, `And`, …) and change it with `Update`s (`Set`, `Inc`,
-`AddToSet`, …), and nothing outside `libs/storage/mongo` names MongoDB. Ids are `Id`
-strings, which the Mongo store keeps as ObjectIds.
+whose `__storage__` names its table, key, unique fields and indexes. Services query it in
+MongoDB's own dialect, kept to what every store can translate: `filter={"user_id": {"$in":
+[user_id, None]}}`, `update={"$set": {…}, "$inc": {…}}`, `sort=["-created_at"]`, `skip`,
+`limit`. `Database` refuses an unknown operator or field before a store sees it, and a
+service builds its filters privately from its arguments; routes never build one. Nothing
+outside `libs/storage/mongo` names MongoDB. Ids are `Id` strings, which the Mongo store
+keeps as ObjectIds.
 
 The one exception is `auth_users`: the `User` is still a Beanie `Document`, on its own Motor
 client, because fastapi-users' Beanie adapter reads it. Code that compares a user's id with

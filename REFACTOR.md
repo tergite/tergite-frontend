@@ -111,7 +111,7 @@ No reputable library offers one query interface over both MongoDB and SQL, so th
 
 **The design.** `Database` is created with a `database_url` and the schemas it holds. It keeps a private `__db_store`, a `DbStore`: the abstract class that `MongoStore` and `SqlStore` implement, picked from the scheme of `database_url`. A method that works on one schema takes that schema first and returns instances of it. Passing a schema the `Database` was not created with raises `UnknownSchemaError`. A method that spans schemas takes none; MSS needs none today. One `Database` exists per process: the lifespan builds it, and FastAPI's dependency injection hands it to whatever needs it. So `database` replaces `db` as the first argument of every service function.
 
-"Repository" usually names one object per entity type (as in domain-driven design and Spring Data). This object fronts the whole database, so it is called `Database`, and calls read plainly: `database.find(Job, where=Eq("status", "pending"))`.
+"Repository" usually names one object per entity type (as in domain-driven design and Spring Data). This object fronts the whole database, so it is called `Database`, and calls read plainly: `database.find(Job, filter={"status": "pending"})`.
 
 **Schemas.** Every stored schema subclasses `Schema`, the storage layer's Pydantic base, and declares its storage facts in a `__storage__` class attribute that names no technology: its table, its key, which fields are unique, case-insensitive or expiring, `references` (a map from a field to the schema whose keys it holds; a scalar field becomes a foreign key, a list field a join table) and `indexed_lists` (other list fields whose elements are queried or written one at a time). Each `DbStore` turns those facts into its own indexes and tables. The facts live on the schema in its service's `dtos.py`, so there is no separate persistence file to keep in step.
 
@@ -126,14 +126,14 @@ apps/tergite-mss/
 ├── libs/
 │   ├── __init__.py
 │   ├── storage/
-│   │   ├── __init__.py       re-exports Database, Schema, StorageSpec, Id and the query and update structs
+│   │   ├── __init__.py       re-exports Database, Schema, StorageSpec, Id, Filter, Update and Returning
 │   │   ├── database.py       Database: picks the DbStore by URL scheme, rejects schemas it was not given
 │   │   ├── base/             the abstract layer every backend implements
 │   │   │   ├── store.py          DbStore, the abstract class
 │   │   │   ├── schema.py         Schema, StorageSpec
 │   │   │   ├── ids.py            Id, generate_id(), derive_id()
-│   │   │   ├── query.py          Eq, Ne, In, NotIn, Range, Contains, And, Or, Sort, Page   pure structs
-│   │   │   └── update.py         Set, SetOnInsert, Inc, AddToSet, Pull                      pure structs
+│   │   │   ├── query.py          Filter and its checks: MongoDB's query operators, sort strings
+│   │   │   └── update.py         Update and its checks: MongoDB's update operators, Returning
 │   │   ├── mongo/            MongoStore on pymongo.AsyncMongoClient; translate_filter(), translate_update()
 │   │   └── sql/              SqlStore, step 4
 │   └── authlib/              step 6
@@ -161,12 +161,12 @@ class Database:
     async def get(self, schema: type[T], key: Id) -> Optional[T]:
         return await self.__db_store.get(self.__ensure_registered(schema), key)
 
-    async def find(self, schema: type[T], where: Filter = ALL, sort: Sequence[Sort] = (), page: Page = Page()) -> List[T]: ...
-    async def count(self, schema: type[T], where: Filter = ALL) -> int: ...
+    async def find(self, schema: type[T], filter: Optional[Filter] = None, sort: Sequence[str] = (), skip: int = 0, limit: Optional[int] = None) -> List[T]: ...
+    async def count(self, schema: type[T], filter: Optional[Filter] = None) -> int: ...
     async def insert(self, schema: type[T], record: T) -> T: ...
-    async def update_one(self, schema: type[T], where: Filter, changes: Sequence[Update], *, should_upsert: bool = False, returning: Returning = Returning.AFTER) -> Optional[T]: ...
-    async def update_many(self, schema: type[T], where: Filter, changes: Sequence[Update]) -> int: ...
-    async def delete_many(self, schema: type[T], where: Filter) -> int: ...
+    async def update_one(self, schema: type[T], filter: Filter, update: Update, *, should_upsert: bool = False, returning: Returning = Returning.AFTER) -> Optional[T]: ...
+    async def update_many(self, schema: type[T], filter: Filter, update: Update) -> int: ...
+    async def delete_many(self, schema: type[T], filter: Filter) -> int: ...
     async def close(self) -> None: ...
 
     def __ensure_registered(self, schema: type[T]) -> type[T]:
@@ -177,7 +177,9 @@ class Database:
 
 Beside those, `Database` has the other operations MSS uses today: `setup()`, which the lifespan calls to create indexes and tables, `find_one`, `find_distinct`, `insert_many` and `delete_one`. `StorageSpec.indexes` declares the plain and compound indexes the queries rely on (a leading `-` marks a descending field), so that none of today's indexes is lost.
 
-Filters and updates name schema fields, dotted for nested objects (`timestamps.execution.started`). `Database` checks every `__storage__` against its schema when it is created (field names exist, referenced schemas are registered too), so a mistake fails at boot, not on a request.
+**Filters and updates are MongoDB's own dialect**, kept to what every store can translate: `filter={"id": pk, "user_id": {"$in": [user_id, None]}}` with `$eq`, `$ne`, `$in`, `$nin`, `$gt`, `$gte`, `$lt`, `$lte`, `$and` and `$or`; `update={"$set": {…}, "$inc": {…}}` with `$set`, `$setOnInsert`, `$inc`, `$addToSet` and `$pull`; `sort=["-created_at"]`, `skip`, `limit`. A dict is parsed data, so no store parses text: `MongoStore` passes it through with its ids converted, and `SqlStore` (step 4) checks each field against the schema and binds every value as a parameter, so a caller's input never reaches SQL text. `Database` refuses an unknown operator or field before any store sees it. Fields are dotted for nested objects (`timestamps.execution.started`). Service functions take their query's arguments, or its query model, and build the filter privately; routes never build one.
+
+`Database` checks every `__storage__` against its schema when it is created (field names exist, referenced schemas are registered too), so a mistake fails at boot, not on a request.
 
 **One async interface, no sync twin.** Every caller is async: the routes, the websocket handler, the lifespan and the email sweeper. Alembic connects on its own. Sync tests seed and inspect through `tests/_utils/storage.py`, which wraps each call in `asyncio.run` with a short-lived `Database`. A sync twin would double every backend and its conformance tests; a sync caller that appears later uses `asyncio.run` the same way.
 
@@ -185,11 +187,11 @@ Filters and updates name schema fields, dotted for nested objects (`timestamps.e
 2. **`MongoStore`** for `mongodb://` and `mongodb+srv://`, on `pymongo.AsyncMongoClient`, with pure `translate_filter` / `translate_update` tested table-first, no database. It converts `Id` to and from `ObjectId` at its edge. Indexes come from each `__storage__`: unique, case-insensitive collation, TTL on the expiring field, multikey on list `references` and `indexed_lists`. The `$jsonSchema` validator moves here from `utils/mongodb.py`. A conformance test runs every `Database` method against a real MongoDB.
 3. **Wiring.** `database.url` accepts every supported scheme instead of only `MongoDsn`. `api/rest/database.py` builds the `Database` in the lifespan from every service's schemas, keeps it on `app.state`, and closes it on shutdown; `DatabaseDep` replaces `MongoDbDep`. It is one instance by construction, not a module global (convention 7).
 4. **The request log becomes a schema.** It remembers request ids and websocket nonces long enough to reject a replay: a `RequestLog` schema whose `__storage__` makes `request_id` unique and sets the expiring field. `services/request_log/service.py` holds `record_request(database, request_id, ttl) -> bool`, an `insert` where a duplicate key means "already seen", and `is_request_recorded(database, request_id)`. The middleware (`api/rest/middleware.py:66`) and the nonce check (`api/rest/utils.py:108`) get the `Database` like every other caller. This replaces `utils/redis_store.py` (668 lines, a generic indexed store with a Lua script whose indexes and updates the app never used) and `tests/test_store.py` (1,048). Redis is then unused, so the `tergite-redis` compose services, `database.redis_url` and the `redis` and `hiredis` dependencies go; Redis returns only as a `DbStore` (step 4). If step 1.7 shows the extra write per request costs too much, the remedy is inside the storage layer, never a setting specific to the request log.
-5. **Move services onto the `Database`**, one service per commit: `jobs`, `devices`, `calibration`, `notices`, `requests`. Their stored DTOs become `Schema` subclasses with a `__storage__`. Services take `database` first (`jobs.get_job(database, job_id)` calls `database.get(Job, job_id)`); query models become filters through a pure `build_filter(query)` in each service. Four spots need a translation, not a rename:
-   - `notices/service.py:151-172` and `621-627` update each notice differently by type with an aggregation pipeline (`$cond`, `$setUnion`). Each becomes two plain updates: one filtered to broadcast notices (`AddToSet` / `Pull` on `dismissed_by`), one to the rest (`Set` on `read_at`).
+5. **Move services onto the `Database`**, one service per commit: `jobs`, `devices`, `calibration`, `notices`, `requests`. Their stored DTOs become `Schema` subclasses with a `__storage__`. Services take `database` first (`jobs.get_job(database, job_id)` calls `database.get(Job, job_id)`); service functions take the query models, whose set fields are the filter. Four spots need a translation, not a rename:
+   - `notices/service.py:151-172` and `621-627` update each notice differently by type with an aggregation pipeline (`$cond`, `$setUnion`). Each becomes two plain updates: one filtered to broadcast notices (`$addToSet` / `$pull` on `dismissed_by`), one to the rest (`$set` on `read_at`).
    - `jobs/service.py:180` reads the job as it was before the update, to detect the first usage report: `update_one(Job, …, returning=Returning.BEFORE)`.
    - `devices/service.py:91` and `calibration/service.py:62` upsert: `update_one(…, should_upsert=True)` with `SetOnInsert`.
-   - `auth/service.py:155` searches emails with a case-insensitive `$regex`: `Contains("email", text, is_case_sensitive=False)`.
+   - `auth/service.py:155` searches emails with a case-insensitive `$regex`. It stays on the Beanie `User` until step 7, which adds the substring operator it needs to the dialect, with its SQL translation.
 6. **`Id` replaces `PydanticObjectId`** everywhere above the storage layer: 163 uses in 29 files across `api/rest`, `services` and `utils`, one package per commit. Path parameters typed `Id` keep answering 404 for a malformed id (the step 1.1 contract). The ids of the Beanie `User` stay `PydanticObjectId` until it moves in step 7, so the BCC client keeps taking user ids as `str | PydanticObjectId`, and code reaching the Beanie `User` or the auth documents converts at that boundary.
 7. **Delete `utils/mongodb.py`, Motor and Beanie** for every schema except `User`, which moves in step 7. The eight `Document` classes become `Schema` subclasses; their index declarations become their `__storage__`.
 
@@ -224,12 +226,13 @@ Names follow the usual SQL convention: plural snake_case tables, foreign keys na
 
 3. **How each operation runs on SQL**, generic first, each covered by the conformance test on every database in the matrix:
    - list membership (`user_ids` contains X) → an `exists()` subquery on the child table
-   - `AddToSet` → insert the child row inside a savepoint; a unique-key conflict on the pair means it was already there. `Pull` → delete the child row
-   - `Inc` → `column = column + n`
+   - a filter → a SQLAlchemy Core `where` clause built from the dict: each field resolved against the schema to a column, each value a bound parameter, `$and`/`$or` → `and_()`/`or_()`
+   - `$addToSet` → insert the child row inside a savepoint; a unique-key conflict on the pair means it was already there. `$pull` → delete the child row
+   - `$inc` → `column = column + n`
    - `should_upsert` → `UPDATE`, then `INSERT` if no row matched, retrying the `UPDATE` on a unique-key conflict, all in one transaction
    - `returning=BEFORE` → `SELECT … with_for_update()`, then `UPDATE`, in one transaction. `returning=AFTER` → `UPDATE`, then `SELECT`; where `dialect.update_returning` is true, a single `UPDATE … RETURNING` instead. SQLAlchemy drops `FOR UPDATE` where a database has no row locks, and on SQLite `SqlStore` begins write transactions immediately, so the read already holds the write lock
    - a write to a record and its child tables runs in one transaction
-   - case-insensitive unique email → a unique index on `func.lower(email)`; case-insensitive `Contains` → `ilike`, with the pattern escaped, which SQLAlchemy renders as `lower(…) LIKE lower(…)` where a database lacks `ILIKE`
+   - case-insensitive unique email → a unique index on `func.lower(email)`, and equality on it compares `func.lower` of both sides
    - expiring records (`notices`, `request_logs`) → every read filters on `expires_at`, and the lifespan runs a periodic delete, since SQL has no TTL index
 4. **Migrations.** Alembic in `apps/tergite-mss/migrations/`, autogenerated from the `MetaData` that `SqlStore` builds and reviewed by hand; `start_mss.sh` runs `alembic upgrade head` when the URL is SQL.
 5. **Test matrix.** The `db` fixture is parametrised over `TEST_DATABASE_URLS` (MongoDB, PostgreSQL, SQLite). Tests seed and inspect through a `Database` in `tests/_utils/storage.py` instead of raw pymongo in `tests/_utils/mongodb.py`. CI adds a PostgreSQL job beside the MongoDB one.
@@ -264,7 +267,7 @@ def check_project_access(owner: Optional[TokenOwner], rule: AccessRule) -> Proje
 ```
 
 4. **`notices.create_system_notice` and `clear_notices_by_reference` take the `Database`** as their first argument, now that their callers in `auth` have one; step 3.5 gave them the one `notices.on_startup` holds, as those callers had none to pass.
-5. **Routes out of the service.** `projects/routers/__init__.py` and `app_tokens/routers.py` become `api/rest/routers/me/projects.py`, `me/tokens.py` and `admin/projects.py`. `ProjectQuery` and `AppTokenQuery` models, injected with `Depends()`, replace the hand-listed `Query(...)` parameters and produce filters through `build_filter`. Path parameters are typed `Id` (step 3.6).
+5. **Routes out of the service.** `projects/routers/__init__.py` and `app_tokens/routers.py` become `api/rest/routers/me/projects.py`, `me/tokens.py` and `admin/projects.py`. `ProjectQuery` and `AppTokenQuery` models, injected with `Depends()`, replace the hand-listed `Query(...)` parameters and are passed to the service functions, which build their filters privately. Path parameters are typed `Id` (step 3.6).
 
 ## Step 6: `libs/authlib`, a stripped copy of fastapi-users
 
@@ -294,17 +297,17 @@ Every commit keeps the step 1.1 contract; `dev/e2e_test.sh` runs after the last 
 
 1. **Switch the imports.** `api/rest/routers/auth.py` mounts `authlib`'s OAuth router for the configured providers; the user dependencies in `api/rest/auth.py` come from `authlib`; the personal-project rule is passed in as `on_after_login`. fastapi-users and fastapi-users-db-beanie leave `pyproject.toml` and the lock.
 2. **Delete the subclasses** `authlib` made unnecessary: `UserBasedAuth`, `UserAuthenticator`, `CustomJWTStrategy`, `JwtCookieTransport`, `UserManager`, `UserDatabase`, `Validator`, `EmailRegexValidator`, `users/routers.py`, `service.register_oauth2_client`, `_AUTH_EMAIL_REGEX_MAP`, `_AUTH_ROLES_MAP`, the `UP` / `ID` type variables and the `Current*Dependency` aliases.
-3. **Users on storage.** `auth_users` leaves Beanie, which leaves `pyproject.toml`; `User.hashed_password` becomes optional, so existing documents still load. `tests/_utils/auth.py` drops `PasswordHelper`. One `Changed` changelog entry.
+3. **Users on storage.** `auth_users` leaves Beanie, which leaves `pyproject.toml`; `User.hashed_password` becomes optional, so existing documents still load. `get_user_emails` searches emails as a case-insensitive substring, which needs the one operator the dialect adds here: MongoDB's `$regex` limited to escaped text with `$options: "i"`, which `SqlStore` translates to `ilike` with the pattern escaped. `tests/_utils/auth.py` drops `PasswordHelper`. One `Changed` changelog entry.
 
 ## Step 8: MSS classes and long functions
 
 1. **`BccClient` stays a class**: it owns an `httpx.AsyncClient` per backend. Trim it: the lifespan builds each client with the MSS private key already loaded, so `_create_headers` signs with `self`'s key and 15 methods lose `private_key_file` and `key_password`; drop the unused `files`, `timeout` and `**kwargs` parameters, the unused `base_url` attribute and the copied httpx type hints (687-724). `_request` is split in item 7.
-2. **`Emailer` stays a class**: it owns the sweeper's background tasks. Trim it to the one schedule it runs: delete the multi-schedule map and the unused `get_schedule` and `send`; `EmailDetails.to_email_message` becomes its private `_build_email_message(details)`. Start it from the lifespan in `app_kwargs.py`, not from `notices.on_startup`.
+2. **`Emailer` stays a class**: it owns the sweeper's background tasks. Trim it to the one schedule it runs: delete the multi-schedule map and the unused `get_schedule` and `send`; `EmailDetails.to_email_message` becomes its private `_get_email_message(details)`. Start it from the lifespan in `app_kwargs.py`, not from `notices.on_startup`.
 3. **`WebsocketConnectionManager` stays a class**: it owns the live device sockets. Move it from `utils/api.py` to `routers/devices`, its only user; delete `broadcast` (unused) and `reply` (it only forwards to `send_json`).
 4. **Middleware stays as Starlette subclasses.** `TergiteCORSMiddleware` goes only if stock `CORSMiddleware(allow_origin_regex=".*", allow_credentials=True, …)` passes the step 1.3 test. `EndpointFilter` holds no state, so it becomes a filter function.
 5. **`NoticeType(NoticeTypeInfo, Enum)`** → `NoticeTypeId(StrEnum)` plus a `NOTICE_TYPE_INFO: dict[NoticeTypeId, NoticeTypeInfo]` constant. Delete `from_str`, `__str_member_map__`, the `Literal[tuple(…)]` hack and `utils/types.py`. `DeviceEventHandler(Protocol)` → a `Callable` alias.
 6. **Behaviour off DTOs**, one service per commit; class-level dunder maps become module constants.
-   - `notices`: `CustomNoticeCreate.to_documents` (does I/O) → `_build_custom_notices(db, payload, created_by)`; `Notice.from_template` → `_render_notice`; `NoticeSeverity.to_int` → `_SEVERITY_RANK`
+   - `notices`: `CustomNoticeCreate.to_documents` (does I/O) → `_get_custom_notices(db, payload, created_by)`; `Notice.from_template` → `_render_notice`; `NoticeSeverity.to_int` → `_SEVERITY_RANK`
    - `requests`: `Request.notice_type`, `notice_context`, `from_post_body`, `RequestPostBody.target` and the three `__type_*_map__` → `requests/service.py`
    - `devices`: `DeviceEvent.__status_data_map__` → a constant in `events.py`
    - `utils/config.py`: `BccConfig.ip_address` (a DNS lookup in a `computed_field`) → `get_ip_addr(conf.url.host)` at `api/rest/utils.py:87`
@@ -315,15 +318,15 @@ Every commit keeps the step 1.1 contract; `dev/e2e_test.sh` runs after the last 
 | --- | --- | --- |
 | `bcc` `_request` | 104 | `_send`, `_raise_for_bcc_error(response)` |
 | `requests.update` | 94 | `_find_pending_for_approver`, `_record_decision`, `_clear_approver_notices`, `_notify_requesters` |
-| `notices.create_system_notice` | 66 | pure `_build_email_status_map(user_ids, preferences, is_email_enabled)`, `_render_notices` |
+| `notices.create_system_notice` | 66 | pure `_get_email_status_map(user_ids, preferences, is_email_enabled)`, `_render_notices` |
 | `jobs.update_qpu_usage` | 65 | pure `_choose_qpu_notice(before, after, threshold)`, `_notify_project` |
 | `email._send_on_repeat` | 64 | `_send_batch(smtp, batch, sender, should_ignore_errors)` |
 | `notices.find_many` | 60 | a `NoticeFilter` model shared with `count_many` and `set_read_status_many` |
-| `storage.mongo._to_mongo_json_schema`, renamed `_build_mongo_json_schema` | 57 | `_resolve_ref`, `_map_to_bson_type`, `_keep_mongo_keywords` |
+| `storage.mongo._to_mongo_json_schema`, renamed `_convert_to_mongo_json_schema` | 57 | `_resolve_ref`, `_map_to_bson_type`, `_keep_mongo_keywords` |
 | `api/rest/utils.get_verified_device_name` | 56 | `_read_signed_headers`, `_check_client_ip`, pure `_check_nonce_age(timestamp, now, ttl)`, `_check_nonce_unused` |
 | `logging.setup_logging` | 56 | `get_log_level(env)` (shared with `settings.py`), `_add_sink`, `_route_std_logging` |
 | `notices/emails.process_email_batch_results` | 54 | pure `_partition_results`, `_record_attempts(ids, status)` |
-| `notices.clear_notices_by_reference` | 53 | pure `_build_ref_filter(refs, now)`, `_build_cleared_update(timestamp, now)` |
+| `notices.clear_notices_by_reference` | 53 | pure `_get_ref_filter(refs, now)`, `_get_cleared_update(timestamp, now)` |
 
 8. **Flatten DTO inheritance** by spelling fields out, JSON unchanged: `DeviceCalibrationLog` (three levels), `Request(RequestPostBody, Document)`, `CreateProjectMetadata(RequestMetadata, ProjectCreate)`.
 9. **Last:** remove the four remaining `model_dump` overrides (`utils/api.py:62`, `utils/models.py:43`, `jobs/dtos.py:159`, `devices/dtos.py:94`) and pass the flags at the call sites. The step 1.2 body tests catch a missed call site.

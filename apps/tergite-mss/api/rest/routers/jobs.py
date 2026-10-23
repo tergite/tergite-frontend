@@ -28,7 +28,6 @@ from api.rest.dependencies import (
     DatabaseDep,
     RequestIdDep,
 )
-from libs.storage import Page, parse_sort
 from services import jobs as jobs_service
 from services.external import bcc
 from services.external.bcc import CancellationDetails
@@ -65,11 +64,8 @@ async def get_many(
             To add multiple fields to sort by, repeat the same query parameter in the url e.g. "query=tom&q=dick&q=harry"
     """
     _, user = project_and_user
-    where = jobs_service.build_readable_jobs_filter(
-        jobs_service.build_filter(query), user
-    )
     data = await jobs_service.get_latest_many(
-        database, where=where, sort=parse_sort(sort), page=Page(skip=skip, limit=limit)
+        database, query, reader=user, sort=sort, skip=skip, limit=limit
     )
     return build_paginated_json(data, skip=skip, limit=limit)
 

@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """FastAPIUsers-inspired logic for managing projects"""
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from beanie import PydanticObjectId
 from fastapi.requests import Request
@@ -19,13 +19,13 @@ from fastapi_users.models import ID
 from fastapi_users.types import DependencyCallable
 from fastapi_users_db_beanie import ObjectIDIDMixin
 
-from libs.storage import And, Eq, Filter, NotIn, Page
-from utils.exc import ForbiddenError
+from utils.exc import ForbiddenError, TooManyListQueryParams
 
 from ..app_tokens.database import AppTokenDatabase
 from ..app_tokens.dtos import AppToken, AppTokenCreate
 from ..users.database import UserDatabase
 from ..users.dtos import User
+from ..utils import MAX_LIST_QUERY_LEN
 from . import exc
 from .database import ProjectDatabase
 from .dtos import Project, ProjectPartial
@@ -104,15 +104,84 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
 
         return project, user
 
-    async def get_many(self, where: Filter, page: Page = Page()) -> List[Project]:
-        """Get the projects that match the filter."""
-        return await self.project_db.get_many(where, page=page)
+    async def find_projects(
+        self,
+        member_id: Optional[str] = None,
+        ids: Optional[Sequence[str]] = None,
+        user_ids: Optional[Sequence[str]] = None,
+        names: Optional[Sequence[str]] = None,
+        is_active: Optional[bool] = None,
+        min_qpu_seconds: Optional[float] = None,
+        max_qpu_seconds: Optional[float] = None,
+        skip: int = 0,
+        limit: Optional[int] = None,
+    ) -> List[Project]:
+        """Finds the projects that fit the given constraints
 
-    async def get_many_app_tokens(
-        self, where: Filter, page: Page = Page()
+        Args:
+            member_id: the user whose projects alone are wanted; None for anyone's
+            ids: the IDs of the projects
+            user_ids: the IDs of users any of whom is a member
+            names: the names of the projects
+            is_active: whether the projects are active
+            min_qpu_seconds: the least QPU seconds the projects have
+            max_qpu_seconds: the most QPU seconds the projects have
+            skip: the number of matched projects to skip
+            limit: the most projects to return; None returns all
+
+        Raises:
+            TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
+        """
+        project_filter = _get_any_of_filter(
+            {"id": ids, "user_ids": user_ids, "name": names}
+        )
+        if is_active is not None:
+            # a project stored without is_active is active, as the field defaults to True
+            project_filter["is_active"] = {"$ne": False} if is_active else False
+        qpu_seconds_range = _get_range(min_qpu_seconds, max_qpu_seconds)
+        if qpu_seconds_range:
+            project_filter["qpu_seconds"] = qpu_seconds_range
+        if member_id is not None:
+            # in an $and, so that a user_ids query narrows the member's projects
+            project_filter = {"$and": [project_filter, {"user_ids": member_id}]}
+        return await self.project_db.get_many(project_filter, skip=skip, limit=limit)
+
+    async def find_app_tokens(
+        self,
+        user_id: str,
+        ids: Optional[Sequence[str]] = None,
+        project_ids: Optional[Sequence[str]] = None,
+        titles: Optional[Sequence[str]] = None,
+        min_lifespan_seconds: Optional[float] = None,
+        max_lifespan_seconds: Optional[float] = None,
+        skip: int = 0,
+        limit: Optional[int] = None,
     ) -> List[AppToken]:
-        """Get the app tokens that match the filter."""
-        return await self.app_token_db.get_many(where, page=page)
+        """Finds the user's app tokens that fit the given constraints
+
+        Args:
+            user_id: the user whose app tokens are wanted
+            ids: the IDs of the app tokens
+            project_ids: the IDs of the projects the app tokens are for
+            titles: the titles of the app tokens
+            min_lifespan_seconds: the shortest lifespan the app tokens have
+            max_lifespan_seconds: the longest lifespan the app tokens have
+            skip: the number of matched app tokens to skip
+            limit: the most app tokens to return; None returns all
+
+        Raises:
+            TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
+        """
+        token_filter = {
+            "user_id": user_id,
+            **_get_any_of_filter(
+                {"id": ids, "project_id": project_ids, "title": titles}
+            ),
+        }
+        lifespan_range = _get_range(min_lifespan_seconds, max_lifespan_seconds)
+        if lifespan_range:
+            token_filter["lifespan_seconds"] = lifespan_range
+        return await self.app_token_db.get_many(token_filter, skip=skip, limit=limit)
 
     async def create(
         self,
@@ -203,10 +272,10 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         """
         if new_updates.user_ids:
             await self.app_token_db.delete_many(
-                And(
-                    NotIn("user_id", new_updates.user_ids),
-                    Eq("project_id", original.id),
-                )
+                {
+                    "user_id": {"$nin": new_updates.user_ids},
+                    "project_id": original.id,
+                }
             )
 
     async def on_before_delete(
@@ -220,7 +289,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             project: the project to be deleted
             request: Optional FastAPI request that triggered the operation
         """
-        await self.app_token_db.delete_many(Eq("project_id", project.id))
+        await self.app_token_db.delete_many({"project_id": project.id})
 
     async def authenticate(
         self,
@@ -250,3 +319,29 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
 
 
 ProjectManagerDependency = DependencyCallable[ProjectAppTokenManager]
+
+
+def _get_any_of_filter(
+    values_by_field: Mapping[str, Optional[Sequence[Any]]]
+) -> Dict[str, Any]:
+    """Gets the filter matching any of the given values of each field; None skips a field
+
+    Raises:
+        TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
+    """
+    any_of_filter = {}
+    for field, values in values_by_field.items():
+        if values is None:
+            continue
+        if len(values) > MAX_LIST_QUERY_LEN:
+            raise TooManyListQueryParams(
+                field, expected=MAX_LIST_QUERY_LEN, got=len(values)
+            )
+        any_of_filter[field] = {"$in": list(values)}
+    return any_of_filter
+
+
+def _get_range(lowest: Optional[float], highest: Optional[float]) -> Dict[str, float]:
+    """Gets the bounds a value may lie within; an empty map when there are none"""
+    bounds = {"$gte": lowest, "$lte": highest}
+    return {operator: value for operator, value in bounds.items() if value is not None}

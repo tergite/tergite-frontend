@@ -31,3 +31,7 @@ class StorageSpecError(StorageError):
 
 class DuplicateKeyError(StorageError):
     """A write that would break a unique field"""
+
+
+class QueryError(StorageError):
+    """A filter, update or sort that the storage layer's dialect does not have"""

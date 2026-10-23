@@ -14,7 +14,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from libs.storage import And, Database, Eq, Filter, Page, Set
+from libs.storage import Database, Filter
 
 from . import exc
 from .dtos import AppToken, AppTokenUpdate
@@ -33,7 +33,7 @@ class AppTokenDatabase:
 
     async def get_by_token(self, token: str) -> Optional[AppToken]:
         """Gets an AppToken by the token, or None if there is none or it has expired"""
-        return await self._find_one(Eq("token", token))
+        return await self._find_one({"token": token})
 
     async def update(
         self, _id: str, user_id: str, payload: AppTokenUpdate
@@ -48,39 +48,43 @@ class AppTokenDatabase:
         Returns:
             the updated AppToken or None if no unexpired token was matched
         """
-        token = await self._find_one(And(Eq("id", _id), Eq("user_id", user_id)))
+        token = await self._find_one({"id": _id, "user_id": user_id})
         if token is None:
             return None
 
         new_lifespan_seconds = (payload.expires_at - token.created_at).total_seconds()
         return await self.database.update_one(
             AppToken,
-            Eq("id", token.id),
-            [Set("lifespan_seconds", new_lifespan_seconds)],
+            {"id": token.id},
+            {"$set": {"lifespan_seconds": new_lifespan_seconds}},
         )
 
-    async def delete_many(self, where: Filter) -> int:
+    async def delete_many(self, token_filter: Filter) -> int:
         """Deletes the matched tokens, returning how many were deleted"""
-        return await self.database.delete_many(AppToken, where)
+        return await self.database.delete_many(AppToken, token_filter)
 
-    async def delete_one(self, where: Filter) -> None:
+    async def delete_one(self, token_filter: Filter) -> None:
         """Deletes the first token to match the given filter.
 
         Raises:
             exc.AppTokenNotFound: app token does not exist.
         """
-        if await self.database.delete_one(AppToken, where) is None:
+        if await self.database.delete_one(AppToken, token_filter) is None:
             raise exc.AppTokenNotFound("app token does not exist.")
 
-    async def get_many(self, where: Filter, page: Page = Page()) -> List[AppToken]:
+    async def get_many(
+        self, token_filter: Filter, skip: int = 0, limit: Optional[int] = None
+    ) -> List[AppToken]:
         """Gets the app tokens that match the filter"""
-        return await self.database.find(AppToken, where=where, page=page)
+        return await self.database.find(
+            AppToken, filter=token_filter, skip=skip, limit=limit
+        )
 
-    async def _find_one(self, where: Filter) -> Optional[AppToken]:
+    async def _find_one(self, token_filter: Filter) -> Optional[AppToken]:
         """Finds the first token to match the filter, deleting it instead if expired"""
-        token = await self.database.find_one(AppToken, where)
+        token = await self.database.find_one(AppToken, token_filter)
         if _is_token_expired(token):
-            await self.database.delete_one(AppToken, Eq("id", token.id))
+            await self.database.delete_one(AppToken, {"id": token.id})
             return None
 
         return token

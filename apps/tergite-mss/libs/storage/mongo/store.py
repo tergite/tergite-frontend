@@ -22,7 +22,7 @@ from pymongo.asynchronous.collection import AsyncCollection
 from pymongo.collation import Collation
 
 from ..base.exc import DuplicateKeyError, StorageError
-from ..base.query import ALL, Filter, Page, Sort, extract_fields
+from ..base.query import Filter, extract_fields
 from ..base.schema import Schema
 from ..base.store import DbStore
 from ..base.update import Returning, Update
@@ -73,32 +73,33 @@ class MongoStore(DbStore):
     async def find(
         self,
         schema: Type[T],
-        where: Filter = ALL,
-        sort: Sequence[Sort] = (),
-        page: Page = Page(),
+        query_filter: Filter,
+        sort: Sequence[str],
+        skip: int,
+        limit: Optional[int],
     ) -> List[T]:
         cursor = self._get_collection(schema).find(
-            translate_filter(schema, where),
+            translate_filter(schema, query_filter),
             sort=translate_sort(sort) or None,
-            skip=page.skip,
-            limit=page.limit or 0,
-            collation=_get_query_collation(schema, where),
+            skip=skip,
+            limit=limit or 0,
+            collation=_get_query_collation(schema, query_filter),
         )
         return [convert_to_record(schema, document) async for document in cursor]
 
-    async def count(self, schema: Type[T], where: Filter = ALL) -> int:
-        options = _get_collation_option(schema, where)
+    async def count(self, schema: Type[T], query_filter: Filter) -> int:
+        options = _get_collation_option(schema, query_filter)
         return await self._get_collection(schema).count_documents(
-            translate_filter(schema, where), **options
+            translate_filter(schema, query_filter), **options
         )
 
     async def find_distinct(
-        self, schema: Type[T], field: str, where: Filter = ALL
+        self, schema: Type[T], field: str, query_filter: Filter
     ) -> List[Any]:
         values = await self._get_collection(schema).distinct(
             get_document_field(field),
-            translate_filter(schema, where),
-            **_get_collation_option(schema, where),
+            translate_filter(schema, query_filter),
+            **_get_collation_option(schema, query_filter),
         )
         return [
             str(value) if isinstance(value, ObjectId) else value for value in values
@@ -123,8 +124,8 @@ class MongoStore(DbStore):
     async def update_one(
         self,
         schema: Type[T],
-        where: Filter,
-        changes: Sequence[Update],
+        query_filter: Filter,
+        update: Update,
         should_upsert: bool,
         returning: Returning,
     ) -> Optional[T]:
@@ -135,34 +136,36 @@ class MongoStore(DbStore):
         )
         with _translate_duplicate_key_errors():
             document = await self._get_collection(schema).find_one_and_update(
-                translate_filter(schema, where),
-                translate_update(schema, changes),
+                translate_filter(schema, query_filter),
+                translate_update(schema, update),
                 upsert=should_upsert,
                 return_document=return_document,
-                **_get_collation_option(schema, where),
+                **_get_collation_option(schema, query_filter),
             )
         return None if document is None else convert_to_record(schema, document)
 
     async def update_many(
-        self, schema: Type[T], where: Filter, changes: Sequence[Update]
+        self, schema: Type[T], query_filter: Filter, update: Update
     ) -> int:
         with _translate_duplicate_key_errors():
             result = await self._get_collection(schema).update_many(
-                translate_filter(schema, where),
-                translate_update(schema, changes),
-                **_get_collation_option(schema, where),
+                translate_filter(schema, query_filter),
+                translate_update(schema, update),
+                **_get_collation_option(schema, query_filter),
             )
         return result.modified_count
 
-    async def delete_one(self, schema: Type[T], where: Filter) -> Optional[T]:
+    async def delete_one(self, schema: Type[T], query_filter: Filter) -> Optional[T]:
         document = await self._get_collection(schema).find_one_and_delete(
-            translate_filter(schema, where), **_get_collation_option(schema, where)
+            translate_filter(schema, query_filter),
+            **_get_collation_option(schema, query_filter),
         )
         return None if document is None else convert_to_record(schema, document)
 
-    async def delete_many(self, schema: Type[T], where: Filter) -> int:
+    async def delete_many(self, schema: Type[T], query_filter: Filter) -> int:
         result = await self._get_collection(schema).delete_many(
-            translate_filter(schema, where), **_get_collation_option(schema, where)
+            translate_filter(schema, query_filter),
+            **_get_collation_option(schema, query_filter),
         )
         return result.deleted_count
 
@@ -223,15 +226,17 @@ def _get_collation_key(collation: Any) -> Optional[tuple]:
     return document.get("locale"), document.get("strength")
 
 
-def _get_query_collation(schema: Type[Schema], where: Filter) -> Optional[Collation]:
+def _get_query_collation(
+    schema: Type[Schema], query_filter: Filter
+) -> Optional[Collation]:
     """The collation a query on case-insensitive fields needs to use their index"""
-    fields = set(extract_fields(where))
+    fields = set(extract_fields(query_filter))
     is_case_insensitive = bool(fields & set(schema.__storage__.case_insensitive))
     return CASE_INSENSITIVE if is_case_insensitive else None
 
 
-def _get_collation_option(schema: Type[Schema], where: Filter) -> Dict[str, Any]:
-    collation = _get_query_collation(schema, where)
+def _get_collation_option(schema: Type[Schema], query_filter: Filter) -> Dict[str, Any]:
+    collation = _get_query_collation(schema, query_filter)
     return {} if collation is None else {"collation": collation}
 
 

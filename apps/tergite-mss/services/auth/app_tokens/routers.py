@@ -17,12 +17,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.requests import Request
 from fastapi_users import schemas
 
-from libs.storage import And, Eq, Id, In, Page, Range
-from utils.exc import TooManyListQueryParams
+from libs.storage import Id
 
 from ..projects.manager import ProjectAppTokenManager, ProjectManagerDependency
 from ..users.dtos import CurrentUserIdDependency
-from ..utils import MAX_LIST_QUERY_LEN
 from .auth_backend import AppTokenAuthenticationBackend
 from .dtos import AppTokenCreate, AppTokenListResponse, AppTokenRead, AppTokenUpdate
 from .strategy import AppTokenStrategy
@@ -47,9 +45,7 @@ def get_app_tokens_router(
         user_id: str = Depends(get_current_user_id),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
     ):
-        app_tokens = await project_manager.get_many_app_tokens(
-            And(Eq("user_id", user_id), Eq("id", id))
-        )
+        app_tokens = await project_manager.find_app_tokens(user_id, ids=[id], limit=1)
 
         try:
             return schemas.model_validate(AppTokenRead, app_tokens[0])
@@ -76,31 +72,15 @@ def get_app_tokens_router(
         min_lifespan_seconds: Optional[int] = Query(None),
         max_lifespan_seconds: Optional[int] = Query(None),
     ):
-        filters = [Eq("user_id", user_id)]
-        for query_param, field, values in (
-            ("id", "id", ids),
-            ("project_id", "project_id", project_id),
-            ("title", "title", title),
-        ):
-            if values is None:
-                continue
-            if len(values) > MAX_LIST_QUERY_LEN:
-                raise TooManyListQueryParams(
-                    query_param, expected=MAX_LIST_QUERY_LEN, got=len(values)
-                )
-            filters.append(In(field, values))
-
-        if min_lifespan_seconds is not None or max_lifespan_seconds is not None:
-            filters.append(
-                Range(
-                    "lifespan_seconds",
-                    gte=min_lifespan_seconds,
-                    lte=max_lifespan_seconds,
-                )
-            )
-
-        app_tokens = await project_manager.get_many_app_tokens(
-            And(*filters), page=Page(skip=skip, limit=limit)
+        app_tokens = await project_manager.find_app_tokens(
+            user_id,
+            ids=ids,
+            project_ids=project_id,
+            titles=title,
+            min_lifespan_seconds=min_lifespan_seconds,
+            max_lifespan_seconds=max_lifespan_seconds,
+            skip=skip,
+            limit=limit,
         )
 
         data = [schemas.model_validate(AppTokenRead, token) for token in app_tokens]

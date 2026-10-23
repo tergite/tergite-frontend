@@ -16,7 +16,7 @@ from .dtos import (
     DeviceCalibrationLog,
     DeviceCalibrationQuery,
 )
-from .service import build_filter, create_calibration, find_latest_calibrations, get_one
+from .service import create_calibration, find_latest_calibrations, get_one
 
 SCHEMAS = (DeviceCalibration, DeviceCalibrationLog)
 
@@ -26,7 +26,6 @@ __all__ = [
     "DeviceCalibrationCreate",
     "DeviceCalibrationLog",
     "DeviceCalibrationQuery",
-    "build_filter",
     "create_calibration",
     "find_latest_calibrations",
     "get_one",

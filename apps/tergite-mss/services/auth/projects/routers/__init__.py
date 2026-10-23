@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
 from fastapi_users import exceptions, schemas
 
-from libs.storage import And, Id, In, Page
+from libs.storage import Id
 from services import notices
 from services.notices import NoticeType
 from utils.api import PaginatedListResponse, build_paginated_json
@@ -41,7 +41,6 @@ from ..manager import ProjectAppTokenManager, ProjectManagerDependency
 from . import handlers
 from .utils import (
     get_full_admin_project,
-    get_projects_filter,
     notify_membership_change,
     prepare_partial_project,
 )
@@ -74,18 +73,16 @@ def get_my_projects_router(
         min_qpu_seconds: Optional[int] = Query(None),
         max_qpu_seconds: Optional[int] = Query(None),
     ):
-        query_filter = get_projects_filter(
+        projects = await project_manager.find_projects(
+            member_id=user_id,
             ids=ids,
             user_ids=user_ids,
-            name=name,
+            names=name,
             is_active=is_active,
             min_qpu_seconds=min_qpu_seconds,
             max_qpu_seconds=max_qpu_seconds,
-        )
-        # in an And, so that a user_ids query narrows the user's projects
-        projects = await project_manager.get_many(
-            And(In("user_ids", [user_id]), query_filter),
-            page=Page(skip=skip, limit=limit),
+            skip=skip,
+            limit=limit,
         )
 
         data = [schemas.model_validate(project_schema, project) for project in projects]
@@ -277,16 +274,15 @@ def get_projects_router(
         min_qpu_seconds: Optional[int] = Query(None),
         max_qpu_seconds: Optional[int] = Query(None),
     ):
-        query_filter = get_projects_filter(
+        projects = await project_manager.find_projects(
             ids=ids,
             user_ids=user_ids,
-            name=name,
+            names=name,
             is_active=is_active,
             min_qpu_seconds=min_qpu_seconds,
             max_qpu_seconds=max_qpu_seconds,
-        )
-        projects = await project_manager.get_many(
-            query_filter, page=Page(skip=skip, limit=limit)
+            skip=skip,
+            limit=limit,
         )
         data = await asyncio.gather(
             *(get_full_admin_project(project) for project in projects)
