@@ -61,7 +61,7 @@ def resolve_field(schema: Type[BaseModel], path: str) -> Optional[FieldInfo]:
     field_info: Optional[FieldInfo] = None
     annotation: Any = schema
     for part in path.split("."):
-        model = _find_model(annotation)
+        model = find_nested_model(annotation)
         if model is None and _is_open_mapping(annotation):
             return None
         if model is None or part not in model.model_fields:
@@ -81,11 +81,12 @@ def is_list_field(field_info: Optional[FieldInfo]) -> bool:
     )
 
 
-def _find_model(annotation: Any) -> Optional[Type[BaseModel]]:
+def find_nested_model(annotation: Any) -> Optional[Type[BaseModel]]:
+    """Gets the model the annotation holds, alone or in an Optional, List or Union"""
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
         return annotation
     for arg in get_args(annotation):
-        model = _find_model(arg)
+        model = find_nested_model(arg)
         if model is not None:
             return model
     return None

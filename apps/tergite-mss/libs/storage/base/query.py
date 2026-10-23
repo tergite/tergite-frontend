@@ -16,7 +16,7 @@ Fields are named as on the schema, dotted for nested objects (`timestamps.starte
 field, `Eq` and `In` match a list holding the value, as a membership test.
 """
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Tuple, Union
+from typing import Any, Iterator, Optional, Sequence, Tuple, Union
 
 
 @dataclass(frozen=True)
@@ -94,3 +94,12 @@ class Sort:
 class Page:
     skip: int = 0
     limit: Optional[int] = None
+
+
+def extract_fields(where: Filter) -> Iterator[str]:
+    """Yields every field the filter names, nested filters included"""
+    if isinstance(where, (And, Or)):
+        for item in where.filters:
+            yield from extract_fields(item)
+    else:
+        yield where.field

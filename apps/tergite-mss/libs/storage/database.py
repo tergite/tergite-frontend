@@ -15,7 +15,7 @@ from typing import Any, Iterator, List, Optional, Sequence, Type, TypeVar
 from urllib.parse import urlsplit
 
 from .base.exc import StorageError, StorageSpecError, UnknownSchemaError
-from .base.query import ALL, And, Filter, Or, Page, Sort
+from .base.query import ALL, Filter, Page, Sort, extract_fields
 from .base.schema import Schema, StorageSpec, is_list_field, resolve_field
 from .base.store import DbStore
 from .base.update import Returning, Update
@@ -142,7 +142,7 @@ class Database:
             raise UnknownSchemaError(f"{schema.__name__} is not in this Database")
 
         named_fields = (
-            *_extract_filter_fields(where),
+            *extract_fields(where),
             *(item.field for item in sort),
             *(item.field for item in changes),
             *fields,
@@ -154,6 +154,10 @@ class Database:
 
 def _create_store(database_url: str, schemas: Sequence[Type[Schema]]) -> DbStore:
     scheme = urlsplit(database_url).scheme
+    if scheme in ("mongodb", "mongodb+srv"):
+        from .mongo import MongoStore  # each backend's driver loads only when used
+
+        return MongoStore(database_url, schemas)
     raise StorageError(f"no store supports '{scheme}://' URLs")
 
 
@@ -186,14 +190,6 @@ def _extract_spec_fields(spec: StorageSpec) -> Iterator[str]:
     yield from spec.references
     if spec.expires is not None:
         yield spec.expires
-
-
-def _extract_filter_fields(where: Filter) -> Iterator[str]:
-    if isinstance(where, (And, Or)):
-        for item in where.filters:
-            yield from _extract_filter_fields(item)
-    else:
-        yield where.field
 
 
 def _ensure_instance(schema: Type[T], record: Any) -> None:
