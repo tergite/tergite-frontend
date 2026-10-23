@@ -93,24 +93,6 @@ def parse_record(type__: Type[ModelOrDict], record: Mapping[str, Any]) -> ModelO
         raise DbValidationError(exp)
 
 
-def try_parse_record(
-    type__: Type[ModelOrDict], record: Mapping[str, Any]
-) -> Optional[ModelOrDict]:
-    """Tries to convert the given record into the given type and returns None if it fails
-
-    Args:
-        type__: the type to parse to
-        record: the item to convert
-
-    Returns:
-        the record converted to the given type or None if there were validation errors
-    """
-    try:
-        return parse_record(type__, record)
-    except DbValidationError:
-        return None
-
-
 def create_partial_model(
     name: str, original: type[Model], exclude: Sequence[str] = (), default: Any = None
 ) -> type[Model]:

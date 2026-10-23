@@ -24,16 +24,14 @@ from typing import (
 )
 
 from fastapi import WebSocketException, status
-from fastapi.requests import Request
 from fastapi.websockets import WebSocket
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
 from redis import Redis
 
 import settings
 from utils.crypto import get_uuid4_str
 from utils.date_time import get_current_timestamp
-from utils.exc import UnauthorizedError
-from utils.logging import err_logger as access_logger
 from utils.redis_store import Collection, Schema
 
 ITEM = TypeVar("ITEM", bound=BaseModel)
@@ -148,16 +146,12 @@ class WebsocketConnectionManager:
 
         await websocket.accept(headers=[(b"x-request-id", request_id.encode("utf8"))])
         self.active_connections.append(websocket)
-        access_logger.info(
-            "Connected: %s at %s", websocket.client.host, str(websocket.url)
-        )
+        logger.info("Connected: %s at %s", websocket.client.host, str(websocket.url))
 
     def disconnect(self, websocket: WebSocket):
         """Removes a given websocket connection"""
         self.active_connections.remove(websocket)
-        access_logger.info(
-            "Disconnected: %s at %s", websocket.client.host, str(websocket.url)
-        )
+        logger.info("Disconnected: %s at %s", websocket.client.host, str(websocket.url))
 
     async def reply(self, websocket: WebSocket, message: EventResponse):
         """Sends a message to the given websocket"""
@@ -175,31 +169,10 @@ class WebsocketConnectionManager:
             reason: Reason for closing the connection
         """
         for connection in list(self.active_connections):
-            access_logger.info(
+            logger.info(
                 f"Closing: %s at %s", connection.client.host, str(connection.url)
             )
             await connection.close(code=1001, reason=reason)
-
-
-def get_bearer_token(request: Request, raise_if_error: bool = True) -> Optional[str]:
-    """Extracts the bearer token from the request or throws a 401 exception if not exist and `raise_if_error` is True
-
-    Args:
-        request: the request object from FastAPI
-        raise_if_error: whether an error should be raised if it occurs
-
-    Raises:
-        UnauthorizedError: no bearer token in the request
-
-    Returns:
-        the bearer token as a string or None if it does not exist and `raise_if_error` is False
-    """
-    try:
-        authorization_header = request.headers["Authorization"]
-        return authorization_header.split("Bearer ")[1].strip()
-    except (KeyError, IndexError):
-        if raise_if_error:
-            raise UnauthorizedError()
 
 
 async def get_websocket_json(

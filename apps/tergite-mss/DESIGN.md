@@ -124,7 +124,7 @@ websockets, and marks every device disconnected.
    `InvalidInputError` (and its `TooManyListQueryParams`) / `UnknownBccError` /
    `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,
    `ForbiddenError` → 403, `NotFoundError` → 404, `ConflictError` → 409,
-   `TooManyRequestsError` → 429, `ServiceUnavailableError` → 503, `BccHttpError` → the BCC's
+   `ServiceUnavailableError` → 503, `BccHttpError` → the BCC's
    own status, and `ValueError` / `TypeError` / `RuntimeError` / `DbValidationError` /
    `DatabaseError` / bare `Exception` → 500 with a generic message, and
    `UnsupportedOauthException` → 500 with its own. Other service exceptions subclass these

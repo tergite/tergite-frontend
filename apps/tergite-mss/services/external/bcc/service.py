@@ -35,6 +35,7 @@ from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
 from httpx._client import UseClientDefault
 from loguru import logger
 
+import settings
 from services.auth import User
 from services.auth.users import UserDatabase
 from services.external.bcc.dtos import (
@@ -45,7 +46,7 @@ from services.external.bcc.dtos import (
     NewBookingInfo,
     RecalibrationInfo,
 )
-from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
+from settings import PRIVATE_KEY_FILE
 from utils.api import GeneralMessage
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
@@ -130,7 +131,7 @@ class BccClient:
         user_id: str,
         request_id: str,
         private_key_file=PRIVATE_KEY_FILE,
-        key_password: Optional[bytes] = PRIVATE_KEY_PASSWORD,
+        key_password: Optional[bytes] = settings.CONFIG.private_key_password,
     ) -> Tuple[str, str]:
         """Retrieves the JWT for the given job_id and user_id from BCC
 
@@ -732,7 +733,7 @@ class BccClient:
         | Timeout
         | UseClientDefault = USE_CLIENT_DEFAULT,
         is_admin: Optional[bool] = None,
-        key_password: Optional[bytes] = PRIVATE_KEY_PASSWORD,
+        key_password: Optional[bytes] = settings.CONFIG.private_key_password,
         **kwargs,
     ) -> dict:
         """Attempts to cancel the job

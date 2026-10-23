@@ -50,20 +50,12 @@ class InvalidRequestIDError(BaseMssException):
     """Exception when the request id in the header is invalid"""
 
 
-class InvalidWebsocketDataTypeError(BaseMssException):
-    """Exception when the data type used by the websocket client is not permitted"""
-
-
 class ForbiddenError(BaseMssException):
     """Exception when a request is forbidden"""
 
 
 class ConflictError(BaseMssException):
     """Exception when a request conflicts with the current state of a resource"""
-
-
-class TooManyRequestsError(BaseMssException):
-    """Exception when a client has exceeded a rate limit"""
 
 
 class UnauthorizedError(BaseMssException):

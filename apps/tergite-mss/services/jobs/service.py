@@ -27,7 +27,7 @@ from pymongo import ReturnDocument
 import settings
 from services import notices
 from services.external.bcc import BccClient, CancellationDetails
-from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
+from settings import PRIVATE_KEY_FILE
 from utils import mongodb as mongodb_utils
 from utils.api import GeneralMessage
 from utils.crypto import decrypt_message
@@ -51,7 +51,7 @@ async def get_job(
     job_id: UUID,
     should_decrypt_token: bool = False,
     private_key_file: Path = PRIVATE_KEY_FILE,
-    key_password: Optional[bytes] = PRIVATE_KEY_PASSWORD,
+    key_password: Optional[bytes] = settings.CONFIG.private_key_password,
 ) -> Job:
     """Gets a job by job_id
 

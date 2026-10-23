@@ -35,7 +35,6 @@ from utils.exc import (
     InvalidRequestIDError,
     NotFoundError,
     ServiceUnavailableError,
-    TooManyRequestsError,
     UnauthorizedError,
     UnknownBccError,
 )
@@ -94,7 +93,6 @@ app.add_exception_handler(InvalidInputError, make_http_error_handler(400))
 app.add_exception_handler(UnauthorizedError, make_http_error_handler(401))
 app.add_exception_handler(ForbiddenError, make_http_error_handler(403))
 app.add_exception_handler(ConflictError, make_http_error_handler(409))
-app.add_exception_handler(TooManyRequestsError, make_http_error_handler(429))
 app.add_exception_handler(
     Exception, make_http_error_handler(500, "Unexpected server error")
 )

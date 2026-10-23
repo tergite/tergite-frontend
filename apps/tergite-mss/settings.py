@@ -30,7 +30,6 @@ if not _MSS_CONFIG_JSON_STR:
     raise ValueError("MSS config is empty")
 
 CONFIG: AppConfig = AppConfig.from_json_str(_MSS_CONFIG_JSON_STR)
-PRIVATE_KEY_PASSWORD = CONFIG.private_key_password
 
 _is_production = CONFIG.environment == "production"
 
@@ -42,5 +41,4 @@ elif CONFIG.environment == "test":
 else:
     _logger_level = logging.DEBUG
 
-root_logger = logging.getLogger()
-root_logger.setLevel(_logger_level)
+logging.getLogger().setLevel(_logger_level)

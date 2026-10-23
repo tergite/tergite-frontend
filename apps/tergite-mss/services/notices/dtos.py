@@ -28,7 +28,6 @@ from pydantic import (
 from pymongo import IndexModel
 
 from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
-from utils.models import create_partial_model
 from utils.types import get_class_import_path, load_class
 
 NOTICE_DB_COLLECTION = "notices"
@@ -532,12 +531,3 @@ class CustomNoticeCreate(BaseModel):
             NoticeTemplate.type == NoticeType.CUSTOM_BROADCAST.id
         )
         return [Notice.from_template(template=template, context=context, **kwargs)]
-
-
-NoticeTemplatePartial = create_partial_model("NoticeTemplatePartial", NoticeTemplate)
-"""The partial notice template to be used when updating the database"""
-
-CustomNoticeCreatePartial = create_partial_model(
-    "CustomNoticeCreatePartial", CustomNoticeCreate
-)
-"""The partial custom notice to be used when updating the database"""

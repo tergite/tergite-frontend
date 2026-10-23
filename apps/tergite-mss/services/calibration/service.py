@@ -95,35 +95,6 @@ async def find_latest_calibrations(
     )
 
 
-async def get_historical_many(
-    db: AsyncIOMotorDatabase,
-    filters: Optional[Dict[str, Any]] = None,
-    limit: Optional[int] = None,
-    skip: int = 0,
-    sort: List[str] = (),
-) -> List[DeviceCalibration]:
-    """Gets the current calibration results for all available devices
-
-    Args:
-        db: the mongo database
-        filters: the mongodb-like filters to use to extract the calibrations
-        limit: the number of results to return: default = None meaning all of them
-        skip: the number of records to skip; default = 0
-        sort: the fields to sort by, prefixing any with a '-' means descending; default = ()
-
-    Returns:
-        the list of calibration results
-    """
-    return await mongodb_utils.find(
-        db[CALIBRATION_LOGS_COLLECTION],
-        filters=filters,
-        limit=limit,
-        skip=skip,
-        sort=sort,
-        schema=DeviceCalibration,
-    )
-
-
 async def get_one(db: AsyncIOMotorDatabase, name: str) -> DeviceCalibration:
     """Gets the current calibration results of the given device
 

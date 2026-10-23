@@ -42,7 +42,6 @@ verb: utils/api.py::WebsocketRequestLog.from_request
 verb: utils/config.py::AppConfig.dashboard_url_required_for_email
 verb: utils/config.py::AppConfig.from_json_str
 verb: utils/date_time.py::datetime_to_zulu
-verb: utils/date_time.py::to_datetime
 verb: utils/logging.py::json_formatter
 verb: utils/models.py::PartialMeta.model_dump
 verb: utils/models.py::_as_optional
@@ -93,7 +92,6 @@ boolean: services/jobs/dtos.py::Job.model_dump(serialize_as_any)
 boolean: services/notices/service.py::_merge_filters(include_dismissed)
 boolean: services/notices/service.py::count_many(include_dismissed)
 boolean: services/notices/service.py::find_many(include_dismissed)
-boolean: utils/api.py::get_bearer_token(raise_if_error)
 boolean: utils/config.py::EmailConfig.start_tls
 boolean: utils/config.py::EmailConfig.use_tls
 boolean: utils/config.py::Oauth2ClientConfig.associate_by_email

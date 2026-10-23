@@ -14,14 +14,11 @@ import json
 import logging
 import sys
 import traceback
-from typing import Any, Collection, Coroutine, TypeVar
+from typing import Collection
 
 from loguru import logger
 
-T = TypeVar("T")
-
 # error logger wrapper to preserve backward compatibility
-err_logger = logger
 
 
 UNLOGGED_PATHS = frozenset({"/health"})
@@ -178,22 +175,3 @@ def setup_logging(environment: str):
         item for item in access_logger.filters if not isinstance(item, EndpointFilter)
     ]
     access_logger.addFilter(EndpointFilter(UNLOGGED_PATHS))
-
-
-async def log_if_err(
-    coro: Coroutine[Any, Any, T],
-    err_msg_prefix: str = "suppressed error",
-) -> Coroutine[Any, Any, T]:
-    """Suppresses the error a coroutine might raise and logs it
-
-    Args:
-        coro: the coroutine
-        err_msg_prefix: the prefix for the error message that is logged
-
-    Returns:
-        the result of the coroutine
-    """
-    try:
-        return await coro
-    except Exception as exp:
-        logger.exception(f"{err_msg_prefix}: {exp.__class__.__name__}: {exp}")
