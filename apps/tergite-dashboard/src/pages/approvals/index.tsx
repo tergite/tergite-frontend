@@ -58,10 +58,11 @@ export function Approvals() {
   );
 
   const handleReaction = useCallback(async () => {
+    // before the refresh, or it would clear a row picked meanwhile
+    setRowSelection({});
     await refreshMyRequests(queryClient);
     await refreshMyNotices(queryClient);
     await refreshMyProjectsQueries(queryClient);
-    setRowSelection({});
   }, [queryClient]);
 
   return (

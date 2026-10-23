@@ -75,6 +75,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 - A selected token, project or request now stays selected when its table refetches in a
   different order; selection followed the row position, so the sidebar could switch to
   another item and act on it.
+- A row picked while its table refreshes after a delete, create or approval now stays
+  picked; the selection was cleared only once the refresh finished, closing its sidebar.
 - An error while loading the dashboard or the login page now shows the dashboard's error card
   with working "Try again" and "Back" buttons; the card itself crashed, leaving React Router's
   bare "Unexpected Application Error" page.

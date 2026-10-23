@@ -48,9 +48,9 @@ export function Tokens() {
   );
 
   const handleTokenDelete = useCallback(async () => {
-    await refreshMyTokensQueries(queryClient);
-    // clear selected rows
+    // before the refresh, or it would clear a row picked meanwhile
     setRowSelection({});
+    await refreshMyTokensQueries(queryClient);
   }, [queryClient, setRowSelection]);
 
   useEffect(() => {

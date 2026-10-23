@@ -1119,6 +1119,26 @@ users.forEach((user) => {
       });
 
     isAdmin &&
+      it("a project picked while the list refreshes after a deletion stays picked", () => {
+        const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
+        const [deleted, picked] = projects.slice(-2);
+        cy.viewport(1080, 750);
+        cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`, (req) => {
+          req.on("response", (res) => res.setDelay(2000));
+        });
+
+        cy.contains("#projects-table tbody tr", deleted.name).click();
+        cy.contains("#project-summary button", /delete/i).realClick();
+        cy.contains("#confirm-dialog button", /confirm/i).realClick();
+        cy.contains("#projects-table tbody td", deleted.name).should("not.exist");
+        cy.contains("#projects-table tbody tr", picked.name).click();
+
+        // the toast comes once the deletion handler has finished
+        cy.contains(`Project ${deleted.name} deleted`).should("be.visible");
+        cy.contains("#project-summary h3", picked.name).should("be.visible");
+      });
+
+    isAdmin &&
       it("cancelling deletion of project does nothing", () => {
         cy.viewport(1080, 750);
 

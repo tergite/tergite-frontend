@@ -56,10 +56,10 @@ export function AdminRequests() {
   );
 
   const handleRequestReaction = useCallback(async () => {
+    // before the refresh, or it would clear a row picked meanwhile
+    setRowSelection({});
     await refreshMyRequests(queryClient);
     await refreshMyProjectsQueries(queryClient);
-    // clear selected rows
-    setRowSelection({});
   }, [queryClient, setRowSelection]);
 
   return (

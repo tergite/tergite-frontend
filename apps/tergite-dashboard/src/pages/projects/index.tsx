@@ -54,9 +54,9 @@ export function Projects() {
   );
 
   const handleProjectDelete = useCallback(async () => {
-    await refreshMyProjectsQueries(queryClient);
-    // clear selected rows
+    // before the refresh, or it would clear a row picked meanwhile
     setRowSelection({});
+    await refreshMyProjectsQueries(queryClient);
   }, [queryClient, setRowSelection]);
 
   return (

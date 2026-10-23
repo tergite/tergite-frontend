@@ -54,10 +54,10 @@ export function AdminProjects() {
   );
 
   const handleProjectDelete = useCallback(async () => {
+    // before the refresh, or it would clear a row picked meanwhile
+    setRowSelection({});
     await refreshMyProjectsQueries(queryClient);
     await refreshAllAdminQueries(queryClient);
-    // clear selected rows
-    setRowSelection({});
   }, [queryClient, setRowSelection]);
 
   const handleProjectEdit = useCallback(async () => {
@@ -68,9 +68,10 @@ export function AdminProjects() {
 
   const handleProjectCreate = useCallback(async () => {
     setMode(OperationMode.EDIT);
+    // before the refresh, or it would clear a row picked meanwhile
+    setRowSelection({});
     await refreshMyProjectsQueries(queryClient);
     await refreshAllAdminQueries(queryClient);
-    setRowSelection({});
   }, [queryClient, setMode, setRowSelection]);
 
   const handleSidebarClose = useCallback(async () => {
