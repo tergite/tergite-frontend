@@ -134,7 +134,6 @@ license-header: tests/api/rest/admin/bcc/__init__.py
 license-header: tests/api/rest/me/__init__.py
 license-header: tests/api/rest/me/notices/__init__.py
 license-header: utils/__init__.py
-all-strings: services/auth/__init__.py::__all__
 facade-import: api/rest/routers/auth.py::import services.auth.providers.dtos
 facade-import: services/auth/projects/routers/__init__.py::import services.notices.dtos
 facade-import: services/auth/projects/routers/utils.py::import services.notices.dtos
