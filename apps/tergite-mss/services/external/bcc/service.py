@@ -49,7 +49,7 @@ from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils.api import GeneralMessage
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, sign_message
-from utils.exc import BccHttpError, ServiceUnavailableError
+from utils.exc import BccHttpError, ServiceUnavailableError, UnknownBccError
 
 _BCC_CLIENTS: Dict[str, "BccClient"] = {}
 
@@ -91,12 +91,22 @@ async def close_clients():
     _BCC_CLIENTS.clear()
 
 
-def get_client_map() -> Dict[str, "BccClient"]:
-    """Get the map of Bcc Clients, where the key is the name of the BCC instance
+def get_client(backend: str) -> "BccClient":
+    """Gets the client of the BCC of the given name
 
-    This is quite useful as a dependency injector
+    Args:
+        backend: the name of the BCC
+
+    Returns:
+        the client of that BCC
+
+    Raises:
+        UnknownBccError: Unknown backend '{backend}'
     """
-    return _BCC_CLIENTS
+    try:
+        return _BCC_CLIENTS[backend]
+    except KeyError:
+        raise UnknownBccError(f"Unknown backend '{backend}'")
 
 
 class BccClient:

@@ -26,9 +26,10 @@ from pymongo import ReturnDocument
 
 import settings
 from services import notices
-from services.external.bcc import BccClient
+from services.external.bcc import BccClient, CancellationDetails
 from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils import mongodb as mongodb_utils
+from utils.api import GeneralMessage
 from utils.crypto import decrypt_message
 from utils.date_time import datetime_to_zulu
 from utils.exc import NotFoundError
@@ -36,7 +37,7 @@ from utils.exc import NotFoundError
 from ..auth import Project, User
 from ..notices import NoticeType
 from ..notices.dtos import ProjectRequestContext, RefType
-from .dtos import CreatedJobResponse, Job, JobUpdate
+from .dtos import CreatedJobResponse, Job, JobCreate, JobStatus, JobUpdate
 
 if TYPE_CHECKING:
     from ..auth.projects.database import ProjectDatabase
@@ -84,8 +85,9 @@ async def get_job(
 async def create_job(
     db: AsyncIOMotorDatabase,
     bcc_client: BccClient,
-    job: Job,
-    user_id: str,
+    payload: JobCreate,
+    project_id: Optional[str],
+    user_id: Optional[str],
     request_id: str,
 ) -> CreatedJobResponse:
     """Creates a new job for the given backend
@@ -93,7 +95,8 @@ async def create_job(
     Args:
         db: the mongo database from where to create the job
         bcc_client: the HTTP client for accessing BCC
-        job: the job object to create
+        payload: the job to create
+        project_id: the unique identifier of the project the job is billed to
         user_id: the unique identifier of the user
         request_id: the unique identifier of the current request
 
@@ -106,6 +109,7 @@ async def create_job(
             ServiceUnavailableError: device is currently unavailable.
                 See :meth:`utils.http_clients.BccClient.save_credentials`
     """
+    job = Job(**payload.model_dump(), project_id=project_id, user_id=user_id)
     logger.info(f"Creating new job with id: {job.job_id} for user: {user_id}")
     encrypted_token, token = await bcc_client.get_token(
         job_id=job.job_id, user_id=user_id, request_id=request_id
@@ -251,18 +255,72 @@ async def update_qpu_usage(
     return project
 
 
-async def delete_job(db: AsyncIOMotorDatabase, job_id: UUID):
-    """Remove the job of the given job_id
+async def cancel_job(
+    db: AsyncIOMotorDatabase,
+    bcc_client: BccClient,
+    job_id: UUID,
+    user_id: str,
+    request_id: str,
+    details: CancellationDetails,
+) -> GeneralMessage:
+    """Cancels the job in its BCC, then marks it cancelled if the BCC succeeded
 
     Args:
         db: the database where the jobs are stored
+        bcc_client: the client of the BCC running the job
         job_id: the unique identifier of the job
+        user_id: the unique identifier of the user cancelling it
+        request_id: the unique identifier of the current request
+        details: the extra information passed when cancelling the job
+
+    Returns:
+        the BCC's answer
+    """
+    response = await bcc_client.cancel_job(
+        job_id, user_id=user_id, request_id=request_id, body=details
+    )
+    if response["status"] == "success":
+        await update_job(
+            db,
+            job_id=str(job_id),
+            payload=JobUpdate(
+                cancellation_reason=details.reason, status=JobStatus.CANCELLED
+            ),
+        )
+
+    return response
+
+
+async def delete_job(
+    db: AsyncIOMotorDatabase,
+    bcc_client: BccClient,
+    job_id: UUID,
+    user_id: str,
+    request_id: str,
+) -> GeneralMessage:
+    """Deletes the job from its BCC, then from the database if the BCC succeeded
+
+    Args:
+        db: the database where the jobs are stored
+        bcc_client: the client of the BCC running the job
+        job_id: the unique identifier of the job
+        user_id: the unique identifier of the user deleting it
+        request_id: the unique identifier of the current request
+
+    Returns:
+        the BCC's answer
 
     Raises:
-        ValueError: server failed deleting documents
+        DatabaseError: server failed deleting documents
         NotFoundError: no matches for {filter}
     """
-    return await mongodb_utils.delete_many(db.jobs, _filter={"job_id": str(job_id)})
+    response = await bcc_client.delete_job(
+        job_id, user_id=user_id, request_id=request_id
+    )
+    if response["status"] == "success":
+        await mongodb_utils.delete_many(db.jobs, _filter={"job_id": str(job_id)})
+
+    return response
 
 
 async def get_readable_job(

@@ -168,8 +168,9 @@ The interaction diagram for the full flow (via MyAccessID) is in
 ## 4. Talking to the backends
 
 `services/external/bcc/service.py` holds a process-global map of `BccClient`s, one per
-`[[backends]]` entry, created in the lifespan and injected via `BccClientsMapDep` /
-`BccClientDep` (which resolves the `{backend}` path param and raises `UnknownBccError`).
+`[[backends]]` entry, created in the lifespan. `bcc.get_client(backend)` looks one up and
+raises `UnknownBccError` for an unknown name; `BccClientDep` calls it with the `{backend}`
+path param, and the jobs router calls it with the job's device.
 
 Every outbound call goes through `BccClient._request`, which signs the request
 (`x-mss-request-id`, `x-mss-timestamp`, `x-mss-signature`, `x-mss-user-id`, optional

@@ -15,20 +15,18 @@
 
 import uuid
 from datetime import datetime
-from typing import Dict
 
 from cryptography.exceptions import InvalidSignature
-from fastapi import Depends, WebSocketException
+from fastapi import WebSocketException
 from loguru import logger
 from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocket
 
 import settings
-from services.external import bcc
 from utils.api import get_request_logs_store, verify_ws_signature
 from utils.config import get_ip_addr
-from utils.exc import InvalidRequestIDError, UnknownBccError
+from utils.exc import InvalidRequestIDError
 from utils.mongodb import get_mongodb
 
 
@@ -134,25 +132,3 @@ async def get_default_mongodb():
     return get_mongodb(
         url=f"{settings.CONFIG.database.url}", name=settings.CONFIG.database.name
     )
-
-
-async def get_bcc_client(
-    backend: str,
-    bcc_clients_map: Dict[str, bcc.BccClient] = Depends(bcc.get_client_map),
-) -> bcc.BccClient:
-    """Dependency injector to return the BCC client
-
-    Args:
-        backend (str): the name of the backend
-        bcc_clients_map (BccClientsMap): the map of BCC clients
-
-    Returns:
-        bcc.BccClient: the BCC client
-
-    Raises:
-        UnknownBccError: Unknown backend '{backend}'
-    """
-    try:
-        return bcc_clients_map[backend]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{backend}'")

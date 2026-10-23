@@ -22,7 +22,6 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.requests import Request
 
 from api.rest.dependencies import (
-    BccClientsMapDep,
     CurrentLaxProjectAndUserDep,
     CurrentStrictProjectUserIds,
     CurrentUserDep,
@@ -31,17 +30,10 @@ from api.rest.dependencies import (
 )
 from services import jobs as jobs_service
 from services.auth import User
+from services.external import bcc
 from services.external.bcc import CancellationDetails
-from services.jobs import (
-    Job,
-    JobCreate,
-    JobQuery,
-    JobStatus,
-    JobStatusResponse,
-    JobUpdate,
-)
+from services.jobs import JobCreate, JobQuery, JobStatusResponse
 from utils.api import GeneralMessage, PaginatedListResponse
-from utils.exc import UnknownBccError
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -124,23 +116,17 @@ async def get_job_status(
 async def create_one(
     request: Request,
     db: MongoDbDep,
-    bcc_clients_map: BccClientsMapDep,
     project_user_id_pair: CurrentStrictProjectUserIds,
     payload: JobCreate,
     request_id: RequestIdDep,
 ):
     """Creates a job in the given backend and given calibration_date in the body"""
-    try:
-        bcc_client = bcc_clients_map[payload.device]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{payload.device}'")
-
     project_id, user_id = project_user_id_pair
-    job = Job(**payload.model_dump(), project_id=project_id, user_id=user_id)
     return await jobs_service.create_job(
         db,
-        bcc_client=bcc_client,
-        job=job,
+        bcc_client=bcc.get_client(payload.device),
+        payload=payload,
+        project_id=project_id,
         user_id=user_id,
         request_id=request_id,
     )
@@ -151,7 +137,6 @@ async def cancel_job(
     db: MongoDbDep,
     job_id: UUID,
     details: CancellationDetails,
-    bcc_clients_map: BccClientsMapDep,
     request_id: RequestIdDep,
     user: User = CurrentUserDep,
 ) -> GeneralMessage:
@@ -162,7 +147,6 @@ async def cancel_job(
         job_id: the unique identifier of the job
         details: the extra information passed when canceling the job
         request_id: the request id associated with this request
-        bcc_clients_map: the mapping containing clients that access backends on behalf of this application
         user: the current logged-in user
 
     Returns:
@@ -174,33 +158,20 @@ async def cancel_job(
         406: if the job has already been cancelled
     """
     job = await jobs_service.get_job(db, job_id=job_id)
-
-    try:
-        bcc_client = bcc_clients_map[job.device]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{job.device}'")
-
-    response = await bcc_client.cancel_job(
-        job_id, user_id=user.id, request_id=request_id, body=details
+    return await jobs_service.cancel_job(
+        db,
+        bcc_client=bcc.get_client(job.device),
+        job_id=job_id,
+        user_id=user.id,
+        request_id=request_id,
+        details=details,
     )
-    if response["status"] == "success":
-        await jobs_service.update_job(
-            db,
-            job_id=str(job_id),
-            payload=JobUpdate(
-                cancellation_reason=details.reason,
-                status=JobStatus.CANCELLED,
-            ),
-        )
-
-    return response
 
 
 @router.delete("/{job_id}")
 async def remove_job(
     db: MongoDbDep,
     job_id: UUID,
-    bcc_clients_map: BccClientsMapDep,
     request_id: RequestIdDep,
     user: User = CurrentUserDep,
 ) -> GeneralMessage:
@@ -210,7 +181,6 @@ async def remove_job(
         db: the database in which records are stored
         job_id: the unique identifier of the job
         request_id: the request id associated with this request
-        bcc_clients_map: the mapping containing clients that access backends on behalf of this application
         user: the logged-in user
 
     Returns:
@@ -221,15 +191,10 @@ async def remove_job(
         404: no matches for {job_id: job_id}
     """
     job = await jobs_service.get_job(db, job_id=job_id)
-    try:
-        bcc_client = bcc_clients_map[job.device]
-    except KeyError:
-        raise UnknownBccError(f"Unknown backend '{job.device}'")
-
-    response = await bcc_client.delete_job(
-        job_id, user_id=user.id, request_id=request_id
+    return await jobs_service.delete_job(
+        db,
+        bcc_client=bcc.get_client(job.device),
+        job_id=job_id,
+        user_id=user.id,
+        request_id=request_id,
     )
-    if response["status"] == "success":
-        await jobs_service.delete_job(db, job_id=job_id)
-
-    return response

@@ -24,7 +24,7 @@ from .service import (
     BccClientHeaders,
     close_clients,
     create_clients,
-    get_client_map,
+    get_client,
 )
 
 __all__ = [
@@ -39,5 +39,5 @@ __all__ = [
     "BccClientHeaders",
     "close_clients",
     "create_clients",
-    "get_client_map",
+    "get_client",
 ]

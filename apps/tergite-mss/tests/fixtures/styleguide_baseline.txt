@@ -130,7 +130,6 @@ boolean: utils/redis_store.py::Schema.model_dump(serialize_as_any)
 constant-position: services/auth/users/dtos.py::ID
 constant-position: utils/date_time.py::DEFAULT_FROM_DATETIME_STR
 constant-position: utils/date_time.py::DEFAULT_TO_DATETIME_STR
-private-helper-position: api/rest/utils.py::get_bcc_client
 private-helper-position: api/rest/utils.py::get_default_mongodb
 private-helper-position: utils/api.py::get_request_logs_store
 license-header: api/__init__.py
@@ -314,7 +313,6 @@ type-hints: services/external/email/service.py::Emailer.from_value
 type-hints: services/external/email/service.py::Emailer.register_batch_schedule
 type-hints: services/external/email/service.py::Emailer.send
 type-hints: services/external/email/service.py::_send_on_repeat
-type-hints: services/jobs/service.py::delete_job
 type-hints: services/jobs/dtos.py::Job.serialize_object_id
 type-hints: services/jobs/dtos.py::JobStatusResponse.from_job
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished

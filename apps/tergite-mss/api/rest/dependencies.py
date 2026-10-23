@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Dependencies to be injected"""
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -33,11 +33,7 @@ from services.auth.service import (
 from services.auth.users import UserDatabase
 from services.external import bcc
 
-from .utils import (
-    get_bcc_client,
-    get_default_mongodb,
-    get_request_id,
-)
+from .utils import get_default_mongodb, get_request_id
 
 CurrentSystemUserProjectDep = Annotated[User, Depends(GET_CURRENT_SYSTEM_USER_PROJECT)]
 CurrentProjectDep = Depends(GET_CURRENT_PROJECT)
@@ -55,6 +51,5 @@ CurrentStrictProjectUserIds = Annotated[
 ]
 ProjectDbDep = Annotated[ProjectDatabase, Depends(get_project_db)]
 MongoDbDep = Annotated[AsyncIOMotorDatabase, Depends(get_default_mongodb)]
-BccClientsMapDep = Annotated[Dict[str, bcc.BccClient], Depends(bcc.get_client_map)]
-BccClientDep = Annotated[bcc.BccClient, Depends(get_bcc_client)]
+BccClientDep = Annotated[bcc.BccClient, Depends(bcc.get_client)]
 RequestIdDep = Annotated[str, Depends(get_request_id)]

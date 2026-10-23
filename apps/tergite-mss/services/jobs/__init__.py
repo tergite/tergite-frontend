@@ -13,6 +13,7 @@
 from .dtos import Job, JobCreate, JobQuery, JobStatus, JobStatusResponse, JobUpdate
 from .service import (
     build_readable_jobs_filter,
+    cancel_job,
     count_job_submitters,
     create_job,
     delete_job,
@@ -31,6 +32,7 @@ __all__ = [
     "JobStatusResponse",
     "JobUpdate",
     "build_readable_jobs_filter",
+    "cancel_job",
     "count_job_submitters",
     "create_job",
     "get_latest_many",
