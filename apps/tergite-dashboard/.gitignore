@@ -29,3 +29,5 @@ cypress-image-diff-screenshots/comparison/*
 cypress-image-diff-screenshots/diff/*
 
 .npm/
+# lighthouse ci working folder, from dev/perf/record.sh
+.lighthouseci/

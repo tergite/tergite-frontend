@@ -1,0 +1,17 @@
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "http://127.0.0.1:5173/",
+        "http://127.0.0.1:5173/devices",
+        "http://127.0.0.1:5173/devices/Loke",
+        "http://127.0.0.1:5173/projects"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop",
+        "onlyCategories": ["performance"]
+      }
+    }
+  }
+}

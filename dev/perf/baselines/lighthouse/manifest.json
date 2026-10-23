@@ -1,0 +1,38 @@
+[
+  {
+    "url": "http://127.0.0.1:5173/",
+    "isRepresentativeRun": true,
+    "htmlPath": null,
+    "jsonPath": "127_0_0_1--2026_10_23_07_57_29.report.json",
+    "summary": {
+      "performance": 0.99
+    }
+  },
+  {
+    "url": "http://127.0.0.1:5173/devices",
+    "isRepresentativeRun": true,
+    "htmlPath": null,
+    "jsonPath": "127_0_0_1-devices-2026_10_23_07_58_13.report.json",
+    "summary": {
+      "performance": 1
+    }
+  },
+  {
+    "url": "http://127.0.0.1:5173/devices/Loke",
+    "isRepresentativeRun": true,
+    "htmlPath": null,
+    "jsonPath": "127_0_0_1-devices_Loke-2026_10_23_07_58_34.report.json",
+    "summary": {
+      "performance": 0.99
+    }
+  },
+  {
+    "url": "http://127.0.0.1:5173/projects",
+    "isRepresentativeRun": true,
+    "htmlPath": null,
+    "jsonPath": "127_0_0_1-projects-2026_10_23_07_59_09.report.json",
+    "summary": {
+      "performance": 0.98
+    }
+  }
+]
