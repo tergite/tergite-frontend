@@ -66,6 +66,11 @@ from tests._utils.records import (
     get_request_record,
     with_offset_datetimes,
 )
+from tests._utils.storage import (
+    SQL_DATABASE_KINDS,
+    get_sql_database_url,
+    reset_sql_database,
+)
 
 BACKEND_SLUGS = ("Loke", "Pingu")
 PROJECT_LIST = load_json_fixture("project_list.json")
@@ -101,6 +106,15 @@ def request_log_db() -> redis.Redis:
     # clean up
     client.flushdb()
     client.close()
+
+
+@pytest.fixture(params=SQL_DATABASE_KINDS)
+async def sql_database_url(request, tmp_path) -> str:
+    """The URL of a SQL database, each kind in turn, with no tables left from other tests"""
+    database_url = get_sql_database_url(request.param, tmp_path)
+    await reset_sql_database(database_url)
+    yield database_url
+    await reset_sql_database(database_url)
 
 
 @pytest.fixture(scope="session")

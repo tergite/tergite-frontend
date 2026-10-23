@@ -29,7 +29,12 @@ from libs.storage import (
     StorageSpec,
     generate_id,
 )
-from tests._utils.env import TEST_MONGODB_URL, TEST_POSTGRES_URL
+from tests._utils.env import TEST_MONGODB_URL
+from tests._utils.storage import (
+    SQL_DATABASE_KINDS,
+    get_sql_database_url,
+    reset_sql_database,
+)
 
 _MONGODB_NAME = "tergite-conformance-test"
 
@@ -75,24 +80,23 @@ class _Job(Schema):
 _SCHEMAS = [_Owner, _Pet, _Job]
 
 
-@pytest.fixture(params=["mongodb", "postgresql", "sqlite"])
+@pytest.fixture(params=["mongodb", *SQL_DATABASE_KINDS])
 async def database(request, tmp_path):
-    database_url = {
-        "mongodb": f"{TEST_MONGODB_URL.rstrip('/')}/{_MONGODB_NAME}",
-        "postgresql": TEST_POSTGRES_URL,
-        "sqlite": f"sqlite+aiosqlite:///{tmp_path}/conformance.db",
-    }[request.param]
+    if request.param == "mongodb":
+        database_url = f"{TEST_MONGODB_URL.rstrip('/')}/{_MONGODB_NAME}"
+    else:
+        database_url = get_sql_database_url(request.param, tmp_path)
+        await reset_sql_database(database_url)
     database = Database(database_url, schemas=_SCHEMAS)
     await database.setup()
     yield database
-    # children first, as pets reference owners
-    for schema in (_Pet, _Job, _Owner):
-        await database.delete_many(schema, {})
     await database.close()
     if request.param == "mongodb":
         client = AsyncMongoClient(TEST_MONGODB_URL)
         await client.drop_database(_MONGODB_NAME)
         await client.close()
+    else:
+        await reset_sql_database(database_url)
 
 
 async def test_insert_and_get(database):
