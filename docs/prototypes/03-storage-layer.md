@@ -37,15 +37,9 @@ ticked, or a failure is written beside its box.
       `services/auth/projects/routers/__init__.py`, `services/auth/projects/routers/utils.py`,
       `services/external/bcc/service.py` and `services/notices/emails.py`; each use reads or
       builds a Beanie `User` id.
-- [ ] **The baselines still hold.** With docker running and port 8002 free,
-      `./dev/perf/record.sh /tmp/perf-03 && python3 dev/perf/compare.py dev/perf/baselines /tmp/perf-03`
-      exits 0. The run seeds the e2e fixtures with ObjectId ids, as existing data holds them, so
-      no route failing is also the check that step 3 still reads old records. Two runs on
-      unchanged code have moved per-route p95 by up to 13 ms and peak MongoDB connections by up
-      to 3, past the 10 ms and 2-connection noise floors; if this run fails only on such a
-      measure, rerun it once before reading it as a regression.
 
 ## Not covered here
 
 - The SQL backend is step 4; only `mongodb://` and `mongodb+srv://` URLs open a `Database`.
 - `dev/e2e_test.sh` needs a clone of tergite-backend; it runs at the end of steps 7 and 9.
+- Performance is measured once, in step 10.
