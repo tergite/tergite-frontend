@@ -20,7 +20,6 @@ from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
-import settings
 from services.external.email.service import Emailer
 from utils import mongodb as mongodb_utils
 from utils.config import NoticesConfig
@@ -50,6 +49,10 @@ from .emails import (
 
 if TYPE_CHECKING:
     from services.auth import User
+
+# on_startup replaces both with what the app is configured with
+_conf = NoticesConfig()
+_is_email_enabled = False
 
 
 async def set_read_status(
@@ -236,7 +239,6 @@ async def create_system_notice(
     context: Optional[BaseNoticeContext] = None,
     ref_type: Optional[RefType] = None,
     ref_id: Optional[PydanticObjectId] = None,
-    retention_days: int = settings.CONFIG.notices.retention_days,
     **kwargs,
 ) -> List[Notice]:
     """Creates a system notice for the given users.
@@ -251,7 +253,6 @@ async def create_system_notice(
             without a project name gets the name of the project of its project_id
         ref_type: the reference type that is associated with this notice, e.g. a user_request
         ref_id: the unique identifier of the reference in the collection of the given ref_type
-        retention_days: the number of days this notice should be retained
 
     Returns:
         the created notices, or an empty list if none were created
@@ -266,17 +267,16 @@ async def create_system_notice(
             notice_type, user_ids=user_ids
         )
 
-        is_email_enabled = settings.CONFIG.email is not None
         email_status_map = {
             user_id: (
                 EmailStatus.PENDING
-                if is_email_enabled and email_prefs_map.get(user_id, True)
+                if _is_email_enabled and email_prefs_map.get(user_id, True)
                 else EmailStatus.NOT_APPLICABLE
             )
             for user_id in user_ids
         }
 
-        expires_at = get_utc_now() + timedelta(retention_days)
+        expires_at = get_utc_now() + timedelta(_conf.retention_days)
 
         records = [
             Notice.from_template(
@@ -486,6 +486,10 @@ async def on_startup(
         emailer: the emailer instance that sends emails; None if email is not configured
         conf: the notices configuration
     """
+    global _conf, _is_email_enabled
+    _conf = conf
+    _is_email_enabled = emailer is not None
+
     await init_strict_beanie(
         database=db,
         document_models=[

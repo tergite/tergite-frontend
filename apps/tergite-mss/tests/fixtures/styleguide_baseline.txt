@@ -142,7 +142,6 @@ import-layering: services/auth/users/__init__.py::import settings
 import-layering: services/external/bcc/service.py::import settings
 import-layering: services/jobs/service.py::import settings
 import-layering: services/jobs/service.py::import settings
-import-layering: services/notices/service.py::import settings
 import-layering: utils/api.py::import settings
 facade-import: api/rest/dependencies.py::import services.auth.service
 facade-import: api/rest/dependencies.py::import services.auth.users
