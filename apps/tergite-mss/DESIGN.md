@@ -83,6 +83,10 @@ rules live in `services/`. Two consequences worth internalising:
   own connection lifetime.
 - `services/` may import `utils/` and other services (e.g. `devices` events call `jobs` and
   `calibration`). `services/` must not import from `api/`.
+- Only `api/rest` reads `settings`. A class gets its config in its constructor (`BccClient`,
+  `Emailer`). A module whose functions are called from many places, or from `default_factory`
+  fields, gets it once from the lifespan through its `on_startup` (`notices`, `jobs`, `auth`)
+  or a setter (`date_time.set_datetime_precision`) and keeps it module-private.
 
 ## 2. Runtime
 
