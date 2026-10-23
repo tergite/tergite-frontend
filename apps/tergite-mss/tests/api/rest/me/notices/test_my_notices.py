@@ -13,7 +13,12 @@
 from beanie import PydanticObjectId
 
 from services.notices import Notice
-from tests._utils.auth import TEST_USER_ID, get_db_record
+from tests._utils.auth import (
+    TEST_USER_ID,
+)
+from tests._utils.mongodb import (
+    get_db_record,
+)
 
 _ADMIN_NOTICE_ID = "aaaaaaaaaaaaaaaaaaaaaaaa"
 _USER_NOTICE_ID = "bbbbbbbbbbbbbbbbbbbbbbbb"

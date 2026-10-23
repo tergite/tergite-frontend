@@ -17,6 +17,7 @@ from json import JSONDecodeError
 from typing import List
 
 import httpx
+import pytest
 
 from services.external.bcc.dtos import (
     BCCUserProfile,
@@ -38,6 +39,7 @@ from tests._utils.bcc import (
     get_bcc_client_verified_headers,
     to_booking_payload,
 )
+from tests._utils.env import TEST_BACKENDS
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.records import order_by_many, paginate
 from utils.config import UserRole
@@ -71,6 +73,87 @@ BOOKINGS_CONFIG = dict(
     max_slots_per_day=80,
     max_idle_time=100,
 )
+_JOB_LIST = load_json_fixture("job_list.json")
+
+
+@pytest.fixture
+def mock_bcc(respx_mock):
+    """A mock BCC service"""
+    for backend in TEST_BACKENDS:
+        respx_mock.post(f"{backend['url']}/token").mock(side_effect=get_token)
+
+        # users
+        respx_mock.post(f"{backend['url']}/users").mock(side_effect=create_user)
+
+        respx_mock.get(f"{backend['url']}/users").mock(side_effect=view_users)
+
+        respx_mock.delete(f"{backend['url']}/users/USER_ID_PLACEHOLDER").mock(
+            side_effect=delete_users
+        )
+
+        # bookings
+        respx_mock.post(f"{backend['url']}/bookings").mock(side_effect=create_booking)
+
+        respx_mock.get(f"{backend['url']}/bookings").mock(side_effect=view_bookings)
+
+        respx_mock.get(f"{backend['url']}/bookings/config").mock(
+            side_effect=view_bookings_config
+        )
+
+        for booking in CREATED_BOOKINGS:
+            respx_mock.post(f"{backend['url']}/bookings/{booking['id']}/cancel").mock(
+                side_effect=cancel_booking
+            )
+
+        # jobs
+        for job in _JOB_LIST:
+            respx_mock.post(f"{backend['url']}/jobs/{job['job_id']}/cancel").mock(
+                side_effect=cancel_job
+            )
+
+            respx_mock.delete(f"{backend['url']}/jobs/{job['job_id']}").mock(
+                side_effect=delete_job
+            )
+
+        # recalibration
+        respx_mock.post(f"{backend['url']}/recalibration/init").mock(
+            side_effect=init_recalibration
+        )
+
+        respx_mock.get(f"{backend['url']}/recalibration/info").mock(
+            side_effect=get_recalibration_info
+        )
+
+        respx_mock.post(f"{backend['url']}/recalibration/cancel").mock(
+            side_effect=cancel_recalibration
+        )
+
+        # switch off
+        respx_mock.post(f"{backend['url']}/switch/off").mock(side_effect=switch_off)
+
+        respx_mock.post(f"{backend['url']}/switch/on").mock(side_effect=switch_on)
+
+    yield respx_mock
+
+
+@pytest.fixture
+def mock_unavailable_bcc(respx_mock):
+    """A mock BCC service that is unavailable"""
+    for backend in TEST_BACKENDS:
+        respx_mock.post(f"{backend['url']}/token").mock(side_effect=httpx.ConnectError)
+
+    yield respx_mock
+
+
+@pytest.fixture
+def mock_timed_out_bcc(respx_mock):
+    """A mock BCC service that times out"""
+    for backend in TEST_BACKENDS:
+        respx_mock.post(f"{backend['url']}/token").mock(
+            side_effect=httpx.ConnectTimeout
+        )
+
+    yield respx_mock
 
 
 def get_token(request: httpx.Request):

@@ -11,10 +11,12 @@
 # that they have been altered from the originals.
 """Test utilities for mongodb"""
 from types import MappingProxyType
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Type, TypeVar
 
 import pymongo.database
+from beanie import Document, PydanticObjectId
 from bson import ObjectId
+from pymongo import ReturnDocument, collection, database, errors
 
 
 def find_in_collection(
@@ -63,3 +65,53 @@ def insert_in_collection(
         ]
     )
     return result.inserted_ids
+
+
+T = TypeVar("T", bound=Document)
+
+
+def insert_if_not_exist(db: database.Database, schema: Type[T], data: Dict[str, Any]):
+    """Inserts a given auth document into the database if it does not exist
+
+    Args:
+        db: The pymongo.database.Database instance to insert into
+        schema: the beanie.Document schema corresponding to the collection to which to insert into
+        data: the document to insert
+    """
+    try:
+        col: collection.Collection = db[schema.Settings.name]
+        col.insert_one(data)
+    except errors.DuplicateKeyError:
+        pass
+
+
+def get_db_record(
+    db: database.Database,
+    schema: Type[T],
+    _id: Optional[str] = None,
+    _filter: Optional[dict] = None,
+) -> Optional[dict]:
+    """Gets a given auth document from the database or None if it does not exist"""
+    col: collection.Collection = db[schema.Settings.name]
+    filter_obj = {"_id": PydanticObjectId(_id)} if _id else {}
+    if _filter is not None:
+        filter_obj.update(_filter)
+    return col.find_one(filter_obj)
+
+
+def update_db_record(
+    db: database.Database,
+    schema: Type[T],
+    _id: Optional[str] = None,
+    _filter: Optional[dict] = None,
+    update: Optional[dict] = None,
+) -> Optional[dict]:
+    """Updates the given auth document"""
+    col: collection.Collection = db[schema.Settings.name]
+    filter_obj = {"_id": PydanticObjectId(_id)} if _id else {}
+    if _filter is not None:
+        filter_obj.update(_filter)
+    payload = update if isinstance(update, dict) else {}
+    return col.find_one_and_update(
+        filter_obj, payload, return_document=ReturnDocument.AFTER
+    )

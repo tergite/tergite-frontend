@@ -25,9 +25,11 @@ from tests._utils.auth import (
     TEST_SYSTEM_USER_EMAIL,
     TEST_USER_EMAIL,
     TEST_USER_ID,
-    get_db_record,
 )
 from tests._utils.date_time import get_current_timestamp_str
+from tests._utils.mongodb import (
+    get_db_record,
+)
 from tests._utils.notices import get_user_notices
 
 _ACCESS_REQUEST = {

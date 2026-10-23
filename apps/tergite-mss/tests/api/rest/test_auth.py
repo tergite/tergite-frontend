@@ -24,16 +24,18 @@ from tests._utils.auth import (
     TEST_GITHUB_PROFILE,
     TEST_SUPERUSER_EMAIL,
     TEST_USER_EMAIL,
-    insert_if_not_exist,
     is_valid_jwt,
 )
+from tests._utils.mongodb import (
+    insert_if_not_exist,
+)
+from tests._utils.oauth import TEST_NEXT_COOKIE_URL
 from tests._utils.records import (
     copy_records,
     filter_by_equality,
     order_by_many,
     pop_field,
 )
-from tests.conftest import TEST_NEXT_COOKIE_URL
 from utils.crypto import generate_linked_id
 
 _USER_EMAIL_COOKIES_FIXTURE = [

@@ -149,7 +149,6 @@ license-header: tests/api/rest/admin/__init__.py
 license-header: tests/api/rest/admin/bcc/__init__.py
 license-header: tests/api/rest/me/__init__.py
 license-header: tests/api/rest/me/notices/__init__.py
-license-header: tests/conftest.py
 license-header: utils/__init__.py
 all-strings: services/auth/__init__.py::__all__
 import-layering: services/auth/app_tokens/authenticator.py::import settings

@@ -29,11 +29,13 @@ from tests._utils.auth import (
     TEST_USER_EMAIL,
     TEST_USER_ID,
     USER_ID_EMAIL_MAP,
-    get_db_record,
 )
 from tests._utils.date_time import get_timestamp_str
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import find_in_collection
+from tests._utils.mongodb import (
+    find_in_collection,
+    get_db_record,
+)
 from tests._utils.notices import get_user_notices
 from tests._utils.projects import PROJECT_QUERIES
 from tests._utils.records import prune

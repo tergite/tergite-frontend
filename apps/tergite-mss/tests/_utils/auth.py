@@ -10,18 +10,19 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Utilities specific to auth when testing"""
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict
 
 import jwt
-from beanie import Document, PydanticObjectId
+from beanie import PydanticObjectId
 from fastapi_users.jwt import decode_jwt, generate_jwt
 from fastapi_users.password import PasswordHelper
-from pymongo import ReturnDocument, collection, database, errors
+from pymongo import database
 
 from services.auth.app_tokens.dtos import AppToken
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
 from tests._utils.env import TEST_JWT_SECRET
+from tests._utils.mongodb import insert_if_not_exist
 from utils.config import UserRole
 
 TEST_PROJECT_ID = "bf4876d01e60f05ebc9fac9e"
@@ -164,56 +165,6 @@ def init_test_auth(db: database.Database):
     insert_if_not_exist(db, AppToken, TEST_APP_TOKEN_DICT)
     insert_if_not_exist(db, AppToken, TEST_NO_QPU_APP_TOKEN_DICT)
     insert_if_not_exist(db, AppToken, TEST_SYSTEM_USER_TOKEN_DICT)
-
-
-T = TypeVar("T", bound=Document)
-
-
-def insert_if_not_exist(db: database.Database, schema: Type[T], data: Dict[str, Any]):
-    """Inserts a given auth document into the database if it does not exist
-
-    Args:
-        db: The pymongo.database.Database instance to insert into
-        schema: the beanie.Document schema corresponding to the collection to which to insert into
-        data: the document to insert
-    """
-    try:
-        col: collection.Collection = db[schema.Settings.name]
-        col.insert_one(data)
-    except errors.DuplicateKeyError:
-        pass
-
-
-def get_db_record(
-    db: database.Database,
-    schema: Type[T],
-    _id: Optional[str] = None,
-    _filter: Optional[dict] = None,
-) -> Optional[dict]:
-    """Gets a given auth document from the database or None if it does not exist"""
-    col: collection.Collection = db[schema.Settings.name]
-    filter_obj = {"_id": PydanticObjectId(_id)} if _id else {}
-    if _filter is not None:
-        filter_obj.update(_filter)
-    return col.find_one(filter_obj)
-
-
-def update_db_record(
-    db: database.Database,
-    schema: Type[T],
-    _id: Optional[str] = None,
-    _filter: Optional[dict] = None,
-    update: Optional[dict] = None,
-) -> Optional[dict]:
-    """Updates the given auth document"""
-    col: collection.Collection = db[schema.Settings.name]
-    filter_obj = {"_id": PydanticObjectId(_id)} if _id else {}
-    if _filter is not None:
-        filter_obj.update(_filter)
-    payload = update if isinstance(update, dict) else {}
-    return col.find_one_and_update(
-        filter_obj, payload, return_document=ReturnDocument.AFTER
-    )
 
 
 def get_jwt_token(

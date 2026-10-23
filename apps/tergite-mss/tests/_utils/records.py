@@ -25,6 +25,8 @@ from typing import (
     TypeVar,
 )
 
+from beanie import PydanticObjectId
+
 from tests._utils.date_time import get_timestamp_str
 
 T = TypeVar("T")
@@ -405,3 +407,43 @@ class PaginationInfo(TypedDict):
 
     skip: int
     limit: Optional[float]
+
+
+def build_project_record(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts a project from the JSON fixtures into the record stored in the db"""
+    return {
+        **item,
+        "_id": PydanticObjectId(item["_id"]),
+        "admin_id": PydanticObjectId(item["admin_id"]),
+        "user_ids": [PydanticObjectId(v) for v in item["user_ids"]],
+    }
+
+
+def build_app_token_record(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts an app token from the JSON fixtures into the record stored in the db"""
+    return {
+        **item,
+        "_id": PydanticObjectId(item["_id"]),
+        "user_id": PydanticObjectId(item["user_id"]),
+        "project_id": PydanticObjectId(item["project_id"]),
+    }
+
+
+def build_notice_record(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts a notice from the JSON fixtures into the record stored in the db"""
+    object_id_fields = ("_id", "user_id", "created_by", "ref_id")
+    return {
+        **item,
+        **{k: PydanticObjectId(item[k]) for k in object_id_fields if item[k]},
+        "dismissed_by": [PydanticObjectId(v) for v in item["dismissed_by"]],
+    }
+
+
+def build_request_record(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Converts a user request from the JSON fixtures into the record stored in the db"""
+    object_id_fields = ("_id", "resource_id", "requester_id", "approver_id")
+    return {
+        **item,
+        **{k: PydanticObjectId(item[k]) for k in object_id_fields if item[k]},
+        "target_user_ids": [PydanticObjectId(v) for v in item["target_user_ids"]],
+    }

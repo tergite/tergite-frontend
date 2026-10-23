@@ -24,9 +24,11 @@ from tests._utils.auth import (
     TEST_JWT_SECRET,
     TEST_USER_ID,
     get_auth_cookie,
-    insert_if_not_exist,
 )
 from tests._utils.fixtures import load_json_fixture
+from tests._utils.mongodb import (
+    insert_if_not_exist,
+)
 
 _SESSION_AUDIENCE = ["fastapi-users:auth"]
 _STATE_AUDIENCE = "fastapi-users:oauth-state"

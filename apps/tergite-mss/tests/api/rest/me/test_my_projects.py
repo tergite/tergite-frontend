@@ -26,9 +26,11 @@ from tests._utils.auth import (
     TEST_SYSTEM_USER_ID,
     TEST_USER_ID,
     get_auth_cookie,
-    get_db_record,
 )
 from tests._utils.date_time import get_current_timestamp_str
+from tests._utils.mongodb import (
+    get_db_record,
+)
 from tests._utils.notices import get_user_notices
 from tests._utils.projects import PROJECT_QUERIES
 from tests._utils.records import prune

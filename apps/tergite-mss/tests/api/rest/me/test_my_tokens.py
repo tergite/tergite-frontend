@@ -24,11 +24,13 @@ from tests._utils.auth import (
     TEST_SUPERUSER_ID,
     TEST_USER_ID,
     get_auth_cookie,
-    get_db_record,
     get_jwt_token,
-    update_db_record,
 )
 from tests._utils.date_time import get_current_timestamp_str, get_timestamp_str
+from tests._utils.mongodb import (
+    get_db_record,
+    update_db_record,
+)
 from tests.conftest import APP_TOKEN_LIST, PROJECT_LIST
 
 _USER_ID_COOKIES_FIXTURE = [

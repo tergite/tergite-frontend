@@ -29,8 +29,6 @@ from tests._utils.auth import (
     TEST_SUPERUSER_ID,
     TEST_SYSTEM_USER_ID,
     TEST_USER_ID,
-    get_db_record,
-    insert_if_not_exist,
 )
 from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import (
@@ -38,7 +36,12 @@ from tests._utils.date_time import (
 )
 from tests._utils.env import TEST_BACKENDS_MAP
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import find_in_collection, insert_in_collection
+from tests._utils.mongodb import (
+    find_in_collection,
+    get_db_record,
+    insert_if_not_exist,
+    insert_in_collection,
+)
 from tests._utils.notices import get_user_notices
 from tests._utils.records import (
     filter_by_equality,
