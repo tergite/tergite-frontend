@@ -51,7 +51,7 @@ The only behaviour changes in the plan. Each commit adds a test that fails befor
 
 Tests only. After this step, any refactor commit that changes behaviour fails a test.
 
-1. **Auth contract.** Every row below has a test in `test_auth.py`, `me/test_my_tokens.py` or `admin/test_projects.py`; add the missing ones. Steps 5 and 7 must keep every row.
+1. **Auth contract.** Every row below has a test in `test_auth.py`, `me/test_my_tokens.py`, `admin/test_projects.py` or, for the rows they missed, `test_auth_contract.py`. Steps 5 and 7 must keep every row.
 
 | Surface | Behaviour |
 | --- | --- |
@@ -61,7 +61,7 @@ Tests only. After this step, any refactor commit that changes behaviour fails a 
 | Logout | active and verified user required; cookie cleared; `{"message": "logged out"}` |
 | `POST /me/tokens/` | `{"access_token": …, "token_type": "bearer"}`; `DELETE` returns 204 |
 | User dependencies | missing or bad token → 401; inactive user → 401; superuser required → 403 |
-| Project dependencies | missing, bad or expired token, or inactive project → 401; strict or system rule with `qpu_seconds <= 0` → 403 "{n} QPU seconds left on project {name}"; system rule without the role → 403 |
+| Project dependencies | missing, bad or expired token, or inactive project → 401; strict or system rule with `qpu_seconds <= 0` → 403 "{n} QPU seconds left on project {name}"; system rule without the role → 403 (no route uses the system rule today, so step 5.3's `test_access.py` pins it) |
 | Invalid project id in a path | 404, not 422 |
 | `auth_users` documents | `oauth_accounts` keeps its seven fields; existing documents load unchanged |
 
