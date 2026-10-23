@@ -60,7 +60,9 @@ async def on_job_updated_event(
             db, project_db=project_db, job_id=job_id, qpu_usage=qpu_usage
         )
 
-    updated_job = await jobs_service.get_one(db, job_id=job_id, is_token_decrypted=True)
+    updated_job = await jobs_service.get_job(
+        db, job_id=job_id, should_decrypt_token=True
+    )
     return {
         "status": "success",
         "data": updated_job.model_dump(mode="json"),

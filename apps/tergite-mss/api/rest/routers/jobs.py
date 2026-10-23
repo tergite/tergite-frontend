@@ -93,7 +93,7 @@ async def get_one(
     """
     _, user = project_and_user
     return await jobs_service.get_readable_job(
-        db, job_id=job_id, user=user, is_token_decrypted=True
+        db, job_id=job_id, user=user, should_decrypt_token=True
     )
 
 
@@ -173,7 +173,7 @@ async def cancel_job(
         404: no matches for {job_id: job_id}
         406: if the job has already been cancelled
     """
-    job = await jobs_service.get_one(db, job_id=job_id)
+    job = await jobs_service.get_job(db, job_id=job_id)
 
     try:
         bcc_client = bcc_clients_map[job.device]
@@ -220,7 +220,7 @@ async def remove_job(
         404: Job {job_id} not found
         404: no matches for {job_id: job_id}
     """
-    job = await jobs_service.get_one(db, job_id=job_id)
+    job = await jobs_service.get_job(db, job_id=job_id)
     try:
         bcc_client = bcc_clients_map[job.device]
     except KeyError:
@@ -230,6 +230,6 @@ async def remove_job(
         job_id, user_id=user.id, request_id=request_id
     )
     if response["status"] == "success":
-        await jobs_service.remove_job(db, job_id=job_id)
+        await jobs_service.delete_job(db, job_id=job_id)
 
     return response

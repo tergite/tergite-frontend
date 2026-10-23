@@ -45,10 +45,10 @@ if TYPE_CHECKING:
 # FIXME: Add init_strict_beanie and an on_startup function
 
 
-async def get_one(
+async def get_job(
     db: AsyncIOMotorDatabase,
     job_id: UUID,
-    is_token_decrypted: bool = False,
+    should_decrypt_token: bool = False,
     private_key_file: Path = PRIVATE_KEY_FILE,
     key_password: Optional[bytes] = PRIVATE_KEY_PASSWORD,
 ) -> Job:
@@ -57,7 +57,7 @@ async def get_one(
     Args:
         db: the mongo database from where to get the job
         job_id: the `job_id` of the job to be returned
-        is_token_decrypted: whether the token returned is decrypted
+        should_decrypt_token: whether to decrypt the returned access token
         private_key_file: the path to the private key
         key_password: the password to decrypt the private key PEM file
 
@@ -71,7 +71,7 @@ async def get_one(
     result = await mongodb_utils.find_one(
         db.jobs, {"job_id": str(job_id)}, schema=Job, dropped_fields=("_id",)
     )
-    if is_token_decrypted and result.access_token:
+    if should_decrypt_token and result.access_token:
         result.access_token = decrypt_message(
             private_key_file=private_key_file,
             msg=result.access_token,
@@ -208,7 +208,7 @@ async def update_qpu_usage(
         utils.exc.NotFoundError: project '{project_id}' for job '{job_id}' not found
         KeyError: 'project_id'
     """
-    job = await get_one(db, job_id=job_id)
+    job = await get_job(db, job_id=job_id)
     project_id = job.project_id
     project = await project_db.increment_qpu_seconds(
         project_id=project_id, qpu_seconds=-qpu_usage
@@ -251,7 +251,7 @@ async def update_qpu_usage(
     return project
 
 
-async def remove_job(db: AsyncIOMotorDatabase, job_id: UUID):
+async def delete_job(db: AsyncIOMotorDatabase, job_id: UUID):
     """Remove the job of the given job_id
 
     Args:
@@ -269,7 +269,7 @@ async def get_readable_job(
     db: AsyncIOMotorDatabase,
     job_id: UUID,
     user: User,
-    is_token_decrypted: bool = False,
+    should_decrypt_token: bool = False,
 ) -> Job:
     """Gets a job the user may read: one they submitted, one with no recorded submitter, or any if they are an admin
 
@@ -277,7 +277,7 @@ async def get_readable_job(
         db: the mongo database from where to get the job
         job_id: the `job_id` of the job to be returned
         user: the user reading the job
-        is_token_decrypted: whether the token returned is decrypted
+        should_decrypt_token: whether to decrypt the returned access token
 
     Raises:
         utils.exc.NotFoundError: no matches for '{search_filter}', also for a job the user may not read
@@ -285,7 +285,7 @@ async def get_readable_job(
     Returns:
         the job
     """
-    job = await get_one(db, job_id=job_id, is_token_decrypted=is_token_decrypted)
+    job = await get_job(db, job_id=job_id, should_decrypt_token=should_decrypt_token)
     if not _is_job_readable_by(job, user):
         raise NotFoundError(f"no matches for '{dict(job_id=str(job_id))}'")
     return job

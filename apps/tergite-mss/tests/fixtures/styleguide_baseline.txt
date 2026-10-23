@@ -314,7 +314,7 @@ type-hints: services/external/email/service.py::Emailer.from_value
 type-hints: services/external/email/service.py::Emailer.register_batch_schedule
 type-hints: services/external/email/service.py::Emailer.send
 type-hints: services/external/email/service.py::_send_on_repeat
-type-hints: services/jobs/service.py::remove_job
+type-hints: services/jobs/service.py::delete_job
 type-hints: services/jobs/dtos.py::Job.serialize_object_id
 type-hints: services/jobs/dtos.py::JobStatusResponse.from_job
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished
