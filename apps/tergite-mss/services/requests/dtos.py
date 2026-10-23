@@ -165,6 +165,7 @@ class Request(Schema, RequestPostBody):
 
     __storage__ = StorageSpec(
         table=REQUEST_DB_COLLECTION,
+        indexed_lists=("target_user_ids",),
         indexes=("type", ("resource_id", "status"), ("requester_id", "-created_at")),
     )
 
