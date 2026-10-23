@@ -738,6 +738,7 @@ def _bill_a_job(client, db, starting_seconds: Optional[float] = None):
         db["auth_projects"].update_one(
             {"_id": PydanticObjectId(TEST_PROJECT_ID)},
             {"$set": {"qpu_seconds": starting_seconds}},
+            bypass_document_validation=True,
         )
 
     device = _DEVICES[0]

@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Sequence, Type, TypeVar
 import pymongo.database
 from beanie import Document, PydanticObjectId
 from bson import ObjectId
-from pymongo import ReturnDocument, collection, database, errors
+from pymongo import collection, database, errors
 
 
 def find_in_collection(
@@ -62,7 +62,9 @@ def insert_in_collection(
         [
             {k: ObjectId(v) if k == "_id" else v for k, v in item.items()}
             for item in data
-        ]
+        ],
+        # seeds go around the running app's validators, as they would on a new database
+        bypass_document_validation=True,
     )
     return result.inserted_ids
 
@@ -80,7 +82,7 @@ def insert_if_not_exist(db: database.Database, schema: Type[T], data: Dict[str, 
     """
     try:
         col: collection.Collection = db[_get_collection_name(schema)]
-        col.insert_one(data)
+        col.insert_one(data, bypass_document_validation=True)
     except errors.DuplicateKeyError:
         pass
 
@@ -112,9 +114,8 @@ def update_db_record(
     if _filter is not None:
         filter_obj.update(_filter)
     payload = update if isinstance(update, dict) else {}
-    return col.find_one_and_update(
-        filter_obj, payload, return_document=ReturnDocument.AFTER
-    )
+    col.update_one(filter_obj, payload, bypass_document_validation=True)
+    return col.find_one(filter_obj)
 
 
 def _get_collection_name(schema: Type[T]) -> str:

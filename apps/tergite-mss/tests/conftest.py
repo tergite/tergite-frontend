@@ -31,7 +31,7 @@ set_datetime_precision(settings.CONFIG.datetime_precision)
 
 import random
 from datetime import datetime, timezone
-from typing import Any, Dict, Generator, List
+from typing import Any, Dict, Generator, List, Optional
 
 import aiosmtplib
 import pymongo.database
@@ -73,6 +73,9 @@ APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
 NOTICE_LIST = load_json_fixture("notices.json")
 USER_REQUEST_LIST = load_json_fixture("user_requests.json")
 pytest_plugins = ["tests._utils.oauth", "tests._utils.mock_backend"]
+# fixtures that change what the app starts with, so it must start afresh
+_FRESH_APP_FIXTURES = {"unconfigured_email"}
+_COLLECTIONS_KEPT_ACROSS_TESTS = {"notice_templates"}
 
 
 @pytest.fixture
@@ -82,8 +85,11 @@ def db() -> pymongo.database.Database:
     database = mongo_client[TEST_DB_NAME]
 
     yield database
-    # clean up
-    mongo_client.drop_database(TEST_DB_NAME)
+    # emptied, not dropped: the running app's validators and indexes stay, as do the
+    # notice templates it writes at startup
+    for name in database.list_collection_names():
+        if name not in _COLLECTIONS_KEPT_ACROSS_TESTS:
+            database[name].delete_many({})
     mongo_client.close()
 
 
@@ -97,15 +103,34 @@ def request_log_db() -> redis.Redis:
     client.close()
 
 
+@pytest.fixture(scope="session")
+def app_runner() -> Generator["_AppRunner", Any, None]:
+    """The app, started once for the whole session, as its startup is slow"""
+    runner = _AppRunner()
+    yield runner
+    runner.stop()
+
+
 @pytest.fixture
 def client(
-    db, request_log_db, mock_socket_gethostbyname
+    request, app_runner, db, request_log_db, mock_socket_gethostbyname
 ) -> Generator[TestClient, Any, None]:
-    """A test client for fast api"""
+    """A test client for fast api, on the app the session keeps running
+
+    A test that changes what the app starts with gets a client of its own, whose `with`
+    block starts the app afresh.
+    """
     from api.rest import app
 
     init_test_auth(db)
-    yield TestClient(app, follow_redirects=True)
+    if _FRESH_APP_FIXTURES & set(request.fixturenames):
+        app_runner.stop()
+        yield TestClient(app, follow_redirects=True)
+        return
+
+    running_client = app_runner.get_client()
+    yield _RunningClient(running_client)
+    running_client.cookies.clear()
 
 
 @pytest.fixture
@@ -322,3 +347,39 @@ def unconfigured_email(mocker):
     import settings
 
     yield mocker.patch.object(settings.CONFIG, "email", None)
+
+
+class _AppRunner:
+    """Keeps the app started across tests; stopped, it starts again when next asked"""
+
+    def __init__(self):
+        self._client: Optional[TestClient] = None
+
+    def get_client(self) -> TestClient:
+        if self._client is None:
+            from api.rest import app
+
+            self._client = TestClient(app, follow_redirects=True)
+            self._client.__enter__()
+        return self._client
+
+    def stop(self) -> None:
+        if self._client is not None:
+            self._client.__exit__(None, None, None)
+            self._client = None
+
+
+class _RunningClient:
+    """The running app's client, whose `with` block neither starts nor stops the app"""
+
+    def __init__(self, client: TestClient):
+        self._client = client
+
+    def __enter__(self) -> TestClient:
+        return self._client
+
+    def __exit__(self, *exc_info) -> None:
+        return None
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._client, name)

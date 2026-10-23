@@ -164,7 +164,8 @@ def test_email_to_an_unknown_user_fails_at_once(client, db, smtp):
             "dismissed_by": [],
             "created_at": get_current_timestamp(),
             "updated_at": get_current_timestamp(),
-        }
+        },
+        bypass_document_validation=True,
     )
 
     with client as client:
