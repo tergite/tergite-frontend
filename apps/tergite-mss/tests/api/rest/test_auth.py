@@ -15,10 +15,12 @@ from typing import List, Optional
 
 import httpx
 import pytest
+from beanie import PydanticObjectId
 from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
 import settings
+from libs.storage import derive_id
 from services.auth import Project, User
 from tests._utils.auth import (
     TEST_GITHUB_PROFILE,
@@ -36,7 +38,6 @@ from tests._utils.records import (
     order_by_many,
     pop_field,
 )
-from utils.crypto import generate_linked_id
 
 _USER_EMAIL_COOKIES_FIXTURE = [
     (TEST_USER_EMAIL, lazy_fixture("user_jwt_cookie")),
@@ -434,5 +435,5 @@ def _get_personal_project(db, user_id: ObjectId) -> Optional[dict]:
     Returns:
         the personal project or None if the user has none
     """
-    project_id = generate_linked_id(user_id, namespace="project")
+    project_id = PydanticObjectId(derive_id(str(user_id), namespace="project"))
     return db["auth_projects"].find_one({"_id": project_id})

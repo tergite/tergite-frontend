@@ -38,6 +38,7 @@ import pytest
 from beanie import PydanticObjectId
 from fastapi.testclient import TestClient
 
+from libs.storage import derive_id
 from tests._utils.auth import (
     TEST_APP_TOKEN_STRING,
     TEST_NO_QPU_APP_TOKEN_STRING,
@@ -63,7 +64,6 @@ from tests._utils.records import (
     build_request_record,
     with_offset_datetimes,
 )
-from utils.crypto import generate_linked_id
 
 BACKEND_SLUGS = ("Loke", "Pingu")
 PROJECT_LIST = load_json_fixture("project_list.json")
@@ -192,7 +192,7 @@ def personal_project(db) -> Generator[Dict[str, Any], Any, None]:
     from services.auth import Project
 
     record = {
-        "_id": generate_linked_id(TEST_USER_ID, namespace="project"),
+        "_id": PydanticObjectId(derive_id(TEST_USER_ID, namespace="project")),
         "name": "john.doe (personal)",
         "description": "john.doe personal project",
         "admin_id": PydanticObjectId(TEST_USER_ID),

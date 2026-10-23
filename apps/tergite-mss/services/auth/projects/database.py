@@ -18,8 +18,8 @@ from beanie.odm.operators.update.general import Inc
 from fastapi_users.models import ID
 from pymongo.errors import DuplicateKeyError
 
+from libs.storage import derive_id
 from utils.config import ProjectsConfig
-from utils.crypto import generate_linked_id
 
 from .dtos import Project
 from .exc import ProjectExists
@@ -48,7 +48,7 @@ class ProjectDatabase:
         Returns:
             the personal project
         """
-        project_id = generate_linked_id(user.id, namespace="project")
+        project_id = PydanticObjectId(derive_id(str(user.id), namespace="project"))
         existing = await Project.get(project_id)
         if existing is not None:
             return existing

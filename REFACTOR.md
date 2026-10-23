@@ -190,7 +190,7 @@ Filters and updates name schema fields, dotted for nested objects (`timestamps.e
    - `jobs/service.py:180` reads the job as it was before the update, to detect the first usage report: `update_one(Job, …, returning=Returning.BEFORE)`.
    - `devices/service.py:91` and `calibration/service.py:62` upsert: `update_one(…, should_upsert=True)` with `SetOnInsert`.
    - `auth/service.py:155` searches emails with a case-insensitive `$regex`: `Contains("email", text, is_case_sensitive=False)`.
-6. **`Id` replaces `PydanticObjectId`** everywhere above the storage layer: 163 uses in 29 files across `api/rest`, `services` and `utils`, one package per commit. Path parameters typed `Id` keep answering 404 for a malformed id (the step 1.1 contract).
+6. **`Id` replaces `PydanticObjectId`** everywhere above the storage layer: 163 uses in 29 files across `api/rest`, `services` and `utils`, one package per commit. Path parameters typed `Id` keep answering 404 for a malformed id (the step 1.1 contract). The ids of the Beanie `User` stay `PydanticObjectId` until it moves in step 7, so the BCC client keeps taking user ids as `str | PydanticObjectId`, and code reaching the Beanie `User` or the auth documents converts at that boundary.
 7. **Delete `utils/mongodb.py`, Motor and Beanie** for every schema except `User`, which moves in step 7. The eight `Document` classes become `Schema` subclasses; their index declarations become their `__storage__`.
 
 ## Step 4: SQL adapter on normalised tables

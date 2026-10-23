@@ -11,13 +11,10 @@
 # that they have been altered from the originals.
 """Utilities for cryptography"""
 import base64
-import hashlib
 from pathlib import Path
 from typing import Dict, Optional
 from uuid import uuid4
 
-from beanie import PydanticObjectId
-from bson import ObjectId
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
@@ -105,23 +102,6 @@ def decrypt_message(
 def get_uuid4_str():
     """Gets a UUID4 string"""
     return str(uuid4())
-
-
-def generate_linked_id(
-    parent_id: ObjectId | str, namespace: str = ""
-) -> PydanticObjectId:
-    """Generates an ObjectId linked to another object ID in a deterministic way
-
-    Args:
-        parent_id: the source ID
-        namespace: the namespace to use to separate multiple linked IDs of the same parent ID
-
-    Returns:
-        the ObjectId linked to another object ID
-    """
-    payload = f"{namespace}:{parent_id}".encode("utf-8")
-    hash_bytes = hashlib.sha256(payload).digest()
-    return PydanticObjectId(hash_bytes[:12])
 
 
 def _get_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey:
