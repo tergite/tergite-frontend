@@ -28,6 +28,7 @@ from .service import (
     get_job,
     get_latest_many,
     get_readable_job,
+    on_startup,
     update_job,
     update_qpu_usage,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "get_latest_many",
     "get_job",
     "get_readable_job",
+    "on_startup",
     "delete_job",
     "update_job",
     "update_qpu_usage",

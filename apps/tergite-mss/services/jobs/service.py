@@ -24,12 +24,11 @@ from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
-import settings
 from services import notices
 from services.external.bcc import BccClient, CancellationDetails
-from settings import PRIVATE_KEY_FILE
 from utils import mongodb as mongodb_utils
 from utils.api import GeneralMessage
+from utils.config import ProjectsConfig
 from utils.crypto import decrypt_message
 from utils.date_time import datetime_to_zulu
 from utils.exc import NotFoundError
@@ -42,16 +41,16 @@ from .dtos import CreatedJobResponse, Job, JobCreate, JobStatus, JobUpdate
 if TYPE_CHECKING:
     from ..auth.projects.database import ProjectDatabase
 
-
-# FIXME: Add init_strict_beanie and an on_startup function
+# on_startup replaces these with what the app is configured with
+_private_key_file: Optional[Path] = None
+_private_key_password: Optional[bytes] = None
+_qpu_seconds_low_threshold = ProjectsConfig().qpu_seconds_low_threshold
 
 
 async def get_job(
     db: AsyncIOMotorDatabase,
     job_id: UUID,
     should_decrypt_token: bool = False,
-    private_key_file: Path = PRIVATE_KEY_FILE,
-    key_password: Optional[bytes] = settings.CONFIG.private_key_password,
 ) -> Job:
     """Gets a job by job_id
 
@@ -59,8 +58,6 @@ async def get_job(
         db: the mongo database from where to get the job
         job_id: the `job_id` of the job to be returned
         should_decrypt_token: whether to decrypt the returned access token
-        private_key_file: the path to the private key
-        key_password: the password to decrypt the private key PEM file
 
     Raises:
         utils.exc.NotFoundError: no matches for '{search_filter}'.
@@ -74,9 +71,9 @@ async def get_job(
     )
     if should_decrypt_token and result.access_token:
         result.access_token = decrypt_message(
-            private_key_file=private_key_file,
+            private_key_file=_private_key_file,
             msg=result.access_token,
-            password=key_password,
+            password=_private_key_password,
         )
 
     return result
@@ -193,7 +190,6 @@ async def update_qpu_usage(
     project_db: "ProjectDatabase",
     job_id: UUID,
     qpu_usage: float,
-    qpu_threshold: float = settings.CONFIG.projects.qpu_seconds_low_threshold,
 ) -> Optional[Project]:
     """Updates the resource usage for the job of the given job_id
 
@@ -202,7 +198,6 @@ async def update_qpu_usage(
         project_db: the ProjectDatabase instance where projects are found
         job_id: the job id of the job
         qpu_usage: the resource usage in seconds
-        qpu_threshold: the project qpu threshold below which a project is seen as running out
 
     Return:
         the updated project if the job was attached to a project, else None
@@ -224,8 +219,8 @@ async def update_qpu_usage(
 
     # alert only on crossing the threshold or zero, or every later job would alert again
     qpu_seconds_before = project.qpu_seconds + qpu_usage
-    was_above_threshold = qpu_seconds_before > qpu_threshold
-    is_running_low = project.qpu_seconds < qpu_threshold
+    was_above_threshold = qpu_seconds_before > _qpu_seconds_low_threshold
+    is_running_low = project.qpu_seconds < _qpu_seconds_low_threshold
     is_depleted = project.qpu_seconds <= 0 < qpu_seconds_before
 
     if is_depleted:
@@ -384,6 +379,25 @@ def build_readable_jobs_filter(filters: dict, user: User) -> dict:
     if user.is_superuser:
         return filters
     return {"$and": [filters, {"user_id": {"$in": [user.id, None]}}]}
+
+
+async def on_startup(
+    private_key_file: Path,
+    private_key_password: Optional[bytes],
+    qpu_seconds_low_threshold: float,
+) -> None:
+    """Gives the jobs service what the app is configured with
+
+    Args:
+        private_key_file: the MSS private key, which decrypts the jobs' access tokens
+        private_key_password: the password of that key's PEM file
+        qpu_seconds_low_threshold: the QPU seconds below which a project is running low
+    """
+    # FIXME: Add init_strict_beanie
+    global _private_key_file, _private_key_password, _qpu_seconds_low_threshold
+    _private_key_file = private_key_file
+    _private_key_password = private_key_password
+    _qpu_seconds_low_threshold = qpu_seconds_low_threshold
 
 
 def _is_job_readable_by(job: Job, user: User) -> bool:

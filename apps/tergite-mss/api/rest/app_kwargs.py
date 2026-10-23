@@ -23,6 +23,7 @@ from loguru import logger
 
 import settings
 from services import calibration as calib_service
+from services import jobs as jobs_service
 from services import requests as requests_service
 from services.auth import service as auth_service
 from services.devices import service as devices_service
@@ -62,6 +63,11 @@ async def lifespan(_app: FastAPI):
     db = await get_default_mongodb()
     await auth_service.on_startup(db)
     await calib_service.on_startup(db)
+    await jobs_service.on_startup(
+        private_key_file=settings.PRIVATE_KEY_FILE,
+        private_key_password=settings.CONFIG.private_key_password,
+        qpu_seconds_low_threshold=settings.CONFIG.projects.qpu_seconds_low_threshold,
+    )
     await notices_service.on_startup(db, emailer, conf=settings.CONFIG.notices)
     await requests_service.on_startup(db)
     if emailer is not None:
