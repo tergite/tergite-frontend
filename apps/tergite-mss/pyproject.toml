@@ -51,6 +51,8 @@ dependencies = [
     "websockets~=15.0.1",
     "loguru~=0.7.2",
     "aiosmtplib~=3.0.2",
+    "hiredis~=3.2.1",
+    "redis[hiredis]~=7.1.0",
 ]
 
 [project.optional-dependencies]

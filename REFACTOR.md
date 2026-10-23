@@ -238,7 +238,7 @@ Names follow the usual SQL convention: plural snake_case tables, foreign keys na
 5. **Test matrix.** The `db` fixture is parametrised over `TEST_DATABASE_URLS` (MongoDB, PostgreSQL, SQLite). Tests seed and inspect through a `Database` in `tests/_utils/storage.py` instead of raw pymongo in `tests/_utils/mongodb.py`. CI adds a PostgreSQL job beside the MongoDB one.
 6. **Docs.** `mss-config.example.toml` lists the accepted URL schemes; the Data section of `DESIGN.md` is rewritten.
 
-**`RedisStore`, if wanted later.** Redis 8's open-source server includes JSON documents and a query engine, so a `RedisStore` could implement the full `DbStore`. It would join once it passes the same conformance tests; until then MSS runs without Redis.
+**`RedisStore` serves caches, not records.** It is the store the request log used before step 3, adapted to the `DbStore`: a hash per table, per-field expiry, and a sorted set per indexed value. It answers equality and `$in` on indexed fields and `$set` updates, and refuses the rest with `QueryError`, so it holds what is read by key on every request (the request log), behind its own `Database`, while records stay in MongoDB or SQL.
 
 Moving an existing deployment's data from MongoDB to SQL needs an export/import script. It is not in this plan.
 

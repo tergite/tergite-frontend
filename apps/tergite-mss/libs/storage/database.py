@@ -170,6 +170,10 @@ def _create_store(database_url: str, schemas: Sequence[Type[Schema]]) -> DbStore
         from .mongo import MongoStore  # each backend's driver loads only when used
 
         return MongoStore(database_url, schemas)
+    if scheme in ("redis", "rediss"):
+        from .redis import RedisStore
+
+        return RedisStore(database_url, schemas)
     raise StorageError(f"no store supports '{scheme}://' URLs")
 
 
