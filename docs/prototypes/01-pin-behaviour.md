@@ -32,6 +32,7 @@ step is signed off when every box is ticked, or a failure is written beside its 
       /tmp/perf-01` prints every measure and exits 0. Note any measure that moved more than 10%:
       that is the noise the threshold has to absorb.
 - [ ] **1.8: `docs/prototypes/README.md`** says the folder holds these scripts and goes at step 10.
+      `docs/rfcs/` is gone, and the root `DESIGN.md` no longer links to it.
 - [ ] **1.9: tooling lives in `dev/`.** `e2e_test.sh` is at `dev/e2e_test.sh`, the mock API at
       `apps/tergite-dashboard/dev/mock-api/`, and `npm run dev` above started it from there. No
       `api/` folder is left at the dashboard's root.
@@ -41,9 +42,3 @@ step is signed off when every box is ticked, or a failure is written beside its 
 - 1.2: the response bodies were already pinned by whole-body tests (`test_jobs.py`,
   `test_devices.py`, `test_calibrations.py`, `me/test_my_jobs.py`).
 - `dev/e2e_test.sh` needs a clone of tergite-backend; it runs at the end of steps 7 and 9.
-
-## Known open item
-
-- 1.8 also deletes `docs/rfcs/`, but only once nothing in it is unbuilt. RFC 0001 §7.6, the bulk
-  QPU-second grants (`QpuSecondsGrant`), is not in the code, so the RFCs stay until that is
-  decided: build it, drop it, or move it to an issue.

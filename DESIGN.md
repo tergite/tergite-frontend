@@ -10,11 +10,6 @@ Per-app design documents:
 - [apps/tergite-mss/DESIGN.md](./apps/tergite-mss/DESIGN.md) — the REST API server (service-oriented layout)
 - [apps/tergite-dashboard/DESIGN.md](./apps/tergite-dashboard/DESIGN.md) — the web UI (co-located page hierarchy)
 
-Design proposals for changes that span both apps live in [docs/rfcs](./docs/rfcs):
-
-- [RFC 0001 — Project access requests and notifications](./docs/rfcs/0001-project-access-requests-and-notifications.md) *(draft)*
-- [RFC 0002 — Shared project creation requests](./docs/rfcs/0002-shared-project-creation-requests.md) *(skeleton)*
-
 ## 1. What this repo is
 
 `tergite-frontend` is the user-facing half of the [Tergite stack](https://tergite.github.io/)

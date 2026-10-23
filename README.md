@@ -169,14 +169,8 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 - [ ] Make the 'Project External ID' input an autocomplete
     - Maybe add a read-only autocomplete GET endpoint for project IDs
     - Make the input autocomplete with shadcn `Combobox`
-    - BLOCKED: RFC 0001 §4 makes this an explicit non-goal — "No autocomplete, search, or
-      project browser for shared projects. Deliberate: project membership is not public" —
-      and §8.3 repeats the refusal. Any endpoint listing project IDs lets any logged-in user
-      enumerate every project in the system. Needs a decision to amend the RFC before it can
-      be built; the admin-only email autocomplete below is not in tension and can proceed. 
-      <!-- FIXME: Rethought this. Logged in users are free to know the shared projects available. 
-      It is not PII. They are logged in already and there is already a gate in the name of the project
-      admin who must admit membership into a project if anyone wants to enter.-->
+    - Decided: logged-in users may see the shared projects; they are not PII, and joining
+      one still needs its admin's approval.
 - [ ] Health check requests spam the logs of tergite-backend
     - MSS and the dashboard now answer the container probe on an unlogged `/health`; the
       backend lives in its own repo and needs the same treatment there.
