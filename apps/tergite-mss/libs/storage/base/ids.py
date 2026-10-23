@@ -12,18 +12,26 @@
 
 """Record ids: strings of 24 lowercase hex characters, ordered by creation time"""
 import hashlib
+import re
 from typing import Annotated, Any, Optional, Sequence, get_args, get_origin
 
 from bson import ObjectId
 from pydantic import StringConstraints
 from pydantic.fields import FieldInfo
 
+ID_PATTERN = r"^[0-9a-f]{24}$"
+
 
 class IdMarker:
     """Marks a field as an Id, so that a store can turn it into its own key type"""
 
 
-Id = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{24}$"), IdMarker()]
+Id = Annotated[str, StringConstraints(pattern=ID_PATTERN), IdMarker()]
+
+
+def is_id(value: Any) -> bool:
+    """Whether the value is an Id, for checking text that no schema has validated"""
+    return isinstance(value, str) and re.fullmatch(ID_PATTERN, value) is not None
 
 
 def generate_id() -> str:

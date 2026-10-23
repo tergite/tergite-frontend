@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
 from fastapi_users import exceptions, schemas
 
+from libs.storage import And, Id, In, Page
 from services import notices
 from services.notices import NoticeType
 from utils.api import PaginatedListResponse, build_paginated_json
@@ -66,8 +67,8 @@ def get_my_projects_router(
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
         skip: int = Query(0),
         limit: Optional[int] = Query(None),
-        ids: Optional[List[PydanticObjectId]] = Query(None, alias="id"),
-        user_ids: Optional[List[PydanticObjectId]] = Query(None),
+        ids: Optional[List[Id]] = Query(None, alias="id"),
+        user_ids: Optional[List[Id]] = Query(None),
         name: Optional[List[str]] = Query(None),
         is_active: Optional[bool] = Query(None),
         min_qpu_seconds: Optional[int] = Query(None),
@@ -81,12 +82,10 @@ def get_my_projects_router(
             min_qpu_seconds=min_qpu_seconds,
             max_qpu_seconds=max_qpu_seconds,
         )
-        # in an $and, so that a user_ids query narrows the user's projects
-        filter_obj = {"$and": [{"user_ids": PydanticObjectId(user_id)}, query_filter]}
+        # in an And, so that a user_ids query narrows the user's projects
         projects = await project_manager.get_many(
-            filter_obj=filter_obj,
-            skip=skip,
-            limit=limit,
+            And(In("user_ids", [user_id]), query_filter),
+            page=Page(skip=skip, limit=limit),
         )
 
         data = [schemas.model_validate(project_schema, project) for project in projects]
@@ -108,7 +107,7 @@ def get_my_projects_router(
         except (exc.ProjectNotExists, exceptions.InvalidID) as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
 
-        if PydanticObjectId(user_id) not in project.members:
+        if user_id not in project.members:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="the project does not exist.",
@@ -122,8 +121,8 @@ def get_my_projects_router(
         name="projects:remove_project_member",
     )
     async def remove_member(
-        _id: PydanticObjectId,
-        member_id: PydanticObjectId,
+        _id: Id,
+        member_id: Id,
         user_id: str = Depends(get_current_user_id),
         user_manager: UserManager = Depends(get_user_manager),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
@@ -134,12 +133,12 @@ def get_my_projects_router(
         on_before_update revokes the removed member's app tokens for this project.
         """
         try:
-            project = await project_manager.get(project_manager.parse_id(_id))
-        except (exc.ProjectNotExists, exceptions.InvalidID) as e:
+            project = await project_manager.get(_id)
+        except exc.ProjectNotExists as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
 
         current_user = await user_manager.get(PydanticObjectId(user_id))
-        if project.admin_id != current_user.id and not current_user.is_superuser:
+        if project.admin_id != user_id and not current_user.is_superuser:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
         if member_id == project.admin_id:
@@ -178,17 +177,16 @@ def get_my_projects_router(
         name="projects:destroy_my_administered_project",
     )
     async def destroy(
-        _id: PydanticObjectId,
+        _id: Id,
         user_id: str = Depends(get_current_user_id),
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
     ):
         try:
-            parsed_id = project_manager.parse_id(_id)
-            project = await project_manager.get(parsed_id)
-        except (exc.ProjectNotExists, exceptions.InvalidID) as e:
+            project = await project_manager.get(_id)
+        except exc.ProjectNotExists as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND) from e
 
-        if PydanticObjectId(user_id) != project.admin_id:
+        if user_id != project.admin_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
         # the manager refuses a personal project unless the caller is a superuser
@@ -272,14 +270,14 @@ def get_projects_router(
         project_manager: ProjectAppTokenManager = Depends(get_project_manager),
         skip: int = Query(0),
         limit: Optional[int] = Query(None),
-        ids: Optional[List[PydanticObjectId]] = Query(None, alias="id"),
-        user_ids: Optional[List[PydanticObjectId]] = Query(None),
+        ids: Optional[List[Id]] = Query(None, alias="id"),
+        user_ids: Optional[List[Id]] = Query(None),
         name: Optional[List[str]] = Query(None),
         is_active: Optional[bool] = Query(None),
         min_qpu_seconds: Optional[int] = Query(None),
         max_qpu_seconds: Optional[int] = Query(None),
     ):
-        filter_obj = get_projects_filter(
+        query_filter = get_projects_filter(
             ids=ids,
             user_ids=user_ids,
             name=name,
@@ -288,7 +286,7 @@ def get_projects_router(
             max_qpu_seconds=max_qpu_seconds,
         )
         projects = await project_manager.get_many(
-            filter_obj=filter_obj, skip=skip, limit=limit
+            query_filter, page=Page(skip=skip, limit=limit)
         )
         data = await asyncio.gather(
             *(get_full_admin_project(project) for project in projects)

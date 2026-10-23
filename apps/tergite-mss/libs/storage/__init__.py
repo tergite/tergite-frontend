@@ -18,7 +18,7 @@ from .base.exc import (
     UnknownFieldError,
     UnknownSchemaError,
 )
-from .base.ids import Id, derive_id, generate_id
+from .base.ids import Id, derive_id, generate_id, is_id
 from .base.query import (
     ALL,
     And,
@@ -69,5 +69,6 @@ __all__ = [
     "Update",
     "derive_id",
     "generate_id",
+    "is_id",
     "parse_sort",
 ]

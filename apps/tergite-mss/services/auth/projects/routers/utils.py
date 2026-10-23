@@ -11,12 +11,13 @@
 # that they have been altered from the originals.
 
 """Module containing utilities for the routers"""
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from beanie import PydanticObjectId
 from fastapi_users.password import PasswordHelper
 from pydantic import BaseModel, Field
 
+from libs.storage import And, Eq, Filter, In, Ne, Range
 from services import notices
 from services.notices import NoticeType
 from utils.exc import TooManyListQueryParams
@@ -103,7 +104,7 @@ async def prepare_partial_project(
     user_emails = (payload.user_emails or []) + [payload.admin_email]
     user_emails = [k for k in user_emails if k is not None]
     email_id_map = await _get_user_email_id_map(user_emails)
-    user_ids: Optional[List[PydanticObjectId]] = None
+    user_ids: Optional[List[str]] = None
 
     admin_id = project.admin_id
     if is_admin_id_updating:
@@ -166,14 +167,14 @@ async def get_full_admin_project(
 
 
 def get_projects_filter(
-    ids: Optional[List[PydanticObjectId]] = None,
-    user_ids: Optional[List[PydanticObjectId]] = None,
+    ids: Optional[List[str]] = None,
+    user_ids: Optional[List[str]] = None,
     name: Optional[List[str]] = None,
     is_active: Optional[bool] = None,
     min_qpu_seconds: Optional[int] = None,
     max_qpu_seconds: Optional[int] = None,
-) -> Dict[str, Any]:
-    """Gets the mongodb filter for the projects that match the given query params
+) -> Filter:
+    """Gets the filter for the projects that match the given query params
 
     Args:
         ids: the IDs of the projects
@@ -189,45 +190,28 @@ def get_projects_filter(
     Raises:
         TooManyListQueryParams: a list query param has more than MAX_LIST_QUERY_LEN items
     """
-    filter_obj = {}
-    if ids is not None:
-        if len(ids) > MAX_LIST_QUERY_LEN:
+    filters = []
+    for query_param, field, values in (
+        ("id", "id", ids),
+        ("user_ids", "user_ids", user_ids),
+        ("name", "name", name),
+    ):
+        if values is None:
+            continue
+        if len(values) > MAX_LIST_QUERY_LEN:
             raise TooManyListQueryParams(
-                "id", expected=MAX_LIST_QUERY_LEN, got=len(ids)
+                query_param, expected=MAX_LIST_QUERY_LEN, got=len(values)
             )
-
-        filter_obj["_id"] = {"$in": ids}
-
-    if user_ids is not None:
-        if len(user_ids) > MAX_LIST_QUERY_LEN:
-            raise TooManyListQueryParams(
-                "user_ids", expected=MAX_LIST_QUERY_LEN, got=len(user_ids)
-            )
-
-        filter_obj["user_ids"] = {"$in": user_ids}
-
-    if name is not None:
-        if len(name) > MAX_LIST_QUERY_LEN:
-            raise TooManyListQueryParams(
-                "name", expected=MAX_LIST_QUERY_LEN, got=len(name)
-            )
-
-        filter_obj["name"] = {"$in": name}
+        filters.append(In(field, values))
 
     if is_active is not None:
         # a project stored without is_active is active, as the field defaults to True
-        filter_obj["is_active"] = {"$ne": False} if is_active else False
+        filters.append(Ne("is_active", False) if is_active else Eq("is_active", False))
 
-    if min_qpu_seconds is not None:
-        filter_obj["qpu_seconds"] = {"$gte": min_qpu_seconds}
+    if min_qpu_seconds is not None or max_qpu_seconds is not None:
+        filters.append(Range("qpu_seconds", gte=min_qpu_seconds, lte=max_qpu_seconds))
 
-    if max_qpu_seconds is not None:
-        if "qpu_seconds" not in filter_obj:
-            filter_obj["qpu_seconds"] = {}
-
-        filter_obj["qpu_seconds"].update({"$lte": max_qpu_seconds})
-
-    return filter_obj
+    return And(*filters)
 
 
 class _TrimmedUser(BaseModel):
@@ -238,8 +222,8 @@ class _TrimmedUser(BaseModel):
 
 
 async def _get_user_id_email_map(
-    user_ids: List[PydanticObjectId],
-) -> Dict[PydanticObjectId, str]:
+    user_ids: List[str],
+) -> Dict[str, str]:
     """Gets the user emails for the given user ids as a map
 
     Args:
@@ -248,15 +232,16 @@ async def _get_user_id_email_map(
     Returns:
         the map of the user id and email
     """
+    object_ids = [PydanticObjectId(v) for v in user_ids]
     users = await User.find(
-        {"_id": {"$in": user_ids}}, projection_model=_TrimmedUser
+        {"_id": {"$in": object_ids}}, projection_model=_TrimmedUser
     ).to_list()
-    return {v.id: v.email for v in users}
+    return {str(v.id): v.email for v in users}
 
 
 async def _get_user_email_id_map(
     user_emails: List[str],
-) -> Dict[str, PydanticObjectId]:
+) -> Dict[str, str]:
     """Generates a map of user email and their id
 
     It creates any users for emails whose users don't exist
@@ -272,7 +257,7 @@ async def _get_user_email_id_map(
         return {}
 
     users = await User.find({"email": {"$in": user_emails}}).to_list()
-    email_id_map = {v.email: v.id for v in users}
+    email_id_map = {v.email: str(v.id) for v in users}
 
     # create any users who don't exist yet
     new_user_ids = []
@@ -290,7 +275,7 @@ async def _get_user_email_id_map(
 
     # update the email map
     email_id_map.update(
-        {email: PydanticObjectId(_id) for email, _id in zip(new_emails, new_user_ids)}
+        {email: str(_id) for email, _id in zip(new_emails, new_user_ids)}
     )
 
     return email_id_map

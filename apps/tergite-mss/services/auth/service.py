@@ -19,6 +19,7 @@ from fastapi import APIRouter
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend
 
+from libs.storage import Database
 from utils.config import AuthConfig, Oauth2ClientConfig, ProjectsConfig
 from utils.mongodb import init_strict_beanie
 
@@ -29,26 +30,26 @@ from .utils import get_oauth2_client
 
 async def on_startup(
     db: motor.motor_asyncio.AsyncIOMotorDatabase,
+    database: Database,
     conf: AuthConfig,
     projects_conf: ProjectsConfig,
 ) -> None:
     """Runs init operations when the application is starting up
 
     Args:
-        db: the mongo database where the auth records are stored
+        db: the mongo database where the users and app tokens are stored
+        database: the database where the projects are stored
         conf: the auth configuration, whose clients decide who may sign in and how
         projects_conf: the projects configuration
     """
     users.set_auth_clients(conf.clients)
     providers.set_auth_providers(conf.clients)
-    projects.set_projects_config(projects_conf)
+    projects.on_startup(database, conf=projects_conf)
     await init_strict_beanie(
         database=db,
         document_models=[
             users.dtos.User,
             app_tokens.dtos.AppToken,
-            projects.dtos.Project,
-            projects.dtos.DeletedProject,
         ],
     )
 

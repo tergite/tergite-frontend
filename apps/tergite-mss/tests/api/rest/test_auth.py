@@ -21,7 +21,7 @@ from pytest_lazyfixture import lazy_fixture
 
 import settings
 from libs.storage import derive_id
-from services.auth import Project, User
+from services.auth import ProjectDatabase, User
 from tests._utils.auth import (
     TEST_GITHUB_PROFILE,
     TEST_SUPERUSER_EMAIL,
@@ -397,16 +397,16 @@ def test_concurrent_logins_yield_one_personal_project(
     index on _id exactly as the loser of a real race would.
     """
     url = f"/auth/github/callback?code=test&state={cookie_oauth_state}"
-    real_get = Project.get
+    real_get = ProjectDatabase.get
     calls = []
 
-    async def miss_once(pk):
+    async def miss_once(self, pk):
         calls.append(pk)
-        return None if len(calls) == 1 else await real_get(pk)
+        return None if len(calls) == 1 else await real_get(self, pk)
 
     with client as client:
         client.get(url, follow_redirects=False)
-        mocker.patch.object(Project, "get", side_effect=miss_once)
+        mocker.patch.object(ProjectDatabase, "get", miss_once)
         response = client.get(url, follow_redirects=False)
         user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
 

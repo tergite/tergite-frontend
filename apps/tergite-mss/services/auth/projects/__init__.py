@@ -9,11 +9,12 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Sequence
+from typing import Optional, Sequence
 
 from fastapi import APIRouter, Depends
 from fastapi_users.authentication import BearerTransport
 
+from libs.storage import Database
 from utils.config import ProjectsConfig
 
 from ..app_tokens.auth_backend import AppTokenAuthenticationBackend
@@ -35,19 +36,18 @@ from .dtos import (
 from .manager import ProjectAppTokenManager, ProjectManagerDependency
 from .routers import CurrentSuperUserDependency, CurrentUserIdDependency
 
-# set_projects_config replaces it with the configured one
-_projects_conf = ProjectsConfig()
+_project_db: Optional[ProjectDatabase] = None
 
 
-def set_projects_config(conf: ProjectsConfig) -> None:
-    """Sets the projects config every ProjectDatabase is built with"""
-    global _projects_conf
-    _projects_conf = conf
+def on_startup(database: Database, conf: ProjectsConfig) -> None:
+    """Sets the database and config the projects are kept with"""
+    global _project_db
+    _project_db = ProjectDatabase(database, conf=conf)
 
 
-async def get_project_db():
+async def get_project_db() -> ProjectDatabase:
     """Dependency injector of the projects database"""
-    return ProjectDatabase(conf=_projects_conf)
+    return _project_db
 
 
 def get_app_token_backend(

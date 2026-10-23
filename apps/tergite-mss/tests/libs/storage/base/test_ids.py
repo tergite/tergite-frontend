@@ -15,7 +15,7 @@ from typing import List, Optional
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from libs.storage import Id, derive_id, generate_id
+from libs.storage import Id, derive_id, generate_id, is_id
 from libs.storage.base.ids import is_id_field
 
 
@@ -46,8 +46,16 @@ def test_generated_ids_are_time_ordered_ids():
     "value", ["", "ABCDEF0123456789abcdef01", "0123456789abcdef0123456", "x" * 24]
 )
 def test_an_id_is_24_lowercase_hex_characters(value):
+    assert not is_id(value)
     with pytest.raises(ValidationError):
         _Record(id=value)
+
+
+def test_is_id_accepts_what_the_id_type_accepts():
+    value = generate_id()
+
+    assert is_id(value)
+    assert _Record(id=value).id == value
 
 
 def test_is_id_field_sees_ids_alone_and_in_containers():

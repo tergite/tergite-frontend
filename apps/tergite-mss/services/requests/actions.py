@@ -14,10 +14,7 @@
 import asyncio
 from typing import Any, Callable, Coroutine, Dict, List, Sequence, cast
 
-from beanie import PydanticObjectId
 from beanie.odm.operators.find.comparison import In
-from beanie.odm.operators.update.array import AddToSet
-from beanie.odm.operators.update.general import Set
 
 from services.auth.app_tokens.database import AppTokenDatabase
 from services.auth.projects import get_project_db
@@ -144,11 +141,8 @@ async def _transfer_project(request: Request, approver: User) -> None:
     metadata = cast(TransferProjectMetadata, request.metadata)
     project = await _get_project(request.resource_id)
     email_id_map = await _get_user_email_id_map([metadata.admin_email])
-    new_admin_id = email_id_map[metadata.admin_email]
-    await Project.find_one(Project.id == project.id).update(
-        Set({Project.admin_id: new_admin_id}),
-        AddToSet({Project.user_ids: new_admin_id}),
-    )
+    project_db = await get_project_db()
+    await project_db.set_admin(project.id, email_id_map[metadata.admin_email])
 
 
 async def _add_qpu_seconds(request: Request, approver: User) -> None:
@@ -178,9 +172,8 @@ async def _add_project_member(request: Request, approver: User) -> None:
         NotFoundError: project {id} not found
     """
     project = await _get_project(request.resource_id)
-    await Project.find_one(Project.id == project.id).update(
-        AddToSet({Project.user_ids: PydanticObjectId(request.requester_id)})
-    )
+    project_db = await get_project_db()
+    await project_db.add_member(project.id, request.requester_id)
 
 
 async def _get_project(project_id: str) -> Project:
@@ -195,7 +188,8 @@ async def _get_project(project_id: str) -> Project:
     Raises:
         NotFoundError: project {id} not found
     """
-    project = await Project.get(PydanticObjectId(project_id))
+    project_db = await get_project_db()
+    project = await project_db.get(project_id)
     if project is None:
         raise NotFoundError(f"project {project_id} not found")
 
@@ -213,7 +207,7 @@ async def _get_project_manager() -> ProjectAppTokenManager:
 
 async def _get_user_email_id_map(
     emails: Sequence[str],
-) -> Dict[str, PydanticObjectId]:
+) -> Dict[str, str]:
     """Gets the IDs of the users of the given emails, keyed by email
 
     Args:
@@ -226,7 +220,7 @@ async def _get_user_email_id_map(
         NotFoundError: no users of emails {emails}
     """
     users = await User.find(In(User.email, list(emails))).to_list()
-    email_id_map = {user.email: user.id for user in users}
+    email_id_map = {user.email: str(user.id) for user in users}
     missing_emails = [email for email in emails if email not in email_id_map]
     if missing_emails:
         raise NotFoundError(f"no users of emails {missing_emails}")

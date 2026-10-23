@@ -196,12 +196,8 @@ type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.get_my_ap
 type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.update_app_token
 type-hints: services/auth/app_tokens/strategy.py::AppTokenStrategy.destroy_token
 type-hints: services/auth/projects/__init__.py::get_app_token_db
-type-hints: services/auth/projects/__init__.py::get_project_db
 type-hints: services/auth/projects/__init__.py::get_project_manager
-type-hints: services/auth/projects/database.py::ProjectDatabase.increment_qpu_seconds
 type-hints: services/auth/projects/dtos.py::ProjectRead.model_dump
-type-hints: services/auth/projects/dtos.py::ProjectRead.serialize_id
-type-hints: services/auth/projects/dtos.py::ProjectRead.serialize_user_ids
 type-hints: services/auth/projects/manager.py::ProjectAppTokenManager.create
 type-hints: services/auth/projects/manager.py::ProjectAppTokenManager.update
 type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router

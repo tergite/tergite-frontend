@@ -13,10 +13,7 @@ import asyncio
 from collections import defaultdict
 from typing import List, Sequence, Tuple
 
-from beanie import PydanticObjectId
-from pydantic import BaseModel, Field
-
-from libs.storage import And, Database, Eq, Filter, In, Or, Page, Set, Sort
+from libs.storage import And, Database, Eq, Filter, In, Ne, Or, Page, Set, Sort
 from services import notices
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
@@ -57,12 +54,12 @@ async def create(
         ForbiddenError: operation not permitted on resource {id}
         NotFoundError: project {id} not found
     """
-    if not await _has_resource_access(request_body, user=requester):
+    if not await _has_resource_access(database, request_body, user=requester):
         raise ForbiddenError(
             f"operation not permitted on resource {request_body.resource_id}"
         )
 
-    target_user_ids = await _get_target_user_ids(request_body)
+    target_user_ids = await _get_target_user_ids(database, request_body)
     record = Request.from_post_body(
         request_body, requester=requester, target_user_ids=target_user_ids
     )
@@ -235,10 +232,13 @@ async def update(
     return result
 
 
-async def _get_target_user_ids(request: RequestPostBody) -> List[str]:
+async def _get_target_user_ids(
+    database: Database, request: RequestPostBody
+) -> List[str]:
     """Gets the IDs of users to whom this request is directed
 
     Args:
+        database: the database where the projects are stored
         request: the request post body
 
     Returns:
@@ -249,15 +249,13 @@ async def _get_target_user_ids(request: RequestPostBody) -> List[str]:
     """
     if request.target == RequestTarget.PROJECT:
         # personal projects answer as missing ones do, so they cannot be probed
-        project = await Project.find_one(
-            Project.id == PydanticObjectId(request.resource_id),
-            Project.is_personal != True,
-            projection_model=_TrimmedProject,
+        project = await database.find_one(
+            Project, And(Eq("id", request.resource_id), Ne("is_personal", True))
         )
         if project is None:
             raise NotFoundError(f"project {request.resource_id} not found")
 
-        return [str(project.admin_id)]
+        return [project.admin_id]
 
     elif request.target == RequestTarget.SYSTEM:
         superusers = await User.find({"roles": UserRole.ADMIN}).to_list()
@@ -266,10 +264,13 @@ async def _get_target_user_ids(request: RequestPostBody) -> List[str]:
     return []
 
 
-async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
+async def _has_resource_access(
+    database: Database, request: RequestPostBody, user: User
+) -> bool:
     """Checks if the user has access to the resource they are requesting on
 
     Args:
+        database: the database where the projects are stored
         request: the request post body
         user: the user to check
 
@@ -280,27 +281,18 @@ async def _has_resource_access(request: RequestPostBody, user: User) -> bool:
         return user is not None
 
     elif request.type in (RequestType.CLOSE_PROJECT, RequestType.TRANSFER_PROJECT):
-        project = await Project.find_one(
-            Project.id == PydanticObjectId(request.resource_id),
-            Project.admin_id == user.id,
-            projection_model=_TrimmedProject,
+        project = await database.find_one(
+            Project,
+            And(Eq("id", request.resource_id), Eq("admin_id", str(user.id))),
         )
         return project is not None
     elif request.type == RequestType.PROJECT_QPU_SECONDS:
-        project = await Project.find_one(
-            Project.id == PydanticObjectId(request.resource_id),
-            Project.user_ids == user.id,
-            projection_model=_TrimmedProject,
+        project = await database.find_one(
+            Project,
+            And(Eq("id", request.resource_id), In("user_ids", [str(user.id)])),
         )
         return project is not None
     elif request.type == RequestType.PROJECT_ACCESS:
         return user is not None
 
     return False
-
-
-class _TrimmedProject(BaseModel):
-    """A project with only its _id and admin_id"""
-
-    id: PydanticObjectId = Field(alias="_id")
-    admin_id: PydanticObjectId

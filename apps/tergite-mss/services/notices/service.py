@@ -14,9 +14,7 @@ from datetime import datetime, timedelta
 from functools import partial
 from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Tuple
 
-from beanie import PydanticObjectId
 from loguru import logger
-from pydantic import BaseModel
 
 from libs.storage import (
     ALL,
@@ -36,6 +34,7 @@ from libs.storage import (
     SetOnInsert,
     Sort,
     Update,
+    is_id,
 )
 from services.external.email.service import Emailer
 from utils.config import NoticesConfig
@@ -508,7 +507,7 @@ async def _with_project_name(
     is_name_missing = (
         isinstance(context, ProjectRequestContext)
         and not context.project_name
-        and PydanticObjectId.is_valid(context.project_id)
+        and is_id(context.project_id)
     )
     if not is_name_missing:
         return context
@@ -516,17 +515,8 @@ async def _with_project_name(
     # imported here to avoid a circular import, as the auth service imports this one
     from services.auth.projects.dtos import DeletedProject, Project
 
-    project_id = PydanticObjectId(context.project_id)
-    for document_cls in (Project, DeletedProject):
-        project = await document_cls.find_one(
-            document_cls.id == project_id, projection_model=_ProjectName
-        )
+    for schema in (Project, DeletedProject):
+        project = await _database.get(schema, context.project_id)
         if project is not None:
             return context.model_copy(update={"project_name": project.name})
     return context
-
-
-class _ProjectName(BaseModel):
-    """A project with only its name"""
-
-    name: str

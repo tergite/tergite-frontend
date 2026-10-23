@@ -13,10 +13,9 @@
 
 from typing import List, Optional, Set
 
-from beanie import Document, PydanticObjectId
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
-from pymongo import IndexModel
+from pydantic import BaseModel, ConfigDict, Field
 
+from libs.storage import Id, Schema, StorageSpec, generate_id
 from utils.date_time import get_current_timestamp
 from utils.models import create_partial_model
 
@@ -45,10 +44,10 @@ class ProjectRead(ProjectBase):
 
     model_config = ConfigDict(from_attributes=True, extra="ignore")
 
-    id: PydanticObjectId
+    id: Id
     is_active: bool
-    user_ids: List[PydanticObjectId]
-    admin_id: PydanticObjectId
+    user_ids: List[Id]
+    admin_id: Id
     is_personal: bool
     created_at: str
     updated_at: str
@@ -56,16 +55,6 @@ class ProjectRead(ProjectBase):
     def model_dump(self, *args, **kwargs):
         # get rid of the default None's
         return super().model_dump(*args, **{**kwargs, "exclude_none": True})
-
-    @field_serializer("id", "admin_id", when_used="json")
-    def serialize_id(self, value: PydanticObjectId):
-        """Convert id to string when working with JSON"""
-        return str(value)
-
-    @field_serializer("user_ids", when_used="json")
-    def serialize_user_ids(self, value: List[PydanticObjectId]):
-        """Convert list of ids to list of strings when working with JSON"""
-        return [str(v) for v in value]
 
 
 class ProjectAdminView(ProjectRead):
@@ -91,34 +80,30 @@ class ProjectUpdate(ProjectCreate):
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
 
-class Project(ProjectRead, Document):
+class Project(ProjectRead, Schema):
+    __storage__ = StorageSpec(
+        table=PROJECT_DB_COLLECTION, unique=("name",), indexed_lists=("user_ids",)
+    )
     model_config = ConfigDict(extra="ignore")
 
-    # optional like any document's, or no project could be made before inserting it
-    id: Optional[PydanticObjectId] = None
+    id: Id = Field(default_factory=generate_id)
     is_active: bool = True
-    user_ids: List[PydanticObjectId] = ()
+    user_ids: List[Id] = []
     is_personal: bool = False
     created_at: str = Field(default_factory=get_current_timestamp)
     updated_at: str = Field(default_factory=get_current_timestamp)
 
-    class Settings:
-        name = PROJECT_DB_COLLECTION
-        indexes = [
-            IndexModel("name", unique=True),
-        ]
-
     @property
-    def members(self) -> Set[PydanticObjectId]:
+    def members(self) -> Set[str]:
         """All IDs of the users who are members of the project"""
-        return {self.admin_id, *(self.user_ids or [])}
+        return {self.admin_id, *self.user_ids}
 
 
 class DeletedProject(Project):
     """The schema of all deleted projects"""
 
-    class Settings:
-        name = DELETED_PROJECT_DB_COLLECTION
+    # no unique name: a name freed by a deletion can be taken and deleted again
+    __storage__ = StorageSpec(table=DELETED_PROJECT_DB_COLLECTION)
 
 
 ProjectPartial = create_partial_model("ProjectPartial", Project, exclude=("id",))

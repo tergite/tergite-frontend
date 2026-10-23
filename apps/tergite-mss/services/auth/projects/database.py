@@ -11,17 +11,24 @@
 # that they have been altered from the originals.
 
 """Definition of the FastAPIUsers-inspired Database adapter for projects"""
-from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from beanie import PydanticObjectId, UpdateResponse
-from beanie.odm.operators.update.general import Inc
-from fastapi_users.models import ID
-from pymongo.errors import DuplicateKeyError
-
-from libs.storage import derive_id
+from libs.storage import (
+    AddToSet,
+    And,
+    Database,
+    DuplicateKeyError,
+    Eq,
+    Filter,
+    In,
+    Inc,
+    Page,
+    Set,
+    derive_id,
+)
 from utils.config import ProjectsConfig
 
-from .dtos import Project
+from .dtos import DeletedProject, Project
 from .exc import ProjectExists
 
 if TYPE_CHECKING:
@@ -31,13 +38,13 @@ if TYPE_CHECKING:
 class ProjectDatabase:
     """Database adapter for accessing projects"""
 
-    def __init__(self, conf: ProjectsConfig):
+    def __init__(self, database: Database, conf: ProjectsConfig):
+        self.database = database
         self.conf = conf
 
-    @staticmethod
-    async def get(pk: ID) -> Optional[Project]:
+    async def get(self, pk: str) -> Optional[Project]:
         """Get a single project by id."""
-        return await Project.get(pk)
+        return await self.database.get(Project, pk)
 
     async def create_personal_project_if_not_exist(self, user: "User") -> Project:
         """Creates the user's personal project if they do not have one yet.
@@ -48,8 +55,9 @@ class ProjectDatabase:
         Returns:
             the personal project
         """
-        project_id = PydanticObjectId(derive_id(str(user.id), namespace="project"))
-        existing = await Project.get(project_id)
+        user_id = str(user.id)
+        project_id = derive_id(user_id, namespace="project")
+        existing = await self.get(project_id)
         if existing is not None:
             return existing
 
@@ -58,21 +66,16 @@ class ProjectDatabase:
             name=f"{user.username} (personal)",
             description=f"{user.username} personal project",
             qpu_seconds=self.conf.personal_qpu_seconds,
-            admin_id=user.id,
-            user_ids=[user.id],
+            admin_id=user_id,
+            user_ids=[user_id],
             is_personal=True,
         )
         try:
-            await project.create()
+            return await self.database.insert(Project, project)
         except DuplicateKeyError:
-            return await Project.get(project_id)
+            return await self.get(project_id)
 
-        return project
-
-    @staticmethod
-    async def get_if_member(
-        pk: PydanticObjectId, user_id: PydanticObjectId
-    ) -> Optional[Project]:
+    async def get_if_member(self, pk: str, user_id: str) -> Optional[Project]:
         """Get a single project by its primary key if the given user is a member else return None
 
         Args:
@@ -82,58 +85,55 @@ class ProjectDatabase:
         Returns:
             the project if it exists and user is a member or None
         """
-        return await Project.find_one(Project.id == pk, Project.user_ids == user_id)
+        return await self.database.find_one(
+            Project, And(Eq("id", pk), In("user_ids", [user_id]))
+        )
 
-    @staticmethod
-    async def get_many(
-        filter_obj: Mapping[str, Any], skip: int = 0, limit: Optional[int] = None
-    ) -> List[Project]:
-        """
-        Get a list of projects to basing on filter.
+    async def get_many(self, where: Filter, page: Page = Page()) -> List[Project]:
+        """Get the projects that match the filter."""
+        return await self.database.find(Project, where=where, page=page)
 
-        Args:
-            filter_obj: the PyMongo-like filter object e.g. `{"user_emails": "john@example.com"}`.
-            skip: the number of matched records to skip
-            limit: the maximum number of records to return.
-                If None, all possible records are returned.
-
-        Returns:
-            the list of matched projects
-        """
-        return await Project.find(
-            filter_obj,
-            skip=skip,
-            limit=limit,
-        ).to_list()
-
-    async def create(self, create_dict: Dict[str, Any]) -> Project:
+    async def create(self, project: Project) -> Project:
         """Create a project.
 
         Raises:
             ProjectExists: a project of the same name exists
         """
-        project = Project(**create_dict)
         try:
-            await project.create()
+            return await self.database.insert(Project, project)
         except DuplicateKeyError:
             raise ProjectExists()
-        return project
 
     async def update(self, project: Project, update_dict: Dict[str, Any]) -> Project:
         """Update a project."""
-        for key, value in update_dict.items():
-            setattr(project, key, value)
-        await project.save()
-        return project
+        changes = [Set(key, value) for key, value in update_dict.items()]
+        return await self.database.update_one(Project, Eq("id", project.id), changes)
 
     async def delete(self, project: Project) -> None:
-        """Delete a project."""
-        await project.delete()
+        """Delete a project, keeping a copy of it among the deleted projects."""
+        await self.database.delete_one(Project, Eq("id", project.id))
+        deleted_project = DeletedProject(
+            **project.model_dump(exclude={"created_at", "updated_at"})
+        )
+        await self.database.insert(DeletedProject, deleted_project)
 
-    @staticmethod
+    async def add_member(self, project_id: str, user_id: str) -> Optional[Project]:
+        """Adds the user to the project's members, if not one already"""
+        return await self.database.update_one(
+            Project, Eq("id", project_id), [AddToSet("user_ids", user_id)]
+        )
+
+    async def set_admin(self, project_id: str, user_id: str) -> Optional[Project]:
+        """Makes the user the project's admin, and a member if not one already"""
+        return await self.database.update_one(
+            Project,
+            Eq("id", project_id),
+            [Set("admin_id", user_id), AddToSet("user_ids", user_id)],
+        )
+
     async def increment_qpu_seconds(
-        project_id: Optional[PydanticObjectId | str], qpu_seconds: float
-    ):
+        self, project_id: Optional[str], qpu_seconds: float
+    ) -> Optional[Project]:
         """Increments the QPU seconds of the given project
 
         Args:
@@ -141,12 +141,10 @@ class ProjectDatabase:
             qpu_seconds: the seconds to increment by
 
         Returns:
-            the updated document, or None if no project matched
+            the updated project, or None if no project matched
         """
         if project_id is None:
             return None
-        result = Project.find_one(Project.id == PydanticObjectId(project_id)).update(
-            Inc({Project.qpu_seconds: qpu_seconds}),
-            response_type=UpdateResponse.NEW_DOCUMENT,
+        return await self.database.update_one(
+            Project, Eq("id", project_id), [Inc("qpu_seconds", qpu_seconds)]
         )
-        return await result

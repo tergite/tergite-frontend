@@ -1969,7 +1969,9 @@
             "type": "string"
           },
           "admin_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Admin Id",
+            "type": "string"
           },
           "created_at": {
             "title": "Created At",
@@ -1981,7 +1983,9 @@
             "type": "string"
           },
           "id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Id",
+            "type": "string"
           },
           "is_active": {
             "title": "Is Active",
@@ -2014,7 +2018,8 @@
           },
           "user_ids": {
             "items": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "type": "string"
             },
             "title": "User Ids",
             "type": "array"
@@ -2075,7 +2080,9 @@
         "description": "The schema for viewing a project as non admin",
         "properties": {
           "admin_id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Admin Id",
+            "type": "string"
           },
           "created_at": {
             "title": "Created At",
@@ -2087,7 +2094,9 @@
             "type": "string"
           },
           "id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Id",
+            "type": "string"
           },
           "is_active": {
             "title": "Is Active",
@@ -2112,7 +2121,8 @@
           },
           "user_ids": {
             "items": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "type": "string"
             },
             "title": "User Ids",
             "type": "array"
@@ -3887,7 +3897,8 @@
               "anyOf": [
                 {
                   "items": {
-                    "$ref": "#/components/schemas/PydanticObjectId"
+                    "pattern": "^[0-9a-f]{24}$",
+                    "type": "string"
                   },
                   "type": "array"
                 },
@@ -3906,7 +3917,8 @@
               "anyOf": [
                 {
                   "items": {
-                    "$ref": "#/components/schemas/PydanticObjectId"
+                    "pattern": "^[0-9a-f]{24}$",
+                    "type": "string"
                   },
                   "type": "array"
                 },
@@ -8074,7 +8086,8 @@
               "anyOf": [
                 {
                   "items": {
-                    "$ref": "#/components/schemas/PydanticObjectId"
+                    "pattern": "^[0-9a-f]{24}$",
+                    "type": "string"
                   },
                   "type": "array"
                 },
@@ -8093,7 +8106,8 @@
               "anyOf": [
                 {
                   "items": {
-                    "$ref": "#/components/schemas/PydanticObjectId"
+                    "pattern": "^[0-9a-f]{24}$",
+                    "type": "string"
                   },
                   "type": "array"
                 },
@@ -8217,7 +8231,9 @@
             "name": "_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": " Id",
+              "type": "string"
             }
           }
         ],
@@ -8260,7 +8276,9 @@
             "name": "_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": " Id",
+              "type": "string"
             }
           },
           {
@@ -8268,7 +8286,9 @@
             "name": "member_id",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/PydanticObjectId"
+              "pattern": "^[0-9a-f]{24}$",
+              "title": "Member Id",
+              "type": "string"
             }
           }
         ],
