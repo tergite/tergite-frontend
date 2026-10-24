@@ -18,6 +18,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from libs.storage import Id, Schema, StorageSpec, generate_id
 from utils.date_time import datetime_to_zulu
 
+from ..projects.dtos import Project
+from ..users.dtos import User
+
 
 class AppTokenCreate(BaseModel):
     """The payload passed when generating an app token"""
@@ -77,3 +80,20 @@ class AppTokenListResponse(BaseModel):
     skip: int = 0
     limit: Optional[int] = None
     data: List[AppTokenRead] = []
+
+
+class AppTokenQuery(BaseModel):
+    """The query params that narrow a list of app tokens"""
+
+    ids: Optional[List[Id]] = None
+    project_ids: Optional[List[Id]] = None
+    titles: Optional[List[str]] = None
+    min_lifespan_seconds: Optional[int] = None
+    max_lifespan_seconds: Optional[int] = None
+
+
+class TokenOwner(BaseModel):
+    """The project an app token acts on, and the user it acts for"""
+
+    project: Project
+    user: User

@@ -45,7 +45,8 @@ async def test_a_project_and_its_members_round_trip(database):
 
 async def test_projects_are_found_by_member_and_by_fields(database):
     first = await database.insert(
-        Project, Project(name="a", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID], qpu_seconds=5)
+        Project,
+        Project(name="a", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID], qpu_seconds=5),
     )
     second = await database.insert(
         Project,
@@ -87,7 +88,11 @@ async def test_a_deleted_project_is_kept_with_its_tokens_gone(database):
     await database.insert(
         AppToken,
         AppToken(
-            title="t", token="t", user_id=_MEMBER_ID, project_id=project.id, lifespan_seconds=60
+            title="t",
+            token="t",
+            user_id=_MEMBER_ID,
+            project_id=project.id,
+            lifespan_seconds=60,
         ),
     )
 

@@ -14,23 +14,18 @@
 
 from fastapi import APIRouter
 
-from api.rest.auth import APP_TOKEN_AUTH, APP_TOKEN_BACKEND
-
 from .jobs import router as jobs_router
 from .notices import router as notices_router
 from .profile import router as profile_router
 from .projects import router as projects_router
 from .requests import router as requests_router
+from .tokens import router as tokens_router
 
 router = APIRouter(prefix="/me")
 
 router.include_router(projects_router, prefix="/projects", tags=["auth"])
 
-router.include_router(
-    APP_TOKEN_AUTH.get_app_tokens_router(backend=APP_TOKEN_BACKEND),
-    prefix="/tokens",
-    tags=["auth"],
-)
+router.include_router(tokens_router, prefix="/tokens", tags=["auth"])
 
 router.include_router(requests_router, prefix="/requests", tags=["user-requests"])
 router.include_router(notices_router, prefix="/notices", tags=["notices"])

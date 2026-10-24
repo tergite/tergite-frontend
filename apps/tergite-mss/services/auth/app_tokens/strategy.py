@@ -10,73 +10,28 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """FastAPIUsers-specific definition of AppTokens Strategy"""
-import secrets
 from typing import Optional, Tuple
 
 from fastapi_users.authentication.strategy import DatabaseStrategy
 
-from .. import AppTokenRead
+from libs.storage import Database
+
 from ..projects.dtos import Project
-from ..projects.exc import ProjectNotExists
-from ..projects.manager import ProjectAppTokenManager
 from ..users.dtos import User
-from .database import AppTokenDatabase
-from .dtos import AppToken, AppTokenCreate, AppTokenUpdate
+from . import service
 
 
 class AppTokenStrategy(DatabaseStrategy):
-    """Strategy that handles app tokens"""
+    """Strategy that reads app tokens, until step 5.3 replaces it with access rules"""
 
-    database: AppTokenDatabase
-
-    def __init__(self, database: AppTokenDatabase):
+    def __init__(self, database: Database):
         super().__init__(database)
 
-    async def write_token(self, payload: AppTokenCreate, user_id: str) -> str:
-        access_token = AppToken(
-            **payload.model_dump(), token=secrets.token_urlsafe(), user_id=user_id
-        )
-        await self.database.create(access_token)
-        return access_token.token
-
-    async def destroy_token(self, _id: str, user_id: str) -> None:
-        """Destroys the token of the given ID
-
-        Args:
-            _id: the ID of the token to destroy
-            user_id: the id of the user this token should belong to
-
-        Raises:
-            HTTPException: Forbidden 403 if token is not user's
-                or token does not exist or is expired already
-        """
-        await self.database.delete_one({"id": _id, "user_id": user_id})
-
-    async def read_token(
-        self, token: Optional[str], project_manager: ProjectAppTokenManager
-    ) -> Optional[Tuple[Project, User]]:
+    async def read_token(self, token: Optional[str]) -> Optional[Tuple[Project, User]]:
         if token is None:
             return None
 
-        access_token = await self.database.get_by_token(
-            token,
-        )
-        if access_token is None:
+        owner = await service.get_token_owner(self.database, token)
+        if owner is None:
             return None
-
-        try:
-            user_id = access_token.user_id
-            project_id = access_token.project_id
-            return await project_manager.get_project_user_pair(
-                project_id=project_id, user_id=user_id
-            )
-        except ProjectNotExists:
-            return None
-
-    async def update_token(
-        self,
-        token_id: str,
-        user_id: str,
-        payload: AppTokenUpdate,
-    ) -> Optional[AppTokenRead]:
-        return await self.database.update(token_id, user_id=user_id, payload=payload)
+        return owner.project, owner.user

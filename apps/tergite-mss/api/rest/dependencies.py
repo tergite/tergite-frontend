@@ -17,6 +17,7 @@ from typing_extensions import Annotated
 
 from libs.storage import Database, Id
 from services.auth import (
+    AppTokenQuery,
     Project,
     ProjectQuery,
     User,
@@ -72,3 +73,23 @@ def get_project_query(
 
 
 ProjectQueryDep = Annotated[ProjectQuery, Depends(get_project_query)]
+
+
+def get_app_token_query(
+    ids: Optional[List[Id]] = Query(None, alias="id"),
+    project_id: Optional[List[Id]] = Query(None),
+    title: Optional[List[str]] = Query(None),
+    min_lifespan_seconds: Optional[int] = Query(None),
+    max_lifespan_seconds: Optional[int] = Query(None),
+) -> AppTokenQuery:
+    """Dependency injector of the query params that narrow a list of app tokens"""
+    return AppTokenQuery(
+        ids=ids,
+        project_ids=project_id,
+        titles=title,
+        min_lifespan_seconds=min_lifespan_seconds,
+        max_lifespan_seconds=max_lifespan_seconds,
+    )
+
+
+AppTokenQueryDep = Annotated[AppTokenQuery, Depends(get_app_token_query)]

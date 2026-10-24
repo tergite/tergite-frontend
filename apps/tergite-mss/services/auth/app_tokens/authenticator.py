@@ -25,7 +25,6 @@ from makefun import with_signature
 from utils.config import UserRole
 
 from ..projects.dtos import Project
-from ..projects.manager import ProjectAppTokenManager, ProjectManagerDependency
 from ..users.dtos import User
 from .auth_backend import AppTokenAuthenticationBackend
 from .strategy import AppTokenStrategy
@@ -41,7 +40,6 @@ class AppTokenAuthenticator:
 
     Attributes:
         backends: List of authentication backends.
-        get_project_manager: Project manager dependency callable.
     """
 
     backends: Sequence[AppTokenAuthenticationBackend]
@@ -49,10 +47,8 @@ class AppTokenAuthenticator:
     def __init__(
         self,
         backends: Sequence[AppTokenAuthenticationBackend],
-        get_project_manager_dep: ProjectManagerDependency,
     ):
         self.backends = backends
-        self.get_project_manager = get_project_manager_dep
 
     def current_project(
         self,
@@ -156,7 +152,6 @@ class AppTokenAuthenticator:
     async def _authenticate(
         self,
         *args,
-        project_manager: ProjectAppTokenManager,
         active: bool = False,
         ignore_qpu_seconds: bool = False,
         user_roles: Tuple[UserRole] = (),
@@ -174,9 +169,7 @@ class AppTokenAuthenticator:
                     name_to_strategy_variable_name(backend.name)
                 ]
                 if token is not None:
-                    project_user_pair = await strategy.read_token(
-                        token, project_manager
-                    )
+                    project_user_pair = await strategy.read_token(token)
 
                     if project_user_pair:
                         break
@@ -214,13 +207,7 @@ class AppTokenAuthenticator:
         This way, each security schemes are detected by the OpenAPI generator.
         """
         try:
-            parameters: List[Parameter] = [
-                Parameter(
-                    name="project_manager",
-                    kind=Parameter.POSITIONAL_OR_KEYWORD,
-                    default=Depends(self.get_project_manager),
-                )
-            ]
+            parameters: List[Parameter] = []
 
             for backend in self.backends:
                 parameters += [

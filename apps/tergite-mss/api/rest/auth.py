@@ -39,13 +39,7 @@ GET_CURRENT_SUPERUSER = JWT_AUTH.current_user(active=True, superuser=True)
 
 # FIXME: the "auth/app-tokens/generate" does not matter
 APP_TOKEN_BACKEND = auth.get_app_token_backend("auth/app-tokens/generate")
-APP_TOKEN_AUTH = auth.ProjectBasedAuth(
-    get_project_manager_dep=auth.get_project_manager,
-    get_user_manager_dep=get_user_manager,
-    get_current_user_dep=GET_CURRENT_USER,
-    get_current_user_id_dep=GET_CURRENT_USER_ID,
-    auth_backends=[APP_TOKEN_BACKEND],
-)
+APP_TOKEN_AUTH = auth.ProjectBasedAuth(auth_backends=[APP_TOKEN_BACKEND])
 GET_CURRENT_PROJECT_USER_IDS = APP_TOKEN_AUTH.current_project_and_user_ids(active=True)
 GET_CURRENT_LAX_PROJECT_AND_USER = APP_TOKEN_AUTH.get_project_and_user(
     should_require_active=True, should_ignore_qpu_seconds=True

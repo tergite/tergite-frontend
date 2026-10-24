@@ -124,7 +124,6 @@ facade-import: services/requests/dtos.py::import services.notices.dtos
 facade-import: services/requests/service.py::import services.auth.projects.dtos
 facade-import: services/requests/service.py::import services.auth.users.dtos
 http-exception: services/auth/app_tokens/authenticator.py
-http-exception: services/auth/app_tokens/routers.py
 http-exception: services/auth/users/authenticator.py
 http-exception: services/auth/users/routers.py
 type-hints: api/rest/__init__.py::health
@@ -152,9 +151,6 @@ type-hints: api/rest/routers/me/notices/notices.py::get_my_notices
 type-hints: api/rest/routers/me/profile.py::get_my_user_profile
 type-hints: api/rest/routers/me/requests.py::get_many
 type-hints: api/rest/utils.py::_is_valid_uuid4
-type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.destroy_token
-type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.generate_token
-type-hints: services/auth/app_tokens/auth_backend.py::AppTokenAuthenticationBackend.update_token
 type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator._authenticate
 type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project
 type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project.current_project_dependency
@@ -162,13 +158,6 @@ type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.cur
 type-hints: services/auth/app_tokens/authenticator.py::AppTokenAuthenticator.current_project_and_user_ids.current_project_and_user_id_dependency
 type-hints: services/auth/app_tokens/dtos.py::AppTokenRead.serialize_created_at
 type-hints: services/auth/app_tokens/dtos.py::AppTokenUpdate.serialize_expires_at
-type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router
-type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.destroy
-type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.generate_app_token
-type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.get_my_app_token
-type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.get_my_app_tokens
-type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.update_app_token
-type-hints: services/auth/projects/__init__.py::get_project_manager
 type-hints: services/auth/projects/dtos.py::ProjectRead.model_dump
 type-hints: services/auth/providers/__init__.py::_order_by_many.get_key
 type-hints: services/auth/service.py::register_oauth2_client

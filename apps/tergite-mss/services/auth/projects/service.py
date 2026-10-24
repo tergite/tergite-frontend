@@ -10,14 +10,14 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Projects: their members, their QPU seconds, and their deletion"""
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional
 
 from libs.storage import Database, DuplicateKeyError, derive_id
-from utils.exc import ForbiddenError, TooManyListQueryParams
+from utils.exc import ForbiddenError
 
 from ..app_tokens import service as app_tokens
 from ..users.dtos import User
-from ..utils import MAX_LIST_QUERY_LEN
+from ..utils import ensure_short_list
 from . import membership
 from .dtos import (
     DeletedProject,
@@ -70,12 +70,12 @@ async def find_projects(
     """
     project_filter: Dict[str, Any] = {}
     if query.ids is not None:
-        project_filter["id"] = {"$in": _ensure_short_list("id", query.ids)}
+        project_filter["id"] = {"$in": ensure_short_list("id", query.ids)}
     if query.user_ids is not None:
-        user_ids = _ensure_short_list("user_ids", query.user_ids)
+        user_ids = ensure_short_list("user_ids", query.user_ids)
         project_filter["user_ids"] = {"$in": user_ids}
     if query.names is not None:
-        project_filter["name"] = {"$in": _ensure_short_list("name", query.names)}
+        project_filter["name"] = {"$in": ensure_short_list("name", query.names)}
     if query.is_active is True:
         # a project stored without is_active is active, as the field defaults to True
         project_filter["is_active"] = {"$ne": False}
@@ -319,16 +319,3 @@ async def get_admin_view(project: Project) -> ProjectAdminView:
         user_emails=[id_email_map[user_id] for user_id in project.user_ids],
         admin_email=id_email_map[project.admin_id],
     )
-
-
-def _ensure_short_list(query_param: str, values: Sequence[Any]) -> List[Any]:
-    """Gets the values as a list, if there are few enough to query by
-
-    Raises:
-        TooManyListQueryParams: there are more than MAX_LIST_QUERY_LEN values
-    """
-    if len(values) > MAX_LIST_QUERY_LEN:
-        raise TooManyListQueryParams(
-            query_param, expected=MAX_LIST_QUERY_LEN, got=len(values)
-        )
-    return list(values)

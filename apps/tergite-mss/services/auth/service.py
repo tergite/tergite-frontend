@@ -26,7 +26,7 @@ from libs.storage import Database
 from libs.storage.mongo.schema import get_validator
 from utils.config import AuthConfig, Oauth2ClientConfig
 
-from . import projects, providers, users
+from . import app_tokens, providers, users
 from .users.dtos import User
 from .utils import get_oauth2_client
 
@@ -45,7 +45,7 @@ async def on_startup(
     """
     users.set_auth_clients(conf.clients)
     providers.set_auth_providers(conf.clients)
-    projects.on_startup(database)
+    app_tokens.on_startup(database)
     await init_beanie(database=db, document_models=[User])
     await _set_users_validator(db)
 

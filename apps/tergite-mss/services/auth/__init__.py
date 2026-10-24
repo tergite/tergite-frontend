@@ -12,13 +12,24 @@
 from utils.api import PaginatedListResponse
 from utils.config import Oauth2ClientConfig, UserRole
 
+from .app_tokens import ProjectBasedAuth, get_app_token_backend
 from .app_tokens.dtos import (
     AppToken,
     AppTokenCreate,
     AppTokenListResponse,
+    AppTokenQuery,
     AppTokenRead,
+    AppTokenUpdate,
+    TokenOwner,
 )
-from .projects import ProjectBasedAuth, get_app_token_backend, get_project_manager
+from .app_tokens.exc import AppTokenNotFound
+from .app_tokens.service import (
+    create_app_token,
+    delete_app_token,
+    find_app_tokens,
+    get_token_owner,
+    update_app_token_expiry,
+)
 from .projects.dtos import (
     DeletedProject,
     Project,
@@ -94,7 +105,15 @@ __all__ = [
     "get_app_token_backend",
     "get_jwt_cookie_backend",
     "get_jwt_header_backend",
-    "get_project_manager",
+    "AppTokenQuery",
+    "AppTokenUpdate",
+    "AppTokenNotFound",
+    "TokenOwner",
+    "create_app_token",
+    "delete_app_token",
+    "find_app_tokens",
+    "get_token_owner",
+    "update_app_token_expiry",
     "get_email_validator",
     "Validator",
     "get_user_db",
