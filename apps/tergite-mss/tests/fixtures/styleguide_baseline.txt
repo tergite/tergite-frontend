@@ -214,7 +214,6 @@ http-exception: libs/authlib/authentication/authenticator.py
 http-exception: libs/authlib/router/oauth.py
 private-helper-position: libs/authlib/jwt.py::decode_jwt
 private-helper-position: libs/authlib/jwt.py::generate_jwt
-type-hints: libs/authlib/authentication/authenticator.py::Authenticator._authenticate
 type-hints: libs/authlib/authentication/authenticator.py::Authenticator.current_user
 type-hints: libs/authlib/authentication/authenticator.py::Authenticator.current_user.current_user_dependency
 type-hints: libs/authlib/authentication/authenticator.py::Authenticator.current_user_token
@@ -229,8 +228,6 @@ verb: libs/authlib/authentication/authenticator.py::Authenticator.current_user
 verb: libs/authlib/authentication/authenticator.py::Authenticator.current_user.current_user_dependency
 verb: libs/authlib/authentication/authenticator.py::Authenticator.current_user_token
 verb: libs/authlib/authentication/authenticator.py::Authenticator.current_user_token.current_user_token_dependency
-verb: libs/authlib/authentication/authenticator.py::name_to_strategy_variable_name
-verb: libs/authlib/authentication/authenticator.py::name_to_variable_name
 verb: libs/authlib/manager.py::BaseUserManager.oauth_callback
 verb: libs/authlib/router/oauth.py::get_oauth_router.callback
 verb: libs/authlib/schemas.py::model_dump

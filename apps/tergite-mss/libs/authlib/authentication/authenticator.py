@@ -10,66 +10,46 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-import re
+"""Dependencies that get the user of a request's session token"""
 from collections.abc import Sequence
-from inspect import Parameter, Signature
-from typing import Any, Awaitable, Callable, Generic, Optional, cast
+from typing import Awaitable, Callable, Generic, List, Optional, Tuple
 
 from fastapi import Depends, HTTPException, status
-from makefun import with_signature
+from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBearer
 
 from libs.authlib import models
-from libs.authlib.authentication.backend import AuthenticationBackend
 from libs.authlib.authentication.strategy import Strategy
 from libs.authlib.manager import BaseUserManager, UserManagerDependency
 from libs.authlib.types import DependencyCallable
-
-INVALID_CHARS_PATTERN = re.compile(r"[^0-9a-zA-Z_]")
-INVALID_LEADING_CHARS_PATTERN = re.compile(r"^[^a-zA-Z_]+")
-
-
-def name_to_variable_name(name: str) -> str:
-    """Transform a backend name string into a string safe to use as variable name."""
-    name = re.sub(INVALID_CHARS_PATTERN, "", name)
-    name = re.sub(INVALID_LEADING_CHARS_PATTERN, "", name)
-    return name
-
-
-def name_to_strategy_variable_name(name: str) -> str:
-    """Transform a backend name string into a strategy variable name."""
-    return f"strategy_{name_to_variable_name(name)}"
-
-
-class DuplicateBackendNamesError(Exception):
-    pass
-
-
-EnabledBackendsDependency = DependencyCallable[
-    Sequence[AuthenticationBackend[models.UP, models.ID]]
-]
 
 
 class Authenticator(Generic[models.UP, models.ID]):
     """
     Provides dependency callables to retrieve authenticated user.
 
-    It performs the authentication against a list of backends
-    defined by the end-developer. The first backend yielding a user wins.
-    If no backend yields a user, an HTTPException is raised.
+    The session token is read from the `Authorization: Bearer` header, then from the
+    session cookie, if one is named: the first that the strategy reads into a user wins.
+    If none does, an HTTPException is raised.
 
-    :param backends: List of authentication backends.
     :param get_user_manager: User manager dependency callable.
+    :param get_strategy: Dependency callable of the strategy that reads tokens.
+    :param cookie_name: The name of the session cookie; None reads no cookie.
     """
-
-    backends: Sequence[AuthenticationBackend[models.UP, models.ID]]
 
     def __init__(
         self,
-        backends: Sequence[AuthenticationBackend[models.UP, models.ID]],
         get_user_manager: UserManagerDependency[models.UP, models.ID],
+        get_strategy: DependencyCallable[Strategy[models.UP, models.ID]],
+        cookie_name: Optional[str] = None,
     ):
-        self.backends = backends
         self.get_user_manager = get_user_manager
+        self.get_strategy = get_strategy
+        self.bearer_scheme = HTTPBearer(auto_error=False)
+        self.cookie_scheme = (
+            APIKeyCookie(name=cookie_name, auto_error=False)
+            if cookie_name is not None
+            else _read_no_cookie
+        )
 
     def current_user_token(
         self,
@@ -77,9 +57,6 @@ class Authenticator(Generic[models.UP, models.ID]):
         active: bool = False,
         verified: bool = False,
         superuser: bool = False,
-        get_enabled_backends: Optional[
-            EnabledBackendsDependency[models.UP, models.ID]
-        ] = None,
     ):
         """
         Return a dependency callable to retrieve currently authenticated user and token.
@@ -87,32 +64,32 @@ class Authenticator(Generic[models.UP, models.ID]):
         :param optional: If `True`, `None` is returned if there is no authenticated user
         or if it doesn't pass the other requirements.
         Otherwise, throw `401 Unauthorized`. Defaults to `False`.
-        Otherwise, an exception is raised. Defaults to `False`.
         :param active: If `True`, throw `401 Unauthorized` if
         the authenticated user is inactive. Defaults to `False`.
         :param verified: If `True`, throw `403 Forbidden` if
         the authenticated user is not verified. Defaults to `False`.
         :param superuser: If `True`, throw `403 Forbidden` if
         the authenticated user is not a superuser. Defaults to `False`.
-        :param get_enabled_backends: Optional dependency callable returning
-        a list of enabled authentication backends.
-        Useful if you want to dynamically enable some authentication backends
-        based on external logic, like a configuration in database.
-        By default, all specified authentication backends are enabled.
-        Please not however that every backends will appear in the OpenAPI documentation,
-        as FastAPI resolves it statically.
         """
-        signature = self._get_dependency_signature(get_enabled_backends)
 
-        @with_signature(signature)
-        async def current_user_token_dependency(*args: Any, **kwargs: Any):
+        async def current_user_token_dependency(
+            bearer: Optional[HTTPAuthorizationCredentials] = Depends(
+                self.bearer_scheme
+            ),
+            cookie_token: Optional[str] = Depends(self.cookie_scheme),
+            user_manager: BaseUserManager[models.UP, models.ID] = Depends(
+                self.get_user_manager
+            ),
+            strategy: Strategy[models.UP, models.ID] = Depends(self.get_strategy),
+        ):
             return await self._authenticate(
-                *args,
+                _get_tokens(bearer, cookie_token),
+                user_manager,
+                strategy,
                 optional=optional,
                 active=active,
                 verified=verified,
                 superuser=superuser,
-                **kwargs,
             )
 
         return current_user_token_dependency
@@ -123,9 +100,6 @@ class Authenticator(Generic[models.UP, models.ID]):
         active: bool = False,
         verified: bool = False,
         superuser: bool = False,
-        get_enabled_backends: Optional[
-            EnabledBackendsDependency[models.UP, models.ID]
-        ] = None,
         roles: Sequence[str] = (),
     ):
         """
@@ -134,35 +108,25 @@ class Authenticator(Generic[models.UP, models.ID]):
         :param optional: If `True`, `None` is returned if there is no authenticated user
         or if it doesn't pass the other requirements.
         Otherwise, throw `401 Unauthorized`. Defaults to `False`.
-        Otherwise, an exception is raised. Defaults to `False`.
         :param active: If `True`, throw `401 Unauthorized` if
         the authenticated user is inactive. Defaults to `False`.
         :param verified: If `True`, throw `403 Forbidden` if
         the authenticated user is not verified. Defaults to `False`.
         :param superuser: If `True`, throw `403 Forbidden` if
         the authenticated user is not a superuser. Defaults to `False`.
-        :param get_enabled_backends: Optional dependency callable returning
-        a list of enabled authentication backends.
-        Useful if you want to dynamically enable some authentication backends
-        based on external logic, like a configuration in database.
-        By default, all specified authentication backends are enabled.
-        Please not however that every backends will appear in the OpenAPI documentation,
-        as FastAPI resolves it statically.
         :param roles: The roles of which the user must have one, or throw
         `403 Forbidden`. Defaults to none required.
         """
-        signature = self._get_dependency_signature(get_enabled_backends)
+        get_current_user_token = self.current_user_token(
+            optional=optional, active=active, verified=verified, superuser=superuser
+        )
 
-        @with_signature(signature)
-        async def current_user_dependency(*args: Any, **kwargs: Any):
-            user, _ = await self._authenticate(
-                *args,
-                optional=optional,
-                active=active,
-                verified=verified,
-                superuser=superuser,
-                **kwargs,
-            )
+        async def current_user_dependency(
+            user_token: Tuple[Optional[models.UP], Optional[str]] = Depends(
+                get_current_user_token
+            ),
+        ):
+            user, _ = user_token
             if user and roles and user.roles.isdisjoint(roles):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
             return user
@@ -170,11 +134,7 @@ class Authenticator(Generic[models.UP, models.ID]):
         return current_user_dependency
 
     def get_current_user_id(
-        self,
-        is_optional: bool = False,
-        get_enabled_backends: Optional[
-            EnabledBackendsDependency[models.UP, models.ID]
-        ] = None,
+        self, is_optional: bool = False
     ) -> Callable[..., Awaitable[Optional[str]]]:
         """
         Return a dependency callable to retrieve the authenticated user's id.
@@ -184,42 +144,41 @@ class Authenticator(Generic[models.UP, models.ID]):
 
         :param is_optional: If `True`, `None` is returned if there is no authenticated
         user. Otherwise, throw `401 Unauthorized`. Defaults to `False`.
-        :param get_enabled_backends: Optional dependency callable returning
-        a list of enabled authentication backends, as `current_user` takes it.
         """
-        signature = self._get_dependency_signature(get_enabled_backends)
 
-        @with_signature(signature)
-        async def read_current_user_id(*args: Any, **kwargs: Any) -> Optional[str]:
-            return self._get_user_id(*args, is_optional=is_optional, **kwargs)
+        async def read_current_user_id(
+            bearer: Optional[HTTPAuthorizationCredentials] = Depends(
+                self.bearer_scheme
+            ),
+            cookie_token: Optional[str] = Depends(self.cookie_scheme),
+            strategy: Strategy[models.UP, models.ID] = Depends(self.get_strategy),
+        ) -> Optional[str]:
+            for token in _get_tokens(bearer, cookie_token):
+                user_id = strategy.get_user_id(token)
+                if user_id:
+                    return user_id
+            if not is_optional:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+            return None
 
         return read_current_user_id
 
     async def _authenticate(
         self,
-        *args,
+        tokens: List[str],
         user_manager: BaseUserManager[models.UP, models.ID],
+        strategy: Strategy[models.UP, models.ID],
         optional: bool = False,
         active: bool = False,
         verified: bool = False,
         superuser: bool = False,
-        **kwargs,
     ) -> tuple[Optional[models.UP], Optional[str]]:
         user: Optional[models.UP] = None
         token: Optional[str] = None
-        enabled_backends: Sequence[
-            AuthenticationBackend[models.UP, models.ID]
-        ] = kwargs.get("enabled_backends", self.backends)
-        for backend in self.backends:
-            if backend in enabled_backends:
-                token = kwargs[name_to_variable_name(backend.name)]
-                strategy: Strategy[models.UP, models.ID] = kwargs[
-                    name_to_strategy_variable_name(backend.name)
-                ]
-                if token is not None:
-                    user = await strategy.read_token(token, user_manager)
-                    if user:
-                        break
+        for token in tokens:
+            user = await strategy.read_token(token, user_manager)
+            if user:
+                break
 
         status_code = status.HTTP_401_UNAUTHORIZED
         if user:
@@ -235,69 +194,18 @@ class Authenticator(Generic[models.UP, models.ID]):
             raise HTTPException(status_code=status_code)
         return user, token
 
-    def _get_user_id(
-        self, *args: Any, is_optional: bool = False, **kwargs: Any
-    ) -> Optional[str]:
-        user_id: Optional[str] = None
-        enabled_backends: Sequence[
-            AuthenticationBackend[models.UP, models.ID]
-        ] = kwargs.get("enabled_backends", self.backends)
-        for backend in self.backends:
-            if backend in enabled_backends:
-                token = kwargs[name_to_variable_name(backend.name)]
-                strategy: Strategy[models.UP, models.ID] = kwargs[
-                    name_to_strategy_variable_name(backend.name)
-                ]
-                user_id = strategy.get_user_id(token)
-                if user_id:
-                    break
 
-        if not user_id and not is_optional:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-        return user_id
+def _get_tokens(
+    bearer: Optional[HTTPAuthorizationCredentials], cookie_token: Optional[str]
+) -> List[str]:
+    """Gets the request's tokens, the bearer's first"""
+    tokens = []
+    if bearer is not None:
+        tokens.append(bearer.credentials)
+    if cookie_token is not None:
+        tokens.append(cookie_token)
+    return tokens
 
-    def _get_dependency_signature(
-        self, get_enabled_backends: Optional[EnabledBackendsDependency] = None
-    ) -> Signature:
-        """
-        Generate a dynamic signature for the current_user dependency.
 
-        Here comes some blood magic 🧙‍♂️
-        Thank to "makefun", we are able to generate callable
-        with a dynamic number of dependencies at runtime.
-        This way, each security schemes are detected by the OpenAPI generator.
-        """
-        try:
-            parameters: list[Parameter] = [
-                Parameter(
-                    name="user_manager",
-                    kind=Parameter.POSITIONAL_OR_KEYWORD,
-                    default=Depends(self.get_user_manager),
-                )
-            ]
-
-            for backend in self.backends:
-                parameters += [
-                    Parameter(
-                        name=name_to_variable_name(backend.name),
-                        kind=Parameter.POSITIONAL_OR_KEYWORD,
-                        default=Depends(cast(Callable, backend.transport.scheme)),
-                    ),
-                    Parameter(
-                        name=name_to_strategy_variable_name(backend.name),
-                        kind=Parameter.POSITIONAL_OR_KEYWORD,
-                        default=Depends(backend.get_strategy),
-                    ),
-                ]
-
-            if get_enabled_backends is not None:
-                parameters += [
-                    Parameter(
-                        name="enabled_backends",
-                        kind=Parameter.POSITIONAL_OR_KEYWORD,
-                        default=Depends(get_enabled_backends),
-                    )
-                ]
-            return Signature(parameters)
-        except ValueError:
-            raise DuplicateBackendNamesError()
+async def _read_no_cookie() -> None:
+    return None

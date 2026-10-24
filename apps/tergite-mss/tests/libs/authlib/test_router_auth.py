@@ -27,7 +27,7 @@ def app_factory(get_user_manager, mock_authentication):
     def _app_factory(requires_verification: bool) -> FastAPI:
         mock_authentication_bis = get_mock_authentication(name="mock-bis")
         authenticator = Authenticator(
-            [mock_authentication, mock_authentication_bis], get_user_manager
+            get_user_manager, mock_authentication.get_strategy
         )
 
         mock_auth_router = get_auth_router(

@@ -22,7 +22,9 @@ from tests.libs.authlib.conftest import IDType, UserModel
 
 @pytest.fixture
 def fastapi_users(get_user_manager, mock_authentication) -> FastAPIUsers:
-    return FastAPIUsers[UserModel, IDType](get_user_manager, [mock_authentication])
+    return FastAPIUsers[UserModel, IDType](
+        get_user_manager, mock_authentication.get_strategy
+    )
 
 
 @pytest.fixture

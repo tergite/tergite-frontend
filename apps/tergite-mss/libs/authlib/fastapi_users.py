@@ -10,17 +10,18 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from collections.abc import Mapping, Sequence
-from typing import Generic
+from collections.abc import Mapping
+from typing import Generic, Optional
 
 from fastapi import APIRouter
 
 from libs.authlib import models
-from libs.authlib.authentication import AuthenticationBackend, Authenticator
+from libs.authlib.authentication import AuthenticationBackend, Authenticator, Strategy
 from libs.authlib.jwt import SecretType
 from libs.authlib.manager import UserManagerDependency
 from libs.authlib.providers import OAuthProvider
 from libs.authlib.router import get_auth_router, get_oauth_router
+from libs.authlib.types import DependencyCallable
 
 
 class FastAPIUsers(Generic[models.UP, models.ID]):
@@ -29,7 +30,9 @@ class FastAPIUsers(Generic[models.UP, models.ID]):
 
     :param get_user_manager: Dependency callable getter to inject the
     user manager class instance.
-    :param auth_backends: List of authentication backends.
+    :param get_strategy: Dependency callable of the strategy that reads session tokens.
+    :param cookie_name: The name of the session cookie; None reads tokens from the
+    `Authorization` header alone.
 
     :attribute current_user: Dependency callable getter to inject authenticated user
     with a specific set of parameters.
@@ -40,9 +43,10 @@ class FastAPIUsers(Generic[models.UP, models.ID]):
     def __init__(
         self,
         get_user_manager: UserManagerDependency[models.UP, models.ID],
-        auth_backends: Sequence[AuthenticationBackend[models.UP, models.ID]],
+        get_strategy: DependencyCallable[Strategy[models.UP, models.ID]],
+        cookie_name: Optional[str] = None,
     ):
-        self.authenticator = Authenticator(auth_backends, get_user_manager)
+        self.authenticator = Authenticator(get_user_manager, get_strategy, cookie_name)
         self.get_user_manager = get_user_manager
         self.current_user = self.authenticator.current_user
         self.get_current_user_id = self.authenticator.get_current_user_id

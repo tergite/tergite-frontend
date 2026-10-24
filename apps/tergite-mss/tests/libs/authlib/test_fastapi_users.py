@@ -32,7 +32,7 @@ async def test_app_client(
     get_test_client,
 ) -> AsyncGenerator[httpx.AsyncClient, None]:
     fastapi_users = FastAPIUsers[UserModel, IDType](
-        get_user_manager, [mock_authentication]
+        get_user_manager, mock_authentication.get_strategy
     )
 
     app = FastAPI()
