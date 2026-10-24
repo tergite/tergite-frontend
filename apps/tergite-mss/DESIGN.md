@@ -245,6 +245,7 @@ routes never build one. Ids are `Id` strings, which MongoDB keeps as ObjectIds. 
 reads a record past its expiring field. A schema with `should_skip_invalid` has `get` and
 `find` leave out stored records that fail validation, with a warning naming the invalid
 fields, where any other read raises; writes always raise, and `count` includes them.
+Jobs and notices set it, as MongoDB holds older shapes of both.
 
 - **MongoDB** keeps a collection per schema, with a `$jsonSchema` validator and the indexes
   `__storage__` asks for; a TTL index deletes expired records. A revision that changes stored

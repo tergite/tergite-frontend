@@ -287,6 +287,7 @@ class Notice(Schema):
             ("starts_at", "expires_at"),
             ("ref_type", "ref_id"),
         ),
+        should_skip_invalid=True,
     )
     model_config = ConfigDict(extra="ignore")
 

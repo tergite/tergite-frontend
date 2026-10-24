@@ -121,7 +121,9 @@ class JobResult(BaseModel):
 class Job(Schema, JobCreate):
     """the job schema"""
 
-    __storage__ = StorageSpec(table="jobs", key="job_id", indexes=("job_id",))
+    __storage__ = StorageSpec(
+        table="jobs", key="job_id", indexes=("job_id",), should_skip_invalid=True
+    )
     model_config = ConfigDict(
         extra="allow",
     )

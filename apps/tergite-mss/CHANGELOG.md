@@ -60,6 +60,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   3 info) and `severity_number` is gone, so posting `"warning"` gets a 422. On MongoDB, run
   `migrations/mongodb/b109440758fe_store_notice_severities_as_numbers.upgrade.js` with mongosh
   before starting MSS; its `.rollback.js` undoes it.
+- Notices that no longer fit MSS's schema, such as those `v2026.06.0` stored, are left out
+  of listings with a warning in the log, where they failed the whole listing; jobs already were.
 - `request_log_clean_interval` is ignored, as Redis now expires each request-log entry itself.
 - The low and depleted QPU warnings come only from the job that crosses the threshold or zero,
   so the jobs after it do not repeat them.
