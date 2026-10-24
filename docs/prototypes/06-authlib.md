@@ -52,6 +52,9 @@ it. The step is signed off when every box is ticked, or a failure is written bes
       `./dev/perf/record.sh /tmp/perf-06 && python3 dev/perf/compare.py dev/perf/baselines /tmp/perf-06`
       exits 0, or fails only as steps 4 and 5 did: a p95 within 13 ms of the baseline, or peak
       MongoDB connections near 29 against 17, from the client Beanie's users keep until step 7.
+      **2026-10-24: holds.** It fails only on such measures: p95 of GET `/me/profile` 28 ms
+      against 17 and GET `/me/projects/` 30 against 19, each within 13 ms, and peak MongoDB
+      connections 27 against 17 (29 at step 5). No request failed.
 
 ## Not covered here
 
