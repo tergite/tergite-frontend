@@ -245,7 +245,9 @@ routes never build one. Ids are `Id` strings, which MongoDB keeps as ObjectIds. 
 reads a record past its expiring field.
 
 - **MongoDB** keeps a collection per schema, with a `$jsonSchema` validator and the indexes
-  `__storage__` asks for; a TTL index deletes expired records.
+  `__storage__` asks for; a TTL index deletes expired records. A revision that changes stored
+  values has a mongosh upgrade and rollback named after it in `migrations/mongodb/`, which
+  operators run with MSS stopped, as `setup` replaces the validator only on start.
 - **SQL** gets a table per schema from `libs/storage/sql/tables.py`: a column per scalar
   field, a `JSON` column per nested one (read and written whole, never queried), a `row_id`
   that keeps insertion order, and a child table, one row per element, for each list in

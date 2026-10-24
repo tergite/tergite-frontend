@@ -57,8 +57,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   layer instead of Beanie. Emails are now unique in any case, so startup fails while two
   users' emails differ only in case: merge them first.
 - Notice severities are numbers in requests, responses and storage (1 critical, 2 warning,
-  3 info), so notices sort by `severity` and `severity_number` is gone. Posting `"warning"`
-  now gets a 422.
+  3 info) and `severity_number` is gone, so posting `"warning"` gets a 422. On MongoDB, run
+  `migrations/mongodb/b109440758fe_store_notice_severities_as_numbers.upgrade.js` with mongosh
+  before starting MSS; its `.rollback.js` undoes it.
 - `request_log_clean_interval` is ignored, as Redis now expires each request-log entry itself.
 - The low and depleted QPU warnings come only from the job that crosses the threshold or zero,
   so the jobs after it do not repeat them.
