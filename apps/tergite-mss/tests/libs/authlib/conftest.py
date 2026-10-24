@@ -32,15 +32,6 @@ from libs.authlib.db import BaseUserDatabase
 from libs.authlib.jwt import SecretType
 from libs.authlib.manager import BaseUserManager, UUIDIDMixin
 from libs.authlib.openapi import OpenAPIResponseType
-from libs.authlib.password import PasswordHelper
-
-password_helper = PasswordHelper()
-guinevere_password_hash = password_helper.hash("guinevere")
-angharad_password_hash = password_helper.hash("angharad")
-viviane_password_hash = password_helper.hash("viviane")
-lancelot_password_hash = password_helper.hash("lancelot")
-excalibur_password_hash = password_helper.hash("excalibur")
-
 
 IDType = UUID4
 
@@ -48,7 +39,6 @@ IDType = UUID4
 @dataclasses.dataclass
 class UserModel(models.UserProtocol[IDType]):
     email: str
-    hashed_password: str
     id: IDType = dataclasses.field(default_factory=uuid.uuid4)
     is_active: bool = True
     is_superuser: bool = False
@@ -133,7 +123,6 @@ def secret(request) -> SecretType:
 def user() -> UserModel:
     return UserModel(
         email="king.arthur@camelot.bt",
-        hashed_password=guinevere_password_hash,
     )
 
 
@@ -143,7 +132,6 @@ def user_oauth(
 ) -> UserOAuthModel:
     return UserOAuthModel(
         email="king.arthur@camelot.bt",
-        hashed_password=guinevere_password_hash,
         oauth_accounts=[oauth_account1, oauth_account2],
     )
 
@@ -152,7 +140,6 @@ def user_oauth(
 def inactive_user() -> UserModel:
     return UserModel(
         email="percival@camelot.bt",
-        hashed_password=angharad_password_hash,
         is_active=False,
     )
 
@@ -161,7 +148,6 @@ def inactive_user() -> UserModel:
 def inactive_user_oauth(oauth_account3: OAuthAccountModel) -> UserOAuthModel:
     return UserOAuthModel(
         email="percival@camelot.bt",
-        hashed_password=angharad_password_hash,
         is_active=False,
         oauth_accounts=[oauth_account3],
     )
@@ -171,7 +157,6 @@ def inactive_user_oauth(oauth_account3: OAuthAccountModel) -> UserOAuthModel:
 def verified_user() -> UserModel:
     return UserModel(
         email="lake.lady@camelot.bt",
-        hashed_password=excalibur_password_hash,
         is_active=True,
         is_verified=True,
     )
@@ -181,7 +166,6 @@ def verified_user() -> UserModel:
 def verified_user_oauth(oauth_account4: OAuthAccountModel) -> UserOAuthModel:
     return UserOAuthModel(
         email="lake.lady@camelot.bt",
-        hashed_password=excalibur_password_hash,
         is_active=False,
         oauth_accounts=[oauth_account4],
     )
@@ -191,7 +175,6 @@ def verified_user_oauth(oauth_account4: OAuthAccountModel) -> UserOAuthModel:
 def superuser() -> UserModel:
     return UserModel(
         email="merlin@camelot.bt",
-        hashed_password=viviane_password_hash,
         is_superuser=True,
     )
 
@@ -200,7 +183,6 @@ def superuser() -> UserModel:
 def superuser_oauth() -> UserOAuthModel:
     return UserOAuthModel(
         email="merlin@camelot.bt",
-        hashed_password=viviane_password_hash,
         is_superuser=True,
         oauth_accounts=[],
     )
@@ -210,7 +192,6 @@ def superuser_oauth() -> UserOAuthModel:
 def verified_superuser() -> UserModel:
     return UserModel(
         email="the.real.merlin@camelot.bt",
-        hashed_password=viviane_password_hash,
         is_superuser=True,
         is_verified=True,
     )
@@ -220,7 +201,6 @@ def verified_superuser() -> UserModel:
 def verified_superuser_oauth() -> UserOAuthModel:
     return UserOAuthModel(
         email="the.real.merlin@camelot.bt",
-        hashed_password=viviane_password_hash,
         is_superuser=True,
         is_verified=True,
         oauth_accounts=[],

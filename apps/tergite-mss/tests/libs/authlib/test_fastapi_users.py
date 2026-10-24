@@ -121,7 +121,6 @@ async def test_app_client(
 @pytest.mark.parametrize(
     "path,method",
     [
-        ("/login", "POST"),
         ("/logout", "POST"),
     ],
 )

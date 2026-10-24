@@ -14,11 +14,9 @@ import uuid
 from typing import Any, Generic, Optional
 
 from fastapi import Request, Response
-from fastapi.security import OAuth2PasswordRequestForm
 
 from libs.authlib import exceptions, models
 from libs.authlib.db import BaseUserDatabase
-from libs.authlib.password import PasswordHelper, PasswordHelperProtocol
 from libs.authlib.types import DependencyCallable
 
 
@@ -26,29 +24,13 @@ class BaseUserManager(Generic[models.UP, models.ID]):
     """
     User management logic.
 
-    :attribute reset_password_token_secret: Secret to encode reset password token.
-    :attribute reset_password_token_lifetime_seconds: Lifetime of reset password token.
-    :attribute reset_password_token_audience: JWT audience of reset password token.
-    :attribute verification_token_secret: Secret to encode verification token.
-    :attribute verification_token_lifetime_seconds: Lifetime of verification token.
-    :attribute verification_token_audience: JWT audience of verification token.
-
     :param user_db: Database adapter instance.
     """
 
     user_db: BaseUserDatabase[models.UP, models.ID]
-    password_helper: PasswordHelperProtocol
 
-    def __init__(
-        self,
-        user_db: BaseUserDatabase[models.UP, models.ID],
-        password_helper: Optional[PasswordHelperProtocol] = None,
-    ):
+    def __init__(self, user_db: BaseUserDatabase[models.UP, models.ID]):
         self.user_db = user_db
-        if password_helper is None:
-            self.password_helper = PasswordHelper()
-        else:
-            self.password_helper = password_helper  # pragma: no cover
 
     def parse_id(self, value: Any) -> models.ID:
         """
@@ -168,10 +150,8 @@ class BaseUserManager(Generic[models.UP, models.ID]):
                 user = await self.user_db.add_oauth_account(user, oauth_account_dict)
             except exceptions.UserNotExists:
                 # Create account
-                password = self.password_helper.generate()
                 user_dict = {
                     "email": account_email,
-                    "hashed_password": self.password_helper.hash(password),
                     "is_verified": is_verified_by_default,
                 }
                 user = await self.user_db.create(user_dict)
@@ -221,35 +201,6 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         Defaults to None
         """
         return  # pragma: no cover
-
-    async def authenticate(
-        self, credentials: OAuth2PasswordRequestForm
-    ) -> Optional[models.UP]:
-        """
-        Authenticate and return a user following an email and a password.
-
-        Will automatically upgrade password hash if necessary.
-
-        :param credentials: The user credentials.
-        """
-        try:
-            user = await self.get_by_email(credentials.username)
-        except exceptions.UserNotExists:
-            # Run the hasher to mitigate timing attack
-            # Inspired from Django: https://code.djangoproject.com/ticket/20760
-            self.password_helper.hash(credentials.password)
-            return None
-
-        verified, updated_password_hash = self.password_helper.verify_and_update(
-            credentials.password, user.hashed_password
-        )
-        if not verified:
-            return None
-        # Update password hash to a more robust one if needed
-        if updated_password_hash is not None:
-            await self.user_db.update(user, {"hashed_password": updated_password_hash})
-
-        return user
 
 
 class UUIDIDMixin:

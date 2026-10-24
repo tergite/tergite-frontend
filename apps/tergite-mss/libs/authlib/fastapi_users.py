@@ -66,7 +66,6 @@ class FastAPIUsers(Generic[models.UP, models.ID]):
         """
         return get_auth_router(
             backend,
-            self.get_user_manager,
             self.authenticator,
             requires_verification,
         )

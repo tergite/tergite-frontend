@@ -11,25 +11,12 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 import uuid
-from typing import Callable
 
 import pytest
-from fastapi.security import OAuth2PasswordRequestForm
-from pytest_mock import MockerFixture
 
 from libs.authlib.exceptions import InvalidID, UserAlreadyExists, UserNotExists
 from libs.authlib.manager import IntegerIDMixin
 from tests.libs.authlib.conftest import UserManagerMock, UserModel, UserOAuthModel
-
-
-@pytest.fixture
-def create_oauth2_password_request_form() -> (
-    Callable[[str, str], OAuth2PasswordRequestForm]
-):
-    def _create_oauth2_password_request_form(username, password):
-        return OAuth2PasswordRequestForm(username=username, password=password, scope="")
-
-    return _create_oauth2_password_request_form
 
 
 @pytest.mark.asyncio
@@ -171,68 +158,6 @@ class TestOAuthCallback:
         assert user.is_verified is True
 
         assert user_manager_oauth.on_after_register.called is True
-
-
-@pytest.mark.asyncio
-@pytest.mark.manager
-class TestAuthenticate:
-    async def test_unknown_user(
-        self,
-        create_oauth2_password_request_form: Callable[
-            [str, str], OAuth2PasswordRequestForm
-        ],
-        user_manager: UserManagerMock[UserModel],
-    ):
-        form = create_oauth2_password_request_form("lancelot@camelot.bt", "guinevere")
-        user = await user_manager.authenticate(form)
-        assert user is None
-
-    async def test_wrong_password(
-        self,
-        create_oauth2_password_request_form: Callable[
-            [str, str], OAuth2PasswordRequestForm
-        ],
-        user_manager: UserManagerMock[UserModel],
-    ):
-        form = create_oauth2_password_request_form("king.arthur@camelot.bt", "percival")
-        user = await user_manager.authenticate(form)
-        assert user is None
-
-    async def test_valid_credentials(
-        self,
-        create_oauth2_password_request_form: Callable[
-            [str, str], OAuth2PasswordRequestForm
-        ],
-        user_manager: UserManagerMock[UserModel],
-    ):
-        form = create_oauth2_password_request_form(
-            "king.arthur@camelot.bt", "guinevere"
-        )
-        user = await user_manager.authenticate(form)
-        assert user is not None
-        assert user.email == "king.arthur@camelot.bt"
-
-    async def test_upgrade_password_hash(
-        self,
-        mocker: MockerFixture,
-        create_oauth2_password_request_form: Callable[
-            [str, str], OAuth2PasswordRequestForm
-        ],
-        user_manager: UserManagerMock[UserModel],
-    ):
-        verify_and_update_password_patch = mocker.patch.object(
-            user_manager.password_helper, "verify_and_update"
-        )
-        verify_and_update_password_patch.return_value = (True, "updated_hash")
-        update_spy = mocker.spy(user_manager.user_db, "update")
-
-        form = create_oauth2_password_request_form(
-            "king.arthur@camelot.bt", "guinevere"
-        )
-        user = await user_manager.authenticate(form)
-        assert user is not None
-        assert user.email == "king.arthur@camelot.bt"
-        assert update_spy.called is True
 
 
 def test_integer_id_mixin():
