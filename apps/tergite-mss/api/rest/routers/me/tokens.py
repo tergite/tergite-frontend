@@ -14,8 +14,6 @@
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
-from fastapi_users.authentication import BearerTransport
-from fastapi_users.authentication.transport.bearer import BearerResponse
 
 from api.rest.dependencies import AppTokenQueryDep, CurrentUserIdDep, DatabaseDep
 from libs.storage import Id
@@ -26,6 +24,7 @@ from services.auth import (
     AppTokenQuery,
     AppTokenRead,
     AppTokenUpdate,
+    BearerResponse,
 )
 
 router = APIRouter()
@@ -73,7 +72,7 @@ async def get_my_app_tokens(
     "/",
     name="app_tokens:app-token.generate_token",
     response_model=None,
-    responses=BearerTransport.get_openapi_login_responses_success(),
+    responses={status.HTTP_200_OK: {"model": BearerResponse}},
 )
 async def generate_app_token(
     database: DatabaseDep, payload: AppTokenCreate, user_id: CurrentUserIdDep

@@ -10,6 +10,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
+from bson import ObjectId
+
 from tests._utils.env import (
     TEST_DB_NAME,
     TEST_MONGODB_URL,
@@ -37,7 +39,6 @@ import aiosmtplib
 import pymongo.database
 import pytest
 import redis
-from beanie import PydanticObjectId
 from fastapi.testclient import TestClient
 
 from libs.storage import derive_id
@@ -222,12 +223,12 @@ def outsider_jwt_cookie() -> Dict[str, str]:
 
 
 @pytest.fixture
-def project_id(db) -> Generator[PydanticObjectId, Any, None]:
+def project_id(db) -> Generator[ObjectId, Any, None]:
     """the project id for the default app token header"""
     from services.auth import Project
 
     project = get_db_record(
-        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
+        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
     )
     yield project["_id"]
 
@@ -257,11 +258,11 @@ def personal_project(db) -> Generator[Dict[str, Any], Any, None]:
     from services.auth import Project
 
     record = {
-        "_id": PydanticObjectId(derive_id(TEST_USER_ID, namespace="project")),
+        "_id": ObjectId(derive_id(TEST_USER_ID, namespace="project")),
         "name": "john.doe (personal)",
         "description": "john.doe personal project",
-        "admin_id": PydanticObjectId(TEST_USER_ID),
-        "user_ids": [PydanticObjectId(TEST_USER_ID)],
+        "admin_id": ObjectId(TEST_USER_ID),
+        "user_ids": [ObjectId(TEST_USER_ID)],
         "qpu_seconds": 0,
         "is_active": True,
         "is_personal": True,

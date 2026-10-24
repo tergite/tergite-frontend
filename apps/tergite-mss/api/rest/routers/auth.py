@@ -16,12 +16,11 @@ from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, FastAPI, Query
 from loguru import logger
 
-import settings
-from api.rest.auth import JWT_AUTH, JWT_COOKIE_BACKEND
-from services.auth import AuthProvider, providers, register_oauth2_client
+from api.rest.auth import AUTH
+from libs import authlib
+from services.auth import AuthProvider, providers
 from services.auth.providers.dtos import AuthProviderQuery
 from utils.api import PaginatedListResponse, get_paginated_json
-from utils.config import Oauth2ClientConfig
 
 
 def include_auth_router(root_router: Union[APIRouter, FastAPI]):
@@ -32,27 +31,10 @@ def include_auth_router(root_router: Union[APIRouter, FastAPI]):
     """
     router = APIRouter(prefix="/auth", tags=["auth"])
 
-    # Oauth clients for authentication
-    for client in settings.CONFIG.auth.clients:
-        client_conf = Oauth2ClientConfig.model_validate(client)
-        logger.info(f"Registering OAuth2 client provider: {client_conf.name}")
-        register_oauth2_client(
-            router,
-            controller=JWT_AUTH,
-            auth_cookie_backend=JWT_COOKIE_BACKEND,
-            jwt_secret=settings.CONFIG.auth.jwt_secret,
-            conf=client_conf,
-            tags=["auth"],
-        )
-
-    # both login and logout
-    router.include_router(
-        JWT_AUTH.get_auth_router(
-            backend=JWT_COOKIE_BACKEND, requires_verification=True
-        ),
-        prefix="",
-        tags=["auth"],
-    )
+    for provider_name in AUTH.providers:
+        logger.info(f"Registering OAuth2 client provider: {provider_name}")
+    router.include_router(authlib.get_oauth_router(AUTH, should_add_app_alias=True))
+    router.include_router(authlib.get_logout_router(AUTH, should_require_verified=True))
 
     @router.get(
         "/providers/", responses={200: {"model": PaginatedListResponse[AuthProvider]}}

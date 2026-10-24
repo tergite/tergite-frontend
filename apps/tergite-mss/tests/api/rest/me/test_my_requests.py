@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 """Integration tests for the /me/requests routes"""
 import pytest
-from beanie import PydanticObjectId
+from bson import ObjectId
 
 from services.auth import DeletedProject, Project, User
 from services.notices import NoticeType
@@ -99,13 +99,13 @@ def test_request_project_access_notifies_the_project_admin(
             f"outsider.doe is asking to join {TEST_PROJECT_NAME}: let me in"
         )
         assert admin_notices[0]["ref_type"] == "project"
-        assert admin_notices[0]["ref_id"] == PydanticObjectId(request_id)
+        assert admin_notices[0]["ref_id"] == ObjectId(request_id)
         assert get_user_notices(db, TEST_OUTSIDER_ID) == []
 
 
 def test_request_access_to_unknown_project(client, outsider_jwt_cookie, db):
     """POST /me/requests/ answers 404 for a project that does not exist"""
-    project_id = str(PydanticObjectId())
+    project_id = str(ObjectId())
 
     with client as client:
         response = client.post(
@@ -335,7 +335,7 @@ def test_approve_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db
         assert got["status"] == "approved"
         assert got["approver_id"] == TEST_USER_ID
         assert got["approver_name"] == "john.doe"
-        assert project["user_ids"].count(PydanticObjectId(TEST_OUTSIDER_ID)) == 1
+        assert project["user_ids"].count(ObjectId(TEST_OUTSIDER_ID)) == 1
         assert [item["type"] for item in requester_notices] == [
             NoticeType.PROJECT_ACCESS_APPROVED.id
         ]
@@ -361,7 +361,7 @@ def test_deciding_a_request_clears_its_prompt(
         outcome = get_user_notices(db, TEST_OUTSIDER_ID)[0]
 
         assert prompt["read_at"] is not None
-        assert prompt["dismissed_by"] == [PydanticObjectId(TEST_USER_ID)]
+        assert prompt["dismissed_by"] == [ObjectId(TEST_USER_ID)]
         assert outcome["read_at"] is None
 
 
@@ -401,7 +401,7 @@ def test_reject_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db)
         assert response.status_code == 200
         assert got["status"] == "rejected"
         assert got["rejection_reason"] == "wrong team"
-        assert PydanticObjectId(TEST_OUTSIDER_ID) not in project["user_ids"]
+        assert ObjectId(TEST_OUTSIDER_ID) not in project["user_ids"]
         assert requester_notices[0]["type"] == NoticeType.PROJECT_ACCESS_REJECTED.id
         assert requester_notices[0]["body"].endswith("wrong team")
 
@@ -443,10 +443,10 @@ def test_approve_project_creation(client, admin_jwt_cookie, db, inserted_request
         project = get_db_record(db, Project, _filter={"name": "thesis project"})
 
         assert response.status_code == 200
-        assert project["admin_id"] == PydanticObjectId(TEST_OUTSIDER_ID)
+        assert project["admin_id"] == ObjectId(TEST_OUTSIDER_ID)
         assert project["user_ids"] == [
-            PydanticObjectId(TEST_USER_ID),
-            PydanticObjectId(TEST_OUTSIDER_ID),
+            ObjectId(TEST_USER_ID),
+            ObjectId(TEST_OUTSIDER_ID),
         ]
         assert project["qpu_seconds"] == 3600
 
@@ -478,7 +478,7 @@ def test_approve_project_creation_for_unknown_users(
         assert response.status_code == 200
         assert project["user_ids"] == [
             user["_id"],
-            PydanticObjectId(TEST_OUTSIDER_ID),
+            ObjectId(TEST_OUTSIDER_ID),
         ]
 
 
@@ -597,8 +597,8 @@ def test_approve_project_transfer(client, user_jwt_cookie, admin_jwt_cookie, db)
         project = get_db_record(db, Project, TEST_PROJECT_ID)
 
         assert response.status_code == 200
-        assert project["admin_id"] == PydanticObjectId(TEST_OUTSIDER_ID)
-        assert PydanticObjectId(TEST_OUTSIDER_ID) in project["user_ids"]
+        assert project["admin_id"] == ObjectId(TEST_OUTSIDER_ID)
+        assert ObjectId(TEST_OUTSIDER_ID) in project["user_ids"]
 
 
 def test_decide_request_twice(client, user_jwt_cookie, inserted_requests):
@@ -634,14 +634,14 @@ def test_non_approver_cannot_decide_request(
 
         assert response.status_code == 404
         assert request["status"] == "pending"
-        assert PydanticObjectId(TEST_OUTSIDER_ID) not in project["user_ids"]
+        assert ObjectId(TEST_OUTSIDER_ID) not in project["user_ids"]
 
 
 def test_update_unknown_request(client, user_jwt_cookie):
     """PUT /me/requests/{id} answers 404 for a request that does not exist"""
     with client as client:
         response = client.put(
-            f"/me/requests/{PydanticObjectId()}",
+            f"/me/requests/{ObjectId()}",
             cookies=user_jwt_cookie,
             json={"status": "approved"},
         )

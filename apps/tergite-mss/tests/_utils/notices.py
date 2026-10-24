@@ -13,7 +13,7 @@
 from typing import Any, Dict, List
 
 import pymongo.database
-from beanie import PydanticObjectId
+from bson import ObjectId
 
 
 def get_user_notices(
@@ -28,6 +28,4 @@ def get_user_notices(
     Returns:
         the notices as stored in the database
     """
-    return list(
-        db["notices"].find({"user_id": PydanticObjectId(user_id)}).sort("created_at")
-    )
+    return list(db["notices"].find({"user_id": ObjectId(user_id)}).sort("created_at"))

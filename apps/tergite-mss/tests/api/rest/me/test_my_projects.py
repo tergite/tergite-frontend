@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 import pytest
-from beanie import PydanticObjectId
+from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
 from services.auth import DeletedProject, Project
@@ -105,7 +105,7 @@ def test_filter_projects_by_others_members(
 
 def test_filter_by_too_many_ids(client, user_jwt_cookie):
     """Filtering by more ids than a MongoDB $in handles well answers 400"""
-    ids = [str(PydanticObjectId()) for _ in range(100)]
+    ids = [str(ObjectId()) for _ in range(100)]
 
     with client as client:
         response = client.get(
@@ -282,14 +282,14 @@ def test_project_admin_removes_a_member(client, user_jwt_cookie, db):
         project = get_db_record(db, Project, TEST_PROJECT_ID)
 
         assert response.status_code == 204
-        assert project["user_ids"] == [PydanticObjectId(TEST_USER_ID)]
+        assert project["user_ids"] == [ObjectId(TEST_USER_ID)]
 
 
 def test_removing_a_member_revokes_their_tokens(client, user_jwt_cookie, db):
     """The removed member's app tokens for the project stop existing"""
     token_filter = {
-        "user_id": PydanticObjectId(TEST_SYSTEM_USER_ID),
-        "project_id": PydanticObjectId(TEST_PROJECT_ID),
+        "user_id": ObjectId(TEST_SYSTEM_USER_ID),
+        "project_id": ObjectId(TEST_PROJECT_ID),
     }
 
     with client as client:
@@ -322,7 +322,7 @@ def test_superuser_removes_a_member(client, admin_jwt_cookie, db):
         project = get_db_record(db, Project, TEST_PROJECT_ID)
 
         assert response.status_code == 204
-        assert PydanticObjectId(TEST_SYSTEM_USER_ID) not in project["user_ids"]
+        assert ObjectId(TEST_SYSTEM_USER_ID) not in project["user_ids"]
 
 
 def test_non_admin_cannot_remove_a_member(client, system_user_jwt_cookie, db):
@@ -334,7 +334,7 @@ def test_non_admin_cannot_remove_a_member(client, system_user_jwt_cookie, db):
         project = get_db_record(db, Project, TEST_PROJECT_ID)
 
         assert response.status_code == 403
-        assert PydanticObjectId(TEST_USER_ID) in project["user_ids"]
+        assert ObjectId(TEST_USER_ID) in project["user_ids"]
 
 
 def test_cannot_remove_the_project_admin(client, admin_jwt_cookie, db):
@@ -347,7 +347,7 @@ def test_cannot_remove_the_project_admin(client, admin_jwt_cookie, db):
 
         assert response.status_code == 400
         assert response.json() == {"detail": "the project admin cannot be removed"}
-        assert PydanticObjectId(TEST_USER_ID) in project["user_ids"]
+        assert ObjectId(TEST_USER_ID) in project["user_ids"]
 
 
 def test_remove_a_non_member(client, user_jwt_cookie, db):
@@ -374,7 +374,7 @@ def test_remove_a_member_twice(client, user_jwt_cookie, db):
 
 def test_remove_a_member_from_unknown_project(client, user_jwt_cookie):
     """Removing a member from a project that does not exist answers 404"""
-    url = f"/me/projects/{PydanticObjectId()}/members/{TEST_SYSTEM_USER_ID}"
+    url = f"/me/projects/{ObjectId()}/members/{TEST_SYSTEM_USER_ID}"
 
     with client as client:
         response = client.delete(url, cookies=user_jwt_cookie)
@@ -389,4 +389,4 @@ def test_unauthenticated_remove_a_member(client, db):
         project = get_db_record(db, Project, TEST_PROJECT_ID)
 
         assert response.status_code == 401
-        assert PydanticObjectId(TEST_SYSTEM_USER_ID) in project["user_ids"]
+        assert ObjectId(TEST_SYSTEM_USER_ID) in project["user_ids"]

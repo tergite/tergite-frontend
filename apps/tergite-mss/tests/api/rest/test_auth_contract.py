@@ -15,7 +15,7 @@ from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 
 import jwt
-from beanie import PydanticObjectId
+from bson import ObjectId
 
 import settings
 from services.auth import AppToken, Project, User
@@ -197,15 +197,15 @@ def test_unknown_app_token_is_unauthorized(client):
 
 def test_app_token_of_inactive_project_is_unauthorized(client, db):
     """A project route with the app token of an inactive project is unauthorized"""
-    project_id = PydanticObjectId()
+    project_id = ObjectId()
     insert_if_not_exist(
         db,
         Project,
         dict(
             _id=project_id,
             name="inactive-project",
-            admin_id=PydanticObjectId(TEST_USER_ID),
-            user_ids=[PydanticObjectId(TEST_USER_ID)],
+            admin_id=ObjectId(TEST_USER_ID),
+            user_ids=[ObjectId(TEST_USER_ID)],
             qpu_seconds=3600,
             is_active=False,
         ),
@@ -216,7 +216,7 @@ def test_app_token_of_inactive_project_is_unauthorized(client, db):
         dict(
             title="inactive-project-token",
             token="inactive-project-token",
-            user_id=PydanticObjectId(TEST_USER_ID),
+            user_id=ObjectId(TEST_USER_ID),
             project_id=project_id,
             lifespan_seconds=3600,
         ),
@@ -268,7 +268,7 @@ def _read_session_cookie(response):
 def _insert_user(
     db, email: str, is_active: bool = True, is_verified: bool = True
 ) -> str:
-    user_id = PydanticObjectId()
+    user_id = ObjectId()
     insert_if_not_exist(
         db,
         User,

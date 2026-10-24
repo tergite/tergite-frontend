@@ -10,38 +10,53 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""The auth backends and the current user and project dependencies"""
+"""The app's auth, built from the auth config, and the current user and project
+dependencies"""
+from functools import partial
 from typing import Optional, Tuple
 
-from beanie import PydanticObjectId
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
 import settings
+from libs import authlib
 from libs.storage import Database
 from services import auth
 
 from .database import get_database
-from .users import get_user_manager
 
-JWT_HEADER_BACKEND = auth.get_jwt_header_backend(
-    login_url="/auth/jwt/login",
-    jwt_secret=settings.CONFIG.auth.jwt_secret,
-    lifetime_seconds=settings.CONFIG.auth.jwt_ttl,
-)
-JWT_COOKIE_BACKEND = auth.get_jwt_cookie_backend(
-    jwt_secret=settings.CONFIG.auth.jwt_secret,
-    cookie_max_age=settings.CONFIG.auth.jwt_ttl,
-    cookie_name=settings.CONFIG.auth.cookie_name,
-    cookie_domain=settings.CONFIG.auth.cookie_domain,
-)
-JWT_AUTH = auth.UserBasedAuth[auth.User, PydanticObjectId](
-    get_user_manager, [JWT_HEADER_BACKEND, JWT_COOKIE_BACKEND]
+AUTH = authlib.Auth(
+    get_database,
+    auth.User,
+    providers={
+        client.name: authlib.OAuthProvider(
+            client=auth.get_oauth2_client(client),
+            email_regex=client.email_regex,
+            roles=tuple(client.roles),
+            redirect_url=client.redirect_url,
+            should_associate_by_email=client.associate_by_email,
+            is_verified_by_default=client.is_verified_by_default,
+        )
+        for client in settings.CONFIG.auth.clients
+    },
+    secret=settings.CONFIG.auth.jwt_secret,
+    session_lifetime_seconds=settings.CONFIG.auth.jwt_ttl,
+    cookie=authlib.SessionCookie(
+        name=settings.CONFIG.auth.cookie_name,
+        max_age=settings.CONFIG.auth.jwt_ttl,
+        domain=settings.CONFIG.auth.cookie_domain,
+    ),
+    on_after_login=partial(
+        auth.ensure_personal_project,
+        qpu_seconds=settings.CONFIG.projects.personal_qpu_seconds,
+    ),
 )
 
-GET_CURRENT_USER = JWT_AUTH.current_user(active=True)
-GET_CURRENT_USER_ID = JWT_AUTH.current_user_id()
-GET_CURRENT_SUPERUSER = JWT_AUTH.current_user(active=True, superuser=True)
+GET_CURRENT_USER = AUTH.get_current_user(should_require_active=True)
+GET_CURRENT_USER_ID = AUTH.get_current_user_id()
+GET_CURRENT_SUPERUSER = AUTH.get_current_user(
+    should_require_active=True, should_require_superuser=True
+)
 
 APP_TOKEN_SCHEME = OAuth2PasswordBearer(tokenUrl="/me/tokens/", auto_error=False)
 

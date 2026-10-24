@@ -24,7 +24,7 @@ from api.rest.errors import (
     make_http_error_handler,
 )
 from api.rest.middleware import RequestIDMiddleware, TergiteCORSMiddleware
-from services.auth import UnsupportedOauthException
+from libs import authlib
 from utils.date_time import set_datetime_precision
 from utils.exc import (
     BccHttpError,
@@ -74,7 +74,6 @@ app.add_exception_handler(
 app.add_exception_handler(
     RuntimeError, make_http_error_handler(500, "Unexpected server error")
 )
-app.add_exception_handler(UnsupportedOauthException, make_http_error_handler(500))
 app.add_exception_handler(ServiceUnavailableError, make_http_error_handler(503))
 app.add_exception_handler(UnknownBccError, make_http_error_handler(400))
 app.add_exception_handler(BccHttpError, handle_bcc_http_error)
@@ -90,6 +89,7 @@ app.add_exception_handler(
     ExceptionGroup, make_exception_group_handler(app.exception_handlers)
 )
 
+authlib.add_exception_handlers(app)
 include_auth_router(app)
 app.include_router(calibrations_router)
 app.include_router(devices_router)

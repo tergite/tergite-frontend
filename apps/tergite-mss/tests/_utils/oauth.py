@@ -14,9 +14,9 @@ from typing import Any, Generator
 
 import httpx
 import pytest
-from fastapi_users.router.oauth import generate_state_token
 from httpx_oauth.clients import github, microsoft
 
+from libs.authlib.tokens import write_state_token
 from tests._utils.auth import (
     INVALID_CHALMERS_PROFILE,
     INVALID_GITHUB_PROFILE,
@@ -34,13 +34,13 @@ TEST_NEXT_COOKIE_URL = "https://testserver/"
 @pytest.fixture
 def oauth_state() -> Generator[str, Any, None]:
     """The state to use to make oauth2 requests"""
-    yield generate_state_token({}, secret=TEST_JWT_SECRET)
+    yield write_state_token(None, TEST_JWT_SECRET)
 
 
 @pytest.fixture
 def cookie_oauth_state() -> Generator[str, Any, None]:
     """The state to use to make oauth2 requests when using cookies"""
-    yield generate_state_token({"next": TEST_NEXT_COOKIE_URL}, secret=TEST_JWT_SECRET)
+    yield write_state_token(TEST_NEXT_COOKIE_URL, TEST_JWT_SECRET)
 
 
 @pytest.fixture
@@ -49,9 +49,7 @@ def insert_chalmers_user(db):
     from services.auth import User
 
     email = TEST_CHALMERS_PROFILE["userPrincipalName"]
-    insert_if_not_exist(
-        db, schema=User, data={"email": email, "hashed_password": "password"}
-    )
+    insert_if_not_exist(db, schema=User, data={"email": email})
     yield db["auth_users"].find_one({"email": email})
 
 

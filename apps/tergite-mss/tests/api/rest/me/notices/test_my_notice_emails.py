@@ -14,7 +14,7 @@ import time
 from typing import Callable
 
 import aiosmtplib
-from beanie import PydanticObjectId
+from bson import ObjectId
 
 import settings
 from services.notices import EmailStatus
@@ -156,7 +156,7 @@ def test_email_to_an_unknown_user_fails_at_once(client, db, smtp):
             "type": "project-access-approved",
             "title": "Access approved",
             "body": "you are in",
-            "user_id": PydanticObjectId(),
+            "user_id": ObjectId(),
             "severity": "info",
             "context": {},
             "email_status": EmailStatus.PENDING,

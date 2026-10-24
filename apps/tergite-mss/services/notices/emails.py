@@ -178,13 +178,11 @@ async def _to_email_details(
         the list of EmailDetails
     """
     # imported here to avoid a circular import, as the auth service imports this one
-    from beanie import PydanticObjectId
-
     from services.auth.users.dtos import User
 
-    user_ids = {PydanticObjectId(notice.user_id) for notice in notices}
-    users = await User.find({"_id": {"$in": list(user_ids)}}).to_list()
-    user_emails_map = {str(v.id): v.email for v in users}
+    user_ids = list({notice.user_id for notice in notices})
+    users = await database.find(User, filter={"id": {"$in": user_ids}})
+    user_emails_map = {user.id: user.email for user in users}
 
     unreachable_ids = [v.id for v in notices if v.user_id not in user_emails_map]
     if unreachable_ids:

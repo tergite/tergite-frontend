@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 import pytest
-from beanie import PydanticObjectId
+from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 from pytest_mock import MockerFixture
 
@@ -148,7 +148,7 @@ def test_read_job(db, client, job_id: str, no_qpu_app_token_header, freezer):
 @pytest.mark.parametrize("path", ["/jobs/{job_id}", "/jobs/{job_id}/status"])
 def test_read_another_users_job_is_not_found(db, client, app_token_header, path):
     """Get /jobs/{job_id} hides a job another user submitted"""
-    job = {**_prepare_jobs()[0], "user_id": PydanticObjectId(TEST_SYSTEM_USER_ID)}
+    job = {**_prepare_jobs()[0], "user_id": ObjectId(TEST_SYSTEM_USER_ID)}
     insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
 
     with client as client:
@@ -160,7 +160,7 @@ def test_read_another_users_job_is_not_found(db, client, app_token_header, path)
 @pytest.mark.parametrize("path", ["/jobs/{job_id}", "/jobs/{job_id}/status"])
 def test_read_own_job(db, client, app_token_header, path):
     """Get /jobs/{job_id} returns a job the token's user submitted"""
-    job = {**_prepare_jobs()[0], "user_id": PydanticObjectId(TEST_USER_ID)}
+    job = {**_prepare_jobs()[0], "user_id": ObjectId(TEST_USER_ID)}
     insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
 
     with client as client:
@@ -171,7 +171,7 @@ def test_read_own_job(db, client, app_token_header, path):
 
 def test_admin_reads_another_users_job(db, client):
     """Get /jobs/{job_id} returns any user's job to an admin"""
-    job = {**_prepare_jobs()[0], "user_id": PydanticObjectId(TEST_USER_ID)}
+    job = {**_prepare_jobs()[0], "user_id": ObjectId(TEST_USER_ID)}
     insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
     headers = _insert_superuser_app_token(db)
 
@@ -185,8 +185,8 @@ def test_admin_reads_another_users_job(db, client):
 def test_list_jobs_shows_own_and_unowned_jobs(db, client, app_token_header):
     """Get /jobs/ leaves out jobs other users submitted"""
     own, others, unowned = (
-        {**_prepare_jobs()[0], "user_id": PydanticObjectId(TEST_USER_ID)},
-        {**_prepare_jobs()[1], "user_id": PydanticObjectId(TEST_SYSTEM_USER_ID)},
+        {**_prepare_jobs()[0], "user_id": ObjectId(TEST_USER_ID)},
+        {**_prepare_jobs()[1], "user_id": ObjectId(TEST_SYSTEM_USER_ID)},
         {**_prepare_jobs()[2], "user_id": None},
     )
     insert_in_collection(
@@ -207,7 +207,7 @@ def test_create_job(
     db,
     client,
     payload,
-    project_id: PydanticObjectId,
+    project_id: ObjectId,
     app_token_header,
     current_user_id,
     freezer,
@@ -434,7 +434,7 @@ def test_update_job_resource_usage(
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
 
     project_before_update = get_db_record(
-        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
+        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
     )
 
     url = f"/devices/ws/{device}"
@@ -455,7 +455,7 @@ def test_update_job_resource_usage(
             assert response["status"] == "success"
 
     project_after_update = get_db_record(
-        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
+        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
     )
     expected_resource_usage = _get_resource_usage(raw_payload["timestamps"])
     actual_resource_usage = round(
@@ -478,7 +478,7 @@ def test_update_job_resource_usage_advanced(
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
 
     project_before_update = get_db_record(
-        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
+        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
     )
 
     url = f"/devices/ws/{device}"
@@ -499,7 +499,7 @@ def test_update_job_resource_usage_advanced(
             assert response["status"] == "success"
 
     project_after_update = get_db_record(
-        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
+        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
     )
     expected_resource_usage = _get_resource_usage(payload["timestamps"])
     actual_resource_usage = round(
@@ -517,7 +517,7 @@ def test_cancel_job(db, client, user_jwt_cookie, job, mock_bcc, freezer):
             [job], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = PydanticObjectId(TEST_USER_ID)
+        user_id = ObjectId(TEST_USER_ID)
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_info = raw_jobs[0]
         job_id = job_info["job_id"]
@@ -559,7 +559,7 @@ def test_unauthenticated_cancel_job(db, client, job, mock_bcc, freezer):
             [job], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = PydanticObjectId(TEST_USER_ID)
+        user_id = ObjectId(TEST_USER_ID)
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_info = raw_jobs[0]
         job_id = job_info["job_id"]
@@ -589,7 +589,7 @@ def test_remove_job(db, client, user_jwt_cookie, idx: int, mock_bcc, freezer):
             _JOBS_LIST[:4], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = PydanticObjectId(TEST_USER_ID)
+        user_id = ObjectId(TEST_USER_ID)
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_id = raw_jobs[idx]["job_id"]
 
@@ -623,7 +623,7 @@ def test_unauthenticated_remove_job(db, client, idx: int, mock_bcc, freezer):
             _JOBS_LIST[:4], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = PydanticObjectId(TEST_USER_ID)
+        user_id = ObjectId(TEST_USER_ID)
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_id = raw_jobs[idx]["job_id"]
 
@@ -688,8 +688,8 @@ def test_running_out_of_qpu_time_tells_all_members(client, db):
     )
 
     assert {item["user_id"] for item in depleted_notices} == {
-        PydanticObjectId(TEST_USER_ID),
-        PydanticObjectId(TEST_SYSTEM_USER_ID),
+        ObjectId(TEST_USER_ID),
+        ObjectId(TEST_SYSTEM_USER_ID),
     }
     assert {item["severity"] for item in depleted_notices} == {"critical"}
 
@@ -729,14 +729,11 @@ def _bill_a_job(client, db, starting_seconds: Optional[float] = None):
     insert_in_collection(
         database=db,
         collection_name=_COLLECTION,
-        data=[
-            {**item, "project_id": PydanticObjectId(TEST_PROJECT_ID)}
-            for item in raw_jobs
-        ],
+        data=[{**item, "project_id": ObjectId(TEST_PROJECT_ID)} for item in raw_jobs],
     )
     if starting_seconds is not None:
         db["auth_projects"].update_one(
-            {"_id": PydanticObjectId(TEST_PROJECT_ID)},
+            {"_id": ObjectId(TEST_PROJECT_ID)},
             {"$set": {"qpu_seconds": starting_seconds}},
             bypass_document_validation=True,
         )
@@ -804,15 +801,15 @@ def _get_job(records: List[dict], job_id: str) -> dict:
 
 def _insert_superuser_app_token(db) -> Dict[str, str]:
     """Gives the superuser a project of their own and an app token for it"""
-    project_id = PydanticObjectId()
+    project_id = ObjectId()
     insert_if_not_exist(
         db,
         Project,
         dict(
             _id=project_id,
             name="superuser-project",
-            admin_id=PydanticObjectId(TEST_SUPERUSER_ID),
-            user_ids=[PydanticObjectId(TEST_SUPERUSER_ID)],
+            admin_id=ObjectId(TEST_SUPERUSER_ID),
+            user_ids=[ObjectId(TEST_SUPERUSER_ID)],
             qpu_seconds=3600,
         ),
     )
@@ -823,7 +820,7 @@ def _insert_superuser_app_token(db) -> Dict[str, str]:
         dict(
             title="superuser-token",
             token=token,
-            user_id=PydanticObjectId(TEST_SUPERUSER_ID),
+            user_id=ObjectId(TEST_SUPERUSER_ID),
             project_id=project_id,
             lifespan_seconds=3600,
         ),

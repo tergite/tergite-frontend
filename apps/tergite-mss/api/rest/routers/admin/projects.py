@@ -60,7 +60,7 @@ async def create(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=auth.ExtendedErrorCode.PROJECT_ALREADY_EXISTS,
         ) from exp
-    return await auth.get_admin_view(project)
+    return await auth.get_admin_view(database, project)
 
 
 @router.get(
@@ -76,9 +76,9 @@ async def create(
     },
 )
 async def get_project(
-    requester: CurrentSuperuserDep, project: ProjectOr404Dep
+    database: DatabaseDep, requester: CurrentSuperuserDep, project: ProjectOr404Dep
 ) -> ProjectAdminView:
-    return await auth.get_admin_view(project)
+    return await auth.get_admin_view(database, project)
 
 
 @router.get(
@@ -94,7 +94,9 @@ async def get_many_projects(
     limit: Optional[int] = Query(None),
 ) -> PaginatedListResponse[ProjectAdminView]:
     projects = await auth.find_projects(database, query, skip=skip, limit=limit)
-    data = await asyncio.gather(*(auth.get_admin_view(project) for project in projects))
+    data = await asyncio.gather(
+        *(auth.get_admin_view(database, project) for project in projects)
+    )
     return PaginatedListResponse(data=data, skip=skip, limit=limit)
 
 
@@ -111,7 +113,7 @@ async def update_project(
     project: ProjectOr404Dep,
 ) -> ProjectAdminView:
     updated_project = await auth.update_project(database, project, payload, actor=actor)
-    return await auth.get_admin_view(updated_project)
+    return await auth.get_admin_view(database, updated_project)
 
 
 @router.delete(

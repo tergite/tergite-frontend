@@ -65,9 +65,6 @@ A service is a package. Its public surface is what `__init__.py` exposes; caller
 | --- | --- |
 | `dtos.py` | Pydantic models — request bodies, responses, and the `libs.storage` `Schema`s that are also the persistence schema. Query-param models too. |
 | `service.py` | The business logic: module-level `async def` functions taking the `Database` as their first argument. |
-| `database.py` | Only where a service needs a repository object rather than free functions (`auth.users`, until step 7). |
-| `routers.py` | Only where the service owns routes that are mounted by an `api/rest/routers/*` module — used by `auth.users` for the fastapi-users-derived routers. |
-| `manager.py`, `authenticator.py`, `strategy.py` | fastapi-users extension points; `auth.users` only. |
 | `exc.py` | Service-specific exceptions. |
 | `on_startup(...)` | Config from the app lifespan. |
 
@@ -105,8 +102,8 @@ exists. Any config error is a startup crash, not a runtime surprise.
 
 The FastAPI `lifespan` in `app_kwargs.py` creates the BCC httpx clients, opens the
 `Database` (whose `setup` creates every schema's collection, validator and indexes) and the
-Motor database Beanie keeps the users in, then runs the `on_startup` of `auth`, `jobs` and
-`notices`. `notices` starts the only background loop in the app, the email sweeper, when
+request log's, then runs the `on_startup` of `auth` (which stores the roles users may hold),
+`jobs` and `notices`. `notices` starts the only background loop in the app, the email sweeper, when
 `[email]` is configured. On shutdown it stops the emailer, closes the BCC clients, closes all
 device websockets, marks every device disconnected, and closes both databases.
 
@@ -141,26 +138,29 @@ device websockets, marks every device disconnected, and closes both databases.
 
 ## 3. Authentication and authorization
 
-Built on [fastapi-users](https://fastapi-users.github.io/) with Beanie, extended in
-`services/auth/`. Two orthogonal mechanisms; most endpoints need one specific one.
+Users sign in through `libs/authlib`, which began as a copy of
+[fastapi-users](https://fastapi-users.github.io/); projects and app tokens are
+`services/auth/`'s own. Two orthogonal mechanisms; most endpoints need one specific one.
 
 ### Users — who you are
 
 - Login is **OAuth2/OpenID only**; there is no password login and authentication cannot be
   disabled (the old `auth.is_enabled` flag is gone).
-- One client per `[[auth.clients]]` entry is registered at startup at `/auth/{name}/…`
-  (plus a legacy `/auth/app/{name}/…` alias). Routes: `authorize`, `auto-authorize`
-  (redirects immediately — this is what the dashboard links to), `callback`.
+- Each `[[auth.clients]]` entry is an `authlib.OAuthProvider`, served by one router at
+  `/auth/{provider}/…` (plus a legacy `/auth/app/{provider}/…` alias); an unknown provider
+  is a 404. Routes: `authorize`, `auto-authorize` (redirects immediately — this is what the
+  dashboard links to), `callback`.
 - `email_regex` gates which emails may use a given provider; `roles` are granted on sign-in;
   `email_domain` is what `GET /auth/providers/?email_domain=…` matches so the login page can
   offer the right button; `associate_by_email` decides whether a returning user who used a
   different provider is linked to the existing account.
-- Two backends over the same JWT strategy: **cookie** (`JWT_COOKIE_BACKEND`, the dashboard)
-  and **bearer header** (`JWT_HEADER_BACKEND`). Roles are `user`, `researcher`, `admin`,
-  `partner`, `system`; `is_superuser` is derived from having `admin`.
-- Dependencies: `GET_CURRENT_USER`, `GET_CURRENT_USER_ID`, `GET_CURRENT_SUPERUSER`. They and
-  the backends are built in `api/rest/auth.py` from the auth config, with the builders
-  `services.auth` exports; routers use them through `api/rest/dependencies.py`.
+- One session JWT, read from the **bearer header**, then the **cookie** the callback sets
+  (the dashboard's). Roles are `user`, `researcher`, `admin`, `partner`, `system`;
+  `is_superuser` is derived from having `admin`.
+- Dependencies: `GET_CURRENT_USER`, `GET_CURRENT_USER_ID`, `GET_CURRENT_SUPERUSER`, from the
+  `authlib.Auth` that `api/rest/auth.py` builds from the auth config; routers use them
+  through `api/rest/dependencies.py`. authlib's errors are answered by the handler
+  `add_exception_handlers` registers in `api/rest/__init__.py`.
 
 ### Projects and app tokens — what you may spend
 
@@ -259,10 +259,8 @@ reads a record past its expiring field.
   PostgreSQL and SQLite, and each service's storage test (`tests/services/*/test_*_storage.py`)
   runs on all three too.
 
-The one exception is `auth_users`: the `User` is still a Beanie `Document`, on its own Motor
-client at `database.url`, because fastapi-users' Beanie adapter reads it. So MSS runs on
-MongoDB only until users move off Beanie. Code that compares a
-user's id with an `Id` converts it with `str(user.id)`.
+Users are records like any other: `auth_users`, keeping the documents fastapi-users wrote
+field for field, with roles referencing `auth_roles` and OAuth accounts in a list of models.
 
 Notable tables: `jobs`, `devices`, `calibrations`, `calibrations_logs` (historical,
 indexed on `(name, last_calibrated desc)`), `notices` (expiring at `expires_at`).

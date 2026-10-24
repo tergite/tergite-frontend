@@ -10,7 +10,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the /me/notices routes"""
-from beanie import PydanticObjectId
+
+from bson import ObjectId
 
 from services.notices import Notice
 from tests._utils.auth import (
@@ -139,7 +140,7 @@ def test_dismiss_my_notice(client, user_jwt_cookie, db, inserted_notices):
         assert response.status_code == 200
         assert response.json() == {"status": "success"}
         assert notice["read_at"] is not None
-        assert notice["dismissed_by"] == [PydanticObjectId(TEST_USER_ID)]
+        assert notice["dismissed_by"] == [ObjectId(TEST_USER_ID)]
 
 
 def test_dismiss_broadcast_notice(client, user_jwt_cookie, db, inserted_notices):
@@ -152,7 +153,7 @@ def test_dismiss_broadcast_notice(client, user_jwt_cookie, db, inserted_notices)
 
         assert response.status_code == 200
         assert notice["read_at"] is None
-        assert notice["dismissed_by"] == [PydanticObjectId(TEST_USER_ID)]
+        assert notice["dismissed_by"] == [ObjectId(TEST_USER_ID)]
 
 
 def test_dismiss_my_notice_twice(client, user_jwt_cookie, db, inserted_notices):
@@ -164,7 +165,7 @@ def test_dismiss_my_notice_twice(client, user_jwt_cookie, db, inserted_notices):
         notice = get_db_record(db, Notice, _READ_USER_NOTICE_ID)
 
         assert response.status_code == 200
-        assert notice["dismissed_by"] == [PydanticObjectId(TEST_USER_ID)]
+        assert notice["dismissed_by"] == [ObjectId(TEST_USER_ID)]
 
 
 def test_cannot_dismiss_another_users_notice(

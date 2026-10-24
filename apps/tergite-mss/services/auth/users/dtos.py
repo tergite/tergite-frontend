@@ -10,82 +10,59 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Data Transafer Objects for the users submodule of the auth service"""
-from typing import List, Set, TypeVar
+"""The users: who they are, the roles they hold, and the OAuth accounts they sign in with"""
+from typing import List, Optional, Set
 
-from beanie import Document, PydanticObjectId
-from fastapi_users import schemas
-from fastapi_users.types import DependencyCallable
-from fastapi_users_db_beanie import BaseOAuthAccount
-from pydantic import Field, field_serializer
-from pymongo import IndexModel
-from pymongo.collation import Collation
+from pydantic import Field
 
+from libs.authlib import BaseOAuthAccount, BaseUser
+from libs.storage import Id, Schema, StorageSpec, generate_id
 from utils.config import UserRole
 
-USER_DB_COLLECTION = "auth_users"
 
+class Role(Schema):
+    """A role users may hold, kept so that a user's roles reference one"""
 
-class UserRead(schemas.BaseUser[PydanticObjectId]):
-    roles: Set[UserRole] = {}
+    __storage__ = StorageSpec(table="auth_roles", key="name")
 
-    @field_serializer("id", when_used="json")
-    def serialize_id(self, _id: PydanticObjectId):
-        """Convert id to string when working with JSON"""
-        return str(_id)
-
-
-class UserCreate(schemas.BaseUserCreate):
-    pass
-
-
-class UserUpdate(schemas.BaseUserUpdate):
-    pass
+    name: UserRole
 
 
 class OAuthAccount(BaseOAuthAccount):
-    pass
+    """An OAuth account of a user, with the seven fields auth_users documents keep"""
 
 
-class User(Document):
+class User(Schema):
+    """A user, field for field as the auth_users documents written before step 7"""
+
+    __storage__ = StorageSpec(
+        table="auth_users",
+        unique=("email",),
+        case_insensitive=("email",),
+        references={"roles": Role},
+        indexed_lists=("oauth_accounts",),
+        indexes=(("oauth_accounts.oauth_name", "oauth_accounts.account_id"),),
+    )
+
+    id: Id = Field(default_factory=generate_id)
     email: str
-    hashed_password: str
+    # users signed in with fastapi-users carry a random one; none is needed since
+    hashed_password: Optional[str] = None
     is_active: bool = True
     is_verified: bool = False
     oauth_accounts: List[OAuthAccount] = Field(default_factory=list)
     roles: Set[UserRole] = {UserRole.USER}
 
-    class Settings:
-        name = USER_DB_COLLECTION
-        email_collation = Collation("en", strength=2)
-        indexes = [
-            IndexModel("email", unique=True),
-            IndexModel(
-                "email", name="case_insensitive_email_index", collation=email_collation
-            ),
-        ]
-
     @property
-    def is_superuser(self):
+    def is_superuser(self) -> bool:
         return UserRole.ADMIN in self.roles
 
-    @is_superuser.setter
-    def is_superuser(self, value: bool):
-        if value:
-            self.roles.add(UserRole.ADMIN)
-        elif not value:
-            try:
-                self.roles.remove(UserRole.ADMIN)
-            except KeyError:
-                pass
-
     @property
-    def username(self):
+    def username(self) -> str:
         return self.email.split("@")[0]
 
 
-CurrentUserDependency = DependencyCallable[User]
-CurrentSuperUserDependency = DependencyCallable[User]
-CurrentUserIdDependency = DependencyCallable[str]
-UP = TypeVar("UP", bound=User)
-ID = TypeVar("ID")
+class UserRead(BaseUser):
+    """A user as shown to the user"""
+
+    roles: Set[UserRole] = set()

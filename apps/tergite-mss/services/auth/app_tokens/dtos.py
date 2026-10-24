@@ -74,6 +74,13 @@ class AppToken(AppTokenCreate, Schema):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class BearerResponse(BaseModel):
+    """A new app token, as a bearer token"""
+
+    access_token: str
+    token_type: str
+
+
 class AppTokenListResponse(BaseModel):
     """The response when sending paginated data"""
 

@@ -13,7 +13,7 @@
 from typing import List, Optional
 
 import pytest
-from beanie import PydanticObjectId
+from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
 from tests._utils.auth import TEST_SUPERUSER_ID, TEST_USER_ID
@@ -56,9 +56,7 @@ _PAGINATE_AND_SEARCH_PARAMS = [
 _JOBS_LIST_IN_DB = [
     {
         **item,
-        **{
-            k: PydanticObjectId(item[k]) for k in ("project_id", "user_id") if k in item
-        },
+        **{k: ObjectId(item[k]) for k in ("project_id", "user_id") if k in item},
     }
     for item in load_json_fixture("my_jobs_in_db.json")
 ]

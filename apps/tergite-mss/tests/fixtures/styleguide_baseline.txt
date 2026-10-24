@@ -8,13 +8,6 @@ verb: api/rest/routers/me/notices/notices.py::unread_my_notice
 verb: services/auth/projects/dtos.py::ProjectRead.model_dump
 verb: services/auth/providers/__init__.py::_to_hash
 verb: services/auth/providers/dtos.py::AuthProvider.as_public_view
-verb: services/auth/users/authenticator.py::UserAuthenticator.current_user
-verb: services/auth/users/authenticator.py::UserAuthenticator.current_user.current_user_dependency
-verb: services/auth/users/authenticator.py::UserAuthenticator.current_user_id
-verb: services/auth/users/authenticator.py::UserAuthenticator.current_user_id.current_user_id_dependency
-verb: services/auth/users/manager.py::UserManager.oauth_callback
-verb: services/auth/users/routers.py::get_oauth_router.auto_authorize
-verb: services/auth/users/routers.py::get_oauth_router.callback
 verb: services/devices/dtos.py::DeviceUpsert.model_dump
 verb: services/external/email/dtos.py::EmailDetails.to_email_message
 verb: services/jobs/service.py::_without_special_docker_host_domain
@@ -42,18 +35,6 @@ boolean: api/rest/routers/admin/bcc/recalibration.py::cancel_recalibration(ignor
 boolean: api/rest/routers/admin/notices.py::get_many_notices(include_dismissed)
 boolean: api/rest/routers/counts.py::get_notice_count(include_dismissed)
 boolean: services/auth/providers/__init__.py::_to_hash(negated)
-boolean: services/auth/users/__init__.py::UserBasedAuth.get_auth_router(requires_verification)
-boolean: services/auth/users/__init__.py::UserBasedAuth.get_oauth_router(associate_by_email)
-boolean: services/auth/users/authenticator.py::UserAuthenticator._authenticate_without_db(optional)
-boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user(active)
-boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user(optional)
-boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user(superuser)
-boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user(verified)
-boolean: services/auth/users/authenticator.py::UserAuthenticator.current_user_id(optional)
-boolean: services/auth/users/dtos.py::User.is_superuser(value)
-boolean: services/auth/users/manager.py::UserManager.oauth_callback(associate_by_email)
-boolean: services/auth/users/routers.py::get_auth_router(requires_verification)
-boolean: services/auth/users/routers.py::get_oauth_router(associate_by_email)
 boolean: services/devices/dtos.py::DeviceUpsert.characterized
 boolean: services/devices/dtos.py::DeviceUpsert.model_dump(by_alias)
 boolean: services/devices/dtos.py::DeviceUpsert.model_dump(exclude_defaults)
@@ -82,7 +63,6 @@ boolean: utils/models.py::PartialMeta.model_dump(exclude_none)
 boolean: utils/models.py::PartialMeta.model_dump(exclude_unset)
 boolean: utils/models.py::PartialMeta.model_dump(round_trip)
 boolean: utils/models.py::PartialMeta.model_dump(serialize_as_any)
-constant-position: services/auth/users/dtos.py::ID
 constant-position: utils/date_time.py::DEFAULT_FROM_DATETIME_STR
 constant-position: utils/date_time.py::DEFAULT_TO_DATETIME_STR
 license-header: api/__init__.py
@@ -103,7 +83,6 @@ license-header: utils/__init__.py
 facade-import: api/rest/routers/auth.py::import services.auth.providers.dtos
 facade-import: services/devices/dtos.py::import services.calibration.dtos
 facade-import: services/devices/dtos.py::import services.jobs.dtos
-facade-import: services/external/bcc/service.py::import services.auth.users
 facade-import: services/jobs/service.py::import services.notices.dtos
 facade-import: services/notices/dtos.py::import services.auth.users.dtos
 facade-import: services/notices/emails.py::import services.auth.users.dtos
@@ -113,8 +92,6 @@ facade-import: services/requests/dtos.py::import services.auth.projects.dtos
 facade-import: services/requests/dtos.py::import services.notices.dtos
 facade-import: services/requests/service.py::import services.auth.projects.dtos
 facade-import: services/requests/service.py::import services.auth.users.dtos
-http-exception: services/auth/users/authenticator.py
-http-exception: services/auth/users/routers.py
 type-hints: api/rest/__init__.py::health
 type-hints: api/rest/app_kwargs.py::lifespan
 type-hints: api/rest/middleware.py::RequestIDMiddleware.dispatch
@@ -144,23 +121,6 @@ type-hints: services/auth/app_tokens/dtos.py::AppTokenRead.serialize_created_at
 type-hints: services/auth/app_tokens/dtos.py::AppTokenUpdate.serialize_expires_at
 type-hints: services/auth/projects/dtos.py::ProjectRead.model_dump
 type-hints: services/auth/providers/__init__.py::_order_by_many.get_key
-type-hints: services/auth/service.py::register_oauth2_client
-type-hints: services/auth/users/__init__.py::get_user_db
-type-hints: services/auth/users/authenticator.py::UserAuthenticator._authenticate_without_db
-type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user
-type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user.current_user_dependency
-type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user_id
-type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user_id.current_user_id_dependency
-type-hints: services/auth/users/database.py::UserDatabase.get_many
-type-hints: services/auth/users/dtos.py::User.is_superuser
-type-hints: services/auth/users/dtos.py::User.is_superuser
-type-hints: services/auth/users/dtos.py::User.username
-type-hints: services/auth/users/dtos.py::UserRead.serialize_id
-type-hints: services/auth/users/routers.py::get_auth_router.logout
-type-hints: services/auth/users/routers.py::get_oauth_router.auto_authorize
-type-hints: services/auth/users/routers.py::get_oauth_router.callback
-type-hints: services/auth/users/validators.py::EmailRegexValidator.validate
-type-hints: services/auth/users/validators.py::Validator.validate
 type-hints: services/auth/utils.py::get_oauth2_client
 type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
 type-hints: services/external/bcc/dtos.py::Booking.validate_username

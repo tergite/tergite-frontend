@@ -23,8 +23,8 @@ from api.rest.dependencies import (
     BccClientDep,
     CurrentUserDep,
     CurrentUserIdDep,
+    DatabaseDep,
     RequestIdDep,
-    UserDbDep,
 )
 from services.external.bcc import (
     Booking,
@@ -39,7 +39,7 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 @router.post("/{backend}")
 async def create_booking(
     bcc_client: BccClientDep,
-    user_db: UserDbDep,
+    database: DatabaseDep,
     data: NewBookingInfo,
     request_id: RequestIdDep,
     user_id: CurrentUserIdDep,
@@ -48,7 +48,7 @@ async def create_booking(
 
     Args:
         bcc_client: BccClient for the given backend
-        user_db: UserDatabase instance for this application
+        database: the database where the users are kept, to name them
         data: the information about the new booking
         request_id: the unique identifier of the request
         user_id: the ID of the current signed-in user
@@ -60,7 +60,7 @@ async def create_booking(
         UnknownBccError: Unknown backend '{backend}'
     """
     return await bcc_client.create_booking(
-        user_db=user_db, user_id=user_id, request_id=request_id, data=data
+        database=database, user_id=user_id, request_id=request_id, data=data
     )
 
 
@@ -96,7 +96,7 @@ async def cancel_booking(
 )
 async def view_bookings(
     bcc_client: BccClientDep,
-    user_db: UserDbDep,
+    database: DatabaseDep,
     request_id: RequestIdDep,
     requester: CurrentUserDep,
     skip: int = Query(default=0),
@@ -110,7 +110,7 @@ async def view_bookings(
 
     Args:
         bcc_client: BccClient for the given backend
-        user_db: UserDatabase instance for this application
+        database: the database where the users are kept, to name them
         request_id: the unique identifier of the request
         requester: the current signed-in user
         skip: number of records to ignore at the top of the returned results; default is 0
@@ -127,7 +127,7 @@ async def view_bookings(
         UnknownBccError: Unknown backend '{backend}'
     """
     return await bcc_client.view_bookings(
-        user_db=user_db,
+        database=database,
         requester_id=requester.id,
         request_id=request_id,
         is_admin=requester.is_superuser,

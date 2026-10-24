@@ -30,13 +30,12 @@ from typing import (
 from uuid import UUID
 
 import httpx
-from beanie import PydanticObjectId
 from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
 from httpx._client import UseClientDefault
 from loguru import logger
 
+from libs.storage import Database
 from services.auth import User
-from services.auth.users import UserDatabase
 from services.external.bcc.dtos import (
     Booking,
     BookingsConfig,
@@ -180,7 +179,7 @@ class BccClient:
     async def cancel_job(
         self,
         job_id: str | UUID,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         body: CancellationDetails,
         is_admin: Optional[bool] = None,
@@ -214,7 +213,7 @@ class BccClient:
     async def delete_job(
         self,
         job_id: str | UUID,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
@@ -243,7 +242,7 @@ class BccClient:
 
     async def view_users(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: Optional[bool] = None,
         skip: int = 0,
@@ -279,7 +278,7 @@ class BccClient:
 
     async def create_user(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         data: NewBCCUserInfo,
         is_admin: Optional[bool] = None,
@@ -313,7 +312,7 @@ class BccClient:
     async def delete_user(
         self,
         bcc_user_id: str | UUID,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
@@ -342,8 +341,8 @@ class BccClient:
 
     async def create_booking(
         self,
-        user_db: UserDatabase,
-        user_id: str | PydanticObjectId,
+        database: Database,
+        user_id: str,
         request_id: str,
         data: NewBookingInfo,
         is_admin: Optional[bool] = None,
@@ -351,7 +350,7 @@ class BccClient:
         """Creates a booking for the user of the given token
 
         Args:
-            user_db: the user database from which to get user full names
+            database: the database where the users are kept, to name them
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
             data: the information about the new booking
@@ -372,14 +371,14 @@ class BccClient:
             json=data.model_dump(mode="json"),
             is_admin=is_admin,
         )
-        user: User = await user_db.get(user_id)
+        user: User = await database.get(User, str(user_id))
         return Booking.model_validate(
             {**booking, "backend": self.name, "username": user.username}
         )
 
     async def cancel_booking(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         booking_id: str,
         is_admin: Optional[bool] = None,
@@ -409,8 +408,8 @@ class BccClient:
 
     async def view_bookings(
         self,
-        user_db: UserDatabase,
-        requester_id: str | PydanticObjectId,
+        database: Database,
+        requester_id: str,
         request_id: str,
         is_admin: Optional[bool] = None,
         skip: int = 0,
@@ -423,7 +422,7 @@ class BccClient:
         """Views all available bookings
 
         Args:
-            user_db: the user database from which to get user full names
+            database: the database where the users are kept, to name them
             requester_id: the unique identifier of the user making this request
             request_id: the unique identifier of the current request
             is_admin: whether the current user is an admin
@@ -461,13 +460,9 @@ class BccClient:
         )
 
         # add usernames
-        user_ids = [
-            PydanticObjectId(v["user_id"])
-            for v in response["data"]
-            if v["user_id"] is not None
-        ]
-        users = await user_db.get_many({"_id": {"$in": user_ids}})
-        user_id_username_map = {str(v.id): v.username for v in users}
+        user_ids = [v["user_id"] for v in response["data"] if v["user_id"] is not None]
+        users = await database.find(User, filter={"id": {"$in": user_ids}})
+        user_id_username_map = {user.id: user.username for user in users}
         for idx, booking in enumerate(response["data"]):
             booking["username"] = user_id_username_map.get(booking["user_id"])
             booking["backend"] = self.name
@@ -475,7 +470,7 @@ class BccClient:
 
     async def view_bookings_configs(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: Optional[bool] = None,
     ) -> BookingsConfig:
@@ -504,7 +499,7 @@ class BccClient:
 
     async def init_recalibration(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: bool,
         start_timestamp: Optional[datetime] = None,
@@ -542,7 +537,7 @@ class BccClient:
 
     async def get_recalibration_info(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: bool,
     ) -> RecalibrationInfo:
@@ -569,7 +564,7 @@ class BccClient:
 
     async def stop_recalibration(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: bool,
         ignore_errors: Optional[bool] = None,
@@ -603,7 +598,7 @@ class BccClient:
 
     async def switch_off(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: bool,
     ) -> GeneralMessage:
@@ -631,7 +626,7 @@ class BccClient:
 
     async def switch_on(
         self,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         is_admin: bool,
     ) -> GeneralMessage:
@@ -661,7 +656,7 @@ class BccClient:
         self,
         method: Literal["POST", "GET", "PUT", "DELETE", "PATCH"],
         url: str,
-        user_id: str | PydanticObjectId,
+        user_id: str,
         request_id: str,
         json: Optional[dict] = None,
         files: Mapping[

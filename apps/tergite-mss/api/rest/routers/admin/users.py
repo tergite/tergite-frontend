@@ -14,7 +14,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import CurrentSuperuserDep
+from api.rest.dependencies import CurrentSuperuserDep, DatabaseDep
 from services.auth import service as auth_service
 
 router = APIRouter()
@@ -22,6 +22,7 @@ router = APIRouter()
 
 @router.get("/emails/", tags=["users"])
 async def get_user_emails(
+    database: DatabaseDep,
     requester: CurrentSuperuserDep,
     search: Optional[str] = Query(None),
     limit: int = Query(20, le=100),
@@ -40,4 +41,4 @@ async def get_user_emails(
     Returns:
         the matched email addresses, alphabetically
     """
-    return await auth_service.get_user_emails(search=search, limit=limit)
+    return await auth_service.get_user_emails(database, search=search, limit=limit)

@@ -115,7 +115,7 @@ async def create_project(
         ProjectExists: a project of the same name exists
     """
     email_id_map = await membership.get_user_email_id_map(
-        [*payload.user_emails, payload.admin_email]
+        database, [*payload.user_emails, payload.admin_email]
     )
     admin_id = email_id_map[payload.admin_email]
     user_ids = [email_id_map[email] for email in payload.user_emails]
@@ -157,7 +157,7 @@ async def update_project(
     )
     emails = [*(payload.user_emails or []), payload.admin_email]
     email_id_map = await membership.get_user_email_id_map(
-        [email for email in emails if email is not None]
+        database, [email for email in emails if email is not None]
     )
 
     admin_id = project.admin_id
@@ -307,14 +307,14 @@ async def set_admin(database: Database, project_id: str, user_id: str) -> Projec
     )
 
 
-async def get_admin_view(project: Project) -> ProjectAdminView:
+async def get_admin_view(database: Database, project: Project) -> ProjectAdminView:
     """Gets the project as an admin sees it, its admin and members named by email
 
     Raises:
         KeyError: a member's user does not exist
     """
     id_email_map = await membership.get_user_id_email_map(
-        [*project.user_ids, project.admin_id]
+        database, [*project.user_ids, project.admin_id]
     )
     return ProjectAdminView(
         **project.model_dump(exclude={"user_emails", "admin_email"}),

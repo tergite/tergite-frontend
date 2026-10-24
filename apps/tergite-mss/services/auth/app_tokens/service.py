@@ -14,8 +14,6 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence
 
-from beanie import PydanticObjectId
-
 from libs.storage import Database, Filter
 from utils.exc import ForbiddenError
 
@@ -56,7 +54,7 @@ async def get_token_owner(database: Database, token: str) -> Optional[TokenOwner
     if app_token is None:
         return None
 
-    user = await User.get(PydanticObjectId(app_token.user_id))
+    user = await database.get(User, app_token.user_id)
     project = await projects.get_project_if_member(
         database, app_token.project_id, app_token.user_id
     )

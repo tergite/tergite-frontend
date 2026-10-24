@@ -10,7 +10,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the /me/notices/preferences routes"""
-from beanie import PydanticObjectId
+
+from bson import ObjectId
 
 from services.notices import NoticeType
 from tests._utils.auth import TEST_USER_ID
@@ -36,9 +37,7 @@ def test_update_email_preferences(client, user_jwt_cookie, db):
             cookies=user_jwt_cookie,
             json={"qpu-seconds-granted": False},
         )
-        record = db[_PREFS_COLLECTION].find_one(
-            {"user_id": PydanticObjectId(TEST_USER_ID)}
-        )
+        record = db[_PREFS_COLLECTION].find_one({"user_id": ObjectId(TEST_USER_ID)})
 
         assert response.status_code == 200
         assert response.json() == {**_DEFAULT_PREFS, "qpu-seconds-granted": False}

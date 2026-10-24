@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from uuid import uuid4
 
-from beanie import PydanticObjectId
+from bson import ObjectId
 
 from tests._utils.auth import TEST_SUPERUSER_ID, TEST_USER_ID
 from tests._utils.mongodb import insert_in_collection
@@ -189,7 +189,7 @@ def _insert_jobs(db, submissions: List[Tuple[Optional[str], str]]):
         data=[
             {
                 "job_id": str(uuid4()),
-                "user_id": None if user_id is None else PydanticObjectId(user_id),
+                "user_id": None if user_id is None else ObjectId(user_id),
                 "created_at": created_at,
             }
             for user_id, created_at in submissions

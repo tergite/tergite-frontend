@@ -161,8 +161,6 @@ def setup_logging(environment: str):
         "uvicorn.error",
         "uvicorn.access",
         "fastapi",
-        "beanie",
-        "motor",
     ]
     for logger_name in intercept_loggers:
         std_logger = logging.getLogger(logger_name)

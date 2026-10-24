@@ -393,7 +393,7 @@ class Notice(Schema):
         Returns:
             The notice object
         """
-        # formatted here as beanie documents do not pass a validation context along
+        # formatted here as validating a record passes no context along
         values = (context or template.context_cls()).model_dump()
         data = {
             **template.model_dump(exclude={"id"}),
@@ -486,8 +486,6 @@ class CustomNoticeCreate(BaseModel):
              the list of notices that come from the CustomNoticeCreate
         """
         # imported here to avoid a circular import, as the auth service imports this one
-        from beanie.odm.operators.find.comparison import In as BeanieIn
-
         from services.auth.users.dtos import User
 
         kwargs = dict(
@@ -501,13 +499,13 @@ class CustomNoticeCreate(BaseModel):
             body=self.message,
         )
         if self.target_user_emails:
-            users = await User.find(
-                BeanieIn(User.email, self.target_user_emails)
-            ).to_list()
+            users = await database.find(
+                User, filter={"email": {"$in": self.target_user_emails}}
+            )
             template = await database.get(NoticeTemplate, NoticeType.CUSTOM.id)
             return [
                 Notice.from_template(
-                    template=template, context=context, user_id=str(user.id), **kwargs
+                    template=template, context=context, user_id=user.id, **kwargs
                 )
                 for user in users
             ]

@@ -20,6 +20,7 @@ from .app_tokens.dtos import (
     AppTokenQuery,
     AppTokenRead,
     AppTokenUpdate,
+    BearerResponse,
     TokenOwner,
 )
 from .app_tokens.exc import AppTokenNotFound
@@ -55,28 +56,20 @@ from .projects.service import (
     update_project,
 )
 from .providers.dtos import AuthProvider
-from .service import get_user_emails, on_startup, register_oauth2_client
-from .users import (
-    UserBasedAuth,
-    UserDatabase,
-    get_email_validator,
-    get_jwt_cookie_backend,
-    get_jwt_header_backend,
-    get_user_db,
-)
-from .users.dtos import User, UserCreate, UserRead, UserUpdate
-from .users.exc import UnsupportedOauthException
-from .users.manager import UserManager
-from .users.validators import Validator
+from .service import ensure_roles, get_user_emails, on_startup
+from .users import OAuthAccount, Role, User, UserRead
+from .utils import get_oauth2_client
 
-SCHEMAS = (AppToken, Project, DeletedProject)
+SCHEMAS = (AppToken, Project, DeletedProject, Role, User)
 
 __all__ = [
     "SCHEMAS",
     "UserRead",
-    "UserCreate",
-    "UserUpdate",
     "User",
+    "Role",
+    "OAuthAccount",
+    "ensure_roles",
+    "get_oauth2_client",
     "UserRole",
     "Oauth2ClientConfig",
     "Project",
@@ -90,7 +83,6 @@ __all__ = [
     "ProjectNotExists",
     "ExtendedErrorCode",
     "PaginatedListResponse",
-    "UserDatabase",
     "AppToken",
     "AppTokenRead",
     "AppTokenCreate",
@@ -99,17 +91,14 @@ __all__ = [
     "service",
     "on_startup",
     "get_user_emails",
-    "UnsupportedOauthException",
     "AccessRule",
     "LAX",
     "STRICT",
     "SYSTEM",
     "check_project_access",
-    "UserBasedAuth",
-    "get_jwt_cookie_backend",
-    "get_jwt_header_backend",
     "AppTokenQuery",
     "AppTokenUpdate",
+    "BearerResponse",
     "AppTokenNotFound",
     "TokenOwner",
     "create_app_token",
@@ -117,11 +106,6 @@ __all__ = [
     "find_app_tokens",
     "get_token_owner",
     "update_app_token_expiry",
-    "get_email_validator",
-    "Validator",
-    "get_user_db",
-    "UserManager",
-    "register_oauth2_client",
     "add_member",
     "create_project",
     "delete_project",

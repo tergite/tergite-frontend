@@ -62,7 +62,7 @@ async def create(
         request_body, requester=requester, target_user_ids=target_user_ids
     )
     await database.insert(Request, record)
-    # NOTE: We explicitly notify here instead of in a beanie hook because:
+    # NOTE: We explicitly notify here instead of in a storage hook because:
     #   - hooks would have hidden the logic to a reader/maintainer in future
     await notices.create_system_notice(
         database,
@@ -243,8 +243,8 @@ async def _get_target_user_ids(
         return [project.admin_id]
 
     elif request.target == RequestTarget.SYSTEM:
-        superusers = await User.find({"roles": UserRole.ADMIN}).to_list()
-        return [str(user.id) for user in superusers]
+        superusers = await database.find(User, filter={"roles": UserRole.ADMIN})
+        return [user.id for user in superusers]
 
     return []
 

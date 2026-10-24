@@ -14,9 +14,10 @@ from types import MappingProxyType
 from typing import Any, Dict, List, Optional, Sequence, Type, TypeVar
 
 import pymongo.database
-from beanie import Document, PydanticObjectId
 from bson import ObjectId
 from pymongo import collection, database, errors
+
+from libs.storage import Schema
 
 
 def find_in_collection(
@@ -69,7 +70,7 @@ def insert_in_collection(
     return result.inserted_ids
 
 
-T = TypeVar("T", bound=Document)
+T = TypeVar("T", bound=Schema)
 
 
 def insert_if_not_exist(db: database.Database, schema: Type[T], data: Dict[str, Any]):
@@ -77,7 +78,7 @@ def insert_if_not_exist(db: database.Database, schema: Type[T], data: Dict[str, 
 
     Args:
         db: The pymongo.database.Database instance to insert into
-        schema: the beanie.Document schema corresponding to the collection to which to insert into
+        schema: the storage Schema of the collection to insert into
         data: the document to insert
     """
     try:
@@ -95,7 +96,7 @@ def get_db_record(
 ) -> Optional[dict]:
     """Gets a given auth document from the database or None if it does not exist"""
     col: collection.Collection = db[_get_collection_name(schema)]
-    filter_obj = {"_id": PydanticObjectId(_id)} if _id else {}
+    filter_obj = {"_id": ObjectId(_id)} if _id else {}
     if _filter is not None:
         filter_obj.update(_filter)
     return col.find_one(filter_obj)
@@ -110,7 +111,7 @@ def update_db_record(
 ) -> Optional[dict]:
     """Updates the given auth document"""
     col: collection.Collection = db[_get_collection_name(schema)]
-    filter_obj = {"_id": PydanticObjectId(_id)} if _id else {}
+    filter_obj = {"_id": ObjectId(_id)} if _id else {}
     if _filter is not None:
         filter_obj.update(_filter)
     payload = update if isinstance(update, dict) else {}
@@ -119,6 +120,4 @@ def update_db_record(
 
 
 def _get_collection_name(schema: Type[T]) -> str:
-    """The collection of a storage Schema or of a beanie Document"""
-    storage = getattr(schema, "__storage__", None)
-    return storage.table if storage is not None else schema.Settings.name
+    return schema.__storage__.table

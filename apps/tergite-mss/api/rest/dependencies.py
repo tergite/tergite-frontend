@@ -21,8 +21,6 @@ from services.auth import (
     ProjectQuery,
     TokenOwner,
     User,
-    UserDatabase,
-    get_user_db,
 )
 
 # from api.database import get_mongodb
@@ -41,7 +39,6 @@ from .utils import get_request_id
 CurrentUserDep = Annotated[User, Depends(GET_CURRENT_USER)]
 CurrentSuperuserDep = Annotated[User, Depends(GET_CURRENT_SUPERUSER)]
 CurrentUserIdDep = Annotated[str, Depends(GET_CURRENT_USER_ID)]
-UserDbDep = Annotated[UserDatabase, Depends(get_user_db)]
 CurrentLaxOwnerDep = Annotated[TokenOwner, Depends(get_current_lax_owner)]
 CurrentStrictProjectUserIdsDep = Annotated[
     Tuple[str, str], Depends(get_current_project_user_ids)

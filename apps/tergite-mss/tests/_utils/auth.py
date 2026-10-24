@@ -10,12 +10,11 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Utilities specific to auth when testing"""
+from datetime import datetime, timedelta, timezone
 from typing import Dict
 
 import jwt
-from beanie import PydanticObjectId
-from fastapi_users.jwt import decode_jwt, generate_jwt
-from fastapi_users.password import PasswordHelper
+from bson import ObjectId
 from pymongo import database
 
 from services.auth.app_tokens.dtos import AppToken
@@ -38,8 +37,6 @@ TEST_SYSTEM_USER_EMAIL = "system.doe@example.com"
 TEST_APP_TOKEN_STRING = "46-0Jhgb1_thq8MqIF0SlVHoS8rFPiLBFL33XO_eJ7I"
 TEST_NO_QPU_APP_TOKEN_STRING = "56-0Khgb1_thq8MyIF0Srtye8rFPiLBFL33XO_et7I"
 TEST_SYSTEM_USER_APP_TOKEN_STRING = "l5ZPTt/AcD18ogpXhYfIYfmQTwc4tp917F3g708Uc1oAT0WW"
-
-_password_helper = PasswordHelper()
 
 TEST_GITHUB_PROFILE = dict(id="test-github-user", email="paul.doe@example.com")
 INVALID_GITHUB_PROFILE = dict(id="invalid-github-user", email="julie.doe@example.com")
@@ -71,32 +68,28 @@ TEST_PUHURI_TOKEN_RESP = {
 
 
 TEST_SUPERUSER_DICT = dict(
-    _id=PydanticObjectId(TEST_SUPERUSER_ID),
+    _id=ObjectId(TEST_SUPERUSER_ID),
     email=TEST_SUPERUSER_EMAIL,
     roles=[UserRole.USER, UserRole.ADMIN],
-    hashed_password=_password_helper.hash(_password_helper.generate()),
     is_verified=True,
 )
 TEST_USER_DICT = dict(
-    _id=PydanticObjectId(TEST_USER_ID),
+    _id=ObjectId(TEST_USER_ID),
     email=TEST_USER_EMAIL,
     roles=[UserRole.USER],
-    hashed_password=_password_helper.hash(_password_helper.generate()),
     is_verified=True,
 )
 # a plain user who administers nothing and belongs to no project
 TEST_OUTSIDER_DICT = dict(
-    _id=PydanticObjectId(TEST_OUTSIDER_ID),
+    _id=ObjectId(TEST_OUTSIDER_ID),
     email=TEST_OUTSIDER_EMAIL,
     roles=[UserRole.USER],
-    hashed_password=_password_helper.hash(_password_helper.generate()),
     is_verified=True,
 )
 TEST_SYSTEM_USER_DICT = dict(
-    _id=PydanticObjectId(TEST_SYSTEM_USER_ID),
+    _id=ObjectId(TEST_SYSTEM_USER_ID),
     email=TEST_SYSTEM_USER_EMAIL,
     roles=[UserRole.SYSTEM],
-    hashed_password=_password_helper.hash(_password_helper.generate()),
     is_verified=True,
 )
 USER_ID_EMAIL_MAP = {
@@ -107,11 +100,11 @@ USER_ID_EMAIL_MAP = {
 }
 TEST_PROJECT_NAME = "test-project"
 TEST_PROJECT_DICT = dict(
-    _id=PydanticObjectId(TEST_PROJECT_ID),
+    _id=ObjectId(TEST_PROJECT_ID),
     name=TEST_PROJECT_NAME,
     description="some default project",
-    admin_id=PydanticObjectId(TEST_USER_ID),
-    user_ids=[PydanticObjectId(TEST_USER_ID), PydanticObjectId(TEST_SYSTEM_USER_ID)],
+    admin_id=ObjectId(TEST_USER_ID),
+    user_ids=[ObjectId(TEST_USER_ID), ObjectId(TEST_SYSTEM_USER_ID)],
     qpu_seconds=108000000000000,
     created_at="2024-09-20T09:12:00.733Z",
     updated_at="2024-09-20T09:12:00.733Z",
@@ -119,11 +112,11 @@ TEST_PROJECT_DICT = dict(
 
 TEST_NO_QPU_PROJECT_NAME = "test-no-qpu-project"
 TEST_NO_QPU_PROJECT_DICT = dict(
-    _id=PydanticObjectId(TEST_NO_QPU_PROJECT_ID),
+    _id=ObjectId(TEST_NO_QPU_PROJECT_ID),
     name=TEST_NO_QPU_PROJECT_NAME,
     description="some project without QPU seconds",
-    admin_id=PydanticObjectId(TEST_USER_ID),
-    user_ids=[PydanticObjectId(TEST_USER_ID)],
+    admin_id=ObjectId(TEST_USER_ID),
+    user_ids=[ObjectId(TEST_USER_ID)],
     qpu_seconds=-108000,
     created_at="2024-09-20T09:12:00.733Z",
     updated_at="2024-09-20T09:12:00.733Z",
@@ -171,11 +164,13 @@ def get_jwt_token(
     user_id: str, ttl: int = 3600, secret: str = TEST_JWT_SECRET, **kwargs
 ) -> str:
     """Generates a valid JWT token for the given user_id"""
-    data = {**kwargs, "sub": user_id, "aud": ["fastapi-users:auth"]}
-
-    return generate_jwt(
-        data=data, secret=secret, lifetime_seconds=ttl, algorithm="HS256"
-    )
+    data = {
+        **kwargs,
+        "sub": user_id,
+        "aud": ["fastapi-users:auth"],
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=ttl),
+    }
+    return jwt.encode(data, secret, algorithm="HS256")
 
 
 def get_auth_cookie(user_id: str) -> Dict[str, str]:
@@ -194,9 +189,7 @@ def is_valid_jwt(token: str, secret: str = TEST_JWT_SECRET) -> bool:
     algorithms = ["HS256"]
 
     try:
-        data = decode_jwt(
-            token, secret=secret, audience=audience, algorithms=algorithms
-        )
+        data = jwt.decode(token, secret, audience=audience, algorithms=algorithms)
         return "sub" in data
     except jwt.PyJWTError:
         return False

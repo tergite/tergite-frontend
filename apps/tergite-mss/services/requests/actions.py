@@ -14,8 +14,6 @@
 import asyncio
 from typing import Any, Callable, Coroutine, Dict, List, Sequence, cast
 
-from beanie.odm.operators.find.comparison import In
-
 from libs.storage import Database
 from services import auth
 from services.auth import Project, ProjectExists, User
@@ -141,7 +139,7 @@ async def _transfer_project(
     """
     metadata = cast(TransferProjectMetadata, request.metadata)
     project = await _get_project(database, request.resource_id)
-    email_id_map = await _get_user_email_id_map([metadata.admin_email])
+    email_id_map = await _get_user_email_id_map(database, [metadata.admin_email])
     await auth.set_admin(database, project.id, email_id_map[metadata.admin_email])
 
 
@@ -193,11 +191,14 @@ async def _get_project(database: Database, project_id: str) -> Project:
 
 
 async def _get_user_email_id_map(
-    emails: Sequence[str],
+    database: Database, emails: Sequence[str]
 ) -> Dict[str, str]:
-    """Gets the IDs of the users of the given emails, keyed by email
+    """Gets the IDs of the users of the given emails, keyed by each email as given
+
+    Emails match in any case.
 
     Args:
+        database: the database where the users are kept
         emails: the emails of the users
 
     Returns:
@@ -206,10 +207,12 @@ async def _get_user_email_id_map(
     Raises:
         NotFoundError: no users of emails {emails}
     """
-    users = await User.find(In(User.email, list(emails))).to_list()
-    email_id_map = {user.email: str(user.id) for user in users}
-    missing_emails = [email for email in emails if email not in email_id_map]
+    users = await database.find(User, filter={"email": {"$in": list(emails)}})
+    id_by_lower_email = {user.email.lower(): user.id for user in users}
+    missing_emails = [
+        email for email in emails if email.lower() not in id_by_lower_email
+    ]
     if missing_emails:
         raise NotFoundError(f"no users of emails {missing_emails}")
 
-    return email_id_map
+    return {email: id_by_lower_email[email.lower()] for email in emails}

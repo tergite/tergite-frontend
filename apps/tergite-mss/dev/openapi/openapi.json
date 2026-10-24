@@ -163,6 +163,7 @@
         "type": "object"
       },
       "BearerResponse": {
+        "description": "A new app token, as a bearer token",
         "properties": {
           "access_token": {
             "title": "Access Token",
@@ -2234,13 +2235,6 @@
         "title": "ProjectUpdate",
         "type": "object"
       },
-      "PydanticObjectId": {
-        "example": "5eb7cf5a86d9755df3a6c593",
-        "maxLength": 24,
-        "minLength": 24,
-        "pattern": "^[0-9a-f]{24}$",
-        "type": "string"
-      },
       "QubitCalibration": {
         "additionalProperties": true,
         "description": "Schema for the calibration data of the qubit",
@@ -2989,6 +2983,7 @@
         "type": "object"
       },
       "UserRead": {
+        "description": "A user as shown to the user",
         "properties": {
           "email": {
             "format": "email",
@@ -2996,7 +2991,9 @@
             "type": "string"
           },
           "id": {
-            "$ref": "#/components/schemas/PydanticObjectId"
+            "pattern": "^[0-9a-f]{24}$",
+            "title": "Id",
+            "type": "string"
           },
           "is_active": {
             "default": true,
@@ -3014,7 +3011,7 @@
             "type": "boolean"
           },
           "roles": {
-            "default": {},
+            "default": [],
             "items": {
               "$ref": "#/components/schemas/UserRole"
             },
@@ -3082,11 +3079,15 @@
         "name": "some-cookie",
         "type": "apiKey"
       },
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      },
       "OAuth2PasswordBearer": {
         "flows": {
           "password": {
             "scopes": {},
-            "tokenUrl": "/auth/jwt/login"
+            "tokenUrl": "/me/tokens/"
           }
         },
         "type": "oauth2"
@@ -3149,7 +3150,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3201,7 +3202,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3286,7 +3287,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3338,7 +3339,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3390,7 +3391,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3468,7 +3469,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3528,7 +3529,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3589,7 +3590,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3747,7 +3748,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3801,7 +3802,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -3853,7 +3854,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -4027,7 +4028,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -4074,7 +4075,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -4117,7 +4118,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -4174,7 +4175,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -4232,7 +4233,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -4305,7 +4306,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -4318,20 +4319,36 @@
         ]
       }
     },
-    "/auth/app/chalmers/authorize": {
+    "/auth/app/{provider}/authorize": {
       "get": {
-        "operationId": "oauth_chalmers_jwt_cookie_authorize_auth_app_chalmers_authorize_get",
+        "operationId": "oauth_authorize_auth_app__provider__authorize_get",
         "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "scopes",
             "required": false,
             "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scopes"
             }
           },
           {
@@ -4339,8 +4356,15 @@
             "name": "next",
             "required": false,
             "schema": {
-              "title": "Next",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Next"
             }
           }
         ],
@@ -4366,28 +4390,43 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Oauth:Chalmers.Jwt-Cookie.Authorize",
+        "summary": "Oauth:Authorize",
         "tags": [
-          "auth",
           "auth"
         ]
       }
     },
-    "/auth/app/chalmers/auto-authorize": {
+    "/auth/app/{provider}/auto-authorize": {
       "get": {
-        "description": "Automatically redirects to the authorization URL",
-        "operationId": "oauth_chalmers_jwt_cookie_authorize_auth_app_chalmers_auto_authorize_get",
+        "description": "Redirects to the provider's authorization URL",
+        "operationId": "oauth_auto_authorize_auth_app__provider__auto_authorize_get",
         "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "scopes",
             "required": false,
             "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scopes"
             }
           },
           {
@@ -4395,8 +4434,15 @@
             "name": "next",
             "required": false,
             "schema": {
-              "title": "Next",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Next"
             }
           }
         ],
@@ -4415,18 +4461,26 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Oauth:Chalmers.Jwt-Cookie.Authorize",
+        "summary": "Oauth:Auto-Authorize",
         "tags": [
-          "auth",
           "auth"
         ]
       }
     },
-    "/auth/app/chalmers/callback": {
+    "/auth/app/{provider}/callback": {
       "get": {
-        "description": "The response varies based on the authentication backend used.",
-        "operationId": "oauth_chalmers_jwt_cookie_callback_auth_app_chalmers_callback_get",
+        "description": "Logs the user in, setting the session cookie.",
+        "operationId": "oauth_callback_auth_app__provider__callback_get",
         "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "code",
@@ -4499,60 +4553,11 @@
           "307": {
             "description": "Logged in; redirects to the `next` URL in the state."
           },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Chalmers.Jwt-Cookie.Callback",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/app/github/authorize": {
-      "get": {
-        "operationId": "oauth_github_jwt_cookie_authorize_auth_app_github_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
+          "400": {
+            "description": "An invalid state, no email from the provider, a user of the email who cannot be linked, or an inactive user."
           },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2AuthorizeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
+          "403": {
+            "description": "The email is not permitted."
           },
           "422": {
             "content": {
@@ -4565,972 +4570,41 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Oauth:Github.Jwt-Cookie.Authorize",
+        "summary": "Oauth:Callback",
         "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/app/github/auto-authorize": {
-      "get": {
-        "description": "Automatically redirects to the authorization URL",
-        "operationId": "oauth_github_jwt_cookie_authorize_auth_app_github_auto_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "307": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Github.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/app/github/callback": {
-      "get": {
-        "description": "The response varies based on the authentication backend used.",
-        "operationId": "oauth_github_jwt_cookie_callback_auth_app_github_callback_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code"
-            }
-          },
-          {
-            "in": "query",
-            "name": "code_verifier",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code Verifier"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "State"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Error"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "307": {
-            "description": "Logged in; redirects to the `next` URL in the state."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Github.Jwt-Cookie.Callback",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/app/gitlab/authorize": {
-      "get": {
-        "operationId": "oauth_gitlab_jwt_cookie_authorize_auth_app_gitlab_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2AuthorizeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Gitlab.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/app/gitlab/auto-authorize": {
-      "get": {
-        "description": "Automatically redirects to the authorization URL",
-        "operationId": "oauth_gitlab_jwt_cookie_authorize_auth_app_gitlab_auto_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "307": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Gitlab.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/app/gitlab/callback": {
-      "get": {
-        "description": "The response varies based on the authentication backend used.",
-        "operationId": "oauth_gitlab_jwt_cookie_callback_auth_app_gitlab_callback_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code"
-            }
-          },
-          {
-            "in": "query",
-            "name": "code_verifier",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code Verifier"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "State"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Error"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "307": {
-            "description": "Logged in; redirects to the `next` URL in the state."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Gitlab.Jwt-Cookie.Callback",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/chalmers/authorize": {
-      "get": {
-        "operationId": "oauth_chalmers_jwt_cookie_authorize_auth_chalmers_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2AuthorizeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Chalmers.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/chalmers/auto-authorize": {
-      "get": {
-        "description": "Automatically redirects to the authorization URL",
-        "operationId": "oauth_chalmers_jwt_cookie_authorize_auth_chalmers_auto_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "307": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Chalmers.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/chalmers/callback": {
-      "get": {
-        "description": "The response varies based on the authentication backend used.",
-        "operationId": "oauth_chalmers_jwt_cookie_callback_auth_chalmers_callback_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code"
-            }
-          },
-          {
-            "in": "query",
-            "name": "code_verifier",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code Verifier"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "State"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Error"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "307": {
-            "description": "Logged in; redirects to the `next` URL in the state."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Chalmers.Jwt-Cookie.Callback",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/github/authorize": {
-      "get": {
-        "operationId": "oauth_github_jwt_cookie_authorize_auth_github_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2AuthorizeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Github.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/github/auto-authorize": {
-      "get": {
-        "description": "Automatically redirects to the authorization URL",
-        "operationId": "oauth_github_jwt_cookie_authorize_auth_github_auto_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "307": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Github.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/github/callback": {
-      "get": {
-        "description": "The response varies based on the authentication backend used.",
-        "operationId": "oauth_github_jwt_cookie_callback_auth_github_callback_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code"
-            }
-          },
-          {
-            "in": "query",
-            "name": "code_verifier",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code Verifier"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "State"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Error"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "307": {
-            "description": "Logged in; redirects to the `next` URL in the state."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Github.Jwt-Cookie.Callback",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/gitlab/authorize": {
-      "get": {
-        "operationId": "oauth_gitlab_jwt_cookie_authorize_auth_gitlab_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OAuth2AuthorizeResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Gitlab.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/gitlab/auto-authorize": {
-      "get": {
-        "description": "Automatically redirects to the authorization URL",
-        "operationId": "oauth_gitlab_jwt_cookie_authorize_auth_gitlab_auto_authorize_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "scopes",
-            "required": false,
-            "schema": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Scopes",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
-            "name": "next",
-            "required": false,
-            "schema": {
-              "title": "Next",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "307": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Gitlab.Jwt-Cookie.Authorize",
-        "tags": [
-          "auth",
-          "auth"
-        ]
-      }
-    },
-    "/auth/gitlab/callback": {
-      "get": {
-        "description": "The response varies based on the authentication backend used.",
-        "operationId": "oauth_gitlab_jwt_cookie_callback_auth_gitlab_callback_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code"
-            }
-          },
-          {
-            "in": "query",
-            "name": "code_verifier",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Code Verifier"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "State"
-            }
-          },
-          {
-            "in": "query",
-            "name": "error",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Error"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "307": {
-            "description": "Logged in; redirects to the `next` URL in the state."
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Oauth:Gitlab.Jwt-Cookie.Callback",
-        "tags": [
-          "auth",
           "auth"
         ]
       }
     },
     "/auth/logout": {
       "post": {
-        "operationId": "auth_jwt_cookie_logout_auth_logout_post",
+        "operationId": "auth_logout_auth_logout_post",
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "logged out"
+                },
+                "schema": {}
+              }
+            },
+            "description": "Logged out: the session cookie is cleared."
+          },
+          "401": {
+            "description": "Missing token or inactive user."
           }
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
           }
         ],
-        "summary": "Auth:Jwt-Cookie.Logout",
+        "summary": "Auth:Logout",
         "tags": [
-          "auth",
           "auth"
         ]
       }
@@ -5642,9 +4716,266 @@
         ]
       }
     },
+    "/auth/{provider}/authorize": {
+      "get": {
+        "operationId": "oauth_authorize_auth__provider__authorize_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scopes",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scopes"
+            }
+          },
+          {
+            "in": "query",
+            "name": "next",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Next"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuth2AuthorizeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth:Authorize",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/{provider}/auto-authorize": {
+      "get": {
+        "description": "Redirects to the provider's authorization URL",
+        "operationId": "oauth_auto_authorize_auth__provider__auto_authorize_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scopes",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scopes"
+            }
+          },
+          {
+            "in": "query",
+            "name": "next",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Next"
+            }
+          }
+        ],
+        "responses": {
+          "307": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth:Auto-Authorize",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/{provider}/callback": {
+      "get": {
+        "description": "Logs the user in, setting the session cookie.",
+        "operationId": "oauth_callback_auth__provider__callback_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code_verifier",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code Verifier"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "307": {
+            "description": "Logged in; redirects to the `next` URL in the state."
+          },
+          "400": {
+            "description": "An invalid state, no email from the provider, a user of the email who cannot be linked, or an inactive user."
+          },
+          "403": {
+            "description": "The email is not permitted."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth:Callback",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/bookings/{backend}": {
       "get": {
-        "description": "Views all available bookings of the given backend\n\nArgs:\n    bcc_client: BccClient for the given backend\n    user_db: UserDatabase instance for this application\n    request_id: the unique identifier of the request\n    requester: the current signed-in user\n    skip: number of records to ignore at the top of the returned results; default is 0\n    limit: maximum number of records to return; default is None.\n    sort: fields to sort by; prepending a \"-\" returns the items in descending order of that field\n    user_id: the id of the owner of the bookings\n    min_start_utc: the earliest start timestamp to include in the returned results; default is None\n    max_start_utc: the latest end timestamp to include in the returned results; default is None\n\nReturns:\n    the paginated list of the available bookings filtered accordingly\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
+        "description": "Views all available bookings of the given backend\n\nArgs:\n    bcc_client: BccClient for the given backend\n    database: the database where the users are kept, to name them\n    request_id: the unique identifier of the request\n    requester: the current signed-in user\n    skip: number of records to ignore at the top of the returned results; default is 0\n    limit: maximum number of records to return; default is None.\n    sort: fields to sort by; prepending a \"-\" returns the items in descending order of that field\n    user_id: the id of the owner of the bookings\n    min_start_utc: the earliest start timestamp to include in the returned results; default is None\n    max_start_utc: the latest end timestamp to include in the returned results; default is None\n\nReturns:\n    the paginated list of the available bookings filtered accordingly\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
         "operationId": "view_bookings_bookings__backend__get",
         "parameters": [
           {
@@ -5763,7 +5094,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -5775,7 +5106,7 @@
         ]
       },
       "post": {
-        "description": "Creates a booking for the user of the given token\n\nArgs:\n    bcc_client: BccClient for the given backend\n    user_db: UserDatabase instance for this application\n    data: the information about the new booking\n    request_id: the unique identifier of the request\n    user_id: the ID of the current signed-in user\n\nReturns:\n    the newly created booking\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
+        "description": "Creates a booking for the user of the given token\n\nArgs:\n    bcc_client: BccClient for the given backend\n    database: the database where the users are kept, to name them\n    data: the information about the new booking\n    request_id: the unique identifier of the request\n    user_id: the ID of the current signed-in user\n\nReturns:\n    the newly created booking\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
         "operationId": "create_booking_bookings__backend__post",
         "parameters": [
           {
@@ -5822,7 +5153,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -5873,7 +5204,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -5933,7 +5264,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -6202,7 +5533,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -6334,7 +5665,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7152,7 +6483,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7261,7 +6592,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7645,7 +6976,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7742,7 +7073,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7773,7 +7104,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7811,7 +7142,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7874,7 +7205,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7905,7 +7236,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -7958,7 +7289,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8011,7 +7342,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8042,7 +7373,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8216,7 +7547,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8260,7 +7591,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8315,7 +7646,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8365,7 +7696,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8493,7 +7824,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8541,7 +7872,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8603,7 +7934,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8761,7 +8092,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8788,10 +8119,6 @@
           "200": {
             "content": {
               "application/json": {
-                "example": {
-                  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiOTIyMWZmYzktNjQwZi00MzcyLTg2ZDMtY2U2NDJjYmE1NjAzIiwiYXVkIjoiZmFzdGFwaS11c2VyczphdXRoIiwiZXhwIjoxNTcxNTA0MTkzfQ.M10bjOe45I5Ncu_uXvOmVV8QxnL-nZfcH96U90JaocI",
-                  "token_type": "bearer"
-                },
                 "schema": {
                   "$ref": "#/components/schemas/BearerResponse"
                 }
@@ -8812,7 +8139,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8856,7 +8183,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8915,7 +8242,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []
@@ -8966,7 +8293,7 @@
         },
         "security": [
           {
-            "OAuth2PasswordBearer": []
+            "HTTPBearer": []
           },
           {
             "APIKeyCookie": []

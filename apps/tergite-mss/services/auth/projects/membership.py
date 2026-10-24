@@ -12,18 +12,12 @@
 """Who belongs to a project: telling users their standing changed, and naming them"""
 from typing import Dict, List, Optional
 
-from beanie import PydanticObjectId
-from fastapi_users.password import PasswordHelper
-from pydantic import BaseModel, Field
-
 from libs.storage import Database
 from services import notices
 from services.notices import NoticeType, ProjectRequestContext, RefType
 
 from ..users.dtos import User
 from .dtos import Project
-
-_password_helper = PasswordHelper()
 
 
 async def notify_membership_change(
@@ -99,44 +93,36 @@ async def notify_membership_revoked(
     )
 
 
-async def get_user_id_email_map(user_ids: List[str]) -> Dict[str, str]:
+async def get_user_id_email_map(
+    database: Database, user_ids: List[str]
+) -> Dict[str, str]:
     """Gets the emails of the users of the given ids, keyed by id"""
-    object_ids = [PydanticObjectId(v) for v in user_ids]
-    users = await User.find(
-        {"_id": {"$in": object_ids}}, projection_model=_TrimmedUser
-    ).to_list()
-    return {str(v.id): v.email for v in users}
+    users = await database.find(User, filter={"id": {"$in": list(user_ids)}})
+    return {user.id: user.email for user in users}
 
 
-async def get_user_email_id_map(user_emails: List[str]) -> Dict[str, str]:
-    """Gets the ids of the users of the given emails, keyed by email
+async def get_user_email_id_map(
+    database: Database, user_emails: List[str]
+) -> Dict[str, str]:
+    """Gets the ids of the users of the given emails, keyed by each email as given
 
-    It creates a user for each email that has none yet.
+    Emails match in any case. It creates a user for each email that has none yet.
     """
     if len(user_emails) == 0:
         return {}
 
-    users = await User.find({"email": {"$in": user_emails}}).to_list()
-    email_id_map = {v.email: str(v.id) for v in users}
-
-    new_emails = [email for email in user_emails if email_id_map.get(email) is None]
-    new_users = [
-        User(
-            email=email,
-            hashed_password=_password_helper.hash(_password_helper.generate()),
+    users = await database.find(User, filter={"email": {"$in": list(user_emails)}})
+    id_by_lower_email = {user.email.lower(): user.id for user in users}
+    missing_emails = {
+        email.lower(): email
+        for email in user_emails
+        if email.lower() not in id_by_lower_email
+    }
+    if missing_emails:
+        new_users = [User(email=email) for email in missing_emails.values()]
+        inserted_users = await database.insert_many(User, new_users)
+        id_by_lower_email.update(
+            {user.email.lower(): user.id for user in inserted_users}
         )
-        for email in new_emails
-    ]
-    if len(new_users) > 0:
-        inserted_users = await User.insert_many(new_users, ordered=True)
-        for email, user_id in zip(new_emails, inserted_users.inserted_ids):
-            email_id_map[email] = str(user_id)
 
-    return email_id_map
-
-
-class _TrimmedUser(BaseModel):
-    """A user object with only email and _id"""
-
-    email: str
-    id: PydanticObjectId = Field(alias="_id")
+    return {email: id_by_lower_email[email.lower()] for email in user_emails}

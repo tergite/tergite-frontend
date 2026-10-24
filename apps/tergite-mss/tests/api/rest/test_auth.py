@@ -15,7 +15,6 @@ from typing import List, Optional
 
 import httpx
 import pytest
-from beanie import PydanticObjectId
 from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
@@ -437,5 +436,5 @@ def _get_personal_project(db, user_id: ObjectId) -> Optional[dict]:
     Returns:
         the personal project or None if the user has none
     """
-    project_id = PydanticObjectId(derive_id(str(user_id), namespace="project"))
+    project_id = ObjectId(derive_id(str(user_id), namespace="project"))
     return db["auth_projects"].find_one({"_id": project_id})

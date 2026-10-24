@@ -33,7 +33,6 @@ from .database import (
     close_database,
     open_database,
     open_request_log_database,
-    open_users_database,
 )
 from .routers.devices import ws_manager as devices_ws_manager
 
@@ -67,8 +66,7 @@ async def lifespan(app: FastAPI):
     )
     database = await open_database(app, settings.CONFIG.database)
     await open_request_log_database(app, settings.CONFIG.database)
-    users_db = open_users_database(app, settings.CONFIG.database)
-    await auth_service.on_startup(users_db, conf=settings.CONFIG.auth)
+    await auth_service.on_startup(database, conf=settings.CONFIG.auth)
     await jobs_service.on_startup(
         private_key_file=settings.PRIVATE_KEY_FILE,
         private_key_password=settings.CONFIG.private_key_password,

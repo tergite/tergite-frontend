@@ -10,128 +10,55 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""Service for oauth2 authentication and project-based authorization"""
+"""The auth service's startup, and what it tells about users"""
 import re
-from contextlib import suppress
 from typing import List, Optional
 
-import motor.motor_asyncio
-from beanie import init_beanie
-from fastapi import APIRouter
-from fastapi_users import FastAPIUsers
-from fastapi_users.authentication import AuthenticationBackend
-from pymongo.errors import CollectionInvalid
+from libs.storage import Database
+from utils.config import AuthConfig, UserRole
 
-from libs.storage.mongo.schema import get_validator
-from utils.config import AuthConfig, Oauth2ClientConfig
-
-from . import providers, users
-from .users.dtos import User
-from .utils import get_oauth2_client
+from . import providers
+from .users.dtos import Role, User
 
 
-async def on_startup(
-    db: motor.motor_asyncio.AsyncIOMotorDatabase,
-    conf: AuthConfig,
-) -> None:
+async def on_startup(database: Database, conf: AuthConfig) -> None:
     """Runs init operations when the application is starting up
 
     Args:
-        db: the mongo database where the users are stored
-        conf: the auth configuration, whose clients decide who may sign in and how
+        database: the database where the users and their roles are kept
+        conf: the auth configuration, whose clients are the auth providers listed
     """
-    users.set_auth_clients(conf.clients)
     providers.set_auth_providers(conf.clients)
-    await init_beanie(database=db, document_models=[User])
-    await _set_users_validator(db)
+    await ensure_roles(database)
 
 
-def register_oauth2_client(
-    router: APIRouter,
-    controller: FastAPIUsers,
-    auth_cookie_backend: AuthenticationBackend,
-    jwt_secret: str,
-    conf: Oauth2ClientConfig,
-    tags: List[str] = ("auth",),
-):
-    """Registers an oauth2 method on the given router, allowing only browser based login and no REST API mode
-
-    Args:
-        router: APIRouter where to register the oauth2 method
-        controller: the FastAPIUsers instance that controls authentication
-        auth_cookie_backend: the AuthenticationBackend which handles the authentication via cookies
-        jwt_secret: the secret string used to generate JWT tokens
-        conf: the configuration for the oauth2 client
-        tags: the list of tags to add to the routes of this client
-    """
-    client = get_oauth2_client(conf)
-
-    # FIXME: There is still an issue with programmatically generating the redirect URI.
-    #  It keeps missing the http(s). It is like the scheme is never passed along, which is weird
-
-    # For browser based auth
-    router.include_router(
-        controller.get_oauth_router(
-            oauth_client=client,
-            backend=auth_cookie_backend,
-            state_secret=jwt_secret,
-            is_verified_by_default=conf.is_verified_by_default,
-            associate_by_email=conf.associate_by_email,
-            redirect_url=conf.redirect_url,
-        ),
-        prefix=f"/{client.name}",
-        tags=tags,
-    )
-
-    # For backward compatibility for now, we will also support the format of urls /auth/app/{client}/...
-    router.include_router(
-        controller.get_oauth_router(
-            oauth_client=client,
-            backend=auth_cookie_backend,
-            state_secret=jwt_secret,
-            is_verified_by_default=conf.is_verified_by_default,
-            associate_by_email=conf.associate_by_email,
-            redirect_url=conf.redirect_url,
-        ),
-        prefix=f"/app/{client.name}",
-        tags=tags,
-    )
+async def ensure_roles(database: Database) -> None:
+    """Stores every role users may hold, so that their roles can reference it"""
+    for role in UserRole:
+        await database.update_one(
+            Role, {"name": role}, {"$set": {"name": role}}, should_upsert=True
+        )
 
 
-async def get_user_emails(search: Optional[str] = None, limit: int = 20) -> List[str]:
+async def get_user_emails(
+    database: Database, search: Optional[str] = None, limit: int = 20
+) -> List[str]:
     """Gets user email addresses, alphabetically
 
     Returns addresses alone, never the user records: the callers that may see this
     are completing a form, not reading a directory.
 
     Args:
+        database: the database where the users are kept
         search: a case-insensitive substring of the address; omit for the first page
         limit: the maximum number of addresses to return
 
     Returns:
         the matched email addresses
     """
-    filter_obj = {}
+    user_filter = {}
     if search:
-        # escaped, or a caller could hand us a regex to evaluate
-        filter_obj["email"] = {"$regex": re.escape(search), "$options": "i"}
+        user_filter["email"] = {"$regex": re.escape(search), "$options": "i"}
 
-    records = await User.find(filter_obj, limit=limit, sort="email").to_list()
-    return [user.email for user in records]
-
-
-async def _set_users_validator(db: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    """Makes the users' collection reject documents that violate the User schema"""
-    name = User.get_settings().name
-    # collMod fails on a collection that does not exist yet
-    with suppress(CollectionInvalid):
-        await db.create_collection(name)
-
-    await db.command(
-        {
-            "collMod": name,
-            "validator": get_validator(User),
-            "validationLevel": "strict",
-            "validationAction": "error",
-        }
-    )
+    users = await database.find(User, filter=user_filter, sort=["email"], limit=limit)
+    return [user.email for user in users]

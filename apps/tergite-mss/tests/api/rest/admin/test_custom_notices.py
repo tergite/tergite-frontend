@@ -10,7 +10,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the /admin/notices routes"""
-from beanie import PydanticObjectId
+
+from bson import ObjectId
 
 from tests._utils.auth import (
     TEST_OUTSIDER_EMAIL,
@@ -164,7 +165,7 @@ def test_admin_get_notices_of_user(admin_jwt_cookie, client, inserted_notices):
     expected_ids = {
         str(item["_id"])
         for item in inserted_notices
-        if item["user_id"] in (PydanticObjectId(TEST_USER_ID), None)
+        if item["user_id"] in (ObjectId(TEST_USER_ID), None)
     }
 
     with client as client:
@@ -226,7 +227,7 @@ def test_unauthenticated_get_notices(client, inserted_notices):
         assert response.json() == {"detail": "Unauthorized"}
 
 
-def _get_user_id(db, email: str) -> PydanticObjectId:
+def _get_user_id(db, email: str) -> ObjectId:
     """Gets the id of the user of the given email
 
     Args:
