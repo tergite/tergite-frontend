@@ -31,3 +31,7 @@ cypress-image-diff-screenshots/diff/*
 .npm/
 # lighthouse ci working folder, from dev/perf/record.sh
 .lighthouseci/
+
+# playwright
+playwright-report/
+test-results/

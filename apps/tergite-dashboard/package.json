@@ -16,6 +16,7 @@
     "start-e2e-server": "npm run build -- --mode test && start-server-and-test test-api-and-app http://127.0.0.1:5173",
     "e2e": "npm run start-e2e-server -- \"TZ=Europe/Stockholm cypress run\"",
     "visual-e2e": "npm run start-e2e-server -- \"TZ=Europe/Stockholm cypress open\"",
+    "e2e:playwright": "playwright test",
     "cypress-only": "TZ=Europe/Stockholm cypress run",
     "visual-cypress-only": "TZ=Europe/Stockholm cypress open"
   },
@@ -74,6 +75,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tanstack/eslint-plugin-query": "^5.51.1",
     "@testing-library/dom": "^10.1.0",
     "@testing-library/jest-dom": "^6.4.6",
