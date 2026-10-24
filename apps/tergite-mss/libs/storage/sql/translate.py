@@ -25,7 +25,7 @@ from pydantic_core import to_jsonable_python
 from sqlalchemy import ColumnElement, and_, exists, false, func, not_, or_, select, true
 
 from ..base.exc import QueryError
-from ..base.query import Filter, is_operator_map, parse_sort
+from ..base.query import Filter, get_searched_text, is_operator_map, parse_sort
 from ..base.update import Update
 from .tables import ROW_ID, ListTable, SchemaTables, convert_to_column_value
 
@@ -174,6 +174,8 @@ def _get_comparison_clause(
             clauses.append(column < _convert_operand(operand, is_case_insensitive))
         elif operator == "$lte":
             clauses.append(column <= _convert_operand(operand, is_case_insensitive))
+        elif operator == "$regex":
+            clauses.append(_get_substring_clause(column, get_searched_text(operand)))
     return and_(*clauses)
 
 
@@ -244,6 +246,12 @@ def _get_element_match_clause(
     for field_name, condition in element_filter.items():
         conditions.append(_get_comparison_clause(child.c[field_name], condition, False))
     return exists(select(1).where(*conditions))
+
+
+def _get_substring_clause(column: ColumnElement, text: str) -> ColumnElement:
+    """Matches a column holding the text in any case, LIKE's wildcards taken literally"""
+    escaped_text = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return column.ilike(f"%{escaped_text}%", escape="\\")
 
 
 def _get_equality_clause(column: ColumnElement, value: Any) -> ColumnElement:

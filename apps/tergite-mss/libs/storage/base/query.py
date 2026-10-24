@@ -15,16 +15,21 @@ A filter maps schema fields, dotted for nested objects (`timestamps.started`), t
 to field operators, and may hold `$and` and `$or` lists of filters:
 `{"id": pk, "user_id": {"$in": [user_id, None]}}`. As in MongoDB, a value or `$in` matches a
 list field that holds it, and `$elemMatch` matches a list of models holding one element that
-meets every condition: `{"accounts": {"$elemMatch": {"name": "github", "id": "42"}}}`. A sort
-lists fields; a leading '-' sorts descending.
+meets every condition: `{"accounts": {"$elemMatch": {"name": "github", "id": "42"}}}`.
+`$regex` takes only escaped text with `$options: "i"`, a case-insensitive substring:
+`{"email": {"$regex": re.escape(text), "$options": "i"}}`. A sort lists fields; a leading
+'-' sorts descending.
 """
+import re
 from typing import Any, Iterator, List, Mapping, Optional, Sequence, Tuple, Type
 
 from .exc import QueryError
 from .schema import Schema, is_model_list, resolve_field
 
 Filter = Mapping[str, Any]
-FIELD_OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"})
+FIELD_OPERATORS = frozenset(
+    {"$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte", "$regex", "$options"}
+)
 LIST_OPERATORS = frozenset({"$in", "$nin"})
 LOGICAL_OPERATORS = frozenset({"$and", "$or"})
 ELEMENT_MATCH = "$elemMatch"
@@ -73,6 +78,11 @@ def parse_sort(sort: Sequence[str]) -> List[Tuple[str, bool]]:
     return [(field.lstrip("-"), field.startswith("-")) for field in sort]
 
 
+def get_searched_text(escaped_text: str) -> str:
+    """Gets the text a `$regex` searches for, from its escaped form"""
+    return re.sub(r"\\(.)", r"\1", escaped_text, flags=re.DOTALL)
+
+
 def is_operator_map(condition: Any) -> bool:
     """Whether the condition is a map of field operators rather than a value to equal"""
     return isinstance(condition, Mapping) and any(
@@ -83,6 +93,8 @@ def is_operator_map(condition: Any) -> bool:
 def _check_condition(field: str, condition: Any) -> None:
     if not is_operator_map(condition):
         return
+    if "$regex" in condition or "$options" in condition:
+        _check_text_search(field, condition)
     for operator, operand in condition.items():
         if operator not in FIELD_OPERATORS:
             raise QueryError(f"unknown operator '{operator}' on '{field}'")
@@ -107,3 +119,16 @@ def _check_element_match(schema: Type[Schema], field: str, condition: Any) -> No
     for element_field, element_condition in element_filter.items():
         resolve_field(schema, f"{field}.{element_field}")
         _check_condition(f"{field}.{element_field}", element_condition)
+
+
+def _check_text_search(field: str, condition: Mapping[str, Any]) -> None:
+    """Checks a $regex: escaped text, case-insensitive, beside no other operator
+
+    Raises:
+        QueryError: other operators, other options, or a pattern that is not escaped text
+    """
+    if set(condition) != {"$regex", "$options"} or condition["$options"] != "i":
+        raise QueryError(f"$regex on '{field}' takes only $options 'i'")
+    pattern = condition["$regex"]
+    if not isinstance(pattern, str) or re.escape(get_searched_text(pattern)) != pattern:
+        raise QueryError(f"$regex on '{field}' takes escaped text, not a pattern")

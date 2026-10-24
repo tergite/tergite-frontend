@@ -13,6 +13,7 @@
 
 MongoDB, PostgreSQL and SQLite each get a database of their own, emptied after every test.
 """
+import re
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
@@ -175,6 +176,29 @@ async def test_case_insensitive_fields_match_without_case(database):
 
     assert await database.count(_Owner, filter={"email": "ANN@EXAMPLE.COM"}) == 1
     assert await database.count(_Owner, filter={"email": {"$in": ["Ann@x.y"]}}) == 0
+
+
+async def test_regex_finds_escaped_text_in_any_case(database):
+    emails = ["ann.b@example.com", "annab@example.com", "a_n@example.com", "aXn@x.com"]
+    await database.insert_many(_Owner, [_Owner(email=email) for email in emails])
+
+    async def find_emails(text: str) -> list:
+        owners = await database.find(
+            _Owner,
+            filter={"email": {"$regex": re.escape(text), "$options": "i"}},
+            sort=["email"],
+        )
+        return [owner.email for owner in owners]
+
+    assert await find_emails("ANN.B") == ["ann.b@example.com"]
+    assert await find_emails("a_n") == ["a_n@example.com"]
+    assert await find_emails("%") == []
+    with pytest.raises(QueryError):
+        await database.find(
+            _Owner, filter={"email": {"$regex": "ann.b", "$options": "i"}}
+        )
+    with pytest.raises(QueryError):
+        await database.find(_Owner, filter={"email": {"$regex": "ann"}})
 
 
 async def test_update_one_returns_the_record_before_or_after(database):
