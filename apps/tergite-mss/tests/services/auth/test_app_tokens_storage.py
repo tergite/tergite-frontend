@@ -9,8 +9,8 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""AppTokenDatabase on each SQL database: tokens by token, owner and project, and expiry"""
-from datetime import timedelta
+"""AppTokenDatabase on each database: tokens by token, owner and project, and expiry"""
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -26,8 +26,8 @@ _PROJECT_ID = generate_id()
 
 
 @pytest.fixture
-async def token_db(sql_database_url):
-    database = Database(sql_database_url, schemas=auth.SCHEMAS)
+async def token_db(database_url):
+    database = Database(database_url, schemas=auth.SCHEMAS)
     await database.setup()
     yield AppTokenDatabase(database)
     await database.close()
@@ -83,7 +83,10 @@ async def test_tokens_are_found_and_deleted_by_owner_and_project(token_db):
 
 
 def _get_token(token: str = "t-1", lifespan_seconds: float = 3600) -> AppToken:
+    # in milliseconds, which are all MongoDB keeps of a datetime
+    now = datetime.now(timezone.utc)
     return AppToken(
+        created_at=now.replace(microsecond=now.microsecond // 1000 * 1000),
         title="token",
         token=token,
         user_id=_USER_ID,

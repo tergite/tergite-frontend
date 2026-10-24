@@ -9,7 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""The requests service on each SQL database: requests found by their targets"""
+"""The requests service on each database: requests found by their targets"""
 from types import SimpleNamespace
 
 import pytest
@@ -27,9 +27,9 @@ _OUTSIDER = SimpleNamespace(id=generate_id(), username="bob", is_superuser=False
 
 
 @pytest.fixture
-async def database(sql_database_url, monkeypatch):
+async def database(database_url, monkeypatch):
     schemas = [*auth.SCHEMAS, *notices.SCHEMAS, *requests.SCHEMAS]
-    database = Database(sql_database_url, schemas=schemas)
+    database = Database(database_url, schemas=schemas)
     await database.setup()
     # on_startup sets the service's module state, which the running app shares
     for name in ("_database", "_conf", "_is_email_enabled"):

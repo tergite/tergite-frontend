@@ -53,8 +53,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Changed
 
-- MSS: `request_log_clean_interval` is ignored, as Redis now expires each request-log entry
-  itself.
+- `request_log_clean_interval` is ignored, as Redis now expires each request-log entry itself.
 - The low and depleted QPU warnings come only from the job that crosses the threshold or zero,
   so the jobs after it do not repeat them.
 - A superuser can delete a personal project, for offboarding or an erasure request; only the
@@ -74,6 +73,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Fixed
 
+- Expired notifications are no longer shown for up to a minute past their `expires_at`, while
+  MongoDB's TTL monitor had yet to delete them.
 - GET `/jobs/`, `/jobs/{id}` and `/jobs/{id}/status` now show a job only to the user who
   submitted it or an admin; any active project's app token could read any job, decrypted BCC
   token included. Jobs stored without a submitter stay visible to all.

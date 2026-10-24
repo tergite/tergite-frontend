@@ -9,7 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""The devices service on each SQL database: whole-device upserts and status patches"""
+"""The devices service on each database: whole-device upserts and status patches"""
 import pytest
 
 from libs.storage import Database
@@ -22,8 +22,8 @@ _DEVICE_LIST = load_json_fixture("device_list.json")
 
 
 @pytest.fixture
-async def database(sql_database_url):
-    database = Database(sql_database_url, schemas=devices.SCHEMAS)
+async def database(database_url):
+    database = Database(database_url, schemas=devices.SCHEMAS)
     await database.setup()
     yield database
     await database.close()

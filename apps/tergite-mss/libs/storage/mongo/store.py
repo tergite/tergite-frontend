@@ -13,6 +13,7 @@
 """MongoStore: the DbStore for MongoDB, on PyMongo's async client"""
 import asyncio
 from contextlib import contextmanager, suppress
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Type, TypeVar
 
 import pymongo.errors
@@ -28,7 +29,6 @@ from ..base.store import DbStore
 from ..base.update import Returning, Update
 from .schema import CASE_INSENSITIVE, get_indexes, get_validator
 from .translate import (
-    convert_to_bson_value,
     convert_to_document,
     convert_to_record,
     get_document_field,
@@ -62,11 +62,7 @@ class MongoStore(DbStore):
     async def get(self, schema: Type[T], key: Any) -> Optional[T]:
         key_field = schema.__storage__.key
         document = await self._get_collection(schema).find_one(
-            {
-                get_document_field(key_field): convert_to_bson_value(
-                    schema, key_field, key
-                )
-            }
+            _translate_unexpired_filter(schema, {key_field: key})
         )
         return None if document is None else convert_to_record(schema, document)
 
@@ -79,7 +75,7 @@ class MongoStore(DbStore):
         limit: Optional[int],
     ) -> List[T]:
         cursor = self._get_collection(schema).find(
-            translate_filter(schema, query_filter),
+            _translate_unexpired_filter(schema, query_filter),
             sort=translate_sort(sort) or None,
             skip=skip,
             limit=limit or 0,
@@ -90,7 +86,7 @@ class MongoStore(DbStore):
     async def count(self, schema: Type[T], query_filter: Filter) -> int:
         options = _get_collation_option(schema, query_filter)
         return await self._get_collection(schema).count_documents(
-            translate_filter(schema, query_filter), **options
+            _translate_unexpired_filter(schema, query_filter), **options
         )
 
     async def find_distinct(
@@ -98,7 +94,7 @@ class MongoStore(DbStore):
     ) -> List[Any]:
         values = await self._get_collection(schema).distinct(
             get_document_field(field),
-            translate_filter(schema, query_filter),
+            _translate_unexpired_filter(schema, query_filter),
             **_get_collation_option(schema, query_filter),
         )
         return [
@@ -136,7 +132,7 @@ class MongoStore(DbStore):
         )
         with _translate_duplicate_key_errors():
             document = await self._get_collection(schema).find_one_and_update(
-                translate_filter(schema, query_filter),
+                _translate_unexpired_filter(schema, query_filter),
                 translate_update(schema, update),
                 upsert=should_upsert,
                 return_document=return_document,
@@ -149,7 +145,7 @@ class MongoStore(DbStore):
     ) -> int:
         with _translate_duplicate_key_errors():
             result = await self._get_collection(schema).update_many(
-                translate_filter(schema, query_filter),
+                _translate_unexpired_filter(schema, query_filter),
                 translate_update(schema, update),
                 **_get_collation_option(schema, query_filter),
             )
@@ -157,14 +153,14 @@ class MongoStore(DbStore):
 
     async def delete_one(self, schema: Type[T], query_filter: Filter) -> Optional[T]:
         document = await self._get_collection(schema).find_one_and_delete(
-            translate_filter(schema, query_filter),
+            _translate_unexpired_filter(schema, query_filter),
             **_get_collation_option(schema, query_filter),
         )
         return None if document is None else convert_to_record(schema, document)
 
     async def delete_many(self, schema: Type[T], query_filter: Filter) -> int:
         result = await self._get_collection(schema).delete_many(
-            translate_filter(schema, query_filter),
+            _translate_unexpired_filter(schema, query_filter),
             **_get_collation_option(schema, query_filter),
         )
         return result.deleted_count
@@ -195,6 +191,26 @@ class MongoStore(DbStore):
             }
         )
         await _sync_indexes(self._get_collection(schema), get_indexes(schema))
+
+
+def _translate_unexpired_filter(
+    schema: Type[Schema], query_filter: Filter
+) -> Dict[str, Any]:
+    """Translates the filter, leaving out records past their expiry
+
+    The TTL monitor deletes them only about once a minute, and a store reads none.
+    """
+    query = translate_filter(schema, query_filter)
+    expires_field = schema.__storage__.expires
+    if expires_field is None:
+        return query
+    is_unexpired = {
+        "$or": [
+            {expires_field: None},
+            {expires_field: {"$gt": datetime.now(timezone.utc)}},
+        ]
+    }
+    return {"$and": [query, is_unexpired]} if query else is_unexpired
 
 
 async def _sync_indexes(collection: AsyncCollection, indexes: List[IndexModel]) -> None:

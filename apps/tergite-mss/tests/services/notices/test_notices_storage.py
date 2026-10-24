@@ -9,7 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""The notices service on each SQL database: dismissals, read states, expiry and emails"""
+"""The notices service on each database: dismissals, read states, expiry and emails"""
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -30,8 +30,8 @@ _REQUESTER = SimpleNamespace(id=_USER_ID, is_superuser=False)
 
 
 @pytest.fixture
-async def database(sql_database_url, monkeypatch):
-    database = Database(sql_database_url, schemas=notices.SCHEMAS)
+async def database(database_url, monkeypatch):
+    database = Database(database_url, schemas=notices.SCHEMAS)
     await database.setup()
     # on_startup sets the service's module state, which the running app shares
     for name in ("_database", "_conf", "_is_email_enabled"):

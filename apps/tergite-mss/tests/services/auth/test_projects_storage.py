@@ -9,7 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""ProjectDatabase on each SQL database: projects, their members' table and deletions"""
+"""ProjectDatabase on each database: projects, their members' table and deletions"""
 from types import SimpleNamespace
 
 import pytest
@@ -24,8 +24,8 @@ _MEMBER_ID = generate_id()
 
 
 @pytest.fixture
-async def project_db(sql_database_url):
-    database = Database(sql_database_url, schemas=auth.SCHEMAS)
+async def project_db(database_url):
+    database = Database(database_url, schemas=auth.SCHEMAS)
     await database.setup()
     yield ProjectDatabase(database, conf=ProjectsConfig(personal_qpu_seconds=60))
     await database.close()

@@ -67,8 +67,11 @@ from tests._utils.records import (
     with_offset_datetimes,
 )
 from tests._utils.storage import (
+    DATABASE_KINDS,
     SQL_DATABASE_KINDS,
+    get_database_url,
     get_sql_database_url,
+    reset_database,
     reset_sql_database,
 )
 
@@ -106,6 +109,15 @@ def request_log_db() -> redis.Redis:
     # clean up
     client.flushdb()
     client.close()
+
+
+@pytest.fixture(params=DATABASE_KINDS)
+async def database_url(request, tmp_path) -> str:
+    """The URL of a database, each kind in turn, emptied before and after the test"""
+    database_url = get_database_url(request.param, tmp_path)
+    await reset_database(database_url)
+    yield database_url
+    await reset_database(database_url)
 
 
 @pytest.fixture(params=SQL_DATABASE_KINDS)

@@ -302,6 +302,10 @@ async def _insert_record(
 ) -> None:
     computed = set(type(record).model_computed_fields)
     values = record.model_dump(exclude=computed or None)
+    # as MongoDB gives a document without an _id one
+    id_field = tables.schema.model_fields.get("id")
+    if values.get("id") is None and is_id_field(id_field):
+        values["id"] = generate_id()
     row = {}
     for column in tables.table.columns:
         if column.name == ROW_ID:
@@ -352,7 +356,7 @@ async def _insert_upserted_record(
     for field, element in update.get("$addToSet", {}).items():
         values[field] = [element]
 
-    # as MongoDB gives an upserted document an _id
+    # validated before it is inserted, so it needs the id the insert would give it
     id_field = tables.schema.model_fields.get("id")
     if "id" not in values and is_id_field(id_field):
         values["id"] = generate_id()

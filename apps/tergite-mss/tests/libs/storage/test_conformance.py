@@ -18,7 +18,6 @@ from typing import List, Optional
 
 import pytest
 from pydantic import BaseModel, Field
-from pymongo import AsyncMongoClient
 
 from libs.storage import (
     Database,
@@ -30,14 +29,6 @@ from libs.storage import (
     StorageSpec,
     generate_id,
 )
-from tests._utils.env import TEST_MONGODB_URL
-from tests._utils.storage import (
-    SQL_DATABASE_KINDS,
-    get_sql_database_url,
-    reset_sql_database,
-)
-
-_MONGODB_NAME = "tergite-conformance-test"
 
 
 class _Owner(Schema):
@@ -89,23 +80,12 @@ class _Device(Schema):
 _SCHEMAS = [_Owner, _Pet, _Job, _Device]
 
 
-@pytest.fixture(params=["mongodb", *SQL_DATABASE_KINDS])
-async def database(request, tmp_path):
-    if request.param == "mongodb":
-        database_url = f"{TEST_MONGODB_URL.rstrip('/')}/{_MONGODB_NAME}"
-    else:
-        database_url = get_sql_database_url(request.param, tmp_path)
-        await reset_sql_database(database_url)
+@pytest.fixture
+async def database(database_url):
     database = Database(database_url, schemas=_SCHEMAS)
     await database.setup()
     yield database
     await database.close()
-    if request.param == "mongodb":
-        client = AsyncMongoClient(TEST_MONGODB_URL)
-        await client.drop_database(_MONGODB_NAME)
-        await client.close()
-    else:
-        await reset_sql_database(database_url)
 
 
 async def test_insert_and_get(database):

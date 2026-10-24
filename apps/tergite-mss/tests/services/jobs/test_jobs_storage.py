@@ -9,7 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""The jobs service on each SQL database: JSON timestamps and results, finds and counts"""
+"""The jobs service on each database: JSON timestamps and results, finds and counts"""
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -25,8 +25,8 @@ _STARTED = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
 
 
 @pytest.fixture
-async def database(sql_database_url):
-    database = Database(sql_database_url, schemas=jobs.SCHEMAS)
+async def database(database_url):
+    database = Database(database_url, schemas=jobs.SCHEMAS)
     await database.setup()
     yield database
     await database.close()
@@ -43,7 +43,9 @@ async def test_a_job_with_timestamps_round_trips(database):
 
     got = await jobs.get_job(database, job.job_id)
 
-    assert got == job
+    # the store gives the job an id, as MongoDB gives a document an _id
+    assert got.model_dump(exclude={"id"}) == job.model_dump(exclude={"id"})
+    assert got.id is not None
     assert got.duration_in_secs == 3
 
 

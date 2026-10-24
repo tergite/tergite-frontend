@@ -9,7 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""The calibration service on each SQL database: the current calibration and its log"""
+"""The calibration service on each database: the current calibration and its log"""
 import pytest
 
 from libs.storage import Database
@@ -22,8 +22,8 @@ _CALIBRATIONS = load_json_fixture("calibrations.json")
 
 
 @pytest.fixture
-async def database(sql_database_url):
-    database = Database(sql_database_url, schemas=calibration.SCHEMAS)
+async def database(database_url):
+    database = Database(database_url, schemas=calibration.SCHEMAS)
     await database.setup()
     yield database
     await database.close()

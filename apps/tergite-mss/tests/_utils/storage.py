@@ -9,15 +9,35 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Test utilities for the SQL databases the storage layer runs on"""
+"""Test utilities for the databases the storage layer runs on"""
 from pathlib import Path
 
+from pymongo import AsyncMongoClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from tests._utils.env import TEST_POSTGRES_URL
+from tests._utils.env import TEST_MONGODB_URL, TEST_POSTGRES_URL
 
 SQL_DATABASE_KINDS = ("postgresql", "sqlite")
+DATABASE_KINDS = ("mongodb", *SQL_DATABASE_KINDS)
+_MONGODB_NAME = "tergite-storage-test"
+
+
+def get_database_url(kind: str, tmp_path: Path) -> str:
+    """Gets the URL of a database of the kind, in MongoDB one of its own"""
+    if kind == "mongodb":
+        return f"{TEST_MONGODB_URL.rstrip('/')}/{_MONGODB_NAME}"
+    return get_sql_database_url(kind, tmp_path)
+
+
+async def reset_database(database_url: str) -> None:
+    """Empties a shared database, so the next test starts from nothing"""
+    if not database_url.startswith("mongodb"):
+        await reset_sql_database(database_url)
+        return
+    client = AsyncMongoClient(TEST_MONGODB_URL)
+    await client.drop_database(_MONGODB_NAME)
+    await client.close()
 
 
 def get_sql_database_url(kind: str, tmp_path: Path) -> str:
