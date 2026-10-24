@@ -53,7 +53,7 @@ async def test_projects_are_found_by_member_and_by_fields(database):
     )
 
     by_member = await auth.find_projects(
-        database, ProjectQuery(name=["a", "b"]), member_id=_MEMBER_ID
+        database, ProjectQuery(names=["a", "b"]), member_id=_MEMBER_ID
     )
     active = await auth.find_projects(database, ProjectQuery(is_active=True))
     funded = await auth.find_projects(

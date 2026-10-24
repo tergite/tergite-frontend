@@ -74,8 +74,8 @@ async def find_projects(
     if query.user_ids is not None:
         user_ids = _ensure_short_list("user_ids", query.user_ids)
         project_filter["user_ids"] = {"$in": user_ids}
-    if query.name is not None:
-        project_filter["name"] = {"$in": _ensure_short_list("name", query.name)}
+    if query.names is not None:
+        project_filter["name"] = {"$in": _ensure_short_list("name", query.names)}
     if query.is_active is True:
         # a project stored without is_active is active, as the field defaults to True
         project_filter["is_active"] = {"$ne": False}

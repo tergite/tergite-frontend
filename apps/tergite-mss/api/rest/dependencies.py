@@ -64,7 +64,7 @@ def get_project_query(
     return ProjectQuery(
         ids=ids,
         user_ids=user_ids,
-        name=name,
+        names=name,
         is_active=is_active,
         min_qpu_seconds=min_qpu_seconds,
         max_qpu_seconds=max_qpu_seconds,

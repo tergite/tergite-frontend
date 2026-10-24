@@ -111,7 +111,7 @@ class ProjectQuery(BaseModel):
 
     ids: Optional[List[Id]] = None
     user_ids: Optional[List[Id]] = None
-    name: Optional[List[str]] = None
+    names: Optional[List[str]] = None
     is_active: Optional[bool] = None
     min_qpu_seconds: Optional[int] = None
     max_qpu_seconds: Optional[int] = None
