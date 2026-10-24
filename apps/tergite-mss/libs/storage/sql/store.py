@@ -33,10 +33,17 @@ from ..base.query import LOGICAL_OPERATORS, Filter, is_operator_map
 from ..base.schema import Schema
 from ..base.store import DbStore
 from ..base.update import Returning, Update
-from .tables import POSITION, ROW_ID, SchemaTables, get_schema_tables
+from .tables import (
+    POSITION,
+    ROW_ID,
+    SchemaTables,
+    convert_to_column_value,
+    get_child_rows,
+    get_element,
+    get_schema_tables,
+)
 from .translate import (
     Changes,
-    convert_to_column_value,
     translate_filter,
     translate_sort,
     translate_update,
@@ -107,6 +114,10 @@ class SqlStore(DbStore):
         tables = self._schema_tables[schema]
         where = translate_filter(tables, query_filter)
         list_table = tables.list_tables.get(field)
+        if list_table is not None and list_table.element_model is not None:
+            raise QueryError(
+                f"'{field}' is a list of models, which has no distinct values"
+            )
         if list_table is None:
             statement = select(distinct(tables.table.c[field])).where(where)
         else:
@@ -257,14 +268,14 @@ async def _find_records(
         if keys:
             child = list_table.table
             child_rows = await conn.execute(
-                select(
-                    child.c[list_table.parent_column], child.c[list_table.value_column]
-                )
+                select(child)
                 .where(child.c[list_table.parent_column].in_(keys))
                 .order_by(child.c[POSITION])
             )
-            for parent_key, value in child_rows:
-                elements_by_key[parent_key].append(value)
+            for child_row in child_rows.mappings():
+                elements_by_key[child_row[list_table.parent_column]].append(
+                    get_element(list_table, child_row)
+                )
         for row in rows:
             row[field] = elements_by_key[row[key]]
 
@@ -322,15 +333,7 @@ async def _insert_record(
         elements = [convert_to_column_value(item) for item in values.get(field) or []]
         if elements:
             await conn.execute(
-                insert(list_table.table),
-                [
-                    {
-                        list_table.parent_column: key,
-                        list_table.value_column: element,
-                        POSITION: position,
-                    }
-                    for position, element in enumerate(elements)
-                ],
+                insert(list_table.table), get_child_rows(list_table, key, elements)
             )
 
 
@@ -397,17 +400,7 @@ async def _write_changes(
         parent = child.c[list_table.parent_column]
         await conn.execute(delete(child).where(parent == key))
         if elements:
-            await conn.execute(
-                insert(child),
-                [
-                    {
-                        list_table.parent_column: key,
-                        list_table.value_column: element,
-                        POSITION: position,
-                    }
-                    for position, element in enumerate(elements)
-                ],
-            )
+            await conn.execute(insert(child), get_child_rows(list_table, key, elements))
 
     for field, element in changes.list_additions:
         list_table = tables.list_tables[field]

@@ -12,7 +12,8 @@
 """Updates, in MongoDB's own update operators, which every store translates
 
 `{"$set": {"status": "done"}, "$inc": {"stats.walks": 1}}`: `$set`, `$setOnInsert` (only
-when an upsert creates the record), `$inc`, `$addToSet` and `$pull` (an equal value).
+when an upsert creates the record), `$inc`, `$addToSet` and `$pull` (an equal value). A list
+of models is only set whole.
 """
 import enum
 from numbers import Number
@@ -20,7 +21,7 @@ from typing import Any, Mapping, Optional, Type
 
 from .exc import QueryError
 from .query import Filter, is_operator_map
-from .schema import Schema, resolve_field
+from .schema import Schema, is_model_list, resolve_field
 
 Update = Mapping[str, Mapping[str, Any]]
 UPDATE_OPERATORS = frozenset({"$set", "$setOnInsert", "$inc", "$addToSet", "$pull"})
@@ -47,7 +48,11 @@ def check_update(schema: Type[Schema], update: Update) -> None:
         if operator not in UPDATE_OPERATORS:
             raise QueryError(f"unknown update operator '{operator}'")
         for field, value in changes.items():
-            resolve_field(schema, field)
+            field_info = resolve_field(schema, field)
+            if operator in ("$addToSet", "$pull") and is_model_list(field_info):
+                raise QueryError(
+                    f"{operator} cannot change '{field}', a list of models"
+                )
             if operator == "$inc" and not isinstance(value, Number):
                 raise QueryError(f"$inc on '{field}' takes a number")
             if operator == "$pull" and is_operator_map(value):

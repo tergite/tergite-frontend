@@ -102,6 +102,33 @@ def test_list_fields_get_child_tables(pets):
     assert owner_reference.column.table.name == "owners"
 
 
+def test_a_list_of_models_gets_a_column_per_element_field_and_its_index():
+    class _Account(BaseModel):
+        provider: str
+        account_id: str
+
+    class _Member(Schema):
+        __storage__ = StorageSpec(
+            table="members",
+            indexed_lists=("accounts",),
+            indexes=(("accounts.provider", "accounts.account_id"),),
+        )
+
+        id: Id
+        accounts: List[_Account] = []
+
+    accounts = get_schema_tables(MetaData(), [_Member])[_Member].list_tables["accounts"]
+    (index,) = accounts.table.indexes
+
+    assert [column.name for column in accounts.table.columns] == [
+        "member_id",
+        "position",
+        "provider",
+        "account_id",
+    ]
+    assert [column.name for column in index.columns] == ["provider", "account_id"]
+
+
 def test_a_case_insensitive_unique_field_is_unique_by_its_lower_case():
     metadata = MetaData()
     get_schema_tables(metadata, [_Owner])

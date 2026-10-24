@@ -13,14 +13,12 @@
 
 Every value becomes a bound parameter and every field is resolved against the schema's
 columns, so no caller's input reaches SQL text. A list field kept in a child table is
-matched with an EXISTS on that table. JSON columns are read and written whole, so a filter,
+matched with an EXISTS on that table, and `$elemMatch` on a list of models with an EXISTS on
+one row matching every condition. JSON columns are read and written whole, so a filter,
 sort or update that reaches into one is refused.
 """
-import enum
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import PurePath
 from typing import Any, Dict, List, Sequence, Tuple
 
 from pydantic_core import to_jsonable_python
@@ -29,7 +27,7 @@ from sqlalchemy import ColumnElement, and_, exists, false, func, not_, or_, sele
 from ..base.exc import QueryError
 from ..base.query import Filter, is_operator_map, parse_sort
 from ..base.update import Update
-from .tables import ROW_ID, ListTable, SchemaTables
+from .tables import ROW_ID, ListTable, SchemaTables, convert_to_column_value
 
 
 @dataclass
@@ -91,25 +89,16 @@ def translate_update(tables: SchemaTables, update: Update) -> Changes:
                 column = _get_column(tables, field_name)
                 changes.values[field_name] = func.coalesce(column, 0) + value
             elif operator == "$addToSet":
-                _get_list_table(tables, field_name)
+                _get_scalar_list_table(tables, field_name)
                 changes.list_additions.append(
                     (field_name, convert_to_column_value(value))
                 )
             elif operator == "$pull":
-                _get_list_table(tables, field_name)
+                _get_scalar_list_table(tables, field_name)
                 changes.list_removals.append(
                     (field_name, convert_to_column_value(value))
                 )
     return changes
-
-
-def convert_to_column_value(value: Any) -> Any:
-    """Converts a value into what a SQL column holds: an enum's value, a UUID's text"""
-    if isinstance(value, enum.Enum):
-        return value.value
-    if isinstance(value, (uuid.UUID, PurePath)):
-        return str(value)
-    return value
 
 
 def _convert_to_written_value(tables: SchemaTables, field_name: str, value: Any) -> Any:
@@ -151,6 +140,13 @@ def _translate_column_condition(
     is_case_insensitive = field_name in tables.schema.__storage__.case_insensitive
     if is_case_insensitive:
         column = func.lower(column)
+    return _get_comparison_clause(column, condition, is_case_insensitive)
+
+
+def _get_comparison_clause(
+    column: ColumnElement, condition: Any, is_case_insensitive: bool
+) -> ColumnElement:
+    """Compares a column with a value, or with each operator of an operator map"""
     operators = condition if is_operator_map(condition) else {"$eq": condition}
 
     clauses = []
@@ -194,6 +190,10 @@ def _translate_list_condition(
     """Matches a list field as MongoDB does: a value or $in matches a list holding it"""
     list_table = tables.list_tables[field_name]
     operators = condition if is_operator_map(condition) else {"$eq": condition}
+    if list_table.element_model is not None:
+        if set(operators) != {"$elemMatch"}:
+            raise QueryError(f"list field '{field_name}' is matched with $elemMatch")
+        return _get_element_match_clause(tables, list_table, operators["$elemMatch"])
 
     clauses = []
     for operator, operand in operators.items():
@@ -232,6 +232,18 @@ def _get_list_membership_clause(
             child.c[list_table.value_column].in_(values),
         )
     )
+
+
+def _get_element_match_clause(
+    tables: SchemaTables, list_table: ListTable, element_filter: Filter
+) -> ColumnElement:
+    """Matches a record with one element that meets every condition of the filter"""
+    child = list_table.table
+    key = tables.schema.__storage__.key
+    conditions = [child.c[list_table.parent_column] == tables.table.c[key]]
+    for field_name, condition in element_filter.items():
+        conditions.append(_get_comparison_clause(child.c[field_name], condition, False))
+    return exists(select(1).where(*conditions))
 
 
 def _get_equality_clause(column: ColumnElement, value: Any) -> ColumnElement:
@@ -282,7 +294,15 @@ def _get_column(tables: SchemaTables, field_name: str) -> ColumnElement:
     return tables.table.c[field_name]
 
 
-def _get_list_table(tables: SchemaTables, field_name: str) -> ListTable:
-    if field_name not in tables.list_tables:
+def _get_scalar_list_table(tables: SchemaTables, field_name: str) -> ListTable:
+    """Gets the child table of a list whose elements are added and removed one at a time
+
+    Raises:
+        QueryError: the field is not such a list; a list of models is set whole
+    """
+    list_table = tables.list_tables.get(field_name)
+    if list_table is None:
         raise QueryError(f"'{field_name}' is not a list kept in its own table")
-    return tables.list_tables[field_name]
+    if list_table.element_model is not None:
+        raise QueryError(f"'{field_name}' is a list of models, which is set whole")
+    return list_table

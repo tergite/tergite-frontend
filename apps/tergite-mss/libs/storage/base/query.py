@@ -14,17 +14,20 @@
 A filter maps schema fields, dotted for nested objects (`timestamps.started`), to a value or
 to field operators, and may hold `$and` and `$or` lists of filters:
 `{"id": pk, "user_id": {"$in": [user_id, None]}}`. As in MongoDB, a value or `$in` matches a
-list field that holds it. A sort lists fields; a leading '-' sorts descending.
+list field that holds it, and `$elemMatch` matches a list of models holding one element that
+meets every condition: `{"accounts": {"$elemMatch": {"name": "github", "id": "42"}}}`. A sort
+lists fields; a leading '-' sorts descending.
 """
 from typing import Any, Iterator, List, Mapping, Optional, Sequence, Tuple, Type
 
 from .exc import QueryError
-from .schema import Schema, resolve_field
+from .schema import Schema, is_model_list, resolve_field
 
 Filter = Mapping[str, Any]
 FIELD_OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"})
 LIST_OPERATORS = frozenset({"$in", "$nin"})
 LOGICAL_OPERATORS = frozenset({"$and", "$or"})
+ELEMENT_MATCH = "$elemMatch"
 
 
 def check_filter(schema: Type[Schema], query_filter: Optional[Filter]) -> None:
@@ -42,8 +45,11 @@ def check_filter(schema: Type[Schema], query_filter: Optional[Filter]) -> None:
                 check_filter(schema, item)
         elif field.startswith("$"):
             raise QueryError(f"unknown operator '{field}'")
+        elif is_operator_map(condition) and ELEMENT_MATCH in condition:
+            _check_element_match(schema, field, condition)
+        elif is_model_list(resolve_field(schema, field)):
+            raise QueryError(f"list of models '{field}' is matched with $elemMatch")
         else:
-            resolve_field(schema, field)
             _check_condition(field, condition)
 
 
@@ -82,3 +88,22 @@ def _check_condition(field: str, condition: Any) -> None:
             raise QueryError(f"unknown operator '{operator}' on '{field}'")
         if operator in LIST_OPERATORS and not isinstance(operand, (list, tuple, set)):
             raise QueryError(f"{operator} on '{field}' takes a list")
+
+
+def _check_element_match(schema: Type[Schema], field: str, condition: Any) -> None:
+    """Checks a $elemMatch: alone on a list of models, with conditions on their fields
+
+    Raises:
+        QueryError: $elemMatch beside other operators, on another field, or without a filter
+        UnknownFieldError: a field the elements do not have
+    """
+    if set(condition) != {ELEMENT_MATCH}:
+        raise QueryError(f"$elemMatch on '{field}' takes no other operators")
+    if not is_model_list(resolve_field(schema, field)):
+        raise QueryError(f"$elemMatch needs a list of models, which '{field}' is not")
+    element_filter = condition[ELEMENT_MATCH]
+    if not isinstance(element_filter, Mapping) or len(element_filter) == 0:
+        raise QueryError(f"$elemMatch on '{field}' takes a non-empty filter")
+    for element_field, element_condition in element_filter.items():
+        resolve_field(schema, f"{field}.{element_field}")
+        _check_condition(f"{field}.{element_field}", element_condition)

@@ -14,8 +14,9 @@
 A schema's table has a column per scalar field and a JSON column per nested one, which is
 always read and written whole. A field in `indexed_lists`, or a list field in `references`,
 has a child table instead: one row per element, with its position, so that its elements can
-be queried and written one at a time. Each table also has a `row_id` that orders rows as
-they were inserted, as MongoDB orders documents.
+be queried and written one at a time. An element that is a model gets a column per field.
+Each table also has a `row_id` that orders rows as they were inserted, as MongoDB orders
+documents.
 """
 import enum
 import uuid
@@ -29,6 +30,8 @@ from typing import (
     Dict,
     List,
     Literal,
+    Mapping,
+    Optional,
     Sequence,
     Tuple,
     Type,
@@ -38,7 +41,9 @@ from typing import (
     get_origin,
 )
 
+from pydantic import BaseModel
 from pydantic.fields import FieldInfo
+from pydantic_core import to_jsonable_python
 from sqlalchemy import (
     JSON,
     BigInteger,
@@ -59,7 +64,7 @@ from sqlalchemy import (
 
 from ..base.exc import StorageSpecError
 from ..base.ids import is_id_field
-from ..base.schema import Schema, is_list_field
+from ..base.schema import Schema, find_nested_model, is_list_field
 
 ROW_ID = "row_id"
 POSITION = "position"
@@ -86,11 +91,19 @@ class UtcDateTime(TypeDecorator):
 
 @dataclass(frozen=True)
 class ListTable:
-    """The child table of a list field: one row per element, at its position"""
+    """The child table of a list field: one row per element, at its position
+
+    Attributes:
+        table: the child table
+        parent_column: the column holding the key of the element's record
+        value_column: the column holding a scalar element; None for a model's
+        element_model: the model of each element, whose fields are columns; None for scalars
+    """
 
     table: Table
     parent_column: str
-    value_column: str
+    value_column: Optional[str]
+    element_model: Optional[Type[BaseModel]]
 
 
 @dataclass(frozen=True)
@@ -139,6 +152,51 @@ def get_child_fields(schema: Type[Schema]) -> Tuple[str, ...]:
 
 def get_singular(table_name: str) -> str:
     return table_name[:-1] if table_name.endswith("s") else table_name
+
+
+def get_child_rows(
+    list_table: ListTable, key: Any, elements: Sequence[Any]
+) -> List[Dict[str, Any]]:
+    """Gets the child-table rows of a record's list elements, in their order"""
+    if list_table.element_model is None:
+        return [
+            {
+                list_table.parent_column: key,
+                list_table.value_column: element,
+                POSITION: position,
+            }
+            for position, element in enumerate(elements)
+        ]
+
+    rows = []
+    for position, element in enumerate(elements):
+        if isinstance(element, BaseModel):
+            element = element.model_dump()
+        row = {list_table.parent_column: key, POSITION: position}
+        for name in list_table.element_model.model_fields:
+            value = element.get(name)
+            if isinstance(list_table.table.c[name].type, JSON):
+                row[name] = to_jsonable_python(value)
+            else:
+                row[name] = convert_to_column_value(value)
+        rows.append(row)
+    return rows
+
+
+def convert_to_column_value(value: Any) -> Any:
+    """Converts a value into what a SQL column holds: an enum's value, a UUID's text"""
+    if isinstance(value, enum.Enum):
+        return value.value
+    if isinstance(value, (uuid.UUID, PurePath)):
+        return str(value)
+    return value
+
+
+def get_element(list_table: ListTable, row: Mapping[str, Any]) -> Any:
+    """Gets the list element a child-table row holds"""
+    if list_table.element_model is None:
+        return row[list_table.value_column]
+    return {name: row[name] for name in list_table.element_model.model_fields}
 
 
 def _get_tables_of(
@@ -198,7 +256,7 @@ def _get_tables_of(
     for group in spec.indexes:
         fields = (group,) if isinstance(group, str) else tuple(group)
         names = [field.lstrip("-") for field in fields]
-        if names == [spec.key]:
+        if names == [spec.key] or any("." in name for name in names):
             continue
         index_columns = [
             table.c[name].desc() if field.startswith("-") else table.c[name]
@@ -212,6 +270,10 @@ def _get_tables_of(
         field: _get_list_table(metadata, schema, table, field, schema_tables)
         for field in child_fields
     }
+    for group in spec.indexes:
+        fields = (group,) if isinstance(group, str) else tuple(group)
+        if any("." in field for field in fields):
+            _add_element_index(list_tables, fields)
     non_null_fields = tuple(
         name
         for name, field_info in schema.model_fields.items()
@@ -237,8 +299,33 @@ def _get_list_table(
     spec = schema.__storage__
     singular = get_singular(spec.table)
     parent_column = f"{singular}_id" if spec.key == "id" else spec.key
+    element_field = _get_element_field(schema, field)
+    element_model = find_nested_model(element_field.annotation)
+    if element_model is not None:
+        child = Table(
+            f"{singular}_{field}",
+            metadata,
+            Column(
+                parent_column,
+                table.c[spec.key].type,
+                ForeignKey(table.c[spec.key], ondelete="CASCADE"),
+                primary_key=True,
+            ),
+            Column(POSITION, Integer, primary_key=True),
+            *(
+                Column(name, _get_column_type(field_info))
+                for name, field_info in element_model.model_fields.items()
+            ),
+        )
+        return ListTable(
+            table=child,
+            parent_column=parent_column,
+            value_column=None,
+            element_model=element_model,
+        )
+
     value_column = field[:-1] if field.endswith("s") else field
-    element_type = _get_column_type(_get_element_field(schema, field))
+    element_type = _get_column_type(element_field)
     value_foreign_keys = []
     referenced = spec.references.get(field)
     if referenced is not None:
@@ -261,7 +348,10 @@ def _get_list_table(
     )
     Index(f"ix_{singular}_{field}_{value_column}", child.c[value_column])
     return ListTable(
-        table=child, parent_column=parent_column, value_column=value_column
+        table=child,
+        parent_column=parent_column,
+        value_column=value_column,
+        element_model=None,
     )
 
 
@@ -337,3 +427,20 @@ def _add_after_references(
         if referenced is not schema and referenced in schemas:
             _add_after_references(referenced, ordered, schemas)
     ordered.append(schema)
+
+
+def _add_element_index(
+    list_tables: Dict[str, ListTable], fields: Tuple[str, ...]
+) -> None:
+    """Indexes fields of a list's model elements, e.g. ("accounts.name", "accounts.id")
+
+    Raises:
+        StorageSpecError: the fields are not all in one list of models
+    """
+    list_fields = {field.lstrip("-").split(".")[0] for field in fields}
+    list_table = list_tables.get(next(iter(list_fields)))
+    if len(list_fields) > 1 or list_table is None or list_table.element_model is None:
+        raise StorageSpecError(f"{fields} are not all fields of one list of models")
+    child = list_table.table
+    names = [field.lstrip("-").split(".", 1)[1] for field in fields]
+    Index(f"ix_{child.name}_{'_'.join(names)}", *(child.c[name] for name in names))

@@ -86,6 +86,14 @@ def is_list_field(field_info: Optional[FieldInfo]) -> bool:
     )
 
 
+def is_model_list(field_info: Optional[FieldInfo]) -> bool:
+    """Whether the field holds a list of models"""
+    return (
+        is_list_field(field_info)
+        and find_nested_model(field_info.annotation) is not None
+    )
+
+
 def find_nested_model(annotation: Any) -> Optional[Type[BaseModel]]:
     """Gets the model the annotation holds, alone or in an Optional, List or Union"""
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):

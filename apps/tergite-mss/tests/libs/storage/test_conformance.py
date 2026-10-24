@@ -77,7 +77,25 @@ class _Device(Schema):
     version: str = ""
 
 
-_SCHEMAS = [_Owner, _Pet, _Job, _Device]
+class _Account(BaseModel):
+    id: Id = Field(default_factory=generate_id)
+    provider: str
+    account_id: str
+    expires_at: Optional[int] = None
+
+
+class _Member(Schema):
+    __storage__ = StorageSpec(
+        table="members",
+        indexed_lists=("accounts",),
+        indexes=(("accounts.provider", "accounts.account_id"),),
+    )
+
+    id: Id = Field(default_factory=generate_id)
+    accounts: List[_Account] = []
+
+
+_SCHEMAS = [_Owner, _Pet, _Job, _Device, _Member]
 
 
 @pytest.fixture
@@ -248,6 +266,47 @@ async def test_list_fields_take_and_drop_members(database):
 
     await database.update_many(_Pet, pet_filter, {"$set": {"friend_ids": [friend.id]}})
     assert (await database.get(_Pet, pet.id)).friend_ids == [friend.id]
+
+
+async def test_a_list_of_models_is_matched_by_one_element(database):
+    github = _Account(provider="github", account_id="1")
+    google = _Account(provider="google", account_id="2", expires_at=7)
+    member = await database.insert(_Member, _Member(accounts=[github, google]))
+
+    found = await database.find_one(
+        _Member,
+        {"accounts": {"$elemMatch": {"provider": "google", "account_id": "2"}}},
+    )
+    across_elements = await database.count(
+        _Member,
+        {"accounts": {"$elemMatch": {"provider": "google", "account_id": "1"}}},
+    )
+
+    assert found == member
+    assert across_elements == 0
+    assert await database.get(_Member, member.id) == member
+
+
+async def test_a_list_of_models_is_set_whole(database):
+    member = await database.insert(
+        _Member, _Member(accounts=[_Account(provider="github", account_id="1")])
+    )
+    renewed = _Account(provider="github", account_id="1", expires_at=9)
+    added = _Account(provider="google", account_id="2")
+
+    updated = await database.update_one(
+        _Member,
+        {"id": member.id},
+        {"$set": {"accounts": [renewed.model_dump(), added.model_dump()]}},
+    )
+
+    assert updated.accounts == [renewed, added]
+    with pytest.raises(QueryError):
+        await database.update_many(
+            _Member, {"id": member.id}, {"$addToSet": {"accounts": added.model_dump()}}
+        )
+    with pytest.raises(QueryError):
+        await database.count(_Member, {"accounts": {"provider": "github"}})
 
 
 async def test_delete_one_and_many(database):

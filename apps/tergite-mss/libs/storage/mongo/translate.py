@@ -26,7 +26,13 @@ from bson import ObjectId
 from pydantic import BaseModel
 
 from ..base.ids import is_id_field
-from ..base.query import LOGICAL_OPERATORS, Filter, is_operator_map, parse_sort
+from ..base.query import (
+    ELEMENT_MATCH,
+    LOGICAL_OPERATORS,
+    Filter,
+    is_operator_map,
+    parse_sort,
+)
 from ..base.schema import Schema, find_nested_model, resolve_field
 from ..base.update import Update
 
@@ -39,6 +45,12 @@ def translate_filter(schema: Type[Schema], query_filter: Filter) -> Dict[str, An
     for field, condition in query_filter.items():
         if field in LOGICAL_OPERATORS:
             query[field] = [translate_filter(schema, item) for item in condition]
+        elif is_operator_map(condition) and ELEMENT_MATCH in condition:
+            query[field] = {
+                ELEMENT_MATCH: _translate_element_filter(
+                    schema, field, condition[ELEMENT_MATCH]
+                )
+            }
         elif is_operator_map(condition):
             query[get_document_field(field)] = {
                 operator: convert_to_bson_value(schema, field, operand)
@@ -82,6 +94,9 @@ def convert_to_bson_value(schema: Type[Schema], field: str, value: Any) -> Any:
     """Converts a value bound for the given field into what MongoDB stores"""
     if _is_id_path(schema, field):
         return _convert_to_object_ids(value)
+    nested = _find_nested_model_at(schema, field)
+    if nested is not None:
+        return _convert_nested_value(nested, value)
     return _convert_to_bson(value)
 
 
@@ -109,6 +124,24 @@ def _is_id_path(schema: Type[Schema], field: str) -> bool:
     return is_id_field(resolve_field(schema, field))
 
 
+@lru_cache(maxsize=None)
+def _find_nested_model_at(schema: Type[Schema], field: str) -> Any:
+    field_info = resolve_field(schema, field)
+    return find_nested_model(field_info.annotation) if field_info else None
+
+
+def _translate_element_filter(
+    schema: Type[Schema], field: str, element_filter: Filter
+) -> Dict[str, Any]:
+    """Translates a $elemMatch filter, whose fields are those of the list's elements"""
+    prefixed_filter = {
+        f"{field}.{element_field}": condition
+        for element_field, condition in element_filter.items()
+    }
+    translated = translate_filter(schema, prefixed_filter)
+    return {path[len(field) + 1 :]: value for path, value in translated.items()}
+
+
 def _convert_to_document_values(
     model: Type[BaseModel], data: Mapping[str, Any]
 ) -> dict:
@@ -118,18 +151,20 @@ def _convert_to_document_values(
         nested = find_nested_model(field_info.annotation) if field_info else None
         if is_id_field(field_info):
             document[name] = _convert_to_object_ids(value)
-        elif nested is not None and isinstance(value, dict):
-            document[name] = _convert_to_document_values(nested, value)
-        elif nested is not None and isinstance(value, list):
-            document[name] = [
-                _convert_to_document_values(nested, item)
-                if isinstance(item, dict)
-                else item
-                for item in value
-            ]
+        elif nested is not None:
+            document[name] = _convert_nested_value(nested, value)
         else:
             document[name] = _convert_to_bson(value)
     return document
+
+
+def _convert_nested_value(model: Type[BaseModel], value: Any) -> Any:
+    """Converts a nested model's data, alone or in a list, into what MongoDB stores"""
+    if isinstance(value, dict):
+        return _convert_to_document_values(model, value)
+    if isinstance(value, list):
+        return [_convert_nested_value(model, item) for item in value]
+    return _convert_to_bson(value)
 
 
 def _convert_to_object_ids(value: Any) -> Any:
