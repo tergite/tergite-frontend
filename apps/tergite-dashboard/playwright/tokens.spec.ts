@@ -199,6 +199,8 @@ for (const user of users) {
       page,
       timezoneId,
     }) => {
+      // edits every live token in turn, so it outlasts the default timeout on a busy machine
+      test.slow();
       await page.setViewportSize({ width: 1080, height: 750 });
 
       for (const [index, token] of allUserTokens.entries()) {
