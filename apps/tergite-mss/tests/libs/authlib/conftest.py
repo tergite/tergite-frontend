@@ -97,7 +97,6 @@ class UserManagerOAuth(BaseTestUserManager[UserOAuthModel]):
 class UserManagerMock(BaseTestUserManager[models.UP]):
     get_by_email: MagicMock
     on_after_register: MagicMock
-    on_after_update: MagicMock
     on_after_login: MagicMock
 
 
@@ -437,7 +436,6 @@ def make_user_manager(mocker: MockerFixture):
         user_manager = user_manager_class(mock_user_db)
         mocker.spy(user_manager, "get_by_email")
         mocker.spy(user_manager, "on_after_register")
-        mocker.spy(user_manager, "on_after_update")
         mocker.spy(user_manager, "on_after_login")
         return user_manager
 

@@ -208,11 +208,9 @@ boolean: libs/authlib/authentication/authenticator.py::Authenticator.current_use
 boolean: libs/authlib/authentication/transport/cookie.py::CookieTransport.__init__(cookie_httponly)
 boolean: libs/authlib/authentication/transport/cookie.py::CookieTransport.__init__(cookie_secure)
 boolean: libs/authlib/fastapi_users.py::FastAPIUsers.get_auth_router(requires_verification)
-boolean: libs/authlib/fastapi_users.py::FastAPIUsers.get_oauth_associate_router(requires_verification)
 boolean: libs/authlib/fastapi_users.py::FastAPIUsers.get_oauth_router(associate_by_email)
 boolean: libs/authlib/manager.py::BaseUserManager.oauth_callback(associate_by_email)
 boolean: libs/authlib/router/auth.py::get_auth_router(requires_verification)
-boolean: libs/authlib/router/oauth.py::get_oauth_associate_router(requires_verification)
 boolean: libs/authlib/router/oauth.py::get_oauth_router(associate_by_email)
 http-exception: libs/authlib/authentication/authenticator.py
 http-exception: libs/authlib/router/auth.py
@@ -226,7 +224,6 @@ type-hints: libs/authlib/authentication/authenticator.py::Authenticator.current_
 type-hints: libs/authlib/authentication/authenticator.py::Authenticator.current_user_token.current_user_token_dependency
 type-hints: libs/authlib/router/auth.py::get_auth_router.login
 type-hints: libs/authlib/router/auth.py::get_auth_router.logout
-type-hints: libs/authlib/router/oauth.py::get_oauth_associate_router.callback
 type-hints: libs/authlib/router/oauth.py::get_oauth_router.callback
 type-hints: libs/authlib/schemas.py::model_dump
 type-hints: libs/authlib/schemas.py::model_dump
@@ -238,11 +235,9 @@ verb: libs/authlib/authentication/authenticator.py::Authenticator.current_user_t
 verb: libs/authlib/authentication/authenticator.py::Authenticator.current_user_token.current_user_token_dependency
 verb: libs/authlib/authentication/authenticator.py::name_to_strategy_variable_name
 verb: libs/authlib/authentication/authenticator.py::name_to_variable_name
-verb: libs/authlib/manager.py::BaseUserManager.oauth_associate_callback
 verb: libs/authlib/manager.py::BaseUserManager.oauth_callback
 verb: libs/authlib/password.py::PasswordHelper.hash
 verb: libs/authlib/password.py::PasswordHelperProtocol.hash
-verb: libs/authlib/router/oauth.py::get_oauth_associate_router.callback
 verb: libs/authlib/router/oauth.py::get_oauth_router.callback
 verb: libs/authlib/schemas.py::model_dump
 verb: libs/authlib/schemas.py::model_dump

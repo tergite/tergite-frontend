@@ -175,30 +175,6 @@ class TestOAuthCallback:
 
 @pytest.mark.asyncio
 @pytest.mark.manager
-class TestOAuthAssociateCallback:
-    async def test_existing_user_without_oauth_associate(
-        self,
-        user_manager_oauth: UserManagerMock[UserOAuthModel],
-        superuser_oauth: UserOAuthModel,
-    ):
-        user = await user_manager_oauth.oauth_associate_callback(
-            superuser_oauth,
-            "service1",
-            "TOKEN",
-            "superuser_oauth1",
-            superuser_oauth.email,
-            1579000751,
-        )
-
-        assert user.id == user.id
-        assert len(user.oauth_accounts) == 1
-        assert user.oauth_accounts[0].id is not None
-
-        assert user_manager_oauth.on_after_update.called is True
-
-
-@pytest.mark.asyncio
-@pytest.mark.manager
 class TestAuthenticate:
     async def test_unknown_user(
         self,
