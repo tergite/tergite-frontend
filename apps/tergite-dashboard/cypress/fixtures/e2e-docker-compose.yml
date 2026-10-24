@@ -57,7 +57,7 @@ services:
   mongo-init:
     # throw-away service to initialize tergite-mongo since having health check
     # and initialization scripts for mongo causes unexpected errors
-    image: mongo:latest
+    image: mongo:8.0.30
     depends_on:
       tergite-mongo:
         condition: service_healthy

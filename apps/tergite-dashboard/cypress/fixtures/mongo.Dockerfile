@@ -1,4 +1,4 @@
-FROM mongo:latest
+FROM mongo:8.0.30
 
 # Set up working directory
 WORKDIR /docker-entrypoint-initdb.d/
