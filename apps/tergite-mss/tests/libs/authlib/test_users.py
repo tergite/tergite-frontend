@@ -75,7 +75,7 @@ async def test_a_user_of_the_email_is_linked_and_gains_the_provider_roles(
 
 
 @pytest.mark.parametrize("is_verified_by_default", [True, False])
-async def test_a_new_email_creates_a_user_with_the_provider_roles(
+async def test_a_new_email_creates_a_user_with_default_and_provider_roles(
     user_database, provider, is_verified_by_default
 ):
     creating_provider = dataclasses.replace(
@@ -92,7 +92,7 @@ async def test_a_new_email_creates_a_user_with_the_provider_roles(
 
     assert signed_in.email == "galahad@camelot.bt"
     assert signed_in.is_verified is is_verified_by_default
-    assert signed_in.roles == {"researcher"}
+    assert signed_in.roles == {"user", "researcher"}
     assert signed_in.oauth_accounts[0].oauth_name == "service1"
 
 

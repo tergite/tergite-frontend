@@ -44,7 +44,7 @@ class UserModel(Schema):
     is_active: bool = True
     is_superuser: bool = False
     is_verified: bool = False
-    roles: Set[str] = set()
+    roles: Set[str] = {"user"}
     oauth_accounts: List[BaseOAuthAccount] = []
 
 
@@ -139,11 +139,11 @@ def logged_in_users() -> List[UserModel]:
 def auth(
     user_database: Database, provider: OAuthProvider, logged_in_users: List[UserModel]
 ) -> Auth:
-    async def on_after_login(logged_in_user: UserModel) -> None:
+    async def on_after_login(database: Database, logged_in_user: UserModel) -> None:
         logged_in_users.append(logged_in_user)
 
     return Auth(
-        user_database,
+        lambda: user_database,
         UserModel,
         providers={"service1": provider},
         secret=SECRET,

@@ -19,6 +19,8 @@ from httpx_oauth.integrations.fastapi import OAuth2AuthorizeCallback
 from httpx_oauth.oauth2 import OAuth2Token
 from pydantic import BaseModel
 
+from libs.storage import Database
+
 from . import users
 from .auth import Auth
 from .cookies import clear_session_cookie, set_session_cookie
@@ -98,17 +100,18 @@ def get_oauth_router(auth: Auth, should_add_app_alias: bool = False) -> APIRoute
         access_token_state: Tuple[OAuth2Token, Optional[str]] = Depends(
             _get_access_token_state(auth)
         ),
+        database: Database = Depends(auth.get_database),
     ) -> Response:
         token, state = access_token_state
         state_data = read_state_token(state, auth.secret)
-        user = await _sign_in_user(auth, provider, token)
+        user = await _sign_in_user(auth, database, provider, token)
         response = Response(status_code=status.HTTP_204_NO_CONTENT)
         session_token = write_session_token(
             user, auth.secret, auth.session_lifetime_seconds
         )
         set_session_cookie(response, auth.cookie, session_token)
         if auth.on_after_login is not None:
-            await auth.on_after_login(user)
+            await auth.on_after_login(database, user)
 
         next_url = state_data.get("next")
         if next_url is not None:
@@ -204,7 +207,9 @@ def _get_access_token_state(
     return get_access_token_state
 
 
-async def _sign_in_user(auth: Auth, provider: str, token: OAuth2Token) -> Any:
+async def _sign_in_user(
+    auth: Auth, database: Database, provider: str, token: OAuth2Token
+) -> Any:
     """Gets the active user the provider's token signs in
 
     Raises:
@@ -226,7 +231,7 @@ async def _sign_in_user(auth: Auth, provider: str, token: OAuth2Token) -> Any:
         "refresh_token": token.get("refresh_token"),
     }
     user = await users.sign_in_with_oauth(
-        auth.database, auth.user_schema, provider, oauth_provider, account
+        database, auth.user_schema, provider, oauth_provider, account
     )
     if not user.is_active:
         raise InactiveUser()

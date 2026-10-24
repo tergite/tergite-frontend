@@ -142,13 +142,12 @@ async def create_oauth_user(
     account: Dict[str, Any],
     roles: Set[str],
 ) -> models.UOAP:
-    """Creates a user with its first OAuth account and the roles it grants, in one write"""
-    user = user_schema(
-        email=email,
-        is_verified=is_verified,
-        roles=roles,
-        oauth_accounts=[account],
-    )
+    """Creates a user with its first OAuth account, in one write
+
+    The user has the roles the schema gives every new user, and those the account grants.
+    """
+    user = user_schema(email=email, is_verified=is_verified, oauth_accounts=[account])
+    user = user.model_copy(update={"roles": user.roles | roles})
     return await database.insert(user_schema, user)
 
 

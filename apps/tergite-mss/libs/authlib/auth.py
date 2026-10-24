@@ -44,26 +44,29 @@ class Auth(Generic[models.UOAP]):
     session cookie: the first naming a user wins.
 
     Args:
-        database: the database where the users are kept
+        get_database: the dependency that gives the database where the users are kept
         user_schema: the storage schema of the users
         providers: the OAuth providers users sign in with, by name
         secret: the secret that signs session and state tokens
         session_lifetime_seconds: how long a session token lasts; None for ever
         cookie: the session cookie
-        on_after_login: what the app does with each user who logs in, if anything
+        on_after_login: what the app does with each user who logs in, given the database,
+            if anything
     """
 
     def __init__(
         self,
-        database: Database,
+        get_database: Callable[..., Database],
         user_schema: Type[models.UOAP],
         providers: Mapping[str, OAuthProvider],
         secret: SecretType,
         session_lifetime_seconds: Optional[int],
         cookie: SessionCookie,
-        on_after_login: Optional[Callable[[models.UOAP], Awaitable[Any]]] = None,
+        on_after_login: Optional[
+            Callable[[Database, models.UOAP], Awaitable[Any]]
+        ] = None,
     ):
-        self.database = database
+        self.get_database = get_database
         self.user_schema = user_schema
         self.providers = providers
         self.secret = secret
@@ -98,8 +101,10 @@ class Auth(Generic[models.UOAP]):
                 self._bearer_scheme
             ),
             cookie_token: Optional[str] = Depends(self._cookie_scheme),
+            database: Database = Depends(self.get_database),
         ) -> Optional[models.UOAP]:
-            user = await self._find_session_user(_get_tokens(bearer, cookie_token))
+            tokens = _get_tokens(bearer, cookie_token)
+            user = await self._find_session_user(database, tokens)
             if user is None or (should_require_active and not user.is_active):
                 return _reject(Unauthorized(), is_optional)
             if should_require_verified and not user.is_verified:
@@ -135,13 +140,15 @@ class Auth(Generic[models.UOAP]):
 
         return read_current_user_id
 
-    async def _find_session_user(self, tokens: List[str]) -> Optional[models.UOAP]:
+    async def _find_session_user(
+        self, database: Database, tokens: List[str]
+    ) -> Optional[models.UOAP]:
         """Finds the user of the first token that names one who exists"""
         for token in tokens:
             user_id = read_session_user_id(token, self.secret)
             if user_id is None or not is_id(user_id):
                 continue
-            user = await users.get_user(self.database, self.user_schema, user_id)
+            user = await users.get_user(database, self.user_schema, user_id)
             if user is not None:
                 return user
         return None
