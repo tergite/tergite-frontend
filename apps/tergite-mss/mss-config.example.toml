@@ -28,7 +28,10 @@ request_log_ttl = 1209600
 [database]
 # configurations for the database
 name = "sample-database"
-# database URI
+# database URI: mongodb:// or mongodb+srv://. The storage layer also takes a SQLAlchemy URL
+# with an async driver (postgresql+asyncpg://, sqlite+aiosqlite://), which start_mss.sh
+# migrates with Alembic, but MSS keeps its users in MongoDB at this URL until they move off
+# Beanie, so MongoDB is the only database MSS runs on today
 url = "mongodb://user:pass@host:port"
 # the database of the request log, which a cache suits; default=redis://tergite-redis:6379/0
 redis_url = "redis://tergite-redis:6379/0"

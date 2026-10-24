@@ -227,23 +227,43 @@ enum member in `services/devices/dtos.py`, and a handler and its entry in `EVENT
 
 ## 5. Data
 
-MongoDB, reached through `libs/storage`: one `Database`, opened in the lifespan with every
-service's `SCHEMAS` and handed to routes as `DatabaseDep`, beside the request log's own on
-Redis (below). A schema is a Pydantic `Schema`
-whose `__storage__` names its table, key, unique fields and indexes. Services query it in
-MongoDB's own dialect, kept to what every store can translate: `filter={"user_id": {"$in":
-[user_id, None]}}`, `update={"$set": {…}, "$inc": {…}}`, `sort=["-created_at"]`, `skip`,
-`limit`. `Database` refuses an unknown operator or field before a store sees it, and a
-service builds its filters privately from its arguments; routes never build one. Nothing
-outside `libs/storage/mongo` names MongoDB. Ids are `Id` strings, which the Mongo store
-keeps as ObjectIds.
+MSS reaches its data through `libs/storage`: one `Database`, opened in the lifespan with
+every service's `SCHEMAS` and handed to routes as `DatabaseDep`, beside the request log's
+own on Redis (below). The `Database` picks its store from the URL's scheme: `MongoStore`
+for `mongodb://`, `SqlStore` for a SQLAlchemy URL with an async driver
+(`postgresql+asyncpg://`, `sqlite+aiosqlite://`), `RedisStore` for `redis://`. Nothing
+outside `libs/storage/<store>` names a database technology.
+
+A schema is a Pydantic `Schema` whose `__storage__` names its table, key, unique fields,
+indexes, expiring field, references and `indexed_lists`. Services query it in MongoDB's own
+dialect, kept to what every store can translate: `filter={"user_id": {"$in": [user_id,
+None]}}`, `update={"$set": {…}, "$inc": {…}}`, `sort=["-created_at"]`, `skip`, `limit`.
+`Database` refuses an unknown operator or field, and an update that would change a key,
+before a store sees it, and a service builds its filters privately from its arguments;
+routes never build one. Ids are `Id` strings, which MongoDB keeps as ObjectIds. No store
+reads a record past its expiring field.
+
+- **MongoDB** keeps a collection per schema, with a `$jsonSchema` validator and the indexes
+  `__storage__` asks for; a TTL index deletes expired records.
+- **SQL** gets a table per schema from `libs/storage/sql/tables.py`: a column per scalar
+  field, a `JSON` column per nested one (read and written whole, never queried), a `row_id`
+  that keeps insertion order, and a child table, one row per element, for each list in
+  `indexed_lists` or `references` (`auth_project_user_ids`, `notice_dismissed_by`,
+  `request_target_user_ids`). A query on a JSON field, or a write to part of one, is refused,
+  and is the signal to give it a table of its own. Alembic migrates the tables
+  (`migrations/`), and `tests/test_migrations.py` fails when a schema changed without a
+  revision. A task deletes expired rows hourly, as SQL has no TTL index.
+- **`tests/libs/storage/test_conformance.py`** runs every `Database` method on MongoDB,
+  PostgreSQL and SQLite, and each service's storage test (`tests/services/*/test_*_storage.py`)
+  runs on all three too.
 
 The one exception is `auth_users`: the `User` is still a Beanie `Document`, on its own Motor
-client, because fastapi-users' Beanie adapter reads it. Code that compares a user's id with
-an `Id` converts it with `str(user.id)`.
+client at `database.url`, because fastapi-users' Beanie adapter reads it. So MSS runs on
+MongoDB only until users move off Beanie. Code that compares a
+user's id with an `Id` converts it with `str(user.id)`.
 
-Notable collections: `jobs`, `devices`, `calibrations`, `calibrations_logs` (historical,
-indexed on `(name, last_calibrated desc)`), `notices` (TTL index on `expires_at`).
+Notable tables: `jobs`, `devices`, `calibrations`, `calibrations_logs` (historical,
+indexed on `(name, last_calibrated desc)`), `notices` (expiring at `expires_at`).
 Deleting a project moves it to `deleted_auth_projects` rather than dropping it.
 
 **Request logs** (`services/request_log`) remember each request id and websocket nonce for
