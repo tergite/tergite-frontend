@@ -18,7 +18,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    computed_field,
     field_serializer,
     field_validator,
     model_validator,
@@ -309,6 +308,8 @@ class Notice(Schema):
     # 'created_by' is specific to custom notices
     created_by: Optional[Id] = None
     severity: NoticeSeverity = NoticeSeverity.INFO
+    # stored, not computed, so that notices sort by it on every database
+    severity_number: int = Field(default_factory=lambda data: data["severity"].to_int())
     ref_type: Optional[RefType] = None
     ref_id: Optional[Id] = None
     context: Dict[str, Any] = Field(default_factory=dict)
@@ -322,12 +323,6 @@ class Notice(Schema):
     expires_at: Optional[datetime] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
-
-    @computed_field
-    @property
-    def severity_number(self) -> int:
-        """The notice severity number"""
-        return self.severity.to_int()
 
     @field_serializer(
         "expires_at", "starts_at", "created_at", "updated_at", when_used="json"

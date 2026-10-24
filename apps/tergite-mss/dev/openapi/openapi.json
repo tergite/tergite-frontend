@@ -1563,8 +1563,6 @@
             "default": "info"
           },
           "severity_number": {
-            "description": "The notice severity number",
-            "readOnly": true,
             "title": "Severity Number",
             "type": "integer"
           },
@@ -1613,8 +1611,7 @@
         "required": [
           "type",
           "title",
-          "body",
-          "severity_number"
+          "body"
         ],
         "title": "Notice",
         "type": "object"

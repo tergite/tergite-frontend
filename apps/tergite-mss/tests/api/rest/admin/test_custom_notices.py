@@ -205,6 +205,26 @@ def test_admin_get_notices_by_type(admin_jwt_cookie, client, inserted_notices):
         }
 
 
+def test_admin_get_notices_sorted_by_severity(
+    admin_jwt_cookie, client, inserted_notices
+):
+    """GET /admin/notices?sort=severity_number lists the most severe notices first"""
+    with client as client:
+        response = client.get(
+            "/admin/notices?sort=severity_number", cookies=admin_jwt_cookie
+        )
+
+        assert response.status_code == 200
+        assert [item["severity_number"] for item in response.json()["data"]] == [
+            1,
+            2,
+            3,
+            3,
+            3,
+            3,
+        ]
+
+
 def test_non_admin_get_notices(user_jwt_cookie, client, inserted_notices):
     """GET /admin/notices by a non-admin is forbidden"""
     with client as client:
