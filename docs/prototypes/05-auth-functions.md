@@ -48,7 +48,7 @@ The step is signed off when every box is ticked, or a failure is written beside 
 
 ## Not covered here
 
-- `GET /jobs/` and `GET /me/jobs/` document their list filters as a request body, as
-  `JobQuery` is injected with `Depends()`. The projects and app tokens lists avoid this with
+- `GET /jobs/` and `GET /me/jobs/` document their `result` and `timestamps` filters as a
+  request body, as `JobQuery` is injected with `Depends()` and those fields are models. The projects and app tokens lists avoid this with
   explicit query dependencies; `JobQuery` is not changed here.
 - The users, their manager and the JWT routes: steps 6 and 7.
