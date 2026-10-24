@@ -14,6 +14,8 @@
 import enum
 import json
 import socket
+import tomllib
+from os import PathLike
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -325,6 +327,24 @@ class AppConfig(BaseModel, extra="allow"):
                 "notices.dashboard_url is required when [email] is configured"
             )
         return self
+
+    @classmethod
+    def from_toml(cls, file_path: PathLike[str]) -> "AppConfig":
+        """Parses a TOML file into an AppConfig instance
+
+        Args:
+            file_path: The path to the TOML file to parse
+
+        Returns:
+            the AppConfig instance equivalent to the given TOML file
+        """
+        with open(file_path, "rb") as file:
+            conf = tomllib.load(file)
+
+        conf.update(
+            conf.pop("general", {}),
+        )
+        return cls.model_validate(conf)
 
     @classmethod
     def from_json_str(cls, data_str: str) -> "AppConfig":

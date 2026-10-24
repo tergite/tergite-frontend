@@ -19,6 +19,10 @@ from utils.config import AppConfig
 _ROOT = Path(__file__).parent
 
 _MSS_CONFIG_JSON_STR = os.environ.get("MSS_CONFIG_JSON_STR")
+_MSS_CONFIG_FILE = Path(
+    os.environ.get("MSS_CONFIG_FILE", default=_ROOT / "private-mss-key.pem")
+).resolve()
+
 # the private key for authentication between MSS and BCC
 PRIVATE_KEY_FILE = Path(
     os.getenv("PRIVATE_KEY_FILE", default=_ROOT / "private-mss-key.pem")
@@ -26,10 +30,12 @@ PRIVATE_KEY_FILE = Path(
 if not PRIVATE_KEY_FILE.exists():
     raise ValueError(f"private key file '{PRIVATE_KEY_FILE}' does not exist")
 
-if not _MSS_CONFIG_JSON_STR:
+if _MSS_CONFIG_JSON_STR:
+    CONFIG: AppConfig = AppConfig.from_json_str(_MSS_CONFIG_JSON_STR)
+elif _MSS_CONFIG_FILE.exists():
+    CONFIG: AppConfig = AppConfig.from_toml(_MSS_CONFIG_FILE)
+else:
     raise ValueError("MSS config is empty")
-
-CONFIG: AppConfig = AppConfig.from_json_str(_MSS_CONFIG_JSON_STR)
 
 _is_production = CONFIG.environment == "production"
 
