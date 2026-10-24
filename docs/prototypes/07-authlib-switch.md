@@ -35,7 +35,7 @@ box is ticked, or a failure is written beside its box.
       `python -m migrations.mongodb upgrade` reports none pending; its `.rollback.js` turns them
       back and drops the record, and `start_mss.sh` then applies it again before MSS starts.
       **2026-10-24:** the e2e stack's MSS logged `MongoDB migrations applied: ['b109440758fe']`
-      on start, on `f9d99ae`, and its suite passed but for one timeout under load, which
+      on start, on `ea0fdb6`, and its suite passed but for one timeout under load, which
       passed when `device-detail.cy.ts` was re-run alone.
 - [ ] **7.4: the API runs on the database the environment names.**
       `TEST_DATABASE_URL=sqlite+aiosqlite:////tmp/mss-api.db .venv/bin/pytest tests/api -q`
@@ -56,9 +56,9 @@ box is ticked, or a failure is written beside its box.
 - [ ] **The real stack still works end to end.** With docker running,
       `BACKEND_REPO=<the tergite-backend repository> ./dev/e2e_test.sh` from the repository
       root passes. It prunes unused docker containers, networks and images first.
-      **2026-10-24: 424 of 424 passed** on `0c133db`, once notice severities were numbers, so
+      **2026-10-24: 424 of 424 passed** on `1f7786a`, once notice severities were numbers, so
       the admin notices card sorts by them, and bookings were keyed by backend and id
-      (`e624c8a`), as every e2e backend shares one seed.
+      (`b793d0b`), as every e2e backend shares one seed.
 - [ ] **The baselines still hold.** With docker running and port 8002 free,
       `./dev/perf/record.sh /tmp/perf-07 && python3 dev/perf/compare.py dev/perf/baselines /tmp/perf-07`
       exits 0, or fails only on a p95 within 13 ms of the baseline.
