@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 import pytest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from libs.storage import (
     Database,
@@ -96,7 +96,28 @@ class _Member(Schema):
     accounts: List[_Account] = []
 
 
-_SCHEMAS = [_Owner, _Pet, _Job, _Device, _Member]
+class _NoteFields(Schema):
+    id: Id = Field(default_factory=generate_id)
+    title: str
+
+    # a rule MongoDB's validator cannot see, so an invalid note can still be stored
+    @field_validator("title")
+    @classmethod
+    def refuse_drafts(cls, value: str) -> str:
+        if value.startswith("draft"):
+            raise ValueError("drafts are never stored")
+        return value
+
+
+class _Note(_NoteFields):
+    __storage__ = StorageSpec(table="notes", should_skip_invalid=True)
+
+
+class _StrictNote(_NoteFields):
+    __storage__ = StorageSpec(table="strict_notes")
+
+
+_SCHEMAS = [_Owner, _Pet, _Job, _Device, _Member, _Note, _StrictNote]
 
 
 @pytest.fixture
@@ -331,6 +352,36 @@ async def test_a_list_of_models_is_set_whole(database):
         )
     with pytest.raises(QueryError):
         await database.count(_Member, {"accounts": {"provider": "github"}})
+
+
+async def test_reads_leave_out_invalid_records_of_a_schema_that_skips_them(
+    database, caplog
+):
+    note = await database.insert(_Note, _Note(title="final"))
+    draft = await database.insert(_Note, _Note.model_construct(title="draft"))
+
+    assert await database.find(_Note) == [note]
+    assert await database.get(_Note, draft.id) is None
+    assert await database.count(_Note) == 2
+    assert "left out a stored _Note invalid in: title" in caplog.text
+
+
+async def test_writes_raise_on_invalid_records_of_a_schema_that_skips_them(database):
+    draft = await database.insert(_Note, _Note.model_construct(title="draft"))
+
+    with pytest.raises(ValidationError):
+        await database.delete_one(_Note, {"id": draft.id})
+
+
+async def test_reads_raise_on_invalid_records_of_other_schemas(database):
+    draft = await database.insert(
+        _StrictNote, _StrictNote.model_construct(title="draft")
+    )
+
+    with pytest.raises(ValidationError):
+        await database.find(_StrictNote)
+    with pytest.raises(ValidationError):
+        await database.get(_StrictNote, draft.id)
 
 
 async def test_delete_one_and_many(database):

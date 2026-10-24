@@ -13,6 +13,7 @@
 """MongoStore: the DbStore for MongoDB, on PyMongo's async client"""
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
+from functools import partial
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Type, TypeVar
 
 import pymongo.errors
@@ -23,7 +24,7 @@ from pymongo.collation import Collation
 
 from ..base.exc import DuplicateKeyError, StorageError
 from ..base.query import Filter, extract_fields
-from ..base.schema import Schema
+from ..base.schema import Schema, read_stored
 from ..base.store import DbStore
 from ..base.update import Returning, Update
 from .schema import CASE_INSENSITIVE, get_indexes, get_validator
@@ -65,7 +66,9 @@ class MongoStore(DbStore):
         document = await self._get_collection(schema).find_one(
             _translate_unexpired_filter(schema, {key_field: key})
         )
-        return None if document is None else convert_to_record(schema, document)
+        if document is None:
+            return None
+        return read_stored(schema, document, partial(convert_to_record, schema))
 
     async def find(
         self,
@@ -82,7 +85,11 @@ class MongoStore(DbStore):
             limit=limit or 0,
             collation=_get_query_collation(schema, query_filter),
         )
-        return [convert_to_record(schema, document) async for document in cursor]
+        records = [
+            read_stored(schema, document, partial(convert_to_record, schema))
+            async for document in cursor
+        ]
+        return [record for record in records if record is not None]
 
     async def count(self, schema: Type[T], query_filter: Filter) -> int:
         options = _get_collation_option(schema, query_filter)

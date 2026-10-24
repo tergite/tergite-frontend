@@ -11,13 +11,27 @@
 # that they have been altered from the originals.
 
 """The base of stored schemas and the storage facts each declares"""
+import logging
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Mapping, Optional, Tuple, Type, get_args, get_origin
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    get_args,
+    get_origin,
+)
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 
 from .exc import UnknownFieldError
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -34,6 +48,8 @@ class StorageSpec:
         indexed_lists: other list fields whose elements are queried one at a time
         indexes: fields, or tuples of fields together, that queries filter or sort on;
             a leading '-' marks a descending field
+        should_skip_invalid: whether reads leave out stored records that fail validation,
+            rather than raise; counts still include them, so a page may come up short
     """
 
     table: str
@@ -44,12 +60,34 @@ class StorageSpec:
     references: Mapping[str, Type["Schema"]] = field(default_factory=dict)
     indexed_lists: Tuple[str, ...] = ()
     indexes: Tuple[str | Tuple[str, ...], ...] = ()
+    should_skip_invalid: bool = False
 
 
 class Schema(BaseModel):
     """The base of every stored schema, which sets its `__storage__`"""
 
     __storage__: ClassVar[StorageSpec]
+
+
+T = TypeVar("T", bound=Schema)
+
+
+def read_stored(schema: Type[T], data: Any, convert: Callable[[Any], T]) -> Optional[T]:
+    """Converts stored data into a record, or None if it fails validation and the schema
+    skips invalid records
+
+    Raises:
+        ValidationError: the data fails validation and the schema does not skip it
+    """
+    try:
+        return convert(data)
+    except ValidationError as exp:
+        if not schema.__storage__.should_skip_invalid:
+            raise
+        # the stored values stay out of the log, as they may hold secrets
+        fields = ", ".join(".".join(map(str, error["loc"])) for error in exp.errors())
+        _logger.warning(f"left out a stored {schema.__name__} invalid in: {fields}")
+        return None
 
 
 def resolve_field(schema: Type[BaseModel], path: str) -> Optional[FieldInfo]:

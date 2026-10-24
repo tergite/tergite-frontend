@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 from ..base.exc import DuplicateKeyError, QueryError, StorageError
 from ..base.ids import generate_id, is_id_field
 from ..base.query import LOGICAL_OPERATORS, Filter, is_operator_map
-from ..base.schema import Schema
+from ..base.schema import Schema, read_stored
 from ..base.store import DbStore
 from ..base.update import Returning, Update
 from .tables import (
@@ -83,7 +83,9 @@ class SqlStore(DbStore):
         tables = self._schema_tables[schema]
         key_filter = {schema.__storage__.key: key}
         async with self._engine.connect() as conn:
-            records = await _find_records(conn, tables, key_filter, limit=1)
+            records = await _find_records(
+                conn, tables, key_filter, limit=1, is_read=True
+            )
         return records[0] if records else None
 
     async def find(
@@ -96,7 +98,9 @@ class SqlStore(DbStore):
     ) -> List[T]:
         tables = self._schema_tables[schema]
         async with self._engine.connect() as conn:
-            return await _find_records(conn, tables, query_filter, sort, skip, limit)
+            return await _find_records(
+                conn, tables, query_filter, sort, skip, limit, is_read=True
+            )
 
     async def count(self, schema: Type[T], query_filter: Filter) -> int:
         tables = self._schema_tables[schema]
@@ -248,8 +252,10 @@ async def _find_records(
     skip: int = 0,
     limit: Optional[int] = None,
     should_lock: bool = False,
+    is_read: bool = False,
 ) -> List[Any]:
-    """Finds the matched records, with the elements of their list fields"""
+    """Finds the matched records, with the elements of their list fields; a read leaves
+    out the invalid ones of a schema that skips them"""
     statement = (
         select(tables.table)
         .where(translate_filter(tables, query_filter))
@@ -285,7 +291,12 @@ async def _find_records(
         for name in tables.non_null_fields:
             if name in row and row[name] is None:
                 del row[name]
-        records.append(tables.schema.model_validate(row))
+        if is_read:
+            record = read_stored(tables.schema, row, tables.schema.model_validate)
+            if record is not None:
+                records.append(record)
+        else:
+            records.append(tables.schema.model_validate(row))
     return records
 
 

@@ -34,7 +34,7 @@ from pydantic import ValidationError
 
 from ..base.exc import DuplicateKeyError, QueryError, StorageError
 from ..base.query import Filter, is_operator_map, parse_sort
-from ..base.schema import Schema
+from ..base.schema import Schema, read_stored
 from ..base.store import DbStore
 from ..base.update import Returning, Update
 
@@ -72,7 +72,9 @@ class RedisStore(DbStore):
         data = await self._connection.hget(
             _get_hashmap_name(schema), _convert_to_text(key)
         )
-        return None if data is None else schema.model_validate_json(data)
+        if data is None:
+            return None
+        return read_stored(schema, data, schema.model_validate_json)
 
     async def find(
         self,
@@ -82,7 +84,7 @@ class RedisStore(DbStore):
         skip: int,
         limit: Optional[int],
     ) -> List[T]:
-        records = await self._find_records(schema, query_filter)
+        records = await self._find_records(schema, query_filter, is_read=True)
         for field, is_descending in reversed(
             parse_sort(sort or (schema.__storage__.key,))
         ):
@@ -180,8 +182,10 @@ class RedisStore(DbStore):
         query_filter: Filter,
         limit: Optional[int] = None,
         keys: Optional[Set[str]] = None,
+        is_read: bool = False,
     ) -> List[T]:
-        """Gets the records the filter matches, in the order of their keys"""
+        """Gets the records the filter matches, in the order of their keys; a read leaves
+        out the invalid ones of a schema that skips them"""
         hashmap_name = _get_hashmap_name(schema)
         if keys is None:
             keys = await self._find_keys(schema, query_filter)
@@ -193,7 +197,15 @@ class RedisStore(DbStore):
                 return []
             raw_data = await self._connection.hmget(hashmap_name, matched_keys)
 
-        records = [schema.model_validate_json(item) for item in raw_data if item]
+        if is_read:
+            stored = [
+                read_stored(schema, item, schema.model_validate_json)
+                for item in raw_data
+                if item
+            ]
+            records = [record for record in stored if record is not None]
+        else:
+            records = [schema.model_validate_json(item) for item in raw_data if item]
         records.sort(key=lambda v: _get_redis_key(schema, v))
         return _paginate(records, limit=limit)
 

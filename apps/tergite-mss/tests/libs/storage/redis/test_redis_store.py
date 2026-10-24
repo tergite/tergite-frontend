@@ -62,6 +62,13 @@ class AuthLog(Schema):
     expires_at: Optional[datetime] = None
 
 
+class Note(Schema):
+    __storage__ = StorageSpec(table="notes", key="id", should_skip_invalid=True)
+
+    id: str
+    title: str
+
+
 class Owner(Schema):
     __storage__ = StorageSpec(
         table="owners", key="id", unique=("email",), case_insensitive=("email",)
@@ -107,10 +114,12 @@ def make_database(mocker):
 
     def make(cleanup_interval: float = 3600) -> Database:
         store = RedisStore(
-            _DATABASE_URL, schemas=[AuthLog, Owner], cleanup_interval=cleanup_interval
+            _DATABASE_URL,
+            schemas=[AuthLog, Owner, Note],
+            cleanup_interval=cleanup_interval,
         )
         mocker.patch("libs.storage.database._create_store", return_value=store)
-        return Database(_DATABASE_URL, schemas=[AuthLog, Owner])
+        return Database(_DATABASE_URL, schemas=[AuthLog, Owner, Note])
 
     yield make
 
@@ -415,6 +424,16 @@ async def test_get(redis_client, auth_logs, payload):
 
     assert _get_redis_value(redis_client, item) == item.model_dump_json()
     assert await auth_logs.get(AuthLog, payload["job_id"]) == item
+
+
+async def test_reads_leave_out_invalid_records_of_a_schema_that_skips_them(
+    redis_client, auth_logs
+):
+    note = Note(id="kept", title="final")
+    redis_client.hset("notes", mapping={"kept": note.model_dump_json(), "bad": "{}"})
+
+    assert await auth_logs.find(Note) == [note]
+    assert await auth_logs.get(Note, "bad") is None
 
 
 @pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)

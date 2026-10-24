@@ -242,7 +242,9 @@ None]}}`, `update={"$set": {…}, "$inc": {…}}`, `sort=["-created_at"]`, `skip
 `Database` refuses an unknown operator or field, and an update that would change a key,
 before a store sees it, and a service builds its filters privately from its arguments;
 routes never build one. Ids are `Id` strings, which MongoDB keeps as ObjectIds. No store
-reads a record past its expiring field.
+reads a record past its expiring field. A schema with `should_skip_invalid` has `get` and
+`find` leave out stored records that fail validation, with a warning naming the invalid
+fields, where any other read raises; writes always raise, and `count` includes them.
 
 - **MongoDB** keeps a collection per schema, with a `$jsonSchema` validator and the indexes
   `__storage__` asks for; a TTL index deletes expired records. A revision that changes stored
