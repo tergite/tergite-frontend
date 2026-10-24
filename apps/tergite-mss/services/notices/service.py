@@ -542,7 +542,7 @@ def _get_notice_filter(
         dismissal_conditions.append({"dismissed_by": {"$nin": [user_id]}})
     if is_read is False:
         dismissal_conditions.append({"dismissed_by": {"$nin": [user_id]}})
-    if is_read is True:
+    if is_read:
         dismissal_conditions.append({"dismissed_by": user_id})
     if dismissal_conditions:
         notice_filter["$and"] = dismissal_conditions
