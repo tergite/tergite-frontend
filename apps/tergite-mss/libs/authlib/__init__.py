@@ -17,11 +17,7 @@ __version__ = "14.0.2"
 from libs.authlib import models, schemas  # noqa: F401
 from libs.authlib.exceptions import InvalidID
 from libs.authlib.fastapi_users import FastAPIUsers  # noqa: F401
-from libs.authlib.manager import (  # noqa: F401
-    BaseUserManager,
-    IntegerIDMixin,
-    UUIDIDMixin,
-)
+from libs.authlib.manager import BaseUserManager  # noqa: F401
 
 __all__ = [
     "models",
@@ -29,6 +25,4 @@ __all__ = [
     "FastAPIUsers",
     "BaseUserManager",
     "InvalidID",
-    "UUIDIDMixin",
-    "IntegerIDMixin",
 ]

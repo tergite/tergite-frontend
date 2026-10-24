@@ -10,37 +10,41 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-import uuid
-from typing import Any, Generic, Optional
+from typing import Any, Generic, Optional, Type
 
 from fastapi import Request, Response
 
-from libs.authlib import exceptions, models
-from libs.authlib.db import BaseUserDatabase
+from libs.authlib import exceptions, models, users
 from libs.authlib.types import DependencyCallable
+from libs.storage import Database, is_id
 
 
 class BaseUserManager(Generic[models.UP, models.ID]):
     """
     User management logic.
 
-    :param user_db: Database adapter instance.
+    :param database: The database the users are kept in.
+    :param user_schema: The storage schema of the users.
     """
 
-    user_db: BaseUserDatabase[models.UP, models.ID]
+    database: Database
+    user_schema: Type[models.UP]
 
-    def __init__(self, user_db: BaseUserDatabase[models.UP, models.ID]):
-        self.user_db = user_db
+    def __init__(self, database: Database, user_schema: Type[models.UP]):
+        self.database = database
+        self.user_schema = user_schema
 
     def parse_id(self, value: Any) -> models.ID:
         """
-        Parse a value into a correct models.ID instance.
+        Parse a value into a user id, a storage Id.
 
         :param value: The value to parse.
-        :raises InvalidID: The models.ID value is invalid.
-        :return: An models.ID object.
+        :raises InvalidID: The value is not an Id.
+        :return: The id.
         """
-        raise NotImplementedError()  # pragma: no cover
+        if not is_id(value):
+            raise exceptions.InvalidID()
+        return value
 
     async def get(self, id: models.ID) -> models.UP:
         """
@@ -50,7 +54,7 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         :raises UserNotExists: The user does not exist.
         :return: A user.
         """
-        user = await self.user_db.get(id)
+        user = await users.get_user(self.database, self.user_schema, id)
 
         if user is None:
             raise exceptions.UserNotExists()
@@ -65,7 +69,9 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         :raises UserNotExists: The user does not exist.
         :return: A user.
         """
-        user = await self.user_db.get_by_email(user_email)
+        user = await users.get_user_by_email(
+            self.database, self.user_schema, user_email
+        )
 
         if user is None:
             raise exceptions.UserNotExists()
@@ -81,7 +87,9 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         :raises UserNotExists: The user does not exist.
         :return: A user.
         """
-        user = await self.user_db.get_by_oauth_account(oauth, account_id)
+        user = await users.get_user_by_oauth_account(
+            self.database, self.user_schema, oauth, account_id
+        )
 
         if user is None:
             raise exceptions.UserNotExists()
@@ -147,26 +155,24 @@ class BaseUserManager(Generic[models.UP, models.ID]):
                 user = await self.get_by_email(account_email)
                 if not associate_by_email:
                     raise exceptions.UserAlreadyExists()
-                user = await self.user_db.add_oauth_account(user, oauth_account_dict)
+                user = await users.add_oauth_account(
+                    self.database, user, oauth_account_dict
+                )
             except exceptions.UserNotExists:
                 # Create account
-                user_dict = {
-                    "email": account_email,
-                    "is_verified": is_verified_by_default,
-                }
-                user = await self.user_db.create(user_dict)
-                user = await self.user_db.add_oauth_account(user, oauth_account_dict)
+                user = await users.create_oauth_user(
+                    self.database,
+                    self.user_schema,
+                    email=account_email,
+                    is_verified=is_verified_by_default,
+                    account=oauth_account_dict,
+                )
                 await self.on_after_register(user, request)
         else:
             # Update oauth
-            for existing_oauth_account in user.oauth_accounts:
-                if (
-                    existing_oauth_account.account_id == account_id
-                    and existing_oauth_account.oauth_name == oauth_name
-                ):
-                    user = await self.user_db.update_oauth_account(
-                        user, existing_oauth_account, oauth_account_dict
-                    )
+            user = await users.update_oauth_account(
+                self.database, user, oauth_name, account_id, oauth_account_dict
+            )
 
         return user
 
@@ -201,26 +207,6 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         Defaults to None
         """
         return  # pragma: no cover
-
-
-class UUIDIDMixin:
-    def parse_id(self, value: Any) -> uuid.UUID:
-        if isinstance(value, uuid.UUID):
-            return value
-        try:
-            return uuid.UUID(value)
-        except ValueError as e:
-            raise exceptions.InvalidID() from e
-
-
-class IntegerIDMixin:
-    def parse_id(self, value: Any) -> int:
-        if isinstance(value, float):
-            raise exceptions.InvalidID()
-        try:
-            return int(value)
-        except ValueError as e:
-            raise exceptions.InvalidID() from e
 
 
 UserManagerDependency = DependencyCallable[BaseUserManager[models.UP, models.ID]]

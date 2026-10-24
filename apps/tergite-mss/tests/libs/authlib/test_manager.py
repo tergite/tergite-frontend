@@ -10,13 +10,17 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-import uuid
 
 import pytest
 
-from libs.authlib.exceptions import InvalidID, UserAlreadyExists, UserNotExists
-from libs.authlib.manager import IntegerIDMixin
+from libs.authlib.exceptions import UserAlreadyExists, UserNotExists
+from libs.storage import generate_id
 from tests.libs.authlib.conftest import UserManagerMock, UserModel, UserOAuthModel
+
+
+@pytest.fixture(params=["mongodb", "sqlite"])
+def user_database_kind(request) -> str:
+    return request.param
 
 
 @pytest.mark.asyncio
@@ -24,7 +28,7 @@ from tests.libs.authlib.conftest import UserManagerMock, UserModel, UserOAuthMod
 class TestGet:
     async def test_not_existing_user(self, user_manager: UserManagerMock[UserModel]):
         with pytest.raises(UserNotExists):
-            await user_manager.get(uuid.UUID("d35d213e-f3d8-4f08-954a-7e0d1bea286f"))
+            await user_manager.get(generate_id())
 
     async def test_existing_user(
         self, user_manager: UserManagerMock[UserModel], user: UserModel
@@ -44,6 +48,12 @@ class TestGetByEmail:
         self, user_manager: UserManagerMock[UserModel], user: UserModel
     ):
         retrieved_user = await user_manager.get_by_email(user.email)
+        assert retrieved_user.id == user.id
+
+    async def test_email_in_another_case(
+        self, user_manager: UserManagerMock[UserModel], user: UserModel
+    ):
+        retrieved_user = await user_manager.get_by_email(user.email.upper())
         assert retrieved_user.id == user.id
 
 
@@ -90,6 +100,7 @@ class TestOAuthCallback:
         assert user.oauth_accounts[0].access_token == "UPDATED_TOKEN"
         assert user.oauth_accounts[1].access_token == "TOKEN"
         assert user.oauth_accounts[1].oauth_name == "service2"
+        assert await user_manager_oauth.get(user.id) == user
 
         assert user_manager_oauth.on_after_register.called is False
 
@@ -158,19 +169,3 @@ class TestOAuthCallback:
         assert user.is_verified is True
 
         assert user_manager_oauth.on_after_register.called is True
-
-
-def test_integer_id_mixin():
-    integer_id_mixin = IntegerIDMixin()
-
-    assert integer_id_mixin.parse_id("123") == 123
-    assert integer_id_mixin.parse_id(123) == 123
-
-    with pytest.raises(InvalidID):
-        integer_id_mixin.parse_id("123.42")
-
-    with pytest.raises(InvalidID):
-        integer_id_mixin.parse_id(123.42)
-
-    with pytest.raises(InvalidID):
-        integer_id_mixin.parse_id("abc")

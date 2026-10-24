@@ -29,6 +29,11 @@ from tests.libs.authlib.conftest import (
 )
 
 
+@pytest.fixture(params=["mongodb", "sqlite"])
+def user_database_kind(request) -> str:
+    return request.param
+
+
 @pytest.fixture
 def app_factory(secret, get_user_manager_oauth, mock_authentication, oauth_client):
     def _app_factory(redirect_url: str = None) -> FastAPI:

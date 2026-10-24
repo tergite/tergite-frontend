@@ -11,10 +11,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 import asyncio
-import dataclasses
-import uuid
 from collections.abc import AsyncGenerator
-from typing import Any, Callable, Generic, Optional
+from typing import Any, Callable, Generic, List, Optional
 from unittest.mock import MagicMock
 
 import httpx
@@ -22,44 +20,54 @@ import pytest
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI, Response
 from httpx_oauth.oauth2 import OAuth2
-from pydantic import UUID4, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 from pytest_mock import MockerFixture
 
 from libs.authlib import exceptions, models, schemas
 from libs.authlib.authentication import AuthenticationBackend, BearerTransport
 from libs.authlib.authentication.strategy import Strategy
-from libs.authlib.db import BaseUserDatabase
 from libs.authlib.jwt import SecretType
-from libs.authlib.manager import BaseUserManager, UUIDIDMixin
+from libs.authlib.manager import BaseUserManager
 from libs.authlib.openapi import OpenAPIResponseType
+from libs.storage import Database, Id, Schema, StorageSpec, generate_id
+from tests._utils.storage import get_database_url, reset_database
 
-IDType = UUID4
+IDType = str
 
 
-@dataclasses.dataclass
-class UserModel(models.UserProtocol[IDType]):
+class UserModel(Schema):
+    __storage__ = StorageSpec(
+        table="users", unique=("email",), case_insensitive=("email",)
+    )
+
+    id: Id = Field(default_factory=generate_id)
     email: str
-    id: IDType = dataclasses.field(default_factory=uuid.uuid4)
     is_active: bool = True
     is_superuser: bool = False
     is_verified: bool = False
     first_name: Optional[str] = None
 
 
-@dataclasses.dataclass
-class OAuthAccountModel(models.OAuthAccountProtocol[IDType]):
+class OAuthAccountModel(BaseModel):
+    id: Id = Field(default_factory=generate_id)
     oauth_name: str
     access_token: str
     account_id: str
     account_email: str
-    id: IDType = dataclasses.field(default_factory=uuid.uuid4)
     expires_at: Optional[int] = None
     refresh_token: Optional[str] = None
 
 
-@dataclasses.dataclass
 class UserOAuthModel(UserModel):
-    oauth_accounts: list[OAuthAccountModel] = dataclasses.field(default_factory=list)
+    __storage__ = StorageSpec(
+        table="oauth_users",
+        unique=("email",),
+        case_insensitive=("email",),
+        indexed_lists=("oauth_accounts",),
+        indexes=(("oauth_accounts.oauth_name", "oauth_accounts.account_id"),),
+    )
+
+    oauth_accounts: List[OAuthAccountModel] = []
 
 
 class User(schemas.BaseUser[IDType]):
@@ -70,9 +78,7 @@ class UserOAuth(User, schemas.BaseOAuthAccountMixin):
     pass
 
 
-class BaseTestUserManager(
-    Generic[models.UP], UUIDIDMixin, BaseUserManager[models.UP, IDType]
-):
+class BaseTestUserManager(Generic[models.UP], BaseUserManager[models.UP, IDType]):
     pass
 
 
@@ -263,157 +269,67 @@ def oauth_account5() -> OAuthAccountModel:
 
 
 @pytest.fixture
-def mock_user_db(
+def user_database_kind() -> str:
+    """SQLite; the modules that test how users are stored override it with every kind"""
+    return "sqlite"
+
+
+@pytest.fixture
+async def database(user_database_kind, tmp_path) -> AsyncGenerator[Database, None]:
+    database_url = get_database_url(user_database_kind, tmp_path)
+    await reset_database(database_url)
+    database = Database(database_url, schemas=[UserModel, UserOAuthModel])
+    await database.setup()
+    yield database
+    await database.close()
+    await reset_database(database_url)
+
+
+@pytest.fixture
+async def user_database(
+    database: Database,
     user: UserModel,
     verified_user: UserModel,
     inactive_user: UserModel,
     superuser: UserModel,
     verified_superuser: UserModel,
-) -> BaseUserDatabase[UserModel, IDType]:
-    class MockUserDatabase(BaseUserDatabase[UserModel, IDType]):
-        async def get(self, id: UUID4) -> Optional[UserModel]:
-            if id == user.id:
-                return user
-            if id == verified_user.id:
-                return verified_user
-            if id == inactive_user.id:
-                return inactive_user
-            if id == superuser.id:
-                return superuser
-            if id == verified_superuser.id:
-                return verified_superuser
-            return None
-
-        async def get_by_email(self, email: str) -> Optional[UserModel]:
-            lower_email = email.lower()
-            if lower_email == user.email.lower():
-                return user
-            if lower_email == verified_user.email.lower():
-                return verified_user
-            if lower_email == inactive_user.email.lower():
-                return inactive_user
-            if lower_email == superuser.email.lower():
-                return superuser
-            if lower_email == verified_superuser.email.lower():
-                return verified_superuser
-            return None
-
-        async def create(self, create_dict: dict[str, Any]) -> UserModel:
-            return UserModel(**create_dict)
-
-        async def update(
-            self, user: UserModel, update_dict: dict[str, Any]
-        ) -> UserModel:
-            for field, value in update_dict.items():
-                setattr(user, field, value)
-            return user
-
-        async def delete(self, user: UserModel) -> None:
-            pass
-
-    return MockUserDatabase()
+) -> Database:
+    await database.insert_many(
+        UserModel, [user, verified_user, inactive_user, superuser, verified_superuser]
+    )
+    return database
 
 
 @pytest.fixture
-def mock_user_db_oauth(
+async def user_database_oauth(
+    database: Database,
     user_oauth: UserOAuthModel,
     verified_user_oauth: UserOAuthModel,
     inactive_user_oauth: UserOAuthModel,
     superuser_oauth: UserOAuthModel,
     verified_superuser_oauth: UserOAuthModel,
-) -> BaseUserDatabase[UserOAuthModel, IDType]:
-    class MockUserDatabase(BaseUserDatabase[UserOAuthModel, IDType]):
-        async def get(self, id: UUID4) -> Optional[UserOAuthModel]:
-            if id == user_oauth.id:
-                return user_oauth
-            if id == verified_user_oauth.id:
-                return verified_user_oauth
-            if id == inactive_user_oauth.id:
-                return inactive_user_oauth
-            if id == superuser_oauth.id:
-                return superuser_oauth
-            if id == verified_superuser_oauth.id:
-                return verified_superuser_oauth
-            return None
-
-        async def get_by_email(self, email: str) -> Optional[UserOAuthModel]:
-            lower_email = email.lower()
-            if lower_email == user_oauth.email.lower():
-                return user_oauth
-            if lower_email == verified_user_oauth.email.lower():
-                return verified_user_oauth
-            if lower_email == inactive_user_oauth.email.lower():
-                return inactive_user_oauth
-            if lower_email == superuser_oauth.email.lower():
-                return superuser_oauth
-            if lower_email == verified_superuser_oauth.email.lower():
-                return verified_superuser_oauth
-            return None
-
-        async def get_by_oauth_account(
-            self, oauth: str, account_id: str
-        ) -> Optional[UserOAuthModel]:
-            user_oauth_account = user_oauth.oauth_accounts[0]
-            if (
-                user_oauth_account.oauth_name == oauth
-                and user_oauth_account.account_id == account_id
-            ):
-                return user_oauth
-
-            inactive_user_oauth_account = inactive_user_oauth.oauth_accounts[0]
-            if (
-                inactive_user_oauth_account.oauth_name == oauth
-                and inactive_user_oauth_account.account_id == account_id
-            ):
-                return inactive_user_oauth
-            return None
-
-        async def create(self, create_dict: dict[str, Any]) -> UserOAuthModel:
-            return UserOAuthModel(**create_dict)
-
-        async def update(
-            self, user: UserOAuthModel, update_dict: dict[str, Any]
-        ) -> UserOAuthModel:
-            for field, value in update_dict.items():
-                setattr(user, field, value)
-            return user
-
-        async def delete(self, user: UserOAuthModel) -> None:
-            pass
-
-        async def add_oauth_account(
-            self, user: UserOAuthModel, create_dict: dict[str, Any]
-        ) -> UserOAuthModel:
-            oauth_account = OAuthAccountModel(**create_dict)
-            user.oauth_accounts.append(oauth_account)
-            return user
-
-        async def update_oauth_account(  # type: ignore
-            self,
-            user: UserOAuthModel,
-            oauth_account: OAuthAccountModel,
-            update_dict: dict[str, Any],
-        ) -> UserOAuthModel:
-            for field, value in update_dict.items():
-                setattr(oauth_account, field, value)
-            updated_oauth_accounts = []
-            for existing_oauth_account in user.oauth_accounts:
-                if (
-                    existing_oauth_account.account_id == oauth_account.account_id
-                    and existing_oauth_account.oauth_name == oauth_account.oauth_name
-                ):
-                    updated_oauth_accounts.append(oauth_account)
-                else:
-                    updated_oauth_accounts.append(existing_oauth_account)
-            return user
-
-    return MockUserDatabase()
+) -> Database:
+    await database.insert_many(
+        UserOAuthModel,
+        [
+            user_oauth,
+            verified_user_oauth,
+            inactive_user_oauth,
+            superuser_oauth,
+            verified_superuser_oauth,
+        ],
+    )
+    return database
 
 
 @pytest.fixture
 def make_user_manager(mocker: MockerFixture):
-    def _make_user_manager(user_manager_class: type[BaseTestUserManager], mock_user_db):
-        user_manager = user_manager_class(mock_user_db)
+    def _make_user_manager(
+        user_manager_class: type[BaseTestUserManager],
+        database: Database,
+        user_schema: type[UserModel],
+    ):
+        user_manager = user_manager_class(database, user_schema)
         mocker.spy(user_manager, "get_by_email")
         mocker.spy(user_manager, "on_after_register")
         mocker.spy(user_manager, "on_after_login")
@@ -423,13 +339,13 @@ def make_user_manager(mocker: MockerFixture):
 
 
 @pytest.fixture
-def user_manager(make_user_manager, mock_user_db):
-    return make_user_manager(UserManager, mock_user_db)
+def user_manager(make_user_manager, user_database):
+    return make_user_manager(UserManager, user_database, UserModel)
 
 
 @pytest.fixture
-def user_manager_oauth(make_user_manager, mock_user_db_oauth):
-    return make_user_manager(UserManagerOAuth, mock_user_db_oauth)
+def user_manager_oauth(make_user_manager, user_database_oauth):
+    return make_user_manager(UserManagerOAuth, user_database_oauth, UserOAuthModel)
 
 
 @pytest.fixture
