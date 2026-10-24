@@ -17,7 +17,7 @@ it. The step is signed off when every box is ticked, or a failure is written bes
 
 - [ ] **6.1–6.7: CI's checks pass.** `.venv/bin/black --check .`, `.venv/bin/isort --check-only .`
       and `.venv/bin/python -m pyflakes api services utils libs migrations settings.py tests dev`
-      report nothing, and `.venv/bin/pytest tests` (under a minute) gives 725 passed.
+      report nothing, and `.venv/bin/pytest tests` (under a minute) gives 729 passed.
 - [ ] **6.1: the licence is kept.** `libs/authlib/LICENSE` is upstream's MIT licence, every
       file derived from it names fastapi-users in its header (all but the new
       `providers.py`), and MSS's `CREDITS.md` credits it.
@@ -59,5 +59,3 @@ it. The step is signed off when every box is ticked, or a failure is written bes
 ## Not covered here
 
 - MSS on `authlib`, its users as storage records, and the API tests on every database: step 7.
-- An app token of a deactivated user still works, as it did before step 5: the access rules
-  check the project, not the user.
