@@ -13,9 +13,20 @@
 
 import pytest
 
-from libs.authlib.exceptions import UserAlreadyExists, UserNotExists
+from libs.authlib.exceptions import (
+    EmailNotPermitted,
+    UnsupportedProvider,
+    UserAlreadyExists,
+    UserNotExists,
+)
+from libs.authlib.providers import ProviderRules
 from libs.storage import generate_id
-from tests.libs.authlib.conftest import UserManagerMock, UserModel, UserOAuthModel
+from tests.libs.authlib.conftest import (
+    UserManagerMock,
+    UserManagerOAuth,
+    UserModel,
+    UserOAuthModel,
+)
 
 
 @pytest.fixture(params=["mongodb", "sqlite"])
@@ -169,3 +180,61 @@ class TestOAuthCallback:
         assert user.is_verified is True
 
         assert user_manager_oauth.on_after_register.called is True
+
+
+@pytest.fixture
+def ruled_user_manager(user_database_oauth):
+    rules = {
+        "service1": ProviderRules(email_regex=r".*@camelot\.bt$", roles=("researcher",))
+    }
+    return UserManagerOAuth(user_database_oauth, UserOAuthModel, rules)
+
+
+@pytest.mark.asyncio
+@pytest.mark.manager
+class TestProviderRules:
+    async def test_new_user_gets_the_provider_roles(self, ruled_user_manager):
+        user = await ruled_user_manager.oauth_callback(
+            "service1", "TOKEN", "new_user_oauth1", "galahad@camelot.bt"
+        )
+
+        assert user.roles == {"researcher"}
+        assert (await ruled_user_manager.get(user.id)).roles == {"researcher"}
+
+    async def test_linked_user_gains_the_provider_roles(
+        self, ruled_user_manager, superuser_oauth: UserOAuthModel
+    ):
+        user = await ruled_user_manager.oauth_callback(
+            "service1",
+            "TOKEN",
+            "superuser_oauth1",
+            superuser_oauth.email,
+            associate_by_email=True,
+        )
+
+        assert user.roles == {"researcher", *superuser_oauth.roles}
+
+    async def test_refreshed_account_grants_nothing_new(
+        self, ruled_user_manager, user_oauth: UserOAuthModel
+    ):
+        account = user_oauth.oauth_accounts[0]
+        user = await ruled_user_manager.oauth_callback(
+            account.oauth_name,
+            "UPDATED_TOKEN",
+            account.account_id,
+            account.account_email,
+        )
+
+        assert user.roles == user_oauth.roles
+
+    async def test_email_off_the_pattern_is_not_permitted(self, ruled_user_manager):
+        with pytest.raises(EmailNotPermitted):
+            await ruled_user_manager.oauth_callback(
+                "service1", "TOKEN", "new_user_oauth1", "mordred@orkney.bt"
+            )
+
+    async def test_provider_without_rules_is_unsupported(self, ruled_user_manager):
+        with pytest.raises(UnsupportedProvider):
+            await ruled_user_manager.oauth_callback(
+                "service2", "TOKEN", "new_user_oauth1", "galahad@camelot.bt"
+            )

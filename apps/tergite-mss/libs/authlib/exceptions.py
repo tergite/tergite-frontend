@@ -26,3 +26,11 @@ class UserAlreadyExists(FastAPIUsersException):
 
 class UserNotExists(FastAPIUsersException):
     pass
+
+
+class EmailNotPermitted(FastAPIUsersException):
+    """The email does not match the provider's email_regex"""
+
+
+class UnsupportedProvider(FastAPIUsersException):
+    """The provider has no rules, so none of its sign-ins are taken"""

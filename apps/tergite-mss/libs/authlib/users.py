@@ -15,9 +15,7 @@ The app's user schema is a storage Schema whose `email` is listed in `case_insen
 users are found by email whatever its case. An OAuth user's schema holds
 `oauth_accounts: List[<account model>]` in `indexed_lists`, which is set whole on each change.
 """
-from typing import Any, Dict, List, Optional, Type, get_args
-
-from pydantic import BaseModel
+from typing import Any, Dict, List, Optional, Set, Type, get_args
 
 from libs.storage import Database
 
@@ -51,17 +49,28 @@ async def create_oauth_user(
     email: str,
     is_verified: bool,
     account: Dict[str, Any],
+    roles: Set[str],
 ) -> models.UOAP:
-    """Creates a user with its first OAuth account, in one write"""
-    user = user_schema(email=email, is_verified=is_verified, oauth_accounts=[account])
+    """Creates a user with its first OAuth account and the roles it grants, in one write"""
+    user = user_schema(
+        email=email,
+        is_verified=is_verified,
+        roles=roles,
+        oauth_accounts=[account],
+    )
     return await database.insert(user_schema, user)
 
 
 async def add_oauth_account(
-    database: Database, user: models.UOAP, account: Dict[str, Any]
+    database: Database, user: models.UOAP, account: Dict[str, Any], roles: Set[str]
 ) -> models.UOAP:
-    accounts = [*_get_account_values(user), account]
-    return await _set_oauth_accounts(database, user, accounts)
+    """Links an OAuth account to the user, who gains the roles it grants"""
+    accounts = _get_validated_accounts(user, [*_get_account_values(user), account])
+    return await database.update_one(
+        type(user),
+        {"id": user.id},
+        {"$set": {"oauth_accounts": accounts, "roles": list(user.roles | roles)}},
+    )
 
 
 async def update_oauth_account(
@@ -77,24 +86,20 @@ async def update_oauth_account(
         if account["oauth_name"] == oauth_name and account["account_id"] == account_id:
             account = {**account, **values}
         accounts.append(account)
-    return await _set_oauth_accounts(database, user, accounts)
+    return await database.update_one(
+        type(user),
+        {"id": user.id},
+        {"$set": {"oauth_accounts": _get_validated_accounts(user, accounts)}},
+    )
 
 
 def _get_account_values(user: models.UOAP) -> List[Dict[str, Any]]:
     return [account.model_dump() for account in user.oauth_accounts]
 
 
-async def _set_oauth_accounts(
-    database: Database, user: models.UOAP, accounts: List[Dict[str, Any]]
-) -> models.UOAP:
-    """Sets the user's accounts whole, each validated so that a new one gets its id"""
-    user_schema = type(user)
-    (account_model,) = get_args(user_schema.model_fields["oauth_accounts"].annotation)
-    validated_accounts: List[BaseModel] = [
-        account_model.model_validate(account) for account in accounts
-    ]
-    return await database.update_one(
-        user_schema,
-        {"id": user.id},
-        {"$set": {"oauth_accounts": [a.model_dump() for a in validated_accounts]}},
-    )
+def _get_validated_accounts(
+    user: models.UOAP, accounts: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """Gets the accounts as the user's schema keeps them, so that a new one gets its id"""
+    (account_model,) = get_args(type(user).model_fields["oauth_accounts"].annotation)
+    return [account_model.model_validate(account).model_dump() for account in accounts]

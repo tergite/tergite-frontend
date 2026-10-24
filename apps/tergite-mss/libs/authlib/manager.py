@@ -10,11 +10,13 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Any, Generic, Optional, Type
+import re
+from typing import Any, Generic, Mapping, Optional, Set, Type
 
 from fastapi import Request, Response
 
 from libs.authlib import exceptions, models, users
+from libs.authlib.providers import ProviderRules
 from libs.authlib.types import DependencyCallable
 from libs.storage import Database, is_id
 
@@ -25,14 +27,23 @@ class BaseUserManager(Generic[models.UP, models.ID]):
 
     :param database: The database the users are kept in.
     :param user_schema: The storage schema of the users.
+    :param provider_rules: The rules of each OAuth provider whose sign-ins are taken;
+    None takes every provider's, granting no roles.
     """
 
     database: Database
     user_schema: Type[models.UP]
+    provider_rules: Optional[Mapping[str, ProviderRules]]
 
-    def __init__(self, database: Database, user_schema: Type[models.UP]):
+    def __init__(
+        self,
+        database: Database,
+        user_schema: Type[models.UP],
+        provider_rules: Optional[Mapping[str, ProviderRules]] = None,
+    ):
         self.database = database
         self.user_schema = user_schema
+        self.provider_rules = provider_rules
 
     def parse_id(self, value: Any) -> models.ID:
         """
@@ -136,8 +147,11 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         set to `True` on newly created user. Make sure the OAuth Provider you're
         using does verify the email address before enabling this flag.
         Defaults to False.
+        :raises UnsupportedProvider: The provider has no rules.
+        :raises EmailNotPermitted: The email does not match the provider's email_regex.
         :return: A user.
         """
+        roles = self._get_permitted_roles(oauth_name, account_email)
         oauth_account_dict = {
             "oauth_name": oauth_name,
             "access_token": access_token,
@@ -156,7 +170,7 @@ class BaseUserManager(Generic[models.UP, models.ID]):
                 if not associate_by_email:
                     raise exceptions.UserAlreadyExists()
                 user = await users.add_oauth_account(
-                    self.database, user, oauth_account_dict
+                    self.database, user, oauth_account_dict, roles=roles
                 )
             except exceptions.UserNotExists:
                 # Create account
@@ -166,6 +180,7 @@ class BaseUserManager(Generic[models.UP, models.ID]):
                     email=account_email,
                     is_verified=is_verified_by_default,
                     account=oauth_account_dict,
+                    roles=roles,
                 )
                 await self.on_after_register(user, request)
         else:
@@ -207,6 +222,21 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         Defaults to None
         """
         return  # pragma: no cover
+
+    def _get_permitted_roles(self, oauth_name: str, email: str) -> Set[str]:
+        """Gets the roles the provider grants, once its rules permit the email
+
+        :raises UnsupportedProvider: The provider has no rules.
+        :raises EmailNotPermitted: The email does not match the provider's email_regex.
+        """
+        if self.provider_rules is None:
+            return set()
+        rules = self.provider_rules.get(oauth_name)
+        if rules is None:
+            raise exceptions.UnsupportedProvider("this oauth login type not supported")
+        if re.match(rules.email_regex, email) is None:
+            raise exceptions.EmailNotPermitted("user not permitted")
+        return set(rules.roles)
 
 
 UserManagerDependency = DependencyCallable[BaseUserManager[models.UP, models.ID]]
