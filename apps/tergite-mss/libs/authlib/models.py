@@ -10,15 +10,14 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Generic, Optional, Protocol, Set, TypeVar
+"""What authlib needs of the app's user schema"""
+from typing import List, Optional, Protocol, Set, TypeVar
 
-ID = TypeVar("ID")
 
+class UserProtocol(Protocol):
+    """A user as authlib reads it"""
 
-class UserProtocol(Protocol[ID]):
-    """User protocol that ORM model should follow."""
-
-    id: ID
+    id: str
     email: str
     is_active: bool
     is_superuser: bool
@@ -26,10 +25,10 @@ class UserProtocol(Protocol[ID]):
     roles: Set[str]
 
 
-class OAuthAccountProtocol(Protocol[ID]):
-    """OAuth account protocol that ORM model should follow."""
+class OAuthAccountProtocol(Protocol):
+    """An OAuth account as authlib reads it"""
 
-    id: ID
+    id: str
     oauth_name: str
     access_token: str
     expires_at: Optional[int]
@@ -38,20 +37,11 @@ class OAuthAccountProtocol(Protocol[ID]):
     account_email: str
 
 
+class UserOAuthProtocol(UserProtocol, Protocol):
+    """A user with the OAuth accounts they sign in with"""
+
+    oauth_accounts: List[OAuthAccountProtocol]
+
+
 UP = TypeVar("UP", bound=UserProtocol)
-OAP = TypeVar("OAP", bound=OAuthAccountProtocol)
-
-
-class UserOAuthProtocol(UserProtocol[ID], Generic[ID, OAP]):
-    """User protocol including a list of OAuth accounts."""
-
-    id: ID
-    email: str
-    is_active: bool
-    is_superuser: bool
-    is_verified: bool
-    roles: Set[str]
-    oauth_accounts: list[OAP]
-
-
 UOAP = TypeVar("UOAP", bound=UserOAuthProtocol)

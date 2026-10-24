@@ -10,19 +10,63 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Ready-to-use and customizable users management for FastAPI."""
+"""Users and their sessions for FastAPI apps, signed in through OAuth providers
 
-__version__ = "14.0.2"
-
-from libs.authlib import models, schemas  # noqa: F401
-from libs.authlib.exceptions import InvalidID
-from libs.authlib.fastapi_users import FastAPIUsers  # noqa: F401
-from libs.authlib.manager import BaseUserManager  # noqa: F401
+It began as a copy of fastapi-users 14.0.2, stripped to what tergite uses.
+"""
+from .auth import Auth
+from .cookies import SessionCookie
+from .errors import (
+    AuthError,
+    EmailNotAvailable,
+    EmailNotPermitted,
+    Forbidden,
+    InactiveUser,
+    InvalidStateToken,
+    ProviderNotFound,
+    Unauthorized,
+    UserAlreadyExists,
+    add_exception_handlers,
+)
+from .models import UserOAuthProtocol, UserProtocol
+from .providers import OAuthProvider
+from .routers import get_logout_router, get_oauth_router
+from .schemas import BaseOAuthAccount, BaseUser
+from .tokens import (
+    SESSION_AUDIENCE,
+    STATE_AUDIENCE,
+    SecretType,
+    read_session_user_id,
+    write_session_token,
+)
+from .users import get_user, get_user_by_email, sign_in_with_oauth
 
 __all__ = [
-    "models",
-    "schemas",
-    "FastAPIUsers",
-    "BaseUserManager",
-    "InvalidID",
+    "SESSION_AUDIENCE",
+    "STATE_AUDIENCE",
+    "Auth",
+    "AuthError",
+    "BaseOAuthAccount",
+    "BaseUser",
+    "EmailNotAvailable",
+    "EmailNotPermitted",
+    "Forbidden",
+    "InactiveUser",
+    "InvalidStateToken",
+    "OAuthProvider",
+    "ProviderNotFound",
+    "SecretType",
+    "SessionCookie",
+    "Unauthorized",
+    "UserAlreadyExists",
+    "UserOAuthProtocol",
+    "UserProtocol",
+    "add_exception_handlers",
+    "get_logout_router",
+    "get_oauth_router",
+    "get_user",
+    "get_user_by_email",
+    "read_session_user_id",
+    "sign_in_with_oauth",
+    "write_session_token",
 ]
