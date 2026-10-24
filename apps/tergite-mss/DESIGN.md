@@ -250,7 +250,8 @@ reads a record past its expiring field.
   field, a `JSON` column per nested one (read and written whole, never queried), a `row_id`
   that keeps insertion order, and a child table, one row per element, for each list in
   `indexed_lists` or `references` (`auth_project_user_ids`, `notice_dismissed_by`,
-  `request_target_user_ids`). A query on a JSON field, or a write to part of one, is refused,
+  `request_target_user_ids`). A list of models gets a column per element field; it is set
+  whole and matched by element with `$elemMatch`, as a user's OAuth accounts are. A query on a JSON field, or a write to part of one, is refused,
   and is the signal to give it a table of its own. Alembic migrates the tables
   (`migrations/`), and `tests/test_migrations.py` fails when a schema changed without a
   revision. A task deletes expired rows hourly, as SQL has no TTL index.
