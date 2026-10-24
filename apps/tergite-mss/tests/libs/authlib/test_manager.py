@@ -22,6 +22,7 @@ from libs.authlib.exceptions import (
 from libs.authlib.providers import ProviderRules
 from libs.storage import generate_id
 from tests.libs.authlib.conftest import (
+    UserManager,
     UserManagerMock,
     UserManagerOAuth,
     UserModel,
@@ -238,3 +239,17 @@ class TestProviderRules:
             await ruled_user_manager.oauth_callback(
                 "service2", "TOKEN", "new_user_oauth1", "galahad@camelot.bt"
             )
+
+
+@pytest.mark.asyncio
+@pytest.mark.manager
+async def test_on_after_login_runs_the_callback(user_database, user: UserModel):
+    logged_in_users = []
+
+    async def on_after_login(logged_in_user: UserModel) -> None:
+        logged_in_users.append(logged_in_user)
+
+    manager = UserManager(user_database, UserModel, on_after_login=on_after_login)
+    await manager.on_after_login(user)
+
+    assert logged_in_users == [user]

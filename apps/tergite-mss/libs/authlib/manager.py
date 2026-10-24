@@ -11,7 +11,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 import re
-from typing import Any, Generic, Mapping, Optional, Set, Type
+from typing import Any, Awaitable, Callable, Generic, Mapping, Optional, Set, Type
 
 from fastapi import Request, Response
 
@@ -29,6 +29,7 @@ class BaseUserManager(Generic[models.UP, models.ID]):
     :param user_schema: The storage schema of the users.
     :param provider_rules: The rules of each OAuth provider whose sign-ins are taken;
     None takes every provider's, granting no roles.
+    :param on_after_login: What the app does with each user who logs in, if anything.
     """
 
     database: Database
@@ -40,10 +41,12 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         database: Database,
         user_schema: Type[models.UP],
         provider_rules: Optional[Mapping[str, ProviderRules]] = None,
+        on_after_login: Optional[Callable[[models.UP], Awaitable[Any]]] = None,
     ):
         self.database = database
         self.user_schema = user_schema
         self.provider_rules = provider_rules
+        self._on_after_login = on_after_login
 
     def parse_id(self, value: Any) -> models.ID:
         """
@@ -212,16 +215,15 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         response: Optional[Response] = None,
     ) -> None:
         """
-        Perform logic after user login.
-
-        *You should overload this method to add your own logic.*
+        Perform logic after user login: the on_after_login callback, if given.
 
         :param user: The user that is logging in
         :param request: Optional FastAPI request
         :param response: Optional response built by the transport.
         Defaults to None
         """
-        return  # pragma: no cover
+        if self._on_after_login is not None:
+            await self._on_after_login(user)
 
     def _get_permitted_roles(self, oauth_name: str, email: str) -> Set[str]:
         """Gets the roles the provider grants, once its rules permit the email
