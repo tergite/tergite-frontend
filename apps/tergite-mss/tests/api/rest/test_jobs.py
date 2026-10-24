@@ -23,7 +23,7 @@ import settings
 from libs.storage import generate_id
 from services.auth import AppToken, Project
 from services.jobs import Job
-from services.notices import Notice, NoticeType
+from services.notices import Notice, NoticeSeverity, NoticeType
 from tests._utils.auth import (
     TEST_PROJECT_ID,
     TEST_PROJECT_NAME,
@@ -614,7 +614,7 @@ def test_dropping_below_the_qpu_threshold_warns_the_project_admin(client, db):
         f"{TEST_PROJECT_NAME} has {_QPU_THRESHOLD - 1:.0f}s of QPU time left. "
         "Request more before it runs out."
     )
-    assert admin_notices[0].severity == "warning"
+    assert admin_notices[0].severity == NoticeSeverity.WARNING
     assert get_user_notices(db, TEST_SYSTEM_USER_ID) == []
 
 
@@ -646,7 +646,7 @@ def test_running_out_of_qpu_time_tells_all_members(client, db):
         TEST_USER_ID,
         TEST_SYSTEM_USER_ID,
     }
-    assert {item.severity for item in depleted_notices} == {"critical"}
+    assert {item.severity for item in depleted_notices} == {NoticeSeverity.CRITICAL}
 
 
 def test_running_out_of_qpu_time_after_running_low(client, db):

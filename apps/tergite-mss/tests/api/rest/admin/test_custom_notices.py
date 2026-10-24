@@ -27,7 +27,7 @@ _READ_USER_NOTICE_ID = "dddddddddddddddddddddddd"
 _SYSTEM_NOTICE_ID = "ffffffffffffffffffffffff"
 _NOTICE_PAYLOAD = {
     "message": "Important maintenance window",
-    "severity": "warning",
+    "severity": 2,
     "starts_at": "2026-01-01T00:00:00Z",
     "expires_at": "2027-01-01T00:00:00Z",
 }
@@ -208,14 +208,12 @@ def test_admin_get_notices_by_type(admin_jwt_cookie, client, inserted_notices):
 def test_admin_get_notices_sorted_by_severity(
     admin_jwt_cookie, client, inserted_notices
 ):
-    """GET /admin/notices?sort=severity_number lists the most severe notices first"""
+    """GET /admin/notices?sort=severity lists the most severe notices first"""
     with client as client:
-        response = client.get(
-            "/admin/notices?sort=severity_number", cookies=admin_jwt_cookie
-        )
+        response = client.get("/admin/notices?sort=severity", cookies=admin_jwt_cookie)
 
         assert response.status_code == 200
-        assert [item["severity_number"] for item in response.json()["data"]] == [
+        assert [item["severity"] for item in response.json()["data"]] == [
             1,
             2,
             3,

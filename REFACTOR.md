@@ -316,7 +316,7 @@ Step 6 made `authlib` read users through the `Database`, so items 1 to 3 land to
 4. **Middleware stays as Starlette subclasses.** `TergiteCORSMiddleware` goes only if stock `CORSMiddleware(allow_origin_regex=".*", allow_credentials=True, …)` passes the step 1.3 test. `EndpointFilter` holds no state, so it becomes a filter function.
 5. **`NoticeType(NoticeTypeInfo, Enum)`** → `NoticeTypeId(StrEnum)` plus a `NOTICE_TYPE_INFO: dict[NoticeTypeId, NoticeTypeInfo]` constant. Delete `from_str`, `__str_member_map__`, the `Literal[tuple(…)]` hack and `utils/types.py`. `DeviceEventHandler(Protocol)` → a `Callable` alias.
 6. **Behaviour off DTOs**, one service per commit; class-level dunder maps become module constants.
-   - `notices`: `CustomNoticeCreate.to_documents` (does I/O) → `_get_custom_notices(db, payload, created_by)`; `Notice.from_template` → `_render_notice`; `NoticeSeverity.to_int` → `_SEVERITY_RANK`
+   - `notices`: `CustomNoticeCreate.to_documents` (does I/O) → `_get_custom_notices(db, payload, created_by)`; `Notice.from_template` → `_render_notice`
    - `requests`: `Request.notice_type`, `notice_context`, `from_post_body`, `RequestPostBody.target` and the three `__type_*_map__` → `requests/service.py`
    - `devices`: `DeviceEvent.__status_data_map__` → a constant in `events.py`
    - `utils/config.py`: `BccConfig.ip_address` (a DNS lookup in a `computed_field`) → `get_ip_addr(conf.url.host)` at `api/rest/utils.py:87`

@@ -15,7 +15,6 @@ verb: services/jobs/dtos.py::Job.model_dump
 verb: services/jobs/dtos.py::JobStatusResponse.from_job
 verb: services/notices/dtos.py::CustomNoticeCreate.to_documents
 verb: services/notices/dtos.py::Notice.from_template
-verb: services/notices/dtos.py::NoticeSeverity.to_int
 verb: services/notices/dtos.py::NoticeTemplate.from_notice_type
 verb: services/notices/dtos.py::NoticeType.from_str
 verb: services/notices/emails.py::_to_email_body

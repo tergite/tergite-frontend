@@ -51,20 +51,12 @@ class EmailStatus(str, Enum):
     FAILED = "failed"
 
 
-class NoticeSeverity(str, Enum):
-    INFO = "info"
-    WARNING = "warning"
-    CRITICAL = "critical"
+class NoticeSeverity(int, Enum):
+    """How urgent a notice is; the most urgent is the lowest, so notices sort by it"""
 
-    def to_int(self) -> int:
-        """Gets the number corresponding to this notice severity"""
-        if self == NoticeSeverity.INFO:
-            return 3
-        if self == NoticeSeverity.WARNING:
-            return 2
-        if self == NoticeSeverity.CRITICAL:
-            return 1
-        raise ValueError(f"Invalid notice severity: {self}")
+    CRITICAL = 1
+    WARNING = 2
+    INFO = 3
 
 
 class BaseNoticeContext(BaseModel):
@@ -308,8 +300,6 @@ class Notice(Schema):
     # 'created_by' is specific to custom notices
     created_by: Optional[Id] = None
     severity: NoticeSeverity = NoticeSeverity.INFO
-    # stored, not computed, so that notices sort by it on every database
-    severity_number: int = Field(default_factory=lambda data: data["severity"].to_int())
     ref_type: Optional[RefType] = None
     ref_id: Optional[Id] = None
     context: Dict[str, Any] = Field(default_factory=dict)

@@ -17,7 +17,7 @@ import aiosmtplib
 
 import settings
 from libs.storage import generate_id
-from services.notices import EmailStatus, Notice
+from services.notices import EmailStatus, Notice, NoticeSeverity
 from tests._utils.auth import (
     TEST_PROJECT_ID,
     TEST_PROJECT_NAME,
@@ -156,7 +156,7 @@ def test_email_to_an_unknown_user_fails_at_once(client, db, smtp):
         title="Access approved",
         body="you are in",
         user_id=generate_id(),
-        severity="info",
+        severity=NoticeSeverity.INFO,
         context={},
         email_status=EmailStatus.PENDING,
         email_attempts=0,

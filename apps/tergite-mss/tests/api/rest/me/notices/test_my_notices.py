@@ -45,7 +45,7 @@ def test_view_my_notices(client, user_jwt_cookie, inserted_notices):
 def test_view_my_notices_serializes_each_notice(
     client, user_jwt_cookie, inserted_notices
 ):
-    """GET /me/notices/ returns each notice with JSON-friendly ids and its severity number"""
+    """GET /me/notices/ returns each notice with JSON-friendly ids and its severity"""
     with client as client:
         response = client.get("/me/notices/?limit=1", cookies=user_jwt_cookie)
         got = response.json()["data"][0]
@@ -56,7 +56,7 @@ def test_view_my_notices_serializes_each_notice(
         assert got["title"] == "Access request for test-project"
         assert got["ref_type"] == "user_request"
         assert got["ref_id"] == "a1b2c3d4e5f6a7b8c9d0e1f2"
-        assert got["severity_number"] == 3
+        assert got["severity"] == 3
         assert got["read_at"] is None
         assert got["dismissed_by"] == []
 
