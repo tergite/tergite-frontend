@@ -249,8 +249,11 @@ Jobs and notices set it, as MongoDB holds older shapes of both.
 
 - **MongoDB** keeps a collection per schema, with a `$jsonSchema` validator and the indexes
   `__storage__` asks for; a TTL index deletes expired records. A revision that changes stored
-  values has a mongosh upgrade and rollback named after it in `migrations/mongodb/`, which
-  operators run with MSS stopped, as `setup` replaces the validator only on start.
+  values has a JSON of updates, both ways, named after it in `migrations/mongodb/`. The start
+  script applies the pending ones in Alembic's order (`python -m migrations.mongodb upgrade`),
+  bypassing the old MSS's validator, as `setup` replaces it only once MSS starts; its
+  `.upgrade.js` and `.rollback.js` apply the same JSON with mongosh, and both record it in
+  `mongodb_migrations`.
 - **SQL** gets a table per schema from `libs/storage/sql/tables.py`: a column per scalar
   field, a `JSON` column per nested one (read and written whole, never queried), a `row_id`
   that keeps insertion order, and a child table, one row per element, for each list in

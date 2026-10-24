@@ -9,6 +9,9 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Added MongoDB migrations to the start script, as Alembic's for SQL: the pending ones in
+  `migrations/mongodb/` apply before MSS starts, so its MongoDB user needs the
+  `bypassDocumentValidation` privilege, e.g. the `dbAdmin` role. Each has mongosh scripts too.
 - Added the `id`, `user_ids`, `name`, `is_active`, `min_qpu_seconds` and `max_qpu_seconds` filters
   of GET `/admin/projects/` to GET `/me/projects/`, which ignored them, so the dashboard's list of
   active projects also showed inactive ones.
@@ -57,9 +60,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   layer instead of Beanie. Emails are now unique in any case, so startup fails while two
   users' emails differ only in case: merge them first.
 - Notice severities are numbers in requests, responses and storage (1 critical, 2 warning,
-  3 info) and `severity_number` is gone, so posting `"warning"` gets a 422. On MongoDB, run
-  `migrations/mongodb/b109440758fe_store_notice_severities_as_numbers.upgrade.js` with mongosh
-  before starting MSS; its `.rollback.js` undoes it.
+  3 info) and `severity_number` is gone, so posting `"warning"` gets a 422. The start script
+  converts stored ones; `python -m migrations.mongodb rollback b109440758fe` undoes it on MongoDB.
 - Notices that no longer fit MSS's schema, such as those `v2026.06.0` stored, are left out
   of listings with a warning in the log, where they failed the whole listing; jobs already were.
 - `request_log_clean_interval` is ignored, as Redis now expires each request-log entry itself.
