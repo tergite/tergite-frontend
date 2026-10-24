@@ -27,7 +27,8 @@ from api.rest.database import SCHEMAS, get_database_url
 from libs.storage.sql import get_metadata
 
 if context.config.config_file_name is not None:
-    fileConfig(context.config.config_file_name)
+    # run in-process too, as by the tests, where it must not silence the app's loggers
+    fileConfig(context.config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = get_metadata(SCHEMAS)
 # a URL set in Alembic's config, as tests set one, stands in for the MSS config's
