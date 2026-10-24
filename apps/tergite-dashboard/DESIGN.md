@@ -306,10 +306,11 @@ Job submission has no UI; its happy path is the MSS pytest flow in `tests/api/re
 
 Component tests are the thin layer: `vite.config.ts` restricts them to `__tests__`
 directories, and only pure-ish primitives are covered there (`ui/__tests__/donut-chart.test.tsx`).
-The real coverage is the cypress suite, which drives the app through the mock API. Specs
-typically iterate over the fixture users (`users.forEach((user) => …)`) so each page is
-asserted for every role. `TZ=Europe/Stockholm` is set for every cypress run — timezone
-changes will move snapshots.
+The real coverage is the cypress suite, which drives the app through the mock API. Each
+spec names the fixture users whose roles or data change its pages, and runs its tests for
+each (`users.forEach((user) => …)`). `cy.resetDatabase()` resets the data before a test only
+if an earlier test wrote (`cypress/support/database.ts`), so read-only tests share a reset.
+`TZ=Europe/Stockholm` is set for every cypress run — timezone changes will move snapshots.
 
 Visual baselines are Linux-specific. Regenerate them through `Dockerfile.e2e` rather than
 locally on macOS; see the "How to Generate Snapshots for CI" section of
