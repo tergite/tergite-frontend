@@ -1,0 +1,9 @@
+FROM mcr.microsoft.com/playwright:v1.64.0-noble
+
+WORKDIR /app
+
+COPY . /app
+
+RUN npm ci
+
+CMD [ "npx", "playwright", "test", "--update-snapshots" ]

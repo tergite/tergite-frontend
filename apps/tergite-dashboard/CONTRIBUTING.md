@@ -192,6 +192,27 @@ git add .
 git commit -m "Updated the baseline snapshots for end-to-end tests"
 ```
 
+### For the Playwright suite
+
+Playwright names each screenshot baseline after the platform (`-chromium-darwin.png`,
+`-chromium-linux.png`), so CI on linux needs the linux ones beside those made on a mac. Generate
+them in Playwright's own linux image, which has the browsers:
+
+- Generate the image `tergite-dashboard-playwright`, from `apps/tergite-dashboard`
+
+```shell
+docker build -t tergite-dashboard-playwright:latest -f Dockerfile.playwright .
+```
+
+- Run the suite in it, with the specs' folder mounted so that the new baselines land in it
+
+```shell
+docker run --rm -v ./playwright:/app/playwright tergite-dashboard-playwright:latest
+```
+
+- The new baselines are the `-chromium-linux.png` files in the `playwright/*-snapshots/` folders;
+  commit them as above
+
 ## References
 
 This document was adapted from [a gist by Brian A. Danielak](https://gist.github.com/briandk/3d2e8b3ec8daf5a27a62) which
