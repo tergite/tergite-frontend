@@ -73,6 +73,7 @@ dev = [
     "filelock>=3.12.2",
     "setuptools",
     "pyflakes>=3.2",
+    "asgi-lifespan>=2.1.0",
 ]
 
 [project.urls]

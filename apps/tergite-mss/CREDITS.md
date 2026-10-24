@@ -45,3 +45,8 @@ Implemented version v2 of the API
 ## Adilet Tuleouv
 
 Implemented parts of version v2 of the API
+
+## fastapi-users
+
+`libs/authlib` began as a copy of [fastapi-users](https://github.com/fastapi-users/fastapi-users)
+14.0.2 by François Voron, used under the MIT licence kept in `libs/authlib/LICENSE`.
