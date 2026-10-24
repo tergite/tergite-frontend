@@ -13,7 +13,10 @@ const invalidFormatEmailAddresses = [
   "http://example.com",
 ];
 
-const users = [...userList] as User[];
+// an email domain with a provider, and one without
+const users = ([...userList] as User[]).filter((v) =>
+  ["jane.doe@example.com", "wrong.domain@domain.com"].includes(v.email)
+);
 
 users.forEach((user) => {
   const [username, emailDomain] = user.email.split("@");

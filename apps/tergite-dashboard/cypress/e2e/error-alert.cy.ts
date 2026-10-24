@@ -4,7 +4,10 @@ import { generateJwt, getUsername } from "../../dev/mock-api/utils";
 import { type User } from "../../types";
 import userList from "../fixtures/users.json";
 
-const users = [...userList] as User[];
+// the alerts do not depend on the user
+const users = ([...userList] as User[]).filter((v) =>
+  ["jane.doe@example.com"].includes(v.email)
+);
 
 users.forEach((user) => {
   const username = getUsername(user);

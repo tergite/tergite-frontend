@@ -18,7 +18,10 @@ import {
 const projects = [...projectList] as Project[];
 const projectsIndex = Object.fromEntries(projects.map((v, i) => [v.id, i]));
 const userRequests = [...userRequestList] as UserRequest[];
-const users = [...userList] as User[];
+// the admin, and a user the page is forbidden to
+const users = ([...userList] as User[]).filter((v) =>
+  ["jane.doe@example.com", "john.doe@example.com"].includes(v.email)
+);
 
 const requestsTableHeaders = [
   "Title",

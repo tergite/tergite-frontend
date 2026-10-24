@@ -16,7 +16,10 @@ interface StoredNotice {
   expires_at_offset_hours: number | null;
 }
 
-const users = [...userList] as User[];
+// one who can act on a notice, one with notices of their own, and one with broadcasts only
+const users = ([...userList] as User[]).filter((v) =>
+  ["jane.doe@example.com", "john.doe@example.com", "julie.doe@example.com"].includes(v.email)
+);
 const notices = [...noticeList] as StoredNotice[];
 
 function login(user: User, path: string) {

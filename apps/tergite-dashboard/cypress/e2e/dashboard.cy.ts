@@ -12,7 +12,10 @@ import {
   type User,
 } from "../../types";
 
-const users = [...userList] as User[];
+// an admin with projects, a member of several, and a user of none
+const users = ([...userList] as User[]).filter((v) =>
+  ["jane.doe@example.com", "paul.doe@example.com", "julie.doe@example.com"].includes(v.email)
+);
 const projects = [...projectList] as Project[];
 const userRequests = [...userRequestList] as UserRequest[];
 

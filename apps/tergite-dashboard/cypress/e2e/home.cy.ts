@@ -15,7 +15,10 @@ import {
 } from "../../types";
 import { DateTime } from "luxon";
 
-const users = [...userList] as User[];
+// an admin with projects, a member of several, and a user of none
+const users = ([...userList] as User[]).filter((v) =>
+  ["jane.doe@example.com", "paul.doe@example.com", "julie.doe@example.com"].includes(v.email)
+);
 const devices = [...deviceList] as unknown as Device[];
 const jobs = [...jobList] as Job[];
 const projects = [...projectList] as Project[];

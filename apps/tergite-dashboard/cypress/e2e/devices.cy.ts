@@ -5,7 +5,10 @@ import deviceList from "../fixtures/device-list.json";
 import { generateJwt, getUsername } from "../../dev/mock-api/utils";
 import { type Device, type User } from "../../types";
 
-const users = [...userList] as User[];
+// the page shows every user the same devices
+const users = ([...userList] as User[]).filter((v) =>
+  ["jane.doe@example.com"].includes(v.email)
+);
 const devices = [...deviceList] as Device[];
 
 users.forEach((user) => {

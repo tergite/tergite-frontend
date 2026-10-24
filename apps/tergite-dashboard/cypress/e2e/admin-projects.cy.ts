@@ -11,8 +11,13 @@ type ProjectFormData = Omit<
   "id" | "user_ids" | "admin_id" | "admin_email"
 >;
 
-const users = [...userList] as User[];
-const userIdEmailMap = Object.fromEntries(users.map((v) => [v.id, v.email]));
+// the admin, and a user the page is forbidden to
+const users = ([...userList] as User[]).filter((v) =>
+  ["jane.doe@example.com", "john.doe@example.com"].includes(v.email)
+);
+const userIdEmailMap = Object.fromEntries(
+  (userList as User[]).map((v) => [v.id, v.email])
+);
 const projects = [...projectList].map((v) => ({
   ...v,
   admin_email: userIdEmailMap[v.admin_id],
