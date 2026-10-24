@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { get } from "node:http";
 import { test as base, type Page } from "@playwright/test";
 import { SignJWT } from "jose";
 import { type User } from "../types";
@@ -75,7 +76,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(async () => {
       if (!hasWritten) return;
       hasWritten = false;
-      await fetch(IS_STACK ? process.env.DB_RESET_URL! : `${apiUrl}/refreshed-db`);
+      await (IS_STACK ? resetStack() : fetch(`${apiUrl}/refreshed-db`));
     });
   },
 
@@ -126,6 +127,17 @@ export function signSession(user: User, expiry: number): Promise<string> {
     .setAudience([process.env.AUTH_AUDIENCE!])
     .setExpirationTime(expiry)
     .sign(new TextEncoder().encode(process.env.JWT_SECRET!));
+}
+
+/** Resets the docker stack's data, whose reset service ends its lines with a bare LF, which
+ * fetch rejects as malformed HTTP */
+function resetStack(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    get(process.env.DB_RESET_URL!, { insecureHTTPParser: true }, (response) => {
+      response.resume();
+      response.on("end", resolve);
+    }).on("error", reject);
+  });
 }
 
 async function waitUntilServing(url: string): Promise<void> {

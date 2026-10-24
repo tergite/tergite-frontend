@@ -27,24 +27,27 @@ for (const user of users) {
 
       if (isFullE2E) {
         const openidAuthUrl = process.env.OPENID_AUTH_URL!;
-        // stand-ins for a real OpenID Connect server
-        await page.route(`${dashboardUrl}?set-cookie=true`, async (route) => {
-          const token = await signSession(user, cookieExpiry);
-          const cookie = `${cookieName}=${token}; Domain=${domain}; Secure; HttpOnly; SameSite=Lax; Path=/; Expires=${cookieExpiry}`;
-          const response = await route.fetch();
-          await route.fulfill({
-            response,
-            headers: { ...response.headers(), "set-cookie": cookie },
-          });
-        });
+        // a stand-in for a real OpenID Connect server; the browser would follow the API's redirect
+        // to it unrouted, so that redirect is answered here as the server would answer it, back
+        // to the dashboard with the session cookie, provided it does lead to the server
         await page.route(
-          (url) => url.href.startsWith(openidAuthUrl),
+          (url) => url.href.startsWith(apiBaseUrl) && url.pathname.endsWith("/auto-authorize"),
           async (route) => {
-            const state = new URL(route.request().url()).searchParams.get("state");
+            const response = await route.fetch({ maxRedirects: 0 });
+            const authorizeUrl = response.headers().location ?? "";
+            if (!authorizeUrl.startsWith(openidAuthUrl)) {
+              await route.fulfill({ response });
+              return;
+            }
+            const state = new URL(authorizeUrl).searchParams.get("state");
             const stateObj = decodeJwt(`${state}`);
+            const token = await signSession(user, cookieExpiry);
             await route.fulfill({
               status: 302,
-              headers: { location: `${stateObj.next}?set-cookie=true` },
+              headers: {
+                location: `${stateObj.next}?set-cookie=true`,
+                "set-cookie": `${cookieName}=${token}; Domain=${domain}; Secure; HttpOnly; SameSite=Lax; Path=/; Expires=${cookieExpiry}`,
+              },
             });
           },
         );
@@ -100,14 +103,9 @@ for (const user of users) {
         await nextButton(page).click();
 
         const jobsLoaded = waitForApi(page, "GET", "/me/jobs/");
-        const authorized =
-          isFullE2E && page.waitForRequest((v) => v.url().startsWith(process.env.OPENID_AUTH_URL!));
         await page.locator("[data-cy-login-link]").first().click();
-        let finalUrl = dashboardUrl;
-        if (isFullE2E) {
-          await authorized;
-          finalUrl = `${dashboardUrl}?set-cookie=true`;
-        }
+        // only the stand-in for the OpenID server, reached through it, adds set-cookie
+        const finalUrl = isFullE2E ? `${dashboardUrl}?set-cookie=true` : dashboardUrl;
 
         await jobsLoaded;
 
