@@ -19,7 +19,7 @@ box is ticked, or a failure is written beside its box.
 
 - [ ] **7.1–7.4: CI's checks pass.** `.venv/bin/black --check .`, `.venv/bin/isort --check-only .`
       and `.venv/bin/python -m pyflakes api services utils libs migrations settings.py tests dev`
-      report nothing, and `.venv/bin/pytest tests` (under a minute) gives 747 passed.
+      report nothing, and `.venv/bin/pytest tests` (under a minute) gives 750 passed.
 - [ ] **7.1, 7.2: fastapi-users and Beanie are gone.**
       `git grep -nE "fastapi_users|beanie|motor" -- api services utils settings.py pyproject.toml`
       finds nothing, and `ls services/auth/users` lists only `__init__.py` and `dtos.py`.
@@ -28,10 +28,15 @@ box is ticked, or a failure is written beside its box.
       `auth_users`, `auth_roles`, `auth_user_roles` and `auth_user_oauth_accounts`, the third
       turning the `severity` of `notices` and `notice_templates` into numbers;
       `.venv/bin/pytest tests/test_migrations.py` passes.
-- [ ] **MongoDB's notice severities convert both ways.** On a database whose notices hold
+- [ ] **MongoDB's migrations apply on start, or by hand.** On a database whose notices hold
       `"info"`, `"warning"` or `"critical"`, `mongosh <url>/<db>
       migrations/mongodb/b109440758fe_store_notice_severities_as_numbers.upgrade.js` turns them
-      into 1 to 3, its `.rollback.js` turns them back, and a second run of either converts 0.
+      into 1 to 3 and records it in `mongodb_migrations`, after which
+      `python -m migrations.mongodb upgrade` reports none pending; its `.rollback.js` turns them
+      back and drops the record, and `start_mss.sh` then applies it again before MSS starts.
+      **2026-10-24:** the e2e stack's MSS logged `MongoDB migrations applied: ['b109440758fe']`
+      on start, on `f9d99ae`, and its suite passed but for one timeout under load, which
+      passed when `device-detail.cy.ts` was re-run alone.
 - [ ] **7.4: the API runs on the database the environment names.**
       `TEST_DATABASE_URL=sqlite+aiosqlite:////tmp/mss-api.db .venv/bin/pytest tests/api -q`
       passes, as it does with the variable unset (MongoDB).
