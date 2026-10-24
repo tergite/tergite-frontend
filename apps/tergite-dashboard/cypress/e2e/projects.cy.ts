@@ -458,7 +458,7 @@ users.forEach((user) => {
 
           // projects with pending requests and with current user as admin of project
           if (
-            qpuTimeRequestsProjectsMap[project.id]?.status !== "pending" &&
+            qpuTimeRequestsProjectsMap[project.id]?.status === "pending" &&
             project.admin_id === user.id
           ) {
             cy.contains(

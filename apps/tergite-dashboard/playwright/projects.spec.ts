@@ -219,7 +219,7 @@ for (const user of users) {
 
       for (const [index, project] of userProjects.entries()) {
         if (
-          qpuTimeRequestsProjectsMap[project.id]?.status !== "pending" &&
+          qpuTimeRequestsProjectsMap[project.id]?.status === "pending" &&
           project.admin_id === user.id
         ) {
           await expect(
