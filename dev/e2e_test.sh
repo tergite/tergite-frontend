@@ -17,6 +17,7 @@
 # BACKEND_REPO="https://github.com/tergite/tergite-backend.git" \
 #   BACKEND_BRANCH="main" \ # you can set a different backend branch; default is 'main'
 #   DEBUG="True" \ # Set 'True' to avoid cleaning up the containers, env, and repos after test, default: ''
+#   CLEAN="True" \ # Set 'True' to also remove the stack's images and the build cache, before and after, default: ''
 #   VISUAL="True" \ # Set 'True' to see the e2e in a graphical user interface, default: ''
 #   CYPRESS_IMAGE="cypress/base:20.17.0" \ # Set the docker image to run the tests. If not provided, it runs on the host machine
 #   OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration" \ # Set the url to get the openID config for mock OpenID connect, default: 'https://samples.auth0.com/.well-known/openid-configuration'
@@ -81,16 +82,40 @@ read_json() {
   echo "$(jq -c . $1 | jq -Rr @sh)"
 }
 
+# waits until every container of the stack that has a healthcheck is healthy, but the dashboard,
+# whose e2e healthcheck probes a port it does not listen on
+# usage:
+#   wait_until_healthy
+wait_until_healthy() {
+  local deadline=$(( $(date +%s) + 600 ));
+  for container in $(docker compose -p tergite-frontend-e2e ps -q); do
+    local name;
+    name="$(docker inspect -f '{{.Name}}' "$container")";
+    [[ "$name" == *-dashboard-* ]] && continue;
+    until [[ "$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}healthy{{end}}' "$container")" == "healthy" ]]; do
+      [[ $(date +%s) -lt $deadline ]] || exit_with_err "$name did not become healthy";
+      sleep 2;
+    done
+  done
+}
 
-# Clean up any remaining docker things
+# removes the stack's containers and volumes, and with CLEAN set its images and the build cache
+# usage:
+#   remove_stack
+remove_stack() {
+  if [[ $(echo "${CLEAN}" | tr '[:lower:]' '[:upper:]') = "TRUE" ]]; then
+    docker compose -p tergite-frontend-e2e down --rmi all --volumes 2>/dev/null || true;
+    docker builder prune -f;
+  else
+    docker compose -p tergite-frontend-e2e down --volumes 2>/dev/null || true;
+  fi
+}
+
+
+# Clean up any remaining docker things; the images and build cache stay, unless CLEAN is set,
+# so that `up --build` below rebuilds only what changed
 echo "Cleaning up docker artefacts from previous runs"
-docker compose -p tergite-frontend-e2e  down --rmi all --volumes 2>/dev/null
-docker rmi -f tergite/tergite-mss:frontend-e2e 2>/dev/null
-docker rmi -f tergite/tergite-dashboard:frontend-e2e 2>/dev/null
-docker rmi -f tergite/tergite-backend-e2e:frontend-e2e 2>/dev/null
-docker rmi -f tergite/tergite-backend-with-db-e2e:frontend-e2e 2>/dev/null
-docker rmi -f tergite/tergite-mongo-e2e:frontend-e2e 2>/dev/null
-docker system prune -f
+remove_stack
 
 # Create and navigating to temporary directory
 echo "Creating temporary folder $TEMP_DIR_PATH"
@@ -215,7 +240,11 @@ docker compose \
   -f fresh-docker-compose.yml \
   -f e2e-docker-compose.yml \
   -p tergite-frontend-e2e \
-  up -d;
+  up -d --build;
+
+# with the images cached the tests would otherwise start while the backends are still starting
+echo "Waiting for the services to be healthy"
+wait_until_healthy
 
 # Run in python docker file if $CYPRESS_IMAGE is set
 # or else run on host machine
@@ -252,7 +281,9 @@ fi
 # set the env variable "DEBUG" to True
 if [[ $(echo "${DEBUG}" | tr '[:lower:]' '[:upper:]') != "TRUE" ]]; then
   echo "Cleaning up..."
-  docker compose -p tergite-frontend-e2e down --rmi all --volumes
+  remove_stack
+  # the images a rebuild replaced; the build cache keeps their layers
+  docker image prune -f --filter "label=com.docker.compose.project=tergite-frontend-e2e"
   docker rm -f tergite-frontend-e2e-runner 2>/dev/null || true
   rm -rf "$TEMP_DIR_PATH" || true
 else
