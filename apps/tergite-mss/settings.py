@@ -20,7 +20,7 @@ _ROOT = Path(__file__).parent
 
 _MSS_CONFIG_JSON_STR = os.environ.get("MSS_CONFIG_JSON_STR")
 _MSS_CONFIG_FILE = Path(
-    os.environ.get("MSS_CONFIG_FILE", default=_ROOT / "private-mss-key.pem")
+    os.environ.get("MSS_CONFIG_FILE", default=_ROOT / "mss-config.toml")
 ).resolve()
 
 # the private key for authentication between MSS and BCC
