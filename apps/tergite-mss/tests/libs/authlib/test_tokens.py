@@ -46,6 +46,16 @@ def test_an_unreadable_session_token_names_no_user(user, secret, lifetime_second
     assert read_session_user_id("not-a-token", SECRET) is None
 
 
+def test_the_state_is_for_fastapi_users_oauth_state():
+    # live cookies and the dashboard's mock API carry fastapi-users' audiences
+    state = write_state_token(None, SECRET)
+
+    claims = jwt.decode(
+        state, SECRET, audience="fastapi-users:oauth-state", algorithms=["HS256"]
+    )
+    assert claims["next"] is None
+
+
 def test_the_state_keeps_where_to_go_next():
     state = write_state_token("https://camelot.bt/home", SECRET)
 
