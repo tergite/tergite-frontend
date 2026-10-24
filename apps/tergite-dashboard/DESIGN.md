@@ -274,13 +274,19 @@ up as a passing UI suite against a stale contract — which is what the repo-lev
 | --- | --- | --- |
 | Component | vitest + happy-dom + Testing Library | files matching `src/**/__tests__/*` only |
 | e2e | cypress against vite preview + the mock API | `cypress/e2e/*.cy.ts`, one spec per page |
+| e2e, Playwright | the same specs, each worker against its own mock API | `playwright/*.spec.ts`, beside Cypress until it replaces it |
 | Visual | `cypress-image-diff-js` inside the e2e run | baselines in `cypress-image-diff-screenshots/baseline/` |
 
 ```bash
 npm run test    # component tests
 npm run e2e     # build --mode test, serve, run cypress headless
 npm run visual-e2e   # same, with the cypress UI
+npm run e2e:playwright   # build --mode test, serve, run playwright on parallel workers
 ```
+
+Each Playwright worker starts its own mock API on `PW_API_PORT_BASE` (8100) plus its index, and
+`playwright/fixtures.ts` redirects the page's requests for the build's API address to it, so
+workers never share data. Runs at the same time need different `PW_API_PORT_BASE`s.
 
 The mock API listens on 8002. To run beside something else on that port, such as the e2e
 docker stack, override the three `.env.test` values that name it:
