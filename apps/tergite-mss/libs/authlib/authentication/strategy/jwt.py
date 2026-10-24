@@ -55,17 +55,8 @@ class JWTStrategy(Strategy[models.UP, models.ID], Generic[models.UP, models.ID])
     async def read_token(
         self, token: Optional[str], user_manager: BaseUserManager[models.UP, models.ID]
     ) -> Optional[models.UP]:
-        if token is None:
-            return None
-
-        try:
-            data = decode_jwt(
-                token, self.decode_key, self.token_audience, algorithms=[self.algorithm]
-            )
-            user_id = data.get("sub")
-            if user_id is None:
-                return None
-        except jwt.PyJWTError:
+        user_id = self.get_user_id(token)
+        if user_id is None:
             return None
 
         try:
@@ -73,6 +64,17 @@ class JWTStrategy(Strategy[models.UP, models.ID], Generic[models.UP, models.ID])
             return await user_manager.get(parsed_id)
         except (exceptions.UserNotExists, exceptions.InvalidID):
             return None
+
+    def get_user_id(self, token: Optional[str]) -> Optional[str]:
+        if token is None:
+            return None
+        try:
+            data = decode_jwt(
+                token, self.decode_key, self.token_audience, algorithms=[self.algorithm]
+            )
+        except jwt.PyJWTError:
+            return None
+        return data.get("sub")
 
     async def write_token(self, user: models.UP) -> str:
         data = {

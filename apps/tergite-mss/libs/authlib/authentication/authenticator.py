@@ -13,7 +13,7 @@
 import re
 from collections.abc import Sequence
 from inspect import Parameter, Signature
-from typing import Any, Callable, Generic, Optional, cast
+from typing import Any, Awaitable, Callable, Generic, Optional, cast
 
 from fastapi import Depends, HTTPException, status
 from makefun import with_signature
@@ -164,6 +164,32 @@ class Authenticator(Generic[models.UP, models.ID]):
 
         return current_user_dependency
 
+    def get_current_user_id(
+        self,
+        is_optional: bool = False,
+        get_enabled_backends: Optional[
+            EnabledBackendsDependency[models.UP, models.ID]
+        ] = None,
+    ) -> Callable[..., Awaitable[Optional[str]]]:
+        """
+        Return a dependency callable to retrieve the authenticated user's id.
+
+        It reads the id from the token alone, never the database, so it does not know
+        whether the user is still active.
+
+        :param is_optional: If `True`, `None` is returned if there is no authenticated
+        user. Otherwise, throw `401 Unauthorized`. Defaults to `False`.
+        :param get_enabled_backends: Optional dependency callable returning
+        a list of enabled authentication backends, as `current_user` takes it.
+        """
+        signature = self._get_dependency_signature(get_enabled_backends)
+
+        @with_signature(signature)
+        async def read_current_user_id(*args: Any, **kwargs: Any) -> Optional[str]:
+            return self._get_user_id(*args, is_optional=is_optional, **kwargs)
+
+        return read_current_user_id
+
     async def _authenticate(
         self,
         *args,
@@ -203,6 +229,27 @@ class Authenticator(Generic[models.UP, models.ID]):
         if not user and not optional:
             raise HTTPException(status_code=status_code)
         return user, token
+
+    def _get_user_id(
+        self, *args: Any, is_optional: bool = False, **kwargs: Any
+    ) -> Optional[str]:
+        user_id: Optional[str] = None
+        enabled_backends: Sequence[
+            AuthenticationBackend[models.UP, models.ID]
+        ] = kwargs.get("enabled_backends", self.backends)
+        for backend in self.backends:
+            if backend in enabled_backends:
+                token = kwargs[name_to_variable_name(backend.name)]
+                strategy: Strategy[models.UP, models.ID] = kwargs[
+                    name_to_strategy_variable_name(backend.name)
+                ]
+                user_id = strategy.get_user_id(token)
+                if user_id:
+                    break
+
+        if not user_id and not is_optional:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        return user_id
 
     def _get_dependency_signature(
         self, get_enabled_backends: Optional[EnabledBackendsDependency] = None

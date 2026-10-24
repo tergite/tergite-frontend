@@ -51,6 +51,7 @@ class FastAPIUsers(Generic[models.UP, models.ID]):
         self.authenticator = Authenticator(auth_backends, get_user_manager)
         self.get_user_manager = get_user_manager
         self.current_user = self.authenticator.current_user
+        self.get_current_user_id = self.authenticator.get_current_user_id
 
     def get_auth_router(
         self,

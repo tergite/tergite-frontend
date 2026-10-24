@@ -26,6 +26,10 @@ class Strategy(Protocol, Generic[models.UP, models.ID]):
     ) -> Optional[models.UP]:
         ...  # pragma: no cover
 
+    def get_user_id(self, token: Optional[str]) -> Optional[str]:
+        """Gets the id of the token's user without the database; None if it cannot"""
+        return None
+
     async def write_token(self, user: models.UP) -> str:
         ...  # pragma: no cover
 

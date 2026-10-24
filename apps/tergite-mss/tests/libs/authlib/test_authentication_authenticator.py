@@ -57,6 +57,9 @@ class UserStrategy(Strategy, Generic[models.UP]):
     ) -> Optional[models.UP]:
         return self.user
 
+    def get_user_id(self, token: Optional[str]) -> Optional[str]:
+        return self.user.id
+
 
 @pytest.fixture
 def get_backend_none():
@@ -121,6 +124,24 @@ def get_test_auth_client(get_user_manager, get_test_client):
         ):
             return user
 
+        @app.get("/test-current-user-id")
+        def test_current_user_id(
+            user_id: str = Depends(
+                authenticator.get_current_user_id(
+                    get_enabled_backends=get_enabled_backends
+                )
+            ),
+        ):
+            return user_id
+
+        @app.get("/test-optional-current-user-id")
+        def test_optional_current_user_id(
+            user_id: Optional[str] = Depends(
+                authenticator.get_current_user_id(is_optional=True)
+            ),
+        ):
+            return user_id
+
         async for client in get_test_client(app):
             yield client
 
@@ -161,6 +182,26 @@ async def test_authenticator_none_enabled(
     ):
         response = await client.get("/test-current-user")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.authentication
+@pytest.mark.asyncio
+async def test_current_user_id_is_read_from_the_token(
+    get_test_auth_client, get_backend_none, get_backend_user, user
+):
+    async for client in get_test_auth_client([get_backend_none(), get_backend_user()]):
+        response = await client.get("/test-current-user-id")
+        assert response.json() == user.id
+
+
+@pytest.mark.authentication
+@pytest.mark.asyncio
+async def test_current_user_id_without_one(get_test_auth_client, get_backend_none):
+    async for client in get_test_auth_client([get_backend_none()]):
+        response = await client.get("/test-current-user-id")
+        optional_response = await client.get("/test-optional-current-user-id")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert optional_response.json() is None
 
 
 @pytest.mark.authentication
