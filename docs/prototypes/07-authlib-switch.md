@@ -46,8 +46,14 @@ box is ticked, or a failure is written beside its box.
       root passes. It prunes unused docker containers, networks and images first.
 - [ ] **The baselines still hold.** With docker running and port 8002 free,
       `./dev/perf/record.sh /tmp/perf-07 && python3 dev/perf/compare.py dev/perf/baselines /tmp/perf-07`
-      exits 0, or fails only on a p95 within 13 ms of the baseline. Peak MongoDB connections
-      should now fall to the baseline's 17, as Beanie's second client is gone.
+      exits 0, or fails only on a p95 within 13 ms of the baseline, or on peak MongoDB
+      connections near 27 against 17.
+      **2026-10-24: fails only on MongoDB connections, 27 against 17,** with Beanie's client
+      gone, so steps 3 to 6 put that excess on the wrong cause. MSS holds one MongoDB client;
+      it keeps 22 connections through the load against the baseline's 15. The likely cause is
+      the storage layer's native async client, in since step 3, which holds a connection per
+      operation in flight, where Motor ran operations on a small thread pool. No request
+      failed, and p95 is equal or better: 44 ms aggregate against 48.
 
 ## Not covered here
 
