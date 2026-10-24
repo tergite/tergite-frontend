@@ -20,8 +20,7 @@ from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
 import settings
-from libs.storage import derive_id
-from libs.storage import Database
+from libs.storage import Database, derive_id
 from services.auth import Project, User
 from tests._utils.auth import (
     TEST_GITHUB_PROFILE,
