@@ -229,6 +229,13 @@ if [ -f /.dockerenv ]; then
   extra_args+=("--forwarded-allow-ips" "$docker_gateway_ip");
 fi
 
+# a SQL database is migrated to the schemas' latest tables; MongoDB needs no migration
+DATABASE_URL=$(extract_env_var ".database.url");
+if [[ "$DATABASE_URL" == *+*://* ]]; then
+  MSS_CONFIG_JSON_STR="$__MSS_CONFIG_JSON__" python -m alembic upgrade head \
+    || _exit_with_error "The database migration failed.";
+fi
+
 MSS_CONFIG_JSON_STR="$__MSS_CONFIG_JSON__" python -m uvicorn --host 0.0.0.0 --port "$PORT_NUMBER" api.rest:app --proxy-headers "${extra_args[@]}" &
 uvicorn_script=$!
 

@@ -324,7 +324,7 @@ On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
   without it isort emits a style black then reformats, churning unrelated files. Run both
   before committing; neither needs flags.
 - **`pyflakes`** finds unused imports and variables; CI runs it over `api services utils
-  libs settings.py tests dev` and fails on any finding.
+  libs migrations settings.py tests dev` and fails on any finding.
 - **Constants go at the top of the file**, after imports — not buried between functions. The
   exception is a constant built from a function or class defined in the same file, which
   stays after it (e.g. `EVENT_HANDLERS` after the handlers, `ProjectPartial`

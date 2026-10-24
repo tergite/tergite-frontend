@@ -121,6 +121,13 @@ def get_schema_tables(
     return schema_tables
 
 
+def get_metadata(schemas: Sequence[Type[Schema]]) -> MetaData:
+    """Gets the metadata of every table of the schemas, as migrations compare it"""
+    metadata = MetaData()
+    get_schema_tables(metadata, schemas)
+    return metadata
+
+
 def get_child_fields(schema: Type[Schema]) -> Tuple[str, ...]:
     """The list fields kept in child tables"""
     spec = schema.__storage__

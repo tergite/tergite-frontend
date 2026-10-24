@@ -1,0 +1,3 @@
+Alembic migrations of the SQL tables that libs/storage/sql derives from the schemas.
+start_mss.sh runs `alembic upgrade head` when database.url is a SQL URL; migrations/env.py
+says how to make a new revision.
