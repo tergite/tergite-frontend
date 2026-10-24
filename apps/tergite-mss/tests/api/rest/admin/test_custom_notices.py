@@ -11,17 +11,15 @@
 # that they have been altered from the originals.
 """Integration tests for the /admin/notices routes"""
 
-from bson import ObjectId
-
+from services.auth import User
+from services.notices import Notice
 from tests._utils.auth import (
     TEST_OUTSIDER_EMAIL,
     TEST_SUPERUSER_ID,
     TEST_USER_EMAIL,
     TEST_USER_ID,
 )
-from tests._utils.mongodb import find_in_collection
 
-_NOTICES_COLLECTION = "notices"
 _ADMIN_NOTICE_ID = "aaaaaaaaaaaaaaaaaaaaaaaa"
 _USER_NOTICE_ID = "bbbbbbbbbbbbbbbbbbbbbbbb"
 _BROADCAST_NOTICE_ID = "cccccccccccccccccccccccc"
@@ -42,7 +40,7 @@ def test_admin_publish_broadcast_notice(admin_jwt_cookie, client, db):
             "/admin/notices/", cookies=admin_jwt_cookie, json=_NOTICE_PAYLOAD
         )
         got = response.json()
-        notices_in_db = find_in_collection(db, _NOTICES_COLLECTION)
+        notices_in_db = db.find(Notice)
 
         assert response.status_code == 200
         assert len(got) == 1
@@ -55,7 +53,7 @@ def test_admin_publish_broadcast_notice(admin_jwt_cookie, client, db):
         assert got[0]["created_by"] == TEST_SUPERUSER_ID
         assert got[0]["user_id"] is None
         assert got[0]["dismissed_by"] == []
-        assert [str(item["_id"]) for item in notices_in_db] == [got[0]["id"]]
+        assert [item.id for item in notices_in_db] == [got[0]["id"]]
 
 
 def test_admin_publish_notice_with_target_emails(admin_jwt_cookie, client, db):
@@ -70,17 +68,15 @@ def test_admin_publish_notice_with_target_emails(admin_jwt_cookie, client, db):
             "/admin/notices/", cookies=admin_jwt_cookie, json=payload
         )
         got = response.json()
-        notices_in_db = find_in_collection(db, _NOTICES_COLLECTION)
+        notices_in_db = db.find(Notice)
 
         assert response.status_code == 200
         assert {item["type"] for item in got} == {"custom"}
         assert {item["user_id"] for item in got} == {
             TEST_USER_ID,
-            str(_get_user_id(db, TEST_OUTSIDER_EMAIL)),
+            _get_user_id(db, TEST_OUTSIDER_EMAIL),
         }
-        assert {str(item["_id"]) for item in notices_in_db} == {
-            item["id"] for item in got
-        }
+        assert {item.id for item in notices_in_db} == {item["id"] for item in got}
 
 
 def test_non_admin_publish_notice(user_jwt_cookie, client, db):
@@ -92,7 +88,7 @@ def test_non_admin_publish_notice(user_jwt_cookie, client, db):
 
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
-        assert find_in_collection(db, _NOTICES_COLLECTION) == []
+        assert db.find(Notice) == []
 
 
 def test_unauthenticated_publish_notice(client, db):
@@ -102,7 +98,7 @@ def test_unauthenticated_publish_notice(client, db):
 
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
-        assert find_in_collection(db, _NOTICES_COLLECTION) == []
+        assert db.find(Notice) == []
 
 
 def test_admin_delete_notice(admin_jwt_cookie, client, db, inserted_notices):
@@ -112,7 +108,7 @@ def test_admin_delete_notice(admin_jwt_cookie, client, db, inserted_notices):
             f"/admin/notices/{_ADMIN_NOTICE_ID}", cookies=admin_jwt_cookie
         )
         got = response.json()
-        ids_in_db = [str(item["_id"]) for item in find_in_collection(db, "notices")]
+        ids_in_db = [item.id for item in db.find(Notice)]
 
         assert response.status_code == 200
         assert got["id"] == _ADMIN_NOTICE_ID
@@ -130,7 +126,7 @@ def test_non_admin_delete_notice(user_jwt_cookie, client, db, inserted_notices):
 
         assert response.status_code == 403
         assert response.json() == {"detail": "Forbidden"}
-        assert len(find_in_collection(db, _NOTICES_COLLECTION)) == len(inserted_notices)
+        assert len(db.find(Notice)) == len(inserted_notices)
 
 
 def test_delete_non_existent_notice(admin_jwt_cookie, client):
@@ -165,7 +161,7 @@ def test_admin_get_notices_of_user(admin_jwt_cookie, client, inserted_notices):
     expected_ids = {
         str(item["_id"])
         for item in inserted_notices
-        if item["user_id"] in (ObjectId(TEST_USER_ID), None)
+        if item["user_id"] in (TEST_USER_ID, None)
     }
 
     with client as client:
@@ -227,14 +223,14 @@ def test_unauthenticated_get_notices(client, inserted_notices):
         assert response.json() == {"detail": "Unauthorized"}
 
 
-def _get_user_id(db, email: str) -> ObjectId:
+def _get_user_id(db, email: str) -> str:
     """Gets the id of the user of the given email
 
     Args:
-        db: the mongo database where the users are stored
+        db: the database where the users are stored
         email: the email of the user
 
     Returns:
         the id of the user
     """
-    return db["auth_users"].find_one({"email": email})["_id"]
+    return db.find_one(User, {"email": email}).id

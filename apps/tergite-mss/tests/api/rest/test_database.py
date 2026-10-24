@@ -33,9 +33,9 @@ def test_the_database_name_fills_a_url_without_a_path(url, expected):
     assert get_database_url(DatabaseConfig(name="tergite", url=url)) == expected
 
 
-def test_the_app_holds_one_database_while_it_runs(client):
+def test_the_app_holds_one_database_while_it_runs(client, api_database):
     with client as client:
         database = client.app.state.database
 
         assert isinstance(database, Database)
-        assert database.database_url == "mongodb://localhost:27017/testdb"
+        assert database.database_url == api_database.database.database_url

@@ -14,10 +14,10 @@ import time
 from typing import Callable
 
 import aiosmtplib
-from bson import ObjectId
 
 import settings
-from services.notices import EmailStatus
+from libs.storage import generate_id
+from services.notices import EmailStatus, Notice
 from tests._utils.auth import (
     TEST_PROJECT_ID,
     TEST_PROJECT_NAME,
@@ -42,7 +42,7 @@ def test_email_is_queued_when_configured(
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
 
-        assert get_user_notices(db, TEST_USER_ID)[0]["email_status"] == (
+        assert get_user_notices(db, TEST_USER_ID)[0].email_status == (
             EmailStatus.PENDING
         )
 
@@ -55,7 +55,7 @@ def test_email_is_not_queued_when_unconfigured(
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
         time.sleep(0.2)
 
-        assert get_user_notices(db, TEST_USER_ID)[0]["email_status"] == (
+        assert get_user_notices(db, TEST_USER_ID)[0].email_status == (
             EmailStatus.NOT_APPLICABLE
         )
         smtp.assert_not_awaited()
@@ -73,7 +73,7 @@ def test_email_is_not_queued_when_opted_out(
         )
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
 
-        assert get_user_notices(db, TEST_USER_ID)[0]["email_status"] == (
+        assert get_user_notices(db, TEST_USER_ID)[0].email_status == (
             EmailStatus.NOT_APPLICABLE
         )
 
@@ -85,7 +85,7 @@ def test_sweeper_sends_a_queued_email(client, outsider_jwt_cookie, db, smtp):
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
         _wait_for(
-            lambda: get_user_notices(db, TEST_USER_ID)[0]["email_status"]
+            lambda: get_user_notices(db, TEST_USER_ID)[0].email_status
             == EmailStatus.SENT
         )
 
@@ -96,7 +96,7 @@ def test_sweeper_sends_a_queued_email(client, outsider_jwt_cookie, db, smtp):
     )
     assert message["Subject"] == f"Access request for {TEST_PROJECT_NAME}"
     assert TEST_APP_CONFIG["notices"]["dashboard_url"] in message.get_content()
-    assert get_user_notices(db, TEST_USER_ID)[0]["email_attempts"] == 1
+    assert get_user_notices(db, TEST_USER_ID)[0].email_attempts == 1
 
 
 def test_failed_email_stays_pending(client, outsider_jwt_cookie, db, smtp):
@@ -105,9 +105,9 @@ def test_failed_email_stays_pending(client, outsider_jwt_cookie, db, smtp):
 
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
-        _wait_for(lambda: get_user_notices(db, TEST_USER_ID)[0]["email_attempts"] > 0)
+        _wait_for(lambda: get_user_notices(db, TEST_USER_ID)[0].email_attempts > 0)
 
-        assert get_user_notices(db, TEST_USER_ID)[0]["email_status"] == (
+        assert get_user_notices(db, TEST_USER_ID)[0].email_status == (
             EmailStatus.PENDING
         )
 
@@ -125,9 +125,9 @@ def test_email_is_retried_when_the_server_is_unreachable(
 
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
-        _wait_for(lambda: get_user_notices(db, TEST_USER_ID)[0]["email_attempts"] > 0)
+        _wait_for(lambda: get_user_notices(db, TEST_USER_ID)[0].email_attempts > 0)
 
-        assert get_user_notices(db, TEST_USER_ID)[0]["email_status"] == (
+        assert get_user_notices(db, TEST_USER_ID)[0].email_status == (
             EmailStatus.PENDING
         )
         smtp.assert_not_awaited()
@@ -140,38 +140,33 @@ def test_sending_gives_up_at_the_retry_limit(client, outsider_jwt_cookie, db, sm
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
         _wait_for(
-            lambda: get_user_notices(db, TEST_USER_ID)[0]["email_status"]
+            lambda: get_user_notices(db, TEST_USER_ID)[0].email_status
             == EmailStatus.FAILED
         )
 
-        assert get_user_notices(db, TEST_USER_ID)[0]["email_attempts"] == (
+        assert get_user_notices(db, TEST_USER_ID)[0].email_attempts == (
             settings.CONFIG.notices.email_retry_limit
         )
 
 
 def test_email_to_an_unknown_user_fails_at_once(client, db, smtp):
     """No address to send to means no retry will ever help"""
-    db["notices"].insert_one(
-        {
-            "type": "project-access-approved",
-            "title": "Access approved",
-            "body": "you are in",
-            "user_id": ObjectId(),
-            "severity": "info",
-            "context": {},
-            "email_status": EmailStatus.PENDING,
-            "email_attempts": 0,
-            "dismissed_by": [],
-            "created_at": get_current_timestamp(),
-            "updated_at": get_current_timestamp(),
-        },
-        bypass_document_validation=True,
+    notice = Notice(
+        type="project-access-approved",
+        title="Access approved",
+        body="you are in",
+        user_id=generate_id(),
+        severity="info",
+        context={},
+        email_status=EmailStatus.PENDING,
+        email_attempts=0,
+        created_at=get_current_timestamp(),
+        updated_at=get_current_timestamp(),
     )
+    db.insert(Notice, notice)
 
     with client as client:
-        _wait_for(
-            lambda: db["notices"].find_one({})["email_status"] == EmailStatus.FAILED
-        )
+        _wait_for(lambda: db.get(Notice, notice.id).email_status == EmailStatus.FAILED)
 
         smtp.assert_not_awaited()
 
@@ -196,7 +191,7 @@ def test_sweeper_survives_a_failing_sweep(
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
         _wait_for(
-            lambda: get_user_notices(db, TEST_USER_ID)[0]["email_status"]
+            lambda: get_user_notices(db, TEST_USER_ID)[0].email_status
             == EmailStatus.SENT
         )
 

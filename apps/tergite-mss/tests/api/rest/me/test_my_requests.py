@@ -11,8 +11,8 @@
 # that they have been altered from the originals.
 """Integration tests for the /me/requests routes"""
 import pytest
-from bson import ObjectId
 
+from libs.storage import generate_id
 from services.auth import DeletedProject, Project, User
 from services.notices import NoticeType
 from services.requests import Request
@@ -27,9 +27,6 @@ from tests._utils.auth import (
     TEST_USER_ID,
 )
 from tests._utils.date_time import get_current_timestamp_str
-from tests._utils.mongodb import (
-    get_db_record,
-)
 from tests._utils.notices import get_user_notices
 
 _ACCESS_REQUEST = {
@@ -78,7 +75,7 @@ def test_request_project_access(client, outsider_jwt_cookie, db):
         assert got["requester_name"] == "outsider.doe"
         assert got["target_user_ids"] == [TEST_USER_ID]
         assert got["metadata"] == {"resource": "project"}
-        assert get_db_record(db, Request, got["id"]) is not None
+        assert db.get(Request, got["id"]) is not None
 
 
 def test_request_project_access_notifies_the_project_admin(
@@ -91,21 +88,21 @@ def test_request_project_access_notifies_the_project_admin(
         ).json()["id"]
         admin_notices = get_user_notices(db, TEST_USER_ID)
 
-        assert [item["type"] for item in admin_notices] == [
+        assert [item.type for item in admin_notices] == [
             NoticeType.PROJECT_ACCESS_REQUESTED.id
         ]
-        assert admin_notices[0]["title"] == f"Access request for {TEST_PROJECT_NAME}"
-        assert admin_notices[0]["body"] == (
+        assert admin_notices[0].title == f"Access request for {TEST_PROJECT_NAME}"
+        assert admin_notices[0].body == (
             f"outsider.doe is asking to join {TEST_PROJECT_NAME}: let me in"
         )
-        assert admin_notices[0]["ref_type"] == "project"
-        assert admin_notices[0]["ref_id"] == ObjectId(request_id)
+        assert admin_notices[0].ref_type == "project"
+        assert admin_notices[0].ref_id == request_id
         assert get_user_notices(db, TEST_OUTSIDER_ID) == []
 
 
 def test_request_access_to_unknown_project(client, outsider_jwt_cookie, db):
     """POST /me/requests/ answers 404 for a project that does not exist"""
-    project_id = str(ObjectId())
+    project_id = generate_id()
 
     with client as client:
         response = client.post(
@@ -116,7 +113,7 @@ def test_request_access_to_unknown_project(client, outsider_jwt_cookie, db):
 
         assert response.status_code == 404
         assert response.json() == {"detail": f"project {project_id} not found"}
-        assert db["requests"].count_documents({}) == 0
+        assert db.count(Request) == 0
 
 
 def test_request_access_to_personal_project(
@@ -149,10 +146,10 @@ def test_request_qpu_seconds(client, user_jwt_cookie, db):
         assert got["target"] == "system"
         assert got["target_user_ids"] == [TEST_SUPERUSER_ID]
         assert got["metadata"]["seconds"] == 120
-        assert [item["type"] for item in superuser_notices] == [
+        assert [item.type for item in superuser_notices] == [
             NoticeType.QPU_SECONDS_REQUESTED.id
         ]
-        assert "120.0s" in superuser_notices[0]["body"]
+        assert "120.0s" in superuser_notices[0].body
 
 
 def test_non_member_request_qpu_seconds(client, outsider_jwt_cookie, db):
@@ -166,7 +163,7 @@ def test_non_member_request_qpu_seconds(client, outsider_jwt_cookie, db):
         assert response.json() == {
             "detail": f"operation not permitted on resource {TEST_PROJECT_ID}"
         }
-        assert db["requests"].count_documents({}) == 0
+        assert db.count(Request) == 0
 
 
 @pytest.mark.parametrize("metadata", [None, {}, {"seconds": 0}])
@@ -180,7 +177,7 @@ def test_request_qpu_seconds_without_seconds(client, user_jwt_cookie, db, metada
         )
 
         assert response.status_code == 422
-        assert db["requests"].count_documents({}) == 0
+        assert db.count(Request) == 0
 
 
 def test_request_project_creation(client, outsider_jwt_cookie, db):
@@ -196,7 +193,7 @@ def test_request_project_creation(client, outsider_jwt_cookie, db):
         assert got["metadata"]["name"] == "thesis project"
         assert got["metadata"]["admin_email"] == TEST_OUTSIDER_EMAIL
         assert got["metadata"]["user_emails"] == [TEST_USER_EMAIL]
-        assert get_user_notices(db, TEST_SUPERUSER_ID)[0]["title"] == (
+        assert get_user_notices(db, TEST_SUPERUSER_ID)[0].title == (
             "Create request for thesis project"
         )
 
@@ -238,7 +235,7 @@ def test_request_project_change_by_non_admin(
         )
 
         assert response.status_code == 403
-        assert db["requests"].count_documents({}) == 0
+        assert db.count(Request) == 0
 
 
 def test_unauthenticated_create_request(client, db):
@@ -248,7 +245,7 @@ def test_unauthenticated_create_request(client, db):
 
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
-        assert db["requests"].count_documents({}) == 0
+        assert db.count(Request) == 0
 
 
 def test_view_requests_as_approver(client, user_jwt_cookie, inserted_requests):
@@ -328,18 +325,18 @@ def test_approve_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db
             json={"status": "approved"},
         )
         got = response.json()
-        project = get_db_record(db, Project, TEST_PROJECT_ID)
+        project = db.get(Project, TEST_PROJECT_ID)
         requester_notices = get_user_notices(db, TEST_OUTSIDER_ID)
 
         assert response.status_code == 200
         assert got["status"] == "approved"
         assert got["approver_id"] == TEST_USER_ID
         assert got["approver_name"] == "john.doe"
-        assert project["user_ids"].count(ObjectId(TEST_OUTSIDER_ID)) == 1
-        assert [item["type"] for item in requester_notices] == [
+        assert project.user_ids.count(TEST_OUTSIDER_ID) == 1
+        assert [item.type for item in requester_notices] == [
             NoticeType.PROJECT_ACCESS_APPROVED.id
         ]
-        assert requester_notices[0]["body"] == (
+        assert requester_notices[0].body == (
             f"john.doe approved your request to join {TEST_PROJECT_NAME}."
         )
 
@@ -347,7 +344,7 @@ def test_approve_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db
 def test_deciding_a_request_clears_its_prompt(
     client, outsider_jwt_cookie, user_jwt_cookie, db
 ):
-    """Deciding a request marks the approver's 'please decide this' notice read"""
+    """Deciding a request expires the approver's 'please decide this' notice"""
     with client as client:
         request_id = client.post(
             "/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST
@@ -357,12 +354,10 @@ def test_deciding_a_request_clears_its_prompt(
             cookies=user_jwt_cookie,
             json={"status": "approved"},
         )
-        prompt = get_user_notices(db, TEST_USER_ID)[0]
         outcome = get_user_notices(db, TEST_OUTSIDER_ID)[0]
 
-        assert prompt["read_at"] is not None
-        assert prompt["dismissed_by"] == [ObjectId(TEST_USER_ID)]
-        assert outcome["read_at"] is None
+        assert get_user_notices(db, TEST_USER_ID) == []
+        assert outcome.read_at is None
 
 
 def test_deciding_a_request_stamps_when(
@@ -377,10 +372,10 @@ def test_deciding_a_request_stamps_when(
             cookies=user_jwt_cookie,
             json={"status": "approved"},
         )
-        request = get_db_record(db, Request, _PENDING_ACCESS_REQUEST_ID)
+        request = db.get(Request, _PENDING_ACCESS_REQUEST_ID)
 
         assert response.json()["updated_at"] == now
-        assert request["updated_at"] == now
+        assert request.updated_at == now
 
 
 def test_reject_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db):
@@ -395,20 +390,20 @@ def test_reject_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db)
             json={"status": "rejected", "rejection_reason": "wrong team"},
         )
         got = response.json()
-        project = get_db_record(db, Project, TEST_PROJECT_ID)
+        project = db.get(Project, TEST_PROJECT_ID)
         requester_notices = get_user_notices(db, TEST_OUTSIDER_ID)
 
         assert response.status_code == 200
         assert got["status"] == "rejected"
         assert got["rejection_reason"] == "wrong team"
-        assert ObjectId(TEST_OUTSIDER_ID) not in project["user_ids"]
-        assert requester_notices[0]["type"] == NoticeType.PROJECT_ACCESS_REJECTED.id
-        assert requester_notices[0]["body"].endswith("wrong team")
+        assert TEST_OUTSIDER_ID not in project.user_ids
+        assert requester_notices[0].type == NoticeType.PROJECT_ACCESS_REJECTED.id
+        assert requester_notices[0].body.endswith("wrong team")
 
 
 def test_approve_qpu_seconds(client, user_jwt_cookie, admin_jwt_cookie, db):
     """Approving a QPU request adds the seconds to the project and tells the requester"""
-    project_before = get_db_record(db, Project, TEST_PROJECT_ID)
+    project_before = db.get(Project, TEST_PROJECT_ID)
 
     with client as client:
         request_id = client.post(
@@ -419,15 +414,15 @@ def test_approve_qpu_seconds(client, user_jwt_cookie, admin_jwt_cookie, db):
             cookies=admin_jwt_cookie,
             json={"status": "approved"},
         )
-        project_after = get_db_record(db, Project, TEST_PROJECT_ID)
+        project_after = db.get(Project, TEST_PROJECT_ID)
         requester_notices = get_user_notices(db, TEST_USER_ID)
 
         assert response.status_code == 200
-        assert project_after["qpu_seconds"] == project_before["qpu_seconds"] + 120
-        assert [item["type"] for item in requester_notices] == [
+        assert project_after.qpu_seconds == project_before.qpu_seconds + 120
+        assert [item.type for item in requester_notices] == [
             NoticeType.QPU_SECONDS_GRANTED.id
         ]
-        assert requester_notices[0]["title"] == (
+        assert requester_notices[0].title == (
             f"120.0s of QPU time added to {TEST_PROJECT_NAME}"
         )
 
@@ -440,15 +435,15 @@ def test_approve_project_creation(client, admin_jwt_cookie, db, inserted_request
             cookies=admin_jwt_cookie,
             json={"status": "approved"},
         )
-        project = get_db_record(db, Project, _filter={"name": "thesis project"})
+        project = db.find_one(Project, {"name": "thesis project"})
 
         assert response.status_code == 200
-        assert project["admin_id"] == ObjectId(TEST_OUTSIDER_ID)
-        assert project["user_ids"] == [
-            ObjectId(TEST_USER_ID),
-            ObjectId(TEST_OUTSIDER_ID),
+        assert project.admin_id == TEST_OUTSIDER_ID
+        assert project.user_ids == [
+            TEST_USER_ID,
+            TEST_OUTSIDER_ID,
         ]
-        assert project["qpu_seconds"] == 3600
+        assert project.qpu_seconds == 3600
 
 
 def test_approve_project_creation_for_unknown_users(
@@ -472,13 +467,13 @@ def test_approve_project_creation_for_unknown_users(
             cookies=admin_jwt_cookie,
             json={"status": "approved"},
         )
-        user = get_db_record(db, User, _filter={"email": "no@such.user"})
-        project = get_db_record(db, Project, _filter={"name": "thesis project"})
+        user = db.find_one(User, {"email": "no@such.user"})
+        project = db.find_one(Project, {"name": "thesis project"})
 
         assert response.status_code == 200
-        assert project["user_ids"] == [
-            user["_id"],
-            ObjectId(TEST_OUTSIDER_ID),
+        assert project.user_ids == [
+            user.id,
+            TEST_OUTSIDER_ID,
         ]
 
 
@@ -505,7 +500,7 @@ def test_approve_project_creation_with_existing_name(
         assert response.json() == {
             "detail": f"a project named '{TEST_PROJECT_NAME}' already exists"
         }
-        assert get_db_record(db, Request, request_id)["status"] == "pending"
+        assert db.get(Request, request_id).status == "pending"
 
 
 def test_approve_project_creation_notifies_the_members(
@@ -520,10 +515,10 @@ def test_approve_project_creation_notifies_the_members(
         )
         member_notices = get_user_notices(db, TEST_USER_ID)
 
-        assert [item["type"] for item in member_notices] == [
+        assert [item.type for item in member_notices] == [
             NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
         ]
-        assert member_notices[0]["title"] == "You were added to thesis project"
+        assert member_notices[0].title == "You were added to thesis project"
 
 
 def test_approve_project_close(client, user_jwt_cookie, admin_jwt_cookie, db):
@@ -545,8 +540,8 @@ def test_approve_project_close(client, user_jwt_cookie, admin_jwt_cookie, db):
         )
 
         assert response.status_code == 200
-        assert get_db_record(db, Project, TEST_PROJECT_ID) is None
-        assert get_db_record(db, DeletedProject, TEST_PROJECT_ID) is not None
+        assert db.get(Project, TEST_PROJECT_ID) is None
+        assert db.get(DeletedProject, TEST_PROJECT_ID) is not None
 
 
 def test_approve_project_close_names_the_closed_project(
@@ -570,8 +565,8 @@ def test_approve_project_close_names_the_closed_project(
         )
         requester_notices = get_user_notices(db, TEST_USER_ID)
 
-        assert requester_notices[-1]["type"] == NoticeType.PROJECT_CLOSE_APPROVED.id
-        assert requester_notices[-1]["title"] == (
+        assert requester_notices[-1].type == NoticeType.PROJECT_CLOSE_APPROVED.id
+        assert requester_notices[-1].title == (
             f"Your project {TEST_PROJECT_NAME} was closed"
         )
 
@@ -594,11 +589,11 @@ def test_approve_project_transfer(client, user_jwt_cookie, admin_jwt_cookie, db)
             cookies=admin_jwt_cookie,
             json={"status": "approved"},
         )
-        project = get_db_record(db, Project, TEST_PROJECT_ID)
+        project = db.get(Project, TEST_PROJECT_ID)
 
         assert response.status_code == 200
-        assert project["admin_id"] == ObjectId(TEST_OUTSIDER_ID)
-        assert ObjectId(TEST_OUTSIDER_ID) in project["user_ids"]
+        assert project.admin_id == TEST_OUTSIDER_ID
+        assert TEST_OUTSIDER_ID in project.user_ids
 
 
 def test_decide_request_twice(client, user_jwt_cookie, inserted_requests):
@@ -629,19 +624,19 @@ def test_non_approver_cannot_decide_request(
             cookies=outsider_jwt_cookie,
             json={"status": "approved"},
         )
-        request = get_db_record(db, Request, _PENDING_ACCESS_REQUEST_ID)
-        project = get_db_record(db, Project, TEST_PROJECT_ID)
+        request = db.get(Request, _PENDING_ACCESS_REQUEST_ID)
+        project = db.get(Project, TEST_PROJECT_ID)
 
         assert response.status_code == 404
-        assert request["status"] == "pending"
-        assert ObjectId(TEST_OUTSIDER_ID) not in project["user_ids"]
+        assert request.status == "pending"
+        assert TEST_OUTSIDER_ID not in project.user_ids
 
 
 def test_update_unknown_request(client, user_jwt_cookie):
     """PUT /me/requests/{id} answers 404 for a request that does not exist"""
     with client as client:
         response = client.put(
-            f"/me/requests/{ObjectId()}",
+            f"/me/requests/{generate_id()}",
             cookies=user_jwt_cookie,
             json={"status": "approved"},
         )
@@ -671,6 +666,4 @@ def test_unauthenticated_update_request(client, db, inserted_requests):
         )
 
         assert response.status_code == 401
-        assert get_db_record(db, Request, _PENDING_ACCESS_REQUEST_ID)["status"] == (
-            "pending"
-        )
+        assert db.get(Request, _PENDING_ACCESS_REQUEST_ID).status == ("pending")

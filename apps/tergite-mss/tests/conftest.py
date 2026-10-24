@@ -10,14 +10,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from bson import ObjectId
 
-from tests._utils.env import (
-    TEST_DB_NAME,
-    TEST_MONGODB_URL,
-    TEST_REDIS_URL,
-    setup_test_env,
-)
+from tests._utils.env import TEST_REDIS_URL, setup_test_env
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
 
 # Set up the test environment before any other imports are made
@@ -31,15 +25,16 @@ from utils.date_time import set_datetime_precision
 # as the app does at startup, before any helper writes a timestamp
 set_datetime_precision(settings.CONFIG.datetime_precision)
 
+import asyncio
 import random
 from datetime import datetime, timezone
 from typing import Any, Dict, Generator, List, Optional
 
 import aiosmtplib
-import pymongo.database
 import pytest
 import redis
 from fastapi.testclient import TestClient
+from pydantic import AnyUrl
 
 from libs.storage import derive_id
 from tests._utils.auth import (
@@ -56,22 +51,16 @@ from tests._utils.auth import (
     init_test_auth,
 )
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import (
-    get_db_record,
-    insert_if_not_exist,
-)
-from tests._utils.records import (
-    get_app_token_record,
-    get_notice_record,
-    get_project_record,
-    get_request_record,
-    with_offset_datetimes,
-)
+from tests._utils.records import with_offset_datetimes
 from tests._utils.storage import (
     DATABASE_KINDS,
     SQL_DATABASE_KINDS,
+    SyncDatabase,
+    create_api_database,
+    get_api_database_url,
     get_database_url,
     get_sql_database_url,
+    insert_if_not_exist,
     reset_database,
     reset_sql_database,
 )
@@ -84,22 +73,38 @@ USER_REQUEST_LIST = load_json_fixture("user_requests.json")
 pytest_plugins = ["tests._utils.oauth", "tests._utils.mock_backend"]
 # fixtures that change what the app starts with, so it must start afresh
 _FRESH_APP_FIXTURES = {"unconfigured_email"}
-_COLLECTIONS_KEPT_ACROSS_TESTS = {"notice_templates"}
+_SCHEMAS_KEPT_ACROSS_TESTS = {"NoticeTemplate", "Role"}
+
+
+@pytest.fixture(scope="session", params=DATABASE_KINDS)
+def api_database(request, tmp_path_factory) -> Generator[SyncDatabase, Any, None]:
+    """The database the app runs on, of each kind in turn, for the session"""
+    from api.rest.database import SCHEMAS
+    from services.auth import ensure_roles
+
+    database_url = get_api_database_url(
+        request.param, tmp_path_factory.mktemp(request.param)
+    )
+    asyncio.run(create_api_database(database_url))
+    settings.CONFIG.database.url = AnyUrl(database_url)
+    database = SyncDatabase(database_url, SCHEMAS)
+    # the app stores them at startup, but tests seed users before it starts
+    database.run(ensure_roles(database.database))
+    yield database
+    database.close()
 
 
 @pytest.fixture
-def db() -> pymongo.database.Database:
-    """The mongo db instance for testing"""
-    mongo_client = pymongo.MongoClient(TEST_MONGODB_URL)
-    database = mongo_client[TEST_DB_NAME]
+def db(api_database) -> Generator[SyncDatabase, Any, None]:
+    """The app's database, emptied after the test"""
+    from api.rest.database import SCHEMAS
 
-    yield database
-    # emptied, not dropped: the running app's validators and indexes stay, as do the
-    # notice templates it writes at startup
-    for name in database.list_collection_names():
-        if name not in _COLLECTIONS_KEPT_ACROSS_TESTS:
-            database[name].delete_many({})
-    mongo_client.close()
+    yield api_database
+    # emptied, not dropped: the running app's tables and indexes stay, as do the roles
+    # and notice templates it writes at startup
+    for schema in reversed(SCHEMAS):
+        if schema.__name__ not in _SCHEMAS_KEPT_ACROSS_TESTS:
+            api_database.delete_many(schema, {})
 
 
 @pytest.fixture
@@ -131,7 +136,7 @@ async def sql_database_url(request, tmp_path) -> str:
 
 
 @pytest.fixture(scope="session")
-def app_runner() -> Generator["_AppRunner", Any, None]:
+def app_runner(api_database) -> Generator["_AppRunner", Any, None]:
     """The app, started once for the whole session, as its startup is slow"""
     runner = _AppRunner()
     yield runner
@@ -223,14 +228,9 @@ def outsider_jwt_cookie() -> Dict[str, str]:
 
 
 @pytest.fixture
-def project_id(db) -> Generator[ObjectId, Any, None]:
+def project_id(db) -> Generator[str, Any, None]:
     """the project id for the default app token header"""
-    from services.auth import Project
-
-    project = get_db_record(
-        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
-    )
-    yield project["_id"]
+    yield TEST_PROJECT_ID
 
 
 @pytest.fixture
@@ -241,7 +241,7 @@ def inserted_projects(db) -> Dict[str, Dict[str, Any]]:
     projects = {}
     for item in PROJECT_LIST:
         projects[item["_id"]] = {**item}
-        insert_if_not_exist(db, Project, get_project_record(item))
+        insert_if_not_exist(db, Project, item)
 
     yield projects
 
@@ -258,11 +258,11 @@ def personal_project(db) -> Generator[Dict[str, Any], Any, None]:
     from services.auth import Project
 
     record = {
-        "_id": ObjectId(derive_id(TEST_USER_ID, namespace="project")),
+        "_id": derive_id(TEST_USER_ID, namespace="project"),
         "name": "john.doe (personal)",
         "description": "john.doe personal project",
-        "admin_id": ObjectId(TEST_USER_ID),
-        "user_ids": [ObjectId(TEST_USER_ID)],
+        "admin_id": TEST_USER_ID,
+        "user_ids": [TEST_USER_ID],
         "qpu_seconds": 0,
         "is_active": True,
         "is_personal": True,
@@ -282,9 +282,7 @@ def unallocated_projects(db) -> Dict[str, Dict[str, Any]]:
     for item in PROJECT_LIST:
         qpu_seconds = int(random.uniform(-54000, 0))
         projects[item["_id"]] = {**item, "qpu_seconds": qpu_seconds}
-        insert_if_not_exist(
-            db, Project, {**get_project_record(item), "qpu_seconds": qpu_seconds}
-        )
+        insert_if_not_exist(db, Project, {**item, "qpu_seconds": qpu_seconds})
 
     yield projects
 
@@ -300,7 +298,7 @@ def app_tokens_with_timestamps(db) -> Generator[List[Dict[str, Any]], Any, None]
 
         # ensure you don't mutate the original item in APP_TOKEN_LIST
         tokens.append({**item, "created_at": created_at})
-        db_item = {**get_app_token_record(item), "created_at": created_at}
+        db_item = {**item, "created_at": created_at}
         insert_if_not_exist(db, AppToken, db_item)
 
     yield tokens
@@ -315,7 +313,7 @@ def inserted_app_tokens(db) -> Generator[List[Dict[str, Any]], Any, None]:
     for item in APP_TOKEN_LIST:
         # ensure you don't mutate the original item in APP_TOKEN_LIST
         tokens.append({**item})
-        insert_if_not_exist(db, AppToken, get_app_token_record(item))
+        insert_if_not_exist(db, AppToken, item)
 
     yield tokens
 
@@ -326,7 +324,7 @@ def inserted_notices(db) -> Generator[List[Dict[str, Any]], Any, None]:
     from services.notices import Notice
 
     records = with_offset_datetimes(
-        [get_notice_record(item) for item in NOTICE_LIST],
+        [dict(item) for item in NOTICE_LIST],
         {
             "starts_at": "starts_at_offset_hours",
             "expires_at": "expires_at_offset_hours",
@@ -343,7 +341,7 @@ def inserted_requests(db) -> Generator[List[Dict[str, Any]], Any, None]:
     """A list of inserted user requests"""
     from services.requests import Request
 
-    records = [get_request_record(item) for item in USER_REQUEST_LIST]
+    records = [dict(item) for item in USER_REQUEST_LIST]
     for record in records:
         insert_if_not_exist(db, Request, record)
 

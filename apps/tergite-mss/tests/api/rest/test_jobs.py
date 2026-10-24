@@ -16,13 +16,14 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 import pytest
-from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 from pytest_mock import MockerFixture
 
 import settings
+from libs.storage import generate_id
 from services.auth import AppToken, Project
-from services.notices import NoticeType
+from services.jobs import Job
+from services.notices import Notice, NoticeType
 from tests._utils.auth import (
     TEST_PROJECT_ID,
     TEST_PROJECT_NAME,
@@ -36,12 +37,6 @@ from tests._utils.date_time import (
 )
 from tests._utils.env import TEST_BACKENDS_MAP
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import (
-    find_in_collection,
-    get_db_record,
-    insert_if_not_exist,
-    insert_in_collection,
-)
 from tests._utils.notices import get_user_notices
 from tests._utils.records import (
     filter_by_equality,
@@ -50,6 +45,7 @@ from tests._utils.records import (
     with_current_timestamps,
     with_incremental_timestamps,
 )
+from tests._utils.storage import insert_if_not_exist, to_record
 
 _JOBS_LIST = load_json_fixture("job_list.json")
 _JOB_BCC_TOKEN_MAP: Dict[str, dict] = load_json_fixture("bcc_jwt_tokens.json")
@@ -70,8 +66,6 @@ _CREATE_JOB_PAYLOADS = [
     )
     for idx, device in enumerate(_DEVICES)
 ]
-_COLLECTION = "jobs"
-_EXCLUDED_FIELDS = ["_id"]
 _UNAVAILABLE_BCC_FIXTURE = [
     ({"device": device, "calibration_date": "2024-05-23T09:12:00.733Z"}, client)
     for device in _DEVICES[:1]
@@ -134,7 +128,7 @@ def test_read_job(db, client, job_id: str, no_qpu_app_token_header, freezer):
     if job_id in _JOB_BCC_TOKEN_MAP:
         expected["access_token"] = _JOB_BCC_TOKEN_MAP[job_id]["plain"]
 
-    insert_in_collection(database=db, collection_name=_COLLECTION, data=all_jobs)
+    _insert_jobs(db, all_jobs)
 
     # using context manager to ensure on_startup runs
     with client as client:
@@ -148,8 +142,8 @@ def test_read_job(db, client, job_id: str, no_qpu_app_token_header, freezer):
 @pytest.mark.parametrize("path", ["/jobs/{job_id}", "/jobs/{job_id}/status"])
 def test_read_another_users_job_is_not_found(db, client, app_token_header, path):
     """Get /jobs/{job_id} hides a job another user submitted"""
-    job = {**_prepare_jobs()[0], "user_id": ObjectId(TEST_SYSTEM_USER_ID)}
-    insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
+    job = {**_prepare_jobs()[0], "user_id": TEST_SYSTEM_USER_ID}
+    _insert_jobs(db, [job])
 
     with client as client:
         response = client.get(path.format(**job), headers=app_token_header)
@@ -160,8 +154,8 @@ def test_read_another_users_job_is_not_found(db, client, app_token_header, path)
 @pytest.mark.parametrize("path", ["/jobs/{job_id}", "/jobs/{job_id}/status"])
 def test_read_own_job(db, client, app_token_header, path):
     """Get /jobs/{job_id} returns a job the token's user submitted"""
-    job = {**_prepare_jobs()[0], "user_id": ObjectId(TEST_USER_ID)}
-    insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
+    job = {**_prepare_jobs()[0], "user_id": TEST_USER_ID}
+    _insert_jobs(db, [job])
 
     with client as client:
         response = client.get(path.format(**job), headers=app_token_header)
@@ -171,8 +165,8 @@ def test_read_own_job(db, client, app_token_header, path):
 
 def test_admin_reads_another_users_job(db, client):
     """Get /jobs/{job_id} returns any user's job to an admin"""
-    job = {**_prepare_jobs()[0], "user_id": ObjectId(TEST_USER_ID)}
-    insert_in_collection(database=db, collection_name=_COLLECTION, data=[job])
+    job = {**_prepare_jobs()[0], "user_id": TEST_USER_ID}
+    _insert_jobs(db, [job])
     headers = _insert_superuser_app_token(db)
 
     with client as client:
@@ -185,13 +179,11 @@ def test_admin_reads_another_users_job(db, client):
 def test_list_jobs_shows_own_and_unowned_jobs(db, client, app_token_header):
     """Get /jobs/ leaves out jobs other users submitted"""
     own, others, unowned = (
-        {**_prepare_jobs()[0], "user_id": ObjectId(TEST_USER_ID)},
-        {**_prepare_jobs()[1], "user_id": ObjectId(TEST_SYSTEM_USER_ID)},
+        {**_prepare_jobs()[0], "user_id": TEST_USER_ID},
+        {**_prepare_jobs()[1], "user_id": TEST_SYSTEM_USER_ID},
         {**_prepare_jobs()[2], "user_id": None},
     )
-    insert_in_collection(
-        database=db, collection_name=_COLLECTION, data=[own, others, unowned]
-    )
+    _insert_jobs(db, [own, others, unowned])
 
     with client as client:
         response = client.get("/jobs/", headers=app_token_header)
@@ -207,7 +199,7 @@ def test_create_job(
     db,
     client,
     payload,
-    project_id: ObjectId,
+    project_id: str,
     app_token_header,
     current_user_id,
     freezer,
@@ -224,11 +216,7 @@ def test_create_job(
     device = payload["device"]
     device_url = TEST_BACKENDS_MAP[device]["url"]
     expected_bcc_base_url = TEST_BACKENDS_MAP[device].get("public_url", device_url)
-    jobs_before_creation = find_in_collection(
-        db,
-        collection_name=_COLLECTION,
-        fields_to_exclude=_EXCLUDED_FIELDS,
-    )
+    jobs_before_creation = _get_stored_jobs(db)
     timestamp = get_current_timestamp_str()
 
     # using context manager to ensure on_startup runs
@@ -236,11 +224,7 @@ def test_create_job(
         response = client.post("/jobs/", json=payload, headers=app_token_header)
         json_response = response.json()
         new_job_id = json_response["job_id"]
-        jobs_after_creation = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-        )
+        jobs_after_creation = _get_stored_jobs(db)
         plain_token = jwt_encode_spy.spy_return
         encrypted_token_bytes = base64_b64encode_spy.spy_return
         encrypted_token = encrypted_token_bytes.decode()
@@ -268,7 +252,7 @@ def test_create_job(
         }
 
         assert jobs_before_creation == []
-        assert jobs_after_creation == [expected_job]
+        assert jobs_after_creation == [_get_job_values(expected_job)]
 
 
 @pytest.mark.parametrize("payload, bcc", _UNAVAILABLE_BCC_FIXTURE)
@@ -277,11 +261,7 @@ def test_create_job_without_bcc(db, client, payload, app_token_header, bcc):
     # using context manager to ensure on_startup runs
     with client as client:
         response = client.post("/jobs/", json=payload, headers=app_token_header)
-        jobs_after_creation = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-        )
+        jobs_after_creation = _get_stored_jobs(db)
 
         assert response.status_code == 503
         assert response.json() == {"detail": "device is currently unavailable"}
@@ -324,7 +304,7 @@ def test_find_jobs(
             "calibration_date",
         ),
     )
-    insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+    _insert_jobs(db, raw_jobs)
 
     query_string = "?"
     slice_end = len(raw_jobs)
@@ -379,7 +359,7 @@ def test_update_job(db, client, device: str, raw_payload: dict, freezer):
     if job_id in _JOB_BCC_TOKEN_MAP:
         expected_response["access_token"] = _JOB_BCC_TOKEN_MAP[job_id]["plain"]
 
-    insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+    _insert_jobs(db, raw_jobs)
 
     ignored_fields = ["unexpected_field", "random_field"]
 
@@ -408,16 +388,11 @@ def test_update_job(db, client, device: str, raw_payload: dict, freezer):
                 actual_update,
             )
 
-            job_after_update = find_in_collection(
-                db,
-                collection_name=_COLLECTION,
-                fields_to_exclude=_EXCLUDED_FIELDS,
-                _filter={"job_id": job_id},
-            )[0]
+            job_after_update = _get_stored_jobs(db, {"job_id": job_id})[0]
 
             assert response["status"] == "success"
             assert got == expected_response
-            assert job_after_update == expected_job
+            assert job_after_update == _get_job_values(expected_job)
 
 
 @pytest.mark.parametrize("device, raw_payload", _DEVICES_AND_JOB_TIMESTAMPED_UPDATES)
@@ -431,11 +406,9 @@ def test_update_job_resource_usage(
     raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
     job_list = [{**item, "project_id": str(project_id)} for item in raw_jobs]
 
-    insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
+    _insert_jobs(db, job_list)
 
-    project_before_update = get_db_record(
-        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
-    )
+    project_before_update = db.get(Project, TEST_PROJECT_ID)
 
     url = f"/devices/ws/{device}"
     headers = create_bcc_headers(device)
@@ -454,12 +427,10 @@ def test_update_job_resource_usage(
             response = client.receive_json()
             assert response["status"] == "success"
 
-    project_after_update = get_db_record(
-        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
-    )
+    project_after_update = db.get(Project, TEST_PROJECT_ID)
     expected_resource_usage = _get_resource_usage(raw_payload["timestamps"])
     actual_resource_usage = round(
-        project_before_update["qpu_seconds"] - project_after_update["qpu_seconds"], 1
+        project_before_update.qpu_seconds - project_after_update.qpu_seconds, 1
     )
 
     assert actual_resource_usage == expected_resource_usage
@@ -475,11 +446,9 @@ def test_update_job_resource_usage_advanced(
     )
     raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
     job_list = [{**item, "project_id": str(project_id)} for item in raw_jobs]
-    insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
+    _insert_jobs(db, job_list)
 
-    project_before_update = get_db_record(
-        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
-    )
+    project_before_update = db.get(Project, TEST_PROJECT_ID)
 
     url = f"/devices/ws/{device}"
     headers = create_bcc_headers(device)
@@ -498,12 +467,10 @@ def test_update_job_resource_usage_advanced(
             response = client.receive_json()
             assert response["status"] == "success"
 
-    project_after_update = get_db_record(
-        db, schema=Project, _filter={"_id": ObjectId(TEST_PROJECT_ID)}
-    )
+    project_after_update = db.get(Project, TEST_PROJECT_ID)
     expected_resource_usage = _get_resource_usage(payload["timestamps"])
     actual_resource_usage = round(
-        project_before_update["qpu_seconds"] - project_after_update["qpu_seconds"], 1
+        project_before_update.qpu_seconds - project_after_update.qpu_seconds, 1
     )
 
     assert actual_resource_usage == expected_resource_usage
@@ -517,13 +484,13 @@ def test_cancel_job(db, client, user_jwt_cookie, job, mock_bcc, freezer):
             [job], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = ObjectId(TEST_USER_ID)
+        user_id = TEST_USER_ID
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_info = raw_jobs[0]
         job_id = job_info["job_id"]
         cancellation_reason = "just testing"
 
-        insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+        _insert_jobs(db, raw_jobs)
 
         response = client.post(
             f"/jobs/{job_id}/cancel",
@@ -531,12 +498,7 @@ def test_cancel_job(db, client, user_jwt_cookie, job, mock_bcc, freezer):
             cookies=user_jwt_cookie,
         )
         got = response.json()
-        job_in_db = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-            _filter={"job_id": job_id},
-        )[0]
+        job_in_db = _get_stored_jobs(db, {"job_id": job_id})[0]
 
         assert response.status_code == 200
         assert got == {
@@ -544,11 +506,13 @@ def test_cancel_job(db, client, user_jwt_cookie, job, mock_bcc, freezer):
             "detail": f"Job of id {job_id} cancelled",
         }
 
-        assert job_in_db == {
-            **job_info,
-            "status": "cancelled",
-            "cancellation_reason": cancellation_reason,
-        }
+        assert job_in_db == _get_job_values(
+            {
+                **job_info,
+                "status": "cancelled",
+                "cancellation_reason": cancellation_reason,
+            }
+        )
 
 
 @pytest.mark.parametrize("job", _JOBS_LIST[:1])
@@ -559,13 +523,13 @@ def test_unauthenticated_cancel_job(db, client, job, mock_bcc, freezer):
             [job], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = ObjectId(TEST_USER_ID)
+        user_id = TEST_USER_ID
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_info = raw_jobs[0]
         job_id = job_info["job_id"]
         cancellation_reason = "just testing"
 
-        insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+        _insert_jobs(db, raw_jobs)
 
         payload = {"reason": cancellation_reason}
         url = f"/jobs/{job_id}/cancel"
@@ -589,20 +553,15 @@ def test_remove_job(db, client, user_jwt_cookie, idx: int, mock_bcc, freezer):
             _JOBS_LIST[:4], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = ObjectId(TEST_USER_ID)
+        user_id = TEST_USER_ID
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_id = raw_jobs[idx]["job_id"]
 
-        insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+        _insert_jobs(db, raw_jobs)
 
         response = client.delete(f"/jobs/{job_id}", cookies=user_jwt_cookie)
         got = response.json()
-        jobs_in_db = find_in_collection(
-            db,
-            collection_name=_COLLECTION,
-            fields_to_exclude=_EXCLUDED_FIELDS,
-            _filter={},
-        )
+        jobs_in_db = _get_stored_jobs(db)
         expected_jobs = [item for item in raw_jobs if item["job_id"] != job_id]
 
         assert response.status_code == 200
@@ -611,7 +570,7 @@ def test_remove_job(db, client, user_jwt_cookie, idx: int, mock_bcc, freezer):
             "detail": f"Job of id {job_id} deleted",
         }
 
-        assert jobs_in_db == expected_jobs
+        assert jobs_in_db == [_get_job_values(job) for job in expected_jobs]
 
 
 @pytest.mark.parametrize("idx", range(1))
@@ -623,11 +582,11 @@ def test_unauthenticated_remove_job(db, client, idx: int, mock_bcc, freezer):
             _JOBS_LIST[:4], fields=["created_at", "calibration_date"]
         )
         raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-        user_id = ObjectId(TEST_USER_ID)
+        user_id = TEST_USER_ID
         raw_jobs = [{**item, "user_id": user_id} for item in raw_jobs]
         job_id = raw_jobs[idx]["job_id"]
 
-        insert_in_collection(database=db, collection_name=_COLLECTION, data=raw_jobs)
+        _insert_jobs(db, raw_jobs)
 
         response = client.delete(f"/jobs/{job_id}")
         assert response.status_code == 401
@@ -646,18 +605,16 @@ def test_dropping_below_the_qpu_threshold_warns_the_project_admin(client, db):
     _bill_a_job(client, db, starting_seconds=start)
     admin_notices = get_user_notices(db, TEST_USER_ID)
 
-    assert get_db_record(db, Project, TEST_PROJECT_ID)["qpu_seconds"] == (
+    assert db.get(Project, TEST_PROJECT_ID).qpu_seconds == (
         pytest.approx(start - _BILLED_JOB_COST)
     )
-    assert [item["type"] for item in admin_notices] == [NoticeType.QPU_SECONDS_LOW.id]
-    assert admin_notices[0]["title"] == (
-        f"{TEST_PROJECT_NAME} is running low on QPU time"
-    )
-    assert admin_notices[0]["body"] == (
+    assert [item.type for item in admin_notices] == [NoticeType.QPU_SECONDS_LOW.id]
+    assert admin_notices[0].title == (f"{TEST_PROJECT_NAME} is running low on QPU time")
+    assert admin_notices[0].body == (
         f"{TEST_PROJECT_NAME} has {_QPU_THRESHOLD - 1:.0f}s of QPU time left. "
         "Request more before it runs out."
     )
-    assert admin_notices[0]["severity"] == "warning"
+    assert admin_notices[0].severity == "warning"
     assert get_user_notices(db, TEST_SYSTEM_USER_ID) == []
 
 
@@ -665,17 +622,17 @@ def test_staying_above_the_qpu_threshold_warns_nobody(client, db):
     """A project with plenty of QPU time left is not worth interrupting anyone over"""
     _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD + _BILLED_JOB_COST * 10)
 
-    assert db["notices"].count_documents({}) == 0
+    assert db.count(Notice) == 0
 
 
 def test_a_second_job_below_the_qpu_threshold_does_not_warn_again(client, db):
     """Only the job that crosses the threshold warns, not every job after it"""
     _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD + _BILLED_JOB_COST - 1)
-    db[_COLLECTION].delete_many({})
+    db.delete_many(Job, {})
 
     _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD - 1)
 
-    assert [item["type"] for item in get_user_notices(db, TEST_USER_ID)] == [
+    assert [item.type for item in get_user_notices(db, TEST_USER_ID)] == [
         NoticeType.QPU_SECONDS_LOW.id
     ]
 
@@ -683,25 +640,23 @@ def test_a_second_job_below_the_qpu_threshold_does_not_warn_again(client, db):
 def test_running_out_of_qpu_time_tells_all_members(client, db):
     """Members cannot request more time, but they need to know why their jobs stopped"""
     _bill_a_job(client, db, starting_seconds=1)
-    depleted_notices = list(
-        db["notices"].find({"type": NoticeType.QPU_SECONDS_DEPLETED.id})
-    )
+    depleted_notices = db.find(Notice, {"type": NoticeType.QPU_SECONDS_DEPLETED.id})
 
-    assert {item["user_id"] for item in depleted_notices} == {
-        ObjectId(TEST_USER_ID),
-        ObjectId(TEST_SYSTEM_USER_ID),
+    assert {item.user_id for item in depleted_notices} == {
+        TEST_USER_ID,
+        TEST_SYSTEM_USER_ID,
     }
-    assert {item["severity"] for item in depleted_notices} == {"critical"}
+    assert {item.severity for item in depleted_notices} == {"critical"}
 
 
 def test_running_out_of_qpu_time_after_running_low(client, db):
     """Running out is reported even when running low was reported before"""
     _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD + _BILLED_JOB_COST - 1)
-    db[_COLLECTION].delete_many({})
+    db.delete_many(Job, {})
 
     _bill_a_job(client, db, starting_seconds=1)
 
-    assert [item["type"] for item in get_user_notices(db, TEST_USER_ID)] == [
+    assert [item.type for item in get_user_notices(db, TEST_USER_ID)] == [
         NoticeType.QPU_SECONDS_LOW.id,
         NoticeType.QPU_SECONDS_DEPLETED.id,
     ]
@@ -711,7 +666,7 @@ def test_an_already_empty_project_does_not_warn_again(client, db):
     """Only the job that uses up the last QPU time reports it"""
     _bill_a_job(client, db, starting_seconds=-5)
 
-    assert db["notices"].count_documents({}) == 0
+    assert db.count(Notice) == 0
 
 
 def _bill_a_job(client, db, starting_seconds: Optional[float] = None):
@@ -719,23 +674,19 @@ def _bill_a_job(client, db, starting_seconds: Optional[float] = None):
 
     Args:
         client: the test client
-        db: the mongo database
+        db: the database
         starting_seconds: the QPU seconds to start from; None leaves them as they are
     """
     raw_jobs = with_incremental_timestamps(
         _JOBS_LIST, fields=["created_at", "calibration_date"]
     )
     raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
-    insert_in_collection(
-        database=db,
-        collection_name=_COLLECTION,
-        data=[{**item, "project_id": ObjectId(TEST_PROJECT_ID)} for item in raw_jobs],
-    )
+    _insert_jobs(db, [{**item, "project_id": TEST_PROJECT_ID} for item in raw_jobs])
     if starting_seconds is not None:
-        db["auth_projects"].update_one(
-            {"_id": ObjectId(TEST_PROJECT_ID)},
+        db.update_one(
+            Project,
+            {"id": TEST_PROJECT_ID},
             {"$set": {"qpu_seconds": starting_seconds}},
-            bypass_document_validation=True,
         )
 
     device = _DEVICES[0]
@@ -801,15 +752,15 @@ def _get_job(records: List[dict], job_id: str) -> dict:
 
 def _insert_superuser_app_token(db) -> Dict[str, str]:
     """Gives the superuser a project of their own and an app token for it"""
-    project_id = ObjectId()
+    project_id = generate_id()
     insert_if_not_exist(
         db,
         Project,
         dict(
             _id=project_id,
             name="superuser-project",
-            admin_id=ObjectId(TEST_SUPERUSER_ID),
-            user_ids=[ObjectId(TEST_SUPERUSER_ID)],
+            admin_id=TEST_SUPERUSER_ID,
+            user_ids=[TEST_SUPERUSER_ID],
             qpu_seconds=3600,
         ),
     )
@@ -820,7 +771,7 @@ def _insert_superuser_app_token(db) -> Dict[str, str]:
         dict(
             title="superuser-token",
             token=token,
-            user_id=ObjectId(TEST_SUPERUSER_ID),
+            user_id=TEST_SUPERUSER_ID,
             project_id=project_id,
             lifespan_seconds=3600,
         ),
@@ -834,3 +785,17 @@ def _prepare_jobs() -> List[dict]:
         _JOBS_LIST, fields=("created_at", "updated_at", "calibration_date")
     )
     return _with_bcc_tokens(jobs)
+
+
+def _insert_jobs(db, jobs: List[dict]) -> None:
+    db.insert_many(Job, [to_record(Job, job) for job in jobs])
+
+
+def _get_stored_jobs(db, job_filter: Optional[dict] = None) -> List[dict]:
+    """Gets the stored jobs as the app shows them, as JSON values"""
+    return [job.model_dump(mode="json") for job in db.find(Job, job_filter)]
+
+
+def _get_job_values(job: dict) -> dict:
+    """Gets the JSON values a stored job of these fields would have"""
+    return to_record(Job, job).model_dump(mode="json")

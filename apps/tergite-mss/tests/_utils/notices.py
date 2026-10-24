@@ -10,22 +10,20 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Test utilities for notices"""
-from typing import Any, Dict, List
+from typing import List
 
-import pymongo.database
-from bson import ObjectId
+from services.notices import Notice
+from tests._utils.storage import SyncDatabase
 
 
-def get_user_notices(
-    db: pymongo.database.Database, user_id: str
-) -> List[Dict[str, Any]]:
+def get_user_notices(db: SyncDatabase, user_id: str) -> List[Notice]:
     """Gets the notices sent to the given user, oldest first
 
     Args:
-        db: the mongo database where the notices are stored
+        db: the database where the notices are stored
         user_id: the id of the user
 
     Returns:
-        the notices as stored in the database
+        the notices as stored
     """
-    return list(db["notices"].find({"user_id": ObjectId(user_id)}).sort("created_at"))
+    return db.find(Notice, {"user_id": user_id}, sort=["created_at"])

@@ -15,8 +15,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from services.auth import DeletedProject, Project
-from services.notices import NoticeType
+from services.auth import DeletedProject, Project, User
+from services.notices import Notice, NoticeType
 from tests._utils.auth import (
     TEST_NO_QPU_PROJECT_DICT,
     TEST_OUTSIDER_EMAIL,
@@ -32,18 +32,12 @@ from tests._utils.auth import (
 )
 from tests._utils.date_time import get_timestamp_str
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import (
-    find_in_collection,
-    get_db_record,
-)
 from tests._utils.notices import get_user_notices
 from tests._utils.projects import PROJECT_QUERIES
-from tests._utils.records import prune
 from tests.conftest import PROJECT_LIST
 
 _PROJECT_CREATE_LIST = load_json_fixture("project_create_list.json")
 _PROJECT_UPDATE_LIST = load_json_fixture("project_update_list.json")
-_EXTRA_PROJECT_DEFAULTS = {"is_personal": False}
 _NOTIFIED_PROJECT = {
     "admin_email": TEST_USER_EMAIL,
     "user_emails": [TEST_OUTSIDER_EMAIL],
@@ -71,10 +65,8 @@ def test_admin_create_project(db, project, client, admin_jwt_cookie, freezer):
         if project["admin_email"] not in user_emails:
             user_emails.append(project["admin_email"])
 
-        users = find_in_collection(
-            db, "auth_users", _filter={"email": {"$in": user_emails}}
-        )
-        user_email_id_map = {v["email"]: str(v["_id"]) for v in users}
+        users = db.find(User, {"email": {"$in": user_emails}})
+        user_email_id_map = {user.email: user.id for user in users}
         user_ids = [user_email_id_map[k] for k in user_emails]
         admin_id = user_email_id_map[project["admin_email"]]
 
@@ -135,17 +127,16 @@ def test_admin_update_project(db, payload, client, admin_jwt_cookie, freezer):
         if is_admin_to_change:
             new_user_emails.append(payload["admin_email"])
 
-        users = find_in_collection(
-            db,
-            "auth_users",
-            _filter={
+        users = db.find(
+            User,
+            {
                 "$or": [
                     {"email": {"$in": new_user_emails}},
-                    {"_id": {"$in": project["user_ids"]}},
+                    {"id": {"$in": project["user_ids"]}},
                 ]
             },
         )
-        user_email_id_map = {v["email"]: str(v["_id"]) for v in users}
+        user_email_id_map = {user.email: user.id for user in users}
         admin_email = payload.get("admin_email", project.get("admin_email"))
         user_ids = project["user_ids"]
         admin_id = user_email_id_map.get(admin_email, project["admin_id"])
@@ -333,26 +324,22 @@ def test_admin_delete_project(
     # using context manager to ensure on_startup runs
     with client as client:
         _id = project["_id"]
-        original = get_db_record(db, Project, _id)
+        original = db.get(Project, _id)
         assert original is not None
 
         url = f"/admin/projects/{_id}"
         response = client.delete(url, cookies=admin_jwt_cookie)
 
         now = get_timestamp_str(datetime.now(timezone.utc))
-        deleted_project = get_db_record(db, DeletedProject, _id)
-        pruned_fields = ["created_at", "updated_at"]
-        pruned_deleted_project, deleted_project_timestamps = prune(
-            deleted_project, pruned_fields
-        )
-        pruned_original, _ = prune(original, pruned_fields)
-        pruned_original.update(_EXTRA_PROJECT_DEFAULTS)
+        deleted_project = db.get(DeletedProject, _id)
+        timestamps = {"created_at", "updated_at"}
 
         assert response.status_code == 204
-        assert get_db_record(db, Project, _id) is None
-        assert pruned_deleted_project == pruned_original
-        for timestamp in deleted_project_timestamps.values():
-            assert timestamp == now
+        assert db.get(Project, _id) is None
+        assert deleted_project.model_dump(exclude=timestamps) == original.model_dump(
+            exclude=timestamps
+        )
+        assert deleted_project.created_at == deleted_project.updated_at == now
 
 
 @pytest.mark.parametrize("project", PROJECT_LIST[:1])
@@ -363,7 +350,7 @@ def test_non_admin_cannot_delete_project(
     # using context manager to ensure on_startup runs
     with client as client:
         _id = project["_id"]
-        assert get_db_record(db, Project, _id) is not None
+        assert db.get(Project, _id) is not None
 
         url = f"/admin/projects/{_id}"
         response = client.delete(url, cookies=user_jwt_cookie)
@@ -372,7 +359,7 @@ def test_non_admin_cannot_delete_project(
         expected = {"detail": "Forbidden"}
         assert response.status_code == 403
         assert got == expected
-        assert get_db_record(db, Project, _id) is not None
+        assert db.get(Project, _id) is not None
 
 
 def test_admin_create_project_with_existing_name(client, admin_jwt_cookie, db):
@@ -386,7 +373,7 @@ def test_admin_create_project_with_existing_name(client, admin_jwt_cookie, db):
 
         assert response.status_code == 400
         assert response.json() == {"detail": "PROJECT_ALREADY_EXISTS"}
-        assert db["auth_projects"].count_documents({"name": TEST_PROJECT_NAME}) == 1
+        assert db.count(Project, {"name": TEST_PROJECT_NAME}) == 1
 
 
 def test_project_creation_notifies_the_new_members(client, admin_jwt_cookie, db):
@@ -398,10 +385,10 @@ def test_project_creation_notifies_the_new_members(client, admin_jwt_cookie, db)
         member_notices = get_user_notices(db, TEST_OUTSIDER_ID)
 
         assert response.status_code == 201
-        assert [item["type"] for item in member_notices] == [
+        assert [item.type for item in member_notices] == [
             NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
         ]
-        assert member_notices[0]["body"] == (
+        assert member_notices[0].body == (
             "jane.doe added you to notified project "
             f"({response.json()['id']}). You can now create API tokens for it."
         )
@@ -413,9 +400,7 @@ def test_project_creation_notifies_the_admin(client, admin_jwt_cookie, db):
         client.post(
             "/admin/projects/", json=_NOTIFIED_PROJECT, cookies=admin_jwt_cookie
         )
-        admin_notice_types = {
-            item["type"] for item in get_user_notices(db, TEST_USER_ID)
-        }
+        admin_notice_types = {item.type for item in get_user_notices(db, TEST_USER_ID)}
 
         assert admin_notice_types == {
             NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
@@ -435,10 +420,10 @@ def test_project_update_notifies_the_added_and_the_removed(
         )
 
         assert response.status_code == 200
-        assert [item["type"] for item in get_user_notices(db, TEST_OUTSIDER_ID)] == [
+        assert [item.type for item in get_user_notices(db, TEST_OUTSIDER_ID)] == [
             NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
         ]
-        assert [item["type"] for item in get_user_notices(db, TEST_SYSTEM_USER_ID)] == [
+        assert [item.type for item in get_user_notices(db, TEST_SYSTEM_USER_ID)] == [
             NoticeType.PROJECT_MEMBERSHIP_REVOKED.id
         ]
         assert get_user_notices(db, TEST_USER_ID) == []
@@ -454,7 +439,7 @@ def test_project_update_notifies_the_new_admin(client, admin_jwt_cookie, db):
         )
 
         assert response.status_code == 200
-        assert [item["type"] for item in get_user_notices(db, TEST_SYSTEM_USER_ID)] == [
+        assert [item.type for item in get_user_notices(db, TEST_SYSTEM_USER_ID)] == [
             NoticeType.PROJECT_ADMIN_ASSIGNED.id
         ]
 
@@ -471,12 +456,12 @@ def test_project_update_that_changes_no_membership_notifies_nobody(
         )
 
         assert response.status_code == 200
-        assert db["notices"].count_documents({}) == 0
+        assert db.count(Notice) == 0
 
 
 def test_admin_delete_personal_project(client, admin_jwt_cookie, db, personal_project):
     """An operator must be able to offboard a user without touching the database"""
-    project_id = str(personal_project["_id"])
+    project_id = personal_project["_id"]
 
     with client as client:
         response = client.delete(
@@ -484,5 +469,5 @@ def test_admin_delete_personal_project(client, admin_jwt_cookie, db, personal_pr
         )
 
         assert response.status_code == 204
-        assert get_db_record(db, Project, project_id) is None
-        assert get_db_record(db, DeletedProject, project_id) is not None
+        assert db.get(Project, project_id) is None
+        assert db.get(DeletedProject, project_id) is not None

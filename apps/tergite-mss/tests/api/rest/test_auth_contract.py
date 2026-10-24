@@ -15,9 +15,9 @@ from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse
 
 import jwt
-from bson import ObjectId
 
 import settings
+from libs.storage import generate_id
 from services.auth import AppToken, Project, User
 from tests._utils.auth import (
     TEST_GITHUB_PROFILE,
@@ -26,9 +26,7 @@ from tests._utils.auth import (
     get_auth_cookie,
 )
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import (
-    insert_if_not_exist,
-)
+from tests._utils.storage import insert_if_not_exist
 
 _SESSION_AUDIENCE = ["fastapi-users:auth"]
 _STATE_AUDIENCE = "fastapi-users:oauth-state"
@@ -56,11 +54,11 @@ def test_session_jwt_carries_sub_audience_and_roles(
     claims = jwt.decode(
         token, TEST_JWT_SECRET, audience=_SESSION_AUDIENCE, algorithms=["HS256"]
     )
-    user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
+    user = db.find_one(User, {"email": TEST_GITHUB_PROFILE["email"]})
     assert jwt.get_unverified_header(token)["alg"] == "HS256"
-    assert claims["sub"] == str(user["_id"])
+    assert claims["sub"] == user.id
     assert claims["aud"] == _SESSION_AUDIENCE
-    assert set(claims["roles"]) == set(user["roles"])
+    assert set(claims["roles"]) == {role.value for role in user.roles}
 
 
 def test_session_jwt_lives_for_jwt_ttl(client, github_user, cookie_oauth_state):
@@ -197,15 +195,15 @@ def test_unknown_app_token_is_unauthorized(client):
 
 def test_app_token_of_inactive_project_is_unauthorized(client, db):
     """A project route with the app token of an inactive project is unauthorized"""
-    project_id = ObjectId()
+    project_id = generate_id()
     insert_if_not_exist(
         db,
         Project,
         dict(
             _id=project_id,
             name="inactive-project",
-            admin_id=ObjectId(TEST_USER_ID),
-            user_ids=[ObjectId(TEST_USER_ID)],
+            admin_id=TEST_USER_ID,
+            user_ids=[TEST_USER_ID],
             qpu_seconds=3600,
             is_active=False,
         ),
@@ -216,7 +214,7 @@ def test_app_token_of_inactive_project_is_unauthorized(client, db):
         dict(
             title="inactive-project-token",
             token="inactive-project-token",
-            user_id=ObjectId(TEST_USER_ID),
+            user_id=TEST_USER_ID,
             project_id=project_id,
             lifespan_seconds=3600,
         ),
@@ -247,8 +245,8 @@ def test_oauth_accounts_keep_their_fields(client, github_user, cookie_oauth_stat
     with client as client:
         _sign_in_with_github(client, cookie_oauth_state)
 
-    user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
-    assert [set(account) for account in user["oauth_accounts"]] == [
+    user = db.find_one(User, {"email": TEST_GITHUB_PROFILE["email"]})
+    assert [set(account.model_dump()) for account in user.oauth_accounts] == [
         _OAUTH_ACCOUNT_FIELDS
     ]
 
@@ -268,7 +266,7 @@ def _read_session_cookie(response):
 def _insert_user(
     db, email: str, is_active: bool = True, is_verified: bool = True
 ) -> str:
-    user_id = ObjectId()
+    user_id = generate_id()
     insert_if_not_exist(
         db,
         User,
@@ -281,4 +279,4 @@ def _insert_user(
             roles=["user"],
         ),
     )
-    return str(user_id)
+    return user_id

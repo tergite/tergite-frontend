@@ -16,13 +16,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import pytest
-from bson import ObjectId
 from fastapi.websockets import WebSocketDisconnect
 
+from libs.storage import generate_id
+from services.calibration import DeviceCalibration, DeviceCalibrationLog
 from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import get_current_timestamp_str, get_timestamp_str
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import find_in_collection, insert_in_collection
 from tests._utils.records import (
     distinct_on,
     filter_by_equality,
@@ -31,6 +31,7 @@ from tests._utils.records import (
     with_current_timestamps,
     with_incremental_timestamps,
 )
+from tests._utils.storage import to_record
 
 _CALIBRATIONS_LIST = load_json_fixture("calibrations.json")
 _LATEST_CALIBRATIONS = distinct_on(
@@ -38,9 +39,6 @@ _LATEST_CALIBRATIONS = distinct_on(
     field="name",
 )
 _DEVICE_NAMES = [item["name"] for item in _LATEST_CALIBRATIONS]
-_COLLECTION = "calibrations"
-_LOGS_COLLECTION = "calibrations_logs"
-_EXCLUDED_FIELDS = ["_id"]
 _SKIP_LIMIT_SORT_PARAMS = [
     (0, 1, ["-version", "last_calibrated"]),
     (2, 4, None),
@@ -77,11 +75,10 @@ def test_find_calibrations(
     raw_calibrations = with_incremental_timestamps(
         _LATEST_CALIBRATIONS, fields=("last_calibrated", "updated_at")
     )
-    inserted_ids = insert_in_collection(
-        database=db, collection_name=_COLLECTION, data=raw_calibrations
-    )
-    raw_calibrations = _attach_str_ids(
-        raw_calibrations, ids=inserted_ids, id_field="id"
+    raw_calibrations = [{**item, "id": generate_id()} for item in raw_calibrations]
+    db.insert_many(
+        DeviceCalibration,
+        [to_record(DeviceCalibration, item) for item in raw_calibrations],
     )
 
     query_string = "?"
@@ -129,11 +126,10 @@ def test_read_calibration(name: str, db, client, freezer):
     raw_calibrations = with_incremental_timestamps(
         _LATEST_CALIBRATIONS, fields=("last_calibrated", "updated_at")
     )
-    inserted_ids = insert_in_collection(
-        database=db, collection_name=_COLLECTION, data=raw_calibrations
-    )
-    raw_calibrations = _attach_str_ids(
-        raw_calibrations, ids=inserted_ids, id_field="id"
+    raw_calibrations = [{**item, "id": generate_id()} for item in raw_calibrations]
+    db.insert_many(
+        DeviceCalibration,
+        [to_record(DeviceCalibration, item) for item in raw_calibrations],
     )
 
     # using context manager to ensure on_startup runs
@@ -183,8 +179,9 @@ def test_upsert(db, client, raw_payload, freezer):
     raw_calibrations = with_current_timestamps(
         [raw_payload], fields=("updated_at", "last_calibrated")
     )
-    insert_in_collection(
-        database=db, collection_name=_COLLECTION, data=raw_calibrations
+    db.insert_many(
+        DeviceCalibration,
+        [to_record(DeviceCalibration, item) for item in raw_calibrations],
     )
 
     now = get_current_timestamp_str()
@@ -221,13 +218,10 @@ def test_upsert(db, client, raw_payload, freezer):
                 "data": {**payload, "updated_at": now, "id": record_id},
             }
 
-            new_calibration_in_db = {
-                **payload,
-                "updated_at": now,
-                "_id": ObjectId(record_id),
-            }
-            final_db_data = find_in_collection(db, collection_name=_COLLECTION)
-            assert final_db_data == [new_calibration_in_db]
+            new_calibration = to_record(
+                DeviceCalibration, {**payload, "updated_at": now, "id": record_id}
+            )
+            assert db.find(DeviceCalibration) == [new_calibration]
 
 
 @pytest.mark.parametrize("raw_payload", _CALIBRATIONS_LIST)
@@ -238,8 +232,9 @@ def test_create_log(db, client, system_app_token_header, raw_payload, freezer):
     )
     # insert only some of the calibrations in collection to show upsert is done
     original_logs_in_db = raw_calibrations[:2]
-    insert_in_collection(
-        database=db, collection_name=_LOGS_COLLECTION, data=raw_calibrations[:2]
+    db.insert_many(
+        DeviceCalibrationLog,
+        [to_record(DeviceCalibrationLog, item) for item in original_logs_in_db],
     )
 
     future_timestamp = get_timestamp_str(
@@ -262,10 +257,11 @@ def test_create_log(db, client, system_app_token_header, raw_payload, freezer):
                 }
             )
             json_response = client.receive_json()
-            got = find_in_collection(
-                db, collection_name=_LOGS_COLLECTION, fields_to_exclude=("_id",)
-            )
-            expected = [*original_logs_in_db, payload]
+            got = _get_stored_values(db, DeviceCalibrationLog)
+            expected = [
+                _get_values(DeviceCalibrationLog, item)
+                for item in [*original_logs_in_db, payload]
+            ]
 
             assert json_response["status"] == "success"
             assert order_by(got, "name") == order_by(expected, "name")
@@ -274,9 +270,7 @@ def test_create_log(db, client, system_app_token_header, raw_payload, freezer):
 @pytest.mark.parametrize("payload", _CALIBRATIONS_LIST[:1])
 def test_create_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """Only clients with the certificate known to MSS can push to /ws/devices/"""
-    original_data_in_db = find_in_collection(
-        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    original_data_in_db = _get_stored_values(db, DeviceCalibration)
 
     name = payload["name"]
     url = f"/devices/ws/{name}"
@@ -287,9 +281,7 @@ def test_create_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie)
             with client.websocket_connect(url, headers=headers):
                 pass
 
-    final_data_in_db = find_in_collection(
-        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    final_data_in_db = _get_stored_values(db, DeviceCalibration)
 
     assert exp.value.code == 1008
     assert exp.value.reason == "unauthorized"
@@ -300,9 +292,7 @@ def test_create_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie)
 @pytest.mark.parametrize("payload", _CALIBRATIONS_LIST[:1])
 def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """BCC devices can only push their own calibration data to /ws/devices/ and not those of others"""
-    original_data_in_db = find_in_collection(
-        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    original_data_in_db = _get_stored_values(db, DeviceCalibration)
 
     # just to ensure mutations occur on copies and not on the original object
     payload = copy.deepcopy(payload)
@@ -323,9 +313,7 @@ def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cook
                 }
             )
             response = client.receive_json()
-            final_data_in_db = find_in_collection(
-                db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-            )
+            final_data_in_db = _get_stored_values(db, DeviceCalibration)
 
             assert response == {
                 "id": event_id,
@@ -340,9 +328,7 @@ def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cook
 @pytest.mark.parametrize("payload", _CALIBRATIONS_LIST[:1])
 def test_create_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """BCC devices can only push to their own urls /ws/devices/{name}/ and not those of others"""
-    original_data_in_db = find_in_collection(
-        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    original_data_in_db = _get_stored_values(db, DeviceCalibration)
 
     name = payload["name"]
     url = f"/devices/ws/{name}extra"
@@ -353,9 +339,7 @@ def test_create_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
             with client.websocket_connect(url, headers=headers):
                 pass
 
-    final_data_in_db = find_in_collection(
-        db, collection_name=_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    final_data_in_db = _get_stored_values(db, DeviceCalibration)
 
     assert exp.value.code == 1008
     assert exp.value.reason == "forbidden"
@@ -363,17 +347,14 @@ def test_create_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
     assert final_data_in_db == []
 
 
-def _attach_str_ids(
-    data: List[Dict[str, Any]], ids: List[ObjectId], id_field: str = "_id"
-) -> List[Dict[str, Any]]:
-    """Attaches ids in string form to the data
+def _get_stored_values(db, schema) -> List[Dict[str, Any]]:
+    """Gets the stored records of the schema as JSON values, without their ids"""
+    return [
+        record.model_dump(mode="json", exclude={"id"}) for record in db.find(schema)
+    ]
 
-    Args:
-        data: the list of raw data records
-        ids: the list of ObjectId ids, in the same order as that of the data
-        id_field: the field on the records that is to have the id
 
-    Returns:
-        the list of records with ids attached to them
-    """
-    return [{**item, id_field: str(ids[idx])} for idx, item in enumerate(data)]
+def _get_values(schema, document: Dict[str, Any]) -> Dict[str, Any]:
+    """Gets a document as JSON values of a record of the schema, without its id"""
+    record = to_record(schema, {**document, "id": generate_id()})
+    return record.model_dump(mode="json", exclude={"id"})

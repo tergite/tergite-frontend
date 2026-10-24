@@ -11,14 +11,9 @@
 # that they have been altered from the originals.
 """Integration tests for the /me/notices routes"""
 
-from bson import ObjectId
-
 from services.notices import Notice
 from tests._utils.auth import (
     TEST_USER_ID,
-)
-from tests._utils.mongodb import (
-    get_db_record,
 )
 
 _ADMIN_NOTICE_ID = "aaaaaaaaaaaaaaaaaaaaaaaa"
@@ -135,12 +130,12 @@ def test_dismiss_my_notice(client, user_jwt_cookie, db, inserted_notices):
         response = client.post(
             f"/me/notices/{_USER_NOTICE_ID}/dismiss", cookies=user_jwt_cookie
         )
-        notice = get_db_record(db, Notice, _USER_NOTICE_ID)
+        notice = db.get(Notice, _USER_NOTICE_ID)
 
         assert response.status_code == 200
         assert response.json() == {"status": "success"}
-        assert notice["read_at"] is not None
-        assert notice["dismissed_by"] == [ObjectId(TEST_USER_ID)]
+        assert notice.read_at is not None
+        assert notice.dismissed_by == [TEST_USER_ID]
 
 
 def test_dismiss_broadcast_notice(client, user_jwt_cookie, db, inserted_notices):
@@ -149,11 +144,11 @@ def test_dismiss_broadcast_notice(client, user_jwt_cookie, db, inserted_notices)
         response = client.post(
             f"/me/notices/{_BROADCAST_NOTICE_ID}/dismiss", cookies=user_jwt_cookie
         )
-        notice = get_db_record(db, Notice, _BROADCAST_NOTICE_ID)
+        notice = db.get(Notice, _BROADCAST_NOTICE_ID)
 
         assert response.status_code == 200
-        assert notice["read_at"] is None
-        assert notice["dismissed_by"] == [ObjectId(TEST_USER_ID)]
+        assert notice.read_at is None
+        assert notice.dismissed_by == [TEST_USER_ID]
 
 
 def test_dismiss_my_notice_twice(client, user_jwt_cookie, db, inserted_notices):
@@ -162,10 +157,10 @@ def test_dismiss_my_notice_twice(client, user_jwt_cookie, db, inserted_notices):
         response = client.post(
             f"/me/notices/{_READ_USER_NOTICE_ID}/dismiss", cookies=user_jwt_cookie
         )
-        notice = get_db_record(db, Notice, _READ_USER_NOTICE_ID)
+        notice = db.get(Notice, _READ_USER_NOTICE_ID)
 
         assert response.status_code == 200
-        assert notice["dismissed_by"] == [ObjectId(TEST_USER_ID)]
+        assert notice.dismissed_by == [TEST_USER_ID]
 
 
 def test_cannot_dismiss_another_users_notice(
@@ -176,11 +171,11 @@ def test_cannot_dismiss_another_users_notice(
         response = client.post(
             f"/me/notices/{_ADMIN_NOTICE_ID}/dismiss", cookies=user_jwt_cookie
         )
-        notice = get_db_record(db, Notice, _ADMIN_NOTICE_ID)
+        notice = db.get(Notice, _ADMIN_NOTICE_ID)
 
         assert response.status_code == 404
-        assert notice["read_at"] is None
-        assert notice["dismissed_by"] == []
+        assert notice.read_at is None
+        assert notice.dismissed_by == []
 
 
 def test_dismiss_non_existent_notice(client, user_jwt_cookie):
@@ -203,7 +198,7 @@ def test_unauthenticated_dismiss_notice(client, db, inserted_notices):
 
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
-        assert get_db_record(db, Notice, _USER_NOTICE_ID)["dismissed_by"] == []
+        assert db.get(Notice, _USER_NOTICE_ID).dismissed_by == []
 
 
 def test_unread_my_notice(client, user_jwt_cookie, db, inserted_notices):
@@ -212,12 +207,12 @@ def test_unread_my_notice(client, user_jwt_cookie, db, inserted_notices):
         response = client.post(
             f"/me/notices/{_READ_USER_NOTICE_ID}/unread", cookies=user_jwt_cookie
         )
-        notice = get_db_record(db, Notice, _READ_USER_NOTICE_ID)
+        notice = db.get(Notice, _READ_USER_NOTICE_ID)
 
         assert response.status_code == 200
         assert response.json() == {"status": "success"}
-        assert notice["read_at"] is None
-        assert notice["dismissed_by"] == []
+        assert notice.read_at is None
+        assert notice.dismissed_by == []
 
 
 def test_cannot_unread_another_users_notice(client, admin_jwt_cookie, inserted_notices):
@@ -239,7 +234,7 @@ def test_dismiss_all_my_notices(client, user_jwt_cookie, db, inserted_notices):
         assert response.status_code == 200
         assert response.json() == {"status": "success", "detail": "4 notices updated"}
         assert unread.json()["data"] == []
-        assert get_db_record(db, Notice, _ADMIN_NOTICE_ID)["dismissed_by"] == []
+        assert db.get(Notice, _ADMIN_NOTICE_ID).dismissed_by == []
 
 
 def test_unread_all_my_notices(client, user_jwt_cookie, inserted_notices):
@@ -259,4 +254,4 @@ def test_unauthenticated_dismiss_all_notices(client, db, inserted_notices):
         response = client.post("/me/notices/dismiss")
 
         assert response.status_code == 401
-        assert db["notices"].count_documents({"dismissed_by": {"$ne": []}}) == 1
+        assert len([notice for notice in db.find(Notice) if notice.dismissed_by]) == 1

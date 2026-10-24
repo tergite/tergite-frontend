@@ -26,7 +26,7 @@ from tests._utils.auth import (
     TEST_GITHUB_TOKEN_RESP,
 )
 from tests._utils.env import TEST_JWT_SECRET
-from tests._utils.mongodb import insert_if_not_exist
+from tests._utils.storage import insert_if_not_exist
 
 TEST_NEXT_COOKIE_URL = "https://testserver/"
 
@@ -49,8 +49,8 @@ def insert_chalmers_user(db):
     from services.auth import User
 
     email = TEST_CHALMERS_PROFILE["userPrincipalName"]
-    insert_if_not_exist(db, schema=User, data={"email": email})
-    yield db["auth_users"].find_one({"email": email})
+    insert_if_not_exist(db, User, {"email": email})
+    yield db.find_one(User, {"email": email})
 
 
 @pytest.fixture

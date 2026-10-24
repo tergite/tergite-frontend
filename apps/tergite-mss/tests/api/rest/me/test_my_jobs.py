@@ -13,13 +13,13 @@
 from typing import List, Optional
 
 import pytest
-from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
+from services.jobs import Job
 from tests._utils.auth import TEST_SUPERUSER_ID, TEST_USER_ID
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import insert_in_collection
 from tests._utils.records import filter_by_equality, order_by_many
+from tests._utils.storage import to_record
 
 _USER_ID_COOKIES_FIXTURE = [
     (TEST_USER_ID, lazy_fixture("user_jwt_cookie")),
@@ -53,13 +53,7 @@ _PAGINATE_AND_SEARCH_PARAMS = [
     ),
     (None, None, None, {}, *_USER_ID_COOKIES_FIXTURE[1]),
 ]
-_JOBS_LIST_IN_DB = [
-    {
-        **item,
-        **{k: ObjectId(item[k]) for k in ("project_id", "user_id") if k in item},
-    }
-    for item in load_json_fixture("my_jobs_in_db.json")
-]
+_JOBS_LIST_IN_DB = load_json_fixture("my_jobs_in_db.json")
 _JOBS_LIST_AS_RESPONSES = load_json_fixture("my_job_responses.json")
 
 
@@ -77,9 +71,7 @@ def test_find_my_jobs(
     cookies,
 ):
     """Get to /me/job/?project_id=...&device=... can search for the jobs that fulfill the given filters"""
-    insert_in_collection(
-        database=db, collection_name=_JOBS_COLLECTION, data=_JOBS_LIST_IN_DB
-    )
+    db.insert_many(Job, [to_record(Job, item) for item in _JOBS_LIST_IN_DB])
 
     query_string = "?"
     slice_end = len(_JOBS_LIST_IN_DB)

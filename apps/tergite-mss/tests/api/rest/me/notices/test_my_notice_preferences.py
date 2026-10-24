@@ -11,12 +11,9 @@
 # that they have been altered from the originals.
 """Integration tests for the /me/notices/preferences routes"""
 
-from bson import ObjectId
-
-from services.notices import NoticeType
+from services.notices import NoticePreferences, NoticeType
 from tests._utils.auth import TEST_USER_ID
 
-_PREFS_COLLECTION = "notice_preferences"
 _DEFAULT_PREFS = {item.id: True for item in NoticeType}
 
 
@@ -37,11 +34,11 @@ def test_update_email_preferences(client, user_jwt_cookie, db):
             cookies=user_jwt_cookie,
             json={"qpu-seconds-granted": False},
         )
-        record = db[_PREFS_COLLECTION].find_one({"user_id": ObjectId(TEST_USER_ID)})
+        record = db.find_one(NoticePreferences, {"user_id": TEST_USER_ID})
 
         assert response.status_code == 200
         assert response.json() == {**_DEFAULT_PREFS, "qpu-seconds-granted": False}
-        assert record["email_prefs"] == {"qpu-seconds-granted": False}
+        assert record.email_prefs == {"qpu-seconds-granted": False}
 
 
 def test_update_email_preferences_keeps_earlier_updates(client, user_jwt_cookie, db):
@@ -60,7 +57,7 @@ def test_update_email_preferences_keeps_earlier_updates(client, user_jwt_cookie,
         response = client.get("/me/notices/preferences/", cookies=user_jwt_cookie)
 
         assert response.json() == {**_DEFAULT_PREFS, "custom": False}
-        assert db[_PREFS_COLLECTION].count_documents({}) == 1
+        assert db.count(NoticePreferences) == 1
 
 
 def test_update_unknown_notice_type_preference(client, user_jwt_cookie, db):
@@ -73,7 +70,7 @@ def test_update_unknown_notice_type_preference(client, user_jwt_cookie, db):
         )
 
         assert response.status_code == 422
-        assert db[_PREFS_COLLECTION].count_documents({}) == 0
+        assert db.count(NoticePreferences) == 0
 
 
 def test_unauthenticated_view_email_preferences(client):
@@ -91,4 +88,4 @@ def test_unauthenticated_update_email_preferences(client, db):
         response = client.put("/me/notices/preferences/", json={"custom": False})
 
         assert response.status_code == 401
-        assert db[_PREFS_COLLECTION].count_documents({}) == 0
+        assert db.count(NoticePreferences) == 0

@@ -15,7 +15,6 @@ from typing import List, Optional
 
 import httpx
 import pytest
-from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
 import settings
@@ -27,9 +26,6 @@ from tests._utils.auth import (
     TEST_USER_EMAIL,
     is_valid_jwt,
 )
-from tests._utils.mongodb import (
-    insert_if_not_exist,
-)
 from tests._utils.oauth import TEST_NEXT_COOKIE_URL
 from tests._utils.records import (
     copy_records,
@@ -37,6 +33,7 @@ from tests._utils.records import (
     order_by_many,
     pop_field,
 )
+from tests._utils.storage import insert_if_not_exist
 
 _USER_EMAIL_COOKIES_FIXTURE = [
     (TEST_USER_EMAIL, lazy_fixture("user_jwt_cookie")),
@@ -218,8 +215,7 @@ def test_already_existing_user_github(client, github_user, db, cookie_oauth_stat
     """GitHub users who already exist under other providers raise OAUTH_USER_ALREADY_EXISTS error"""
     # using context manager to ensure on_startup runs
     with client as client:
-        user = {"email": TEST_GITHUB_PROFILE["email"], "hashed_password": "password"}
-        insert_if_not_exist(db, schema=User, data=user)
+        insert_if_not_exist(db, User, {"email": TEST_GITHUB_PROFILE["email"]})
 
         github_resp = client.get(
             f"/auth/github/callback?code=test&state={cookie_oauth_state}",
@@ -341,15 +337,15 @@ def test_login_creates_personal_project(client, github_user, cookie_oauth_state,
             f"/auth/github/callback?code=test&state={cookie_oauth_state}",
             follow_redirects=False,
         )
-        user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
-        project = _get_personal_project(db, user["_id"])
+        user = db.find_one(User, {"email": TEST_GITHUB_PROFILE["email"]})
+        project = _get_personal_project(db, user.id)
 
         assert response.status_code == 307
-        assert project["name"] == "paul.doe (personal)"
-        assert project["is_personal"] is True
-        assert project["qpu_seconds"] == settings.CONFIG.projects.personal_qpu_seconds
-        assert project["admin_id"] == user["_id"]
-        assert project["user_ids"] == [user["_id"]]
+        assert project.name == "paul.doe (personal)"
+        assert project.is_personal is True
+        assert project.qpu_seconds == settings.CONFIG.projects.personal_qpu_seconds
+        assert project.admin_id == user.id
+        assert project.user_ids == [user.id]
 
 
 def test_second_login_does_not_duplicate_personal_project(
@@ -361,14 +357,9 @@ def test_second_login_does_not_duplicate_personal_project(
     with client as client:
         client.get(url, follow_redirects=False)
         client.get(url, follow_redirects=False)
-        user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
+        user = db.find_one(User, {"email": TEST_GITHUB_PROFILE["email"]})
 
-        assert (
-            db["auth_projects"].count_documents(
-                {"admin_id": user["_id"], "is_personal": True}
-            )
-            == 1
-        )
+        assert db.count(Project, {"admin_id": user.id, "is_personal": True}) == 1
 
 
 def test_existing_user_gets_personal_project_on_login(
@@ -376,7 +367,7 @@ def test_existing_user_gets_personal_project_on_login(
 ):
     """A user predating personal projects gets theirs on next login, with no migration"""
     with client as client:
-        project_before = _get_personal_project(db, insert_chalmers_user["_id"])
+        project_before = _get_personal_project(db, insert_chalmers_user.id)
         response = client.get(
             f"/auth/chalmers/callback?code=test&state={cookie_oauth_state}",
             follow_redirects=False,
@@ -384,7 +375,7 @@ def test_existing_user_gets_personal_project_on_login(
 
         assert project_before is None
         assert response.status_code == 307
-        assert _get_personal_project(db, insert_chalmers_user["_id"]) is not None
+        assert _get_personal_project(db, insert_chalmers_user.id) is not None
 
 
 def test_concurrent_logins_yield_one_personal_project(
@@ -409,16 +400,11 @@ def test_concurrent_logins_yield_one_personal_project(
         client.get(url, follow_redirects=False)
         mocker.patch.object(Database, "get", miss_once)
         response = client.get(url, follow_redirects=False)
-        user = db["auth_users"].find_one({"email": TEST_GITHUB_PROFILE["email"]})
+        user = db.find_one(User, {"email": TEST_GITHUB_PROFILE["email"]})
 
         assert response.status_code == 307
         assert len(calls) == 2
-        assert (
-            db["auth_projects"].count_documents(
-                {"admin_id": user["_id"], "is_personal": True}
-            )
-            == 1
-        )
+        assert db.count(Project, {"admin_id": user.id, "is_personal": True}) == 1
 
 
 def _get_token_from_cookie(resp: httpx.Response) -> Optional[str]:
@@ -426,15 +412,14 @@ def _get_token_from_cookie(resp: httpx.Response) -> Optional[str]:
     return _AUTH_COOKIE_REGEX.match(resp.headers["set-cookie"]).group(1)
 
 
-def _get_personal_project(db, user_id: ObjectId) -> Optional[dict]:
+def _get_personal_project(db, user_id: str) -> Optional[Project]:
     """Gets the personal project of the given user from the database
 
     Args:
-        db: the mongo database where the projects are stored
+        db: the database where the projects are stored
         user_id: the id of the user
 
     Returns:
         the personal project or None if the user has none
     """
-    project_id = ObjectId(derive_id(str(user_id), namespace="project"))
-    return db["auth_projects"].find_one({"_id": project_id})
+    return db.get(Project, derive_id(user_id, namespace="project"))

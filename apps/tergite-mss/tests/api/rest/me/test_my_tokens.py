@@ -15,10 +15,9 @@ from datetime import datetime, timedelta, timezone
 from random import randint
 
 import pytest
-from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
-from services.auth import AppToken
+from services.auth import AppToken, User
 from tests._utils.auth import (
     TEST_APP_TOKEN_DICT,
     TEST_NO_QPU_APP_TOKEN_DICT,
@@ -28,10 +27,6 @@ from tests._utils.auth import (
     get_jwt_token,
 )
 from tests._utils.date_time import get_current_timestamp_str, get_timestamp_str
-from tests._utils.mongodb import (
-    get_db_record,
-    update_db_record,
-)
 from tests.conftest import APP_TOKEN_LIST, PROJECT_LIST
 
 # one token of each user; the rest of the fixture's tokens behave the same
@@ -111,14 +106,14 @@ def test_destroy_app_token(payload, db, client, inserted_projects, inserted_app_
     with client as client:
         _id = payload["_id"]
         user_id = payload["user_id"]
-        assert get_db_record(db, AppToken, _id) is not None
+        assert db.get(AppToken, _id) is not None
 
         url = f"/me/tokens/{_id}"
         cookies = get_auth_cookie(user_id)
         response = client.delete(url, cookies=cookies)
 
         assert response.status_code == 204
-        assert get_db_record(db, AppToken, _id) is None
+        assert db.get(AppToken, _id) is None
 
 
 @pytest.mark.parametrize("payload", _TOKENS)
@@ -130,22 +125,21 @@ def test_destroy_expired_app_token(
     with client as client:
         _id = payload["_id"]
         user_id = payload["user_id"]
-        token = get_db_record(db, AppToken, _id)
+        token = db.get(AppToken, _id)
         assert token is not None
 
         # shift back the created_at date to a time that would make this token expired
         new_created_at = datetime.now(timezone.utc) - timedelta(
-            seconds=token["lifespan_seconds"] + 1
+            seconds=token.lifespan_seconds + 1
         )
-        update_obj = {"$set": {"created_at": new_created_at}}
-        update_db_record(db, AppToken, _id, update=update_obj)
+        db.update_one(AppToken, {"id": _id}, {"$set": {"created_at": new_created_at}})
 
         url = f"/me/tokens/{_id}"
         cookies = get_auth_cookie(user_id)
         response = client.delete(url, cookies=cookies)
 
         assert response.status_code == 204
-        assert get_db_record(db, AppToken, _id) is None
+        assert db.get(AppToken, _id) is None
 
 
 @pytest.mark.parametrize("payload", _TOKENS)
@@ -156,7 +150,7 @@ def test_unauthenticated_app_token_deletion(
     # using context manager to ensure on_startup runs
     with client as client:
         _id = payload["_id"]
-        assert get_db_record(db, AppToken, _id) is not None
+        assert db.get(AppToken, _id) is not None
 
         url = f"/me/tokens/{_id}"
         response = client.delete(url)
@@ -165,7 +159,7 @@ def test_unauthenticated_app_token_deletion(
 
         assert response.status_code == 401
         assert got == expected
-        assert get_db_record(db, AppToken, _id) is not None
+        assert db.get(AppToken, _id) is not None
 
 
 @pytest.mark.parametrize("payload, cookies", _UNAUTHORIZED_TOKEN_REQUESTS)
@@ -187,7 +181,7 @@ def test_unauthorized_app_token_deletion(
 
 @pytest.mark.parametrize("user_id, cookies", _USER_ID_COOKIES_FIXTURE)
 def test_view_own_app_tokens_in_less_detail(
-    user_id, cookies, client, inserted_projects, inserted_app_tokens, freezer
+    user_id, cookies, freezer, client, inserted_projects, inserted_app_tokens
 ):
     """At /me/tokens/, user can view their own app tokens
     without the token itself displayed"""
@@ -218,10 +212,10 @@ def test_view_my_app_token_in_less_detail(
     user_id,
     cookies,
     token,
+    freezer,
     client,
     inserted_projects,
     inserted_app_tokens,
-    freezer,
 ):
     """Any user can view only their own single app token at /me/tokens/{id}
     without token itself displayed"""
@@ -250,10 +244,10 @@ def test_view_others_tokens_is_not_allowed(
     user_id,
     cookies,
     token,
+    freezer,
     client,
     inserted_projects,
     inserted_app_tokens,
-    freezer,
 ):
     """No user can view only other's app tokens at /me/tokens/{id}"""
     # using context manager to ensure on_startup runs
@@ -273,10 +267,10 @@ def test_view_others_tokens_is_not_allowed(
 def test_extend_own_token_lifespan(
     db,
     token,
+    freezer,
     client,
     inserted_projects,
     inserted_app_tokens,
-    freezer,
 ):
     """PUT at /me/tokens/{token_id}, user can update an app token for project they are attached to"""
     lifespan_secs = randint(1000, 300000)
@@ -296,7 +290,7 @@ def test_extend_own_token_lifespan(
         token_id = token["_id"]
         url = f"/me/tokens/{token_id}"
 
-        original_token = get_db_record(db, AppToken, token_id)
+        original_token = db.get(AppToken, token_id)
         response = client.put(url, cookies=cookies, json=payload)
 
         got = response.json()
@@ -308,17 +302,13 @@ def test_extend_own_token_lifespan(
             "lifespan_seconds": lifespan_secs,
             "created_at": get_current_timestamp_str(),
         }
-        token_after_update = get_db_record(db, AppToken, token_id)
-        token_after_update["lifespan_seconds"] = round(
-            token_after_update["lifespan_seconds"]
-        )
+        token_after_update = db.get(AppToken, token_id)
+        lifespan_kept = {"lifespan_seconds": original_token.lifespan_seconds}
 
         assert response.status_code == 200
         assert got == expected_response
-        assert token_after_update == {
-            **original_token,
-            "lifespan_seconds": lifespan_secs,
-        }
+        assert round(token_after_update.lifespan_seconds) == lifespan_secs
+        assert token_after_update.model_copy(update=lifespan_kept) == original_token
 
 
 @pytest.mark.parametrize("token", _TOKENS)
@@ -348,22 +338,19 @@ def test_extend_own_expired_token_lifespan(
     with client as client:
         token_id = token["_id"]
         url = f"/me/tokens/{token_id}"
-        original_token = get_db_record(db, AppToken, token_id)
+        original_token = db.get(AppToken, token_id)
         app_token_ttl = token["lifespan_seconds"]
 
         # shift back the created_at date to a time that would make this token expired
         new_created_at = datetime.now(timezone.utc) - timedelta(
             seconds=app_token_ttl + 1
         )
-        update_db_record(
-            db,
-            AppToken,
-            token_id,
-            update={"$set": {"created_at": new_created_at}},
+        db.update_one(
+            AppToken, {"id": token_id}, {"$set": {"created_at": new_created_at}}
         )
 
         response = client.put(url, cookies=cookies, json=payload)
-        token_after_request = get_db_record(db, AppToken, token_id)
+        token_after_request = db.get(AppToken, token_id)
 
         got = response.json()
         expected = {"detail": "Not Found"}
@@ -389,11 +376,8 @@ def test_expired_app_token_fails(
         new_created_at = datetime.now(timezone.utc) - timedelta(
             seconds=app_token_ttl + 1
         )
-        update_db_record(
-            db,
-            AppToken,
-            token_id,
-            update={"$set": {"created_at": new_created_at}},
+        db.update_one(
+            AppToken, {"id": token_id}, {"$set": {"created_at": new_created_at}}
         )
 
         response = client.get("/jobs/", headers=headers)
@@ -408,7 +392,7 @@ def test_expired_app_token_fails(
 def test_app_token_of_deleted_user_fails(db, client):
     """An app token whose user is gone raises 401 HTTP error"""
     headers = {"Authorization": f"Bearer {TEST_APP_TOKEN_DICT['token']}"}
-    db["auth_users"].delete_one({"_id": ObjectId(TEST_APP_TOKEN_DICT["user_id"])})
+    db.delete_many(User, {"id": TEST_APP_TOKEN_DICT["user_id"]})
 
     with client as client:
         response = client.get("/jobs/", headers=headers)
@@ -420,9 +404,8 @@ def test_app_token_of_deleted_user_fails(db, client):
 def test_app_token_of_deactivated_user_fails(db, client):
     """An app token whose user is deactivated raises 401 HTTP error"""
     headers = {"Authorization": f"Bearer {TEST_APP_TOKEN_DICT['token']}"}
-    db["auth_users"].update_one(
-        {"_id": ObjectId(TEST_APP_TOKEN_DICT["user_id"])},
-        {"$set": {"is_active": False}},
+    db.update_one(
+        User, {"id": TEST_APP_TOKEN_DICT["user_id"]}, {"$set": {"is_active": False}}
     )
 
     with client as client:

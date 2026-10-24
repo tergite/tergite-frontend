@@ -14,14 +14,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict
 
 import jwt
-from bson import ObjectId
-from pymongo import database
 
 from services.auth.app_tokens.dtos import AppToken
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
 from tests._utils.env import TEST_JWT_SECRET
-from tests._utils.mongodb import insert_if_not_exist
+from tests._utils.storage import SyncDatabase, insert_if_not_exist
 from utils.config import UserRole
 
 TEST_PROJECT_ID = "bf4876d01e60f05ebc9fac9e"
@@ -30,6 +28,9 @@ TEST_USER_ID = "8154077d9cb952b92453d575"
 TEST_SUPERUSER_ID = "de7ddbd2500951be940356a2"
 TEST_SYSTEM_USER_ID = "6431c4a4508205d9d43015fe"
 TEST_OUTSIDER_ID = "9264188e0dc063ea3564e686"
+TEST_APP_TOKEN_ID = "6b1f0c2a9d4e3f5a7b8c9d01"
+TEST_NO_QPU_APP_TOKEN_ID = "6b1f0c2a9d4e3f5a7b8c9d02"
+TEST_SYSTEM_USER_APP_TOKEN_ID = "6b1f0c2a9d4e3f5a7b8c9d03"
 TEST_USER_EMAIL = "john.doe@example.com"
 TEST_OUTSIDER_EMAIL = "outsider.doe@example.com"
 TEST_SUPERUSER_EMAIL = "jane.doe@example.com"
@@ -68,26 +69,26 @@ TEST_PUHURI_TOKEN_RESP = {
 
 
 TEST_SUPERUSER_DICT = dict(
-    _id=ObjectId(TEST_SUPERUSER_ID),
+    _id=TEST_SUPERUSER_ID,
     email=TEST_SUPERUSER_EMAIL,
     roles=[UserRole.USER, UserRole.ADMIN],
     is_verified=True,
 )
 TEST_USER_DICT = dict(
-    _id=ObjectId(TEST_USER_ID),
+    _id=TEST_USER_ID,
     email=TEST_USER_EMAIL,
     roles=[UserRole.USER],
     is_verified=True,
 )
 # a plain user who administers nothing and belongs to no project
 TEST_OUTSIDER_DICT = dict(
-    _id=ObjectId(TEST_OUTSIDER_ID),
+    _id=TEST_OUTSIDER_ID,
     email=TEST_OUTSIDER_EMAIL,
     roles=[UserRole.USER],
     is_verified=True,
 )
 TEST_SYSTEM_USER_DICT = dict(
-    _id=ObjectId(TEST_SYSTEM_USER_ID),
+    _id=TEST_SYSTEM_USER_ID,
     email=TEST_SYSTEM_USER_EMAIL,
     roles=[UserRole.SYSTEM],
     is_verified=True,
@@ -100,11 +101,11 @@ USER_ID_EMAIL_MAP = {
 }
 TEST_PROJECT_NAME = "test-project"
 TEST_PROJECT_DICT = dict(
-    _id=ObjectId(TEST_PROJECT_ID),
+    _id=TEST_PROJECT_ID,
     name=TEST_PROJECT_NAME,
     description="some default project",
-    admin_id=ObjectId(TEST_USER_ID),
-    user_ids=[ObjectId(TEST_USER_ID), ObjectId(TEST_SYSTEM_USER_ID)],
+    admin_id=TEST_USER_ID,
+    user_ids=[TEST_USER_ID, TEST_SYSTEM_USER_ID],
     qpu_seconds=108000000000000,
     created_at="2024-09-20T09:12:00.733Z",
     updated_at="2024-09-20T09:12:00.733Z",
@@ -112,17 +113,18 @@ TEST_PROJECT_DICT = dict(
 
 TEST_NO_QPU_PROJECT_NAME = "test-no-qpu-project"
 TEST_NO_QPU_PROJECT_DICT = dict(
-    _id=ObjectId(TEST_NO_QPU_PROJECT_ID),
+    _id=TEST_NO_QPU_PROJECT_ID,
     name=TEST_NO_QPU_PROJECT_NAME,
     description="some project without QPU seconds",
-    admin_id=ObjectId(TEST_USER_ID),
-    user_ids=[ObjectId(TEST_USER_ID)],
+    admin_id=TEST_USER_ID,
+    user_ids=[TEST_USER_ID],
     qpu_seconds=-108000,
     created_at="2024-09-20T09:12:00.733Z",
     updated_at="2024-09-20T09:12:00.733Z",
 )
 
 TEST_APP_TOKEN_DICT = dict(
+    _id=TEST_APP_TOKEN_ID,
     title="test-token",
     token=TEST_APP_TOKEN_STRING,
     user_id=TEST_USER_DICT["_id"],
@@ -131,6 +133,7 @@ TEST_APP_TOKEN_DICT = dict(
 )
 
 TEST_NO_QPU_APP_TOKEN_DICT = dict(
+    _id=TEST_NO_QPU_APP_TOKEN_ID,
     title="no-qpu-token",
     token=TEST_NO_QPU_APP_TOKEN_STRING,
     user_id=TEST_USER_DICT["_id"],
@@ -139,6 +142,7 @@ TEST_NO_QPU_APP_TOKEN_DICT = dict(
 )
 
 TEST_SYSTEM_USER_TOKEN_DICT = dict(
+    _id=TEST_SYSTEM_USER_APP_TOKEN_ID,
     title="system-user-token",
     token=TEST_SYSTEM_USER_APP_TOKEN_STRING,
     user_id=TEST_SYSTEM_USER_DICT["_id"],
@@ -147,7 +151,7 @@ TEST_SYSTEM_USER_TOKEN_DICT = dict(
 )
 
 
-def init_test_auth(db: database.Database):
+def init_test_auth(db: SyncDatabase):
     """Initializes the auth items in the test database in version 2"""
     insert_if_not_exist(db, User, TEST_USER_DICT)
     insert_if_not_exist(db, User, TEST_SUPERUSER_DICT)

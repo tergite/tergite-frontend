@@ -14,10 +14,8 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from uuid import uuid4
 
-from bson import ObjectId
-
+from services.jobs import Job
 from tests._utils.auth import TEST_SUPERUSER_ID, TEST_USER_ID
-from tests._utils.mongodb import insert_in_collection
 
 _JANUARY = {"start_utc": "2026-01-01T00:00:00Z", "end_utc": "2026-02-01T00:00:00Z"}
 # two submitters in January, one job without a recorded submitter, one job in February
@@ -183,15 +181,14 @@ def test_non_admin_cannot_count_job_submitters(user_jwt_cookie, client, db):
 
 
 def _insert_jobs(db, submissions: List[Tuple[Optional[str], str]]):
-    insert_in_collection(
-        database=db,
-        collection_name="jobs",
-        data=[
-            {
-                "job_id": str(uuid4()),
-                "user_id": None if user_id is None else ObjectId(user_id),
-                "created_at": created_at,
-            }
-            for user_id, created_at in submissions
-        ],
-    )
+    jobs = [
+        Job(
+            job_id=str(uuid4()),
+            device="Loke",
+            calibration_date="2024-01-01T00:00:00Z",
+            user_id=user_id,
+            created_at=created_at,
+        )
+        for user_id, created_at in submissions
+    ]
+    db.insert_many(Job, jobs)

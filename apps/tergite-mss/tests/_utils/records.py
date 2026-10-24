@@ -25,8 +25,6 @@ from typing import (
     TypeVar,
 )
 
-from bson import ObjectId
-
 from tests._utils.date_time import get_timestamp_str
 
 T = TypeVar("T")
@@ -407,43 +405,3 @@ class PaginationInfo(TypedDict):
 
     skip: int
     limit: Optional[float]
-
-
-def get_project_record(item: Dict[str, Any]) -> Dict[str, Any]:
-    """Converts a project from the JSON fixtures into the record stored in the db"""
-    return {
-        **item,
-        "_id": ObjectId(item["_id"]),
-        "admin_id": ObjectId(item["admin_id"]),
-        "user_ids": [ObjectId(v) for v in item["user_ids"]],
-    }
-
-
-def get_app_token_record(item: Dict[str, Any]) -> Dict[str, Any]:
-    """Converts an app token from the JSON fixtures into the record stored in the db"""
-    return {
-        **item,
-        "_id": ObjectId(item["_id"]),
-        "user_id": ObjectId(item["user_id"]),
-        "project_id": ObjectId(item["project_id"]),
-    }
-
-
-def get_notice_record(item: Dict[str, Any]) -> Dict[str, Any]:
-    """Converts a notice from the JSON fixtures into the record stored in the db"""
-    object_id_fields = ("_id", "user_id", "created_by", "ref_id")
-    return {
-        **item,
-        **{k: ObjectId(item[k]) for k in object_id_fields if item[k]},
-        "dismissed_by": [ObjectId(v) for v in item["dismissed_by"]],
-    }
-
-
-def get_request_record(item: Dict[str, Any]) -> Dict[str, Any]:
-    """Converts a user request from the JSON fixtures into the record stored in the db"""
-    object_id_fields = ("_id", "resource_id", "requester_id", "approver_id")
-    return {
-        **item,
-        **{k: ObjectId(item[k]) for k in object_id_fields if item[k]},
-        "target_user_ids": [ObjectId(v) for v in item["target_user_ids"]],
-    }

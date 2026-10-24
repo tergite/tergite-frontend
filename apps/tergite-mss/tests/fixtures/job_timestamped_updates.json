@@ -10,8 +10,8 @@
       "registration": { "started": null, "finished": null },
       "pre_processing": { "started": null, "finished": null },
       "execution": {
-        "started": "2023-12-04T09:54:52.309438Z",
-        "finished": "2023-12-04T11:52:54.031449Z"
+        "started": "2023-12-04T09:54:52.309Z",
+        "finished": "2023-12-04T11:52:54.031Z"
       },
       "post_processing": { "started": null, "finished": null },
       "final": { "started": null, "finished": null }
@@ -44,8 +44,8 @@
       "registration": { "started": null, "finished": null },
       "pre_processing": { "started": null, "finished": null },
       "execution": {
-        "started": "2023-12-04T09:54:52.309438Z",
-        "finished": "2023-12-04T10:10:53.554303Z"
+        "started": "2023-12-04T09:54:52.309Z",
+        "finished": "2023-12-04T10:10:53.554Z"
       },
       "post_processing": { "started": null, "finished": null },
       "final": { "started": null, "finished": null }
@@ -87,7 +87,7 @@
       "registration": { "started": null, "finished": null },
       "pre_processing": { "started": null, "finished": null },
       "execution": {
-        "started": "2023-12-04T09:54:52.309438Z",
+        "started": "2023-12-04T09:54:52.309Z",
         "finished": "2023-12-04T16:26:36.805403Z"
       },
       "post_processing": { "started": null, "finished": null },
@@ -105,7 +105,7 @@
       "registration": { "started": null, "finished": null },
       "pre_processing": { "started": null, "finished": null },
       "execution": {
-        "started": "2023-12-04T09:54:52.309438Z",
+        "started": "2023-12-04T09:54:52.309Z",
         "finished": null
       },
       "post_processing": { "started": null, "finished": null },

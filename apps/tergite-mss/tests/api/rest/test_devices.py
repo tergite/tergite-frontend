@@ -15,13 +15,13 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 import pytest
-from bson import ObjectId
 from fastapi.websockets import WebSocketDisconnect
 
+from libs.storage import generate_id
+from services.devices import Device
 from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import is_not_older_than
 from tests._utils.fixtures import load_json_fixture
-from tests._utils.mongodb import find_in_collection, insert_in_collection
 from tests._utils.records import (
     filter_by_equality,
     get_record,
@@ -29,9 +29,7 @@ from tests._utils.records import (
     pop_field,
     with_incremental_timestamps,
 )
-
-_DEVICES_COLLECTION = "devices"
-_EXCLUDED_FIELDS = ["_id"]
+from tests._utils.storage import to_record
 
 _DEVICE_LIST = load_json_fixture("device_list.json")
 _SKIP_LIMIT_SORT_PARAMS = [
@@ -72,10 +70,8 @@ def test_find_devices(
     raw_devices = with_incremental_timestamps(
         _DEVICE_LIST, fields=("created_at", "updated_at")
     )
-    inserted_ids = insert_in_collection(
-        database=db, collection_name=_DEVICES_COLLECTION, data=raw_devices
-    )
-    raw_devices = _attach_str_ids(raw_devices, ids=inserted_ids, id_field="id")
+    raw_devices = [{**item, "id": generate_id()} for item in raw_devices]
+    db.insert_many(Device, [to_record(Device, item) for item in raw_devices])
 
     query_string = "?"
     slice_end = len(raw_devices)
@@ -119,9 +115,8 @@ def test_find_devices(
 @pytest.mark.parametrize("name", [v["name"] for v in _SAMPLE_DEVICES])
 def test_read_one_device(db, client, name: str, user_jwt_cookie):
     """GET to /devices/{name} returns the device of the given name"""
-    insert_in_collection(
-        database=db, collection_name=_DEVICES_COLLECTION, data=_DEVICE_LIST
-    )
+    devices = [{**item, "id": generate_id()} for item in _DEVICE_LIST]
+    db.insert_many(Device, [to_record(Device, item) for item in devices])
 
     # using context manager to ensure on_startup runs
     with client as client:
@@ -137,9 +132,7 @@ def test_read_one_device(db, client, name: str, user_jwt_cookie):
 @pytest.mark.parametrize("payload", _SAMPLE_DEVICES)
 def test_create_device(db, client, payload: Dict[str, Any]):
     """DeviceEvent with name 'initialized' to /devices/ws/{name} creates a new device if it does not exist"""
-    original_data_in_db = find_in_collection(
-        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    original_data_in_db = _get_stored_devices(db)
     name = payload["name"]
     url = f"/devices/ws/{name}"
     headers = create_bcc_headers(name)
@@ -156,11 +149,7 @@ def test_create_device(db, client, payload: Dict[str, Any]):
                 }
             )
             json_response = client.receive_json()
-            final_data_in_db = find_in_collection(
-                db,
-                collection_name=_DEVICES_COLLECTION,
-                fields_to_exclude=_EXCLUDED_FIELDS,
-            )
+            final_data_in_db = _get_stored_devices(db)
 
             assert json_response["status"] == "success"
             json_response["data"].pop("id")
@@ -199,9 +188,7 @@ def test_a_replayed_nonce_is_refused(client):
 @pytest.mark.parametrize("payload", _SAMPLE_DEVICES[:1])
 def test_create_device_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """Only clients with the certificate known to MSS can push to /devices/ws/{name}"""
-    original_data_in_db = find_in_collection(
-        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    original_data_in_db = _get_stored_devices(db)
 
     name = payload["name"]
     url = f"/devices/ws/{name}"
@@ -212,9 +199,7 @@ def test_create_device_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_
             with client.websocket_connect(url, headers=headers):
                 pass
 
-    final_data_in_db = find_in_collection(
-        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    final_data_in_db = _get_stored_devices(db)
 
     assert exp.value.code == 1008
     assert exp.value.reason == "unauthorized"
@@ -227,9 +212,7 @@ def test_create_device_wrong_payload(
     db, client, payload: Dict[str, Any], user_jwt_cookie
 ):
     """BCC devices can only push their own device data to /devices/ws/{name} and not those of others"""
-    original_data_in_db = find_in_collection(
-        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    original_data_in_db = _get_stored_devices(db)
 
     # just to ensure mutations occur on copies and not on the original object
     payload = copy.deepcopy(payload)
@@ -250,11 +233,7 @@ def test_create_device_wrong_payload(
                 }
             )
             response = client.receive_json()
-            final_data_in_db = find_in_collection(
-                db,
-                collection_name=_DEVICES_COLLECTION,
-                fields_to_exclude=_EXCLUDED_FIELDS,
-            )
+            final_data_in_db = _get_stored_devices(db)
 
             assert response == {
                 "id": event_id,
@@ -269,9 +248,7 @@ def test_create_device_wrong_payload(
 @pytest.mark.parametrize("payload", _SAMPLE_DEVICES[:1])
 def test_create_device_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """BCC devices can only push to their own urls /devices/ws/{name}/ and not those of others"""
-    original_data_in_db = find_in_collection(
-        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    original_data_in_db = _get_stored_devices(db)
 
     name = payload["name"]
     url = f"/devices/ws/{name}extra"
@@ -282,9 +259,7 @@ def test_create_device_wrong_url(db, client, payload: Dict[str, Any], user_jwt_c
             with client.websocket_connect(url, headers=headers):
                 pass
 
-    final_data_in_db = find_in_collection(
-        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    final_data_in_db = _get_stored_devices(db)
 
     assert exp.value.code == 1008
     assert exp.value.reason == "forbidden"
@@ -297,10 +272,8 @@ def test_update_pre_existing_device(
     db, client, backend_dict: Dict[str, Any], system_app_token_header
 ):
     """Pushing 'initialized'-DeviceEvent to /devices/ws/{name} a pre-existing device updates it"""
-    insert_in_collection(db, collection_name=_DEVICES_COLLECTION, data=[backend_dict])
-    original_data_in_db = find_in_collection(
-        db, collection_name=_DEVICES_COLLECTION, fields_to_exclude=_EXCLUDED_FIELDS
-    )
+    db.insert(Device, to_record(Device, {**backend_dict, "id": generate_id()}))
+    original_data_in_db = _get_stored_devices(db)
     name = backend_dict["name"]
     url = f"/devices/ws/{name}"
     headers = create_bcc_headers(name)
@@ -322,18 +295,10 @@ def test_update_pre_existing_device(
                 }
             )
             json_response = client.receive_json()
-            final_data_in_db = find_in_collection(
-                db,
-                collection_name=_DEVICES_COLLECTION,
-                fields_to_exclude=_EXCLUDED_FIELDS,
-            )
+            final_data_in_db = _get_stored_devices(db)
 
             assert json_response["status"] == "success"
             json_response["data"].pop("id")
-            # when a device makes a connection, it sets last_online to None
-            # but this 'last_online' property can be changed directly in payload
-            if final_data_in_db[0]["last_online"] is None:
-                del final_data_in_db[0]["last_online"]
             assert json_response["data"] == final_data_in_db[0]
 
             updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
@@ -349,17 +314,8 @@ def test_update_pre_existing_device(
             )
 
 
-def _attach_str_ids(
-    data: List[Dict[str, Any]], ids: List[ObjectId], id_field: str = "_id"
-) -> List[Dict[str, Any]]:
-    """Attaches ids in string form to the data
-
-    Args:
-        data: the list of raw data records
-        ids: the list of ObjectId ids, in the same order as that of the data
-        id_field: the field on the records that is to have the id
-
-    Returns:
-        the list of records with ids attached to them
-    """
-    return [{**item, id_field: str(ids[idx])} for idx, item in enumerate(data)]
+def _get_stored_devices(db) -> List[Dict[str, Any]]:
+    """Gets the stored devices as the app shows them, without their ids"""
+    return [
+        device.model_dump(mode="json", exclude={"id"}) for device in db.find(Device)
+    ]
