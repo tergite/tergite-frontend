@@ -31,7 +31,6 @@ users.forEach((user) => {
 
     beforeEach(() => {
       const apiBaseUrl = Cypress.env("VITE_API_BASE_URL");
-      const dbResetUrl = Cypress.env("DB_RESET_URL");
       const domain = Cypress.env("VITE_COOKIE_DOMAIN");
       const userIdCookieName = Cypress.env("USER_ID_COOKIE_NAME");
       const cookieName = Cypress.env("VITE_COOKIE_NAME");
@@ -71,8 +70,7 @@ users.forEach((user) => {
         sameSite: "lax",
       });
 
-      // We need to reset the mongo database before each test
-      cy.request(`${dbResetUrl}`);
+      cy.resetDatabase();
 
       cy.visit("/");
       cy.wait("@devices-list");
