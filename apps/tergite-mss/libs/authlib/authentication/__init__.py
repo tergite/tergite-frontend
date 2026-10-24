@@ -13,12 +13,6 @@
 from libs.authlib.authentication.authenticator import Authenticator
 from libs.authlib.authentication.backend import AuthenticationBackend
 from libs.authlib.authentication.strategy import JWTStrategy, Strategy
-
-try:
-    from libs.authlib.authentication.strategy import RedisStrategy
-except ImportError:  # pragma: no cover
-    pass
-
 from libs.authlib.authentication.transport import (
     BearerTransport,
     CookieTransport,
@@ -31,7 +25,6 @@ __all__ = [
     "BearerTransport",
     "CookieTransport",
     "JWTStrategy",
-    "RedisStrategy",
     "Strategy",
     "Transport",
 ]
