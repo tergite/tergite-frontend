@@ -151,8 +151,8 @@ class TestReadToken:
 @pytest.mark.parametrize("jwt_strategy", ["HS256", "RS256", "ES256"], indirect=True)
 @pytest.mark.authentication
 @pytest.mark.asyncio
-async def test_write_token(jwt_strategy: JWTStrategy[UserModel, IDType], user):
-    token = await jwt_strategy.write_token(user)
+async def test_write_token(jwt_strategy: JWTStrategy[UserModel, IDType], superuser):
+    token = await jwt_strategy.write_token(superuser)
 
     decoded = decode_jwt(
         token,
@@ -160,7 +160,8 @@ async def test_write_token(jwt_strategy: JWTStrategy[UserModel, IDType], user):
         audience=jwt_strategy.token_audience,
         algorithms=[jwt_strategy.algorithm],
     )
-    assert decoded["sub"] == str(user.id)
+    assert decoded["sub"] == str(superuser.id)
+    assert sorted(decoded["roles"]) == ["admin", "user"]
 
 
 @pytest.mark.parametrize("jwt_strategy", ["HS256", "RS256", "ES256"], indirect=True)

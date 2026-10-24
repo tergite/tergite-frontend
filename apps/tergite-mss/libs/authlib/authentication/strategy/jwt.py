@@ -75,7 +75,11 @@ class JWTStrategy(Strategy[models.UP, models.ID], Generic[models.UP, models.ID])
             return None
 
     async def write_token(self, user: models.UP) -> str:
-        data = {"sub": str(user.id), "aud": self.token_audience}
+        data = {
+            "sub": str(user.id),
+            "aud": self.token_audience,
+            "roles": list(user.roles),
+        }
         return generate_jwt(
             data, self.encode_key, self.lifetime_seconds, algorithm=self.algorithm
         )

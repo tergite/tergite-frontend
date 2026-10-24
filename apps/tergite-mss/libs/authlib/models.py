@@ -10,7 +10,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Generic, Optional, Protocol, TypeVar
+from typing import Generic, Optional, Protocol, Set, TypeVar
 
 ID = TypeVar("ID")
 
@@ -23,6 +23,7 @@ class UserProtocol(Protocol[ID]):
     is_active: bool
     is_superuser: bool
     is_verified: bool
+    roles: Set[str]
 
 
 class OAuthAccountProtocol(Protocol[ID]):
@@ -49,6 +50,7 @@ class UserOAuthProtocol(UserProtocol[ID], Generic[ID, OAP]):
     is_active: bool
     is_superuser: bool
     is_verified: bool
+    roles: Set[str]
     oauth_accounts: list[OAP]
 
 

@@ -12,7 +12,7 @@
 # that they have been altered from the originals.
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import Any, Callable, Generic, List, Optional
+from typing import Any, Callable, Generic, List, Optional, Set
 from unittest.mock import MagicMock
 
 import httpx
@@ -45,6 +45,7 @@ class UserModel(Schema):
     is_active: bool = True
     is_superuser: bool = False
     is_verified: bool = False
+    roles: Set[str] = set()
     first_name: Optional[str] = None
 
 
@@ -182,6 +183,7 @@ def superuser() -> UserModel:
     return UserModel(
         email="merlin@camelot.bt",
         is_superuser=True,
+        roles={"admin", "user"},
     )
 
 
