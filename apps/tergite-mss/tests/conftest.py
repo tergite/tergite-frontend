@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 
-from tests._utils.env import TEST_REDIS_URL, setup_test_env
+from tests._utils.env import TEST_DATABASE_URL, TEST_REDIS_URL, setup_test_env
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
 
 # Set up the test environment before any other imports are made
@@ -56,8 +56,7 @@ from tests._utils.storage import (
     DATABASE_KINDS,
     SQL_DATABASE_KINDS,
     SyncDatabase,
-    create_api_database,
-    get_api_database_url,
+    empty_database,
     get_database_url,
     get_sql_database_url,
     insert_if_not_exist,
@@ -76,18 +75,15 @@ _FRESH_APP_FIXTURES = {"unconfigured_email"}
 _SCHEMAS_KEPT_ACROSS_TESTS = {"NoticeTemplate", "Role"}
 
 
-@pytest.fixture(scope="session", params=DATABASE_KINDS)
-def api_database(request, tmp_path_factory) -> Generator[SyncDatabase, Any, None]:
-    """The database the app runs on, of each kind in turn, for the session"""
+@pytest.fixture(scope="session")
+def api_database() -> Generator[SyncDatabase, Any, None]:
+    """The database the app runs on: the one TEST_DATABASE_URL names, emptied first"""
     from api.rest.database import SCHEMAS
     from services.auth import ensure_roles
 
-    database_url = get_api_database_url(
-        request.param, tmp_path_factory.mktemp(request.param)
-    )
-    asyncio.run(create_api_database(database_url))
-    settings.CONFIG.database.url = AnyUrl(database_url)
-    database = SyncDatabase(database_url, SCHEMAS)
+    asyncio.run(empty_database(TEST_DATABASE_URL))
+    settings.CONFIG.database.url = AnyUrl(TEST_DATABASE_URL)
+    database = SyncDatabase(TEST_DATABASE_URL, SCHEMAS)
     # the app stores them at startup, but tests seed users before it starts
     database.run(ensure_roles(database.database))
     yield database

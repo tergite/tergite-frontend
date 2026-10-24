@@ -36,6 +36,11 @@ TEST_POSTGRES_URL: str = environ.get(
     "TEST_POSTGRES_URL",
     "postgresql+asyncpg://tergite:tergite@localhost:5432/tergite_test",
 )
+# the database the API tests run the app on; a SQL URL runs them on SQL, so it must not
+# be the storage tests' PostgreSQL database, which they empty per test
+TEST_DATABASE_URL: str = environ.get(
+    "TEST_DATABASE_URL", f"{TEST_MONGODB_URL.rstrip('/')}/{TEST_DB_NAME}"
+)
 TEST_JWT_SECRET: str = TEST_APP_CONFIG["auth"]["jwt_secret"]
 TEST_BACKENDS: List["BackendConfDict"] = TEST_APP_CONFIG["backends"]
 TEST_BACKENDS_MAP: Dict[str, "BackendConfDict"] = {

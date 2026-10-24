@@ -329,13 +329,14 @@ import time; keep that ordering when adding fixtures.
   `with` block neither starts nor stops it, and clears its cookies afterwards. A fixture that
   changes what the app starts with (`unconfigured_email`) is listed in
   `_FRESH_APP_FIXTURES`, and its test gets a client that starts the app afresh.
-- The API tests run on MongoDB, PostgreSQL and SQLite in turn: the session-scoped
-  `api_database` fixture points the app at a database of each kind, apart from the storage
-  tests' own, so the app restarts once per kind. The `db` fixture is that database, as a
-  `SyncDatabase` from `tests/_utils/storage.py` that a synchronous test seeds and reads
-  through, records not documents; it empties every table afterwards but the roles and
-  notice templates the app writes at startup. Tests must not assume a clean store beyond
-  what it gives them.
+- What each database does differently is the storage layer's to get right, so the
+  conformance and storage tests run on MongoDB, PostgreSQL and SQLite. The API tests run
+  once, on the database `TEST_DATABASE_URL` names (the test config's MongoDB if unset): the
+  session-scoped `api_database` fixture empties it and points the app at it. The `db`
+  fixture is that database, as a `SyncDatabase` from `tests/_utils/storage.py` that a
+  synchronous test seeds and reads through, records not documents; it empties every table
+  afterwards but the roles and notice templates the app writes at startup. Tests must not
+  assume a clean store beyond what it gives them.
 
 CI runs `black --check .`, `pyflakes`, then `pytest` on Python 3.12 and 3.13.
 
