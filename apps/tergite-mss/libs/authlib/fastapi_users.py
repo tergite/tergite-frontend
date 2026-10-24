@@ -19,13 +19,7 @@ from libs.authlib import models, schemas
 from libs.authlib.authentication import AuthenticationBackend, Authenticator
 from libs.authlib.jwt import SecretType
 from libs.authlib.manager import UserManagerDependency
-from libs.authlib.router import (
-    get_auth_router,
-    get_register_router,
-    get_reset_password_router,
-    get_users_router,
-    get_verify_router,
-)
+from libs.authlib.router import get_auth_router
 
 try:
     from httpx_oauth.oauth2 import BaseOAuth2
@@ -58,31 +52,6 @@ class FastAPIUsers(Generic[models.UP, models.ID]):
         self.authenticator = Authenticator(auth_backends, get_user_manager)
         self.get_user_manager = get_user_manager
         self.current_user = self.authenticator.current_user
-
-    def get_register_router(
-        self, user_schema: type[schemas.U], user_create_schema: type[schemas.UC]
-    ) -> APIRouter:
-        """
-        Return a router with a register route.
-
-        :param user_schema: Pydantic schema of a public user.
-        :param user_create_schema: Pydantic schema for creating a user.
-        """
-        return get_register_router(
-            self.get_user_manager, user_schema, user_create_schema
-        )
-
-    def get_verify_router(self, user_schema: type[schemas.U]) -> APIRouter:
-        """
-        Return a router with e-mail verification routes.
-
-        :param user_schema: Pydantic schema of a public user.
-        """
-        return get_verify_router(self.get_user_manager, user_schema)
-
-    def get_reset_password_router(self) -> APIRouter:
-        """Return a reset password process router."""
-        return get_reset_password_router(self.get_user_manager)
 
     def get_auth_router(
         self,
@@ -162,27 +131,5 @@ class FastAPIUsers(Generic[models.UP, models.ID]):
             user_schema,
             state_secret,
             redirect_url,
-            requires_verification,
-        )
-
-    def get_users_router(
-        self,
-        user_schema: type[schemas.U],
-        user_update_schema: type[schemas.UU],
-        requires_verification: bool = False,
-    ) -> APIRouter:
-        """
-        Return a router with routes to manage users.
-
-        :param user_schema: Pydantic schema of a public user.
-        :param user_update_schema: Pydantic schema for updating a user.
-        :param requires_verification: Whether the endpoints
-        require the users to be verified or not. Defaults to False.
-        """
-        return get_users_router(
-            self.get_user_manager,
-            user_schema,
-            user_update_schema,
-            self.authenticator,
             requires_verification,
         )

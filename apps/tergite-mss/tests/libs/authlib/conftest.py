@@ -14,7 +14,7 @@ import asyncio
 import dataclasses
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any, Callable, Generic, Optional, Union
+from typing import Any, Callable, Generic, Optional
 from unittest.mock import MagicMock
 
 import httpx
@@ -76,14 +76,6 @@ class User(schemas.BaseUser[IDType]):
     first_name: Optional[str] = None
 
 
-class UserCreate(schemas.BaseUserCreate):
-    first_name: Optional[str] = None
-
-
-class UserUpdate(schemas.BaseUserUpdate):
-    first_name: Optional[str] = None
-
-
 class UserOAuth(User, schemas.BaseOAuthAccountMixin):
     pass
 
@@ -91,16 +83,7 @@ class UserOAuth(User, schemas.BaseOAuthAccountMixin):
 class BaseTestUserManager(
     Generic[models.UP], UUIDIDMixin, BaseUserManager[models.UP, IDType]
 ):
-    reset_password_token_secret = "SECRET"
-    verification_token_secret = "SECRET"
-
-    async def validate_password(
-        self, password: str, user: Union[schemas.UC, models.UP]
-    ) -> None:
-        if len(password) < 3:
-            raise exceptions.InvalidPasswordException(
-                reason="Password should be at least 3 characters"
-            )
+    pass
 
 
 class UserManager(BaseTestUserManager[UserModel]):
@@ -113,20 +96,9 @@ class UserManagerOAuth(BaseTestUserManager[UserOAuthModel]):
 
 class UserManagerMock(BaseTestUserManager[models.UP]):
     get_by_email: MagicMock
-    request_verify: MagicMock
-    verify: MagicMock
-    forgot_password: MagicMock
-    reset_password: MagicMock
     on_after_register: MagicMock
-    on_after_request_verify: MagicMock
-    on_after_verify: MagicMock
-    on_after_forgot_password: MagicMock
-    on_after_reset_password: MagicMock
     on_after_update: MagicMock
-    on_before_delete: MagicMock
-    on_after_delete: MagicMock
     on_after_login: MagicMock
-    _update: MagicMock
 
 
 AsyncMethodMocker = Callable[..., MagicMock]
@@ -464,20 +436,9 @@ def make_user_manager(mocker: MockerFixture):
     def _make_user_manager(user_manager_class: type[BaseTestUserManager], mock_user_db):
         user_manager = user_manager_class(mock_user_db)
         mocker.spy(user_manager, "get_by_email")
-        mocker.spy(user_manager, "request_verify")
-        mocker.spy(user_manager, "verify")
-        mocker.spy(user_manager, "forgot_password")
-        mocker.spy(user_manager, "reset_password")
         mocker.spy(user_manager, "on_after_register")
-        mocker.spy(user_manager, "on_after_request_verify")
-        mocker.spy(user_manager, "on_after_verify")
-        mocker.spy(user_manager, "on_after_forgot_password")
-        mocker.spy(user_manager, "on_after_reset_password")
         mocker.spy(user_manager, "on_after_update")
-        mocker.spy(user_manager, "on_before_delete")
-        mocker.spy(user_manager, "on_after_delete")
         mocker.spy(user_manager, "on_after_login")
-        mocker.spy(user_manager, "_update")
         return user_manager
 
     return _make_user_manager

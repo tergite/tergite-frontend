@@ -10,7 +10,6 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Any
 
 
 class FastAPIUsersException(Exception):
@@ -27,24 +26,3 @@ class UserAlreadyExists(FastAPIUsersException):
 
 class UserNotExists(FastAPIUsersException):
     pass
-
-
-class UserInactive(FastAPIUsersException):
-    pass
-
-
-class UserAlreadyVerified(FastAPIUsersException):
-    pass
-
-
-class InvalidVerifyToken(FastAPIUsersException):
-    pass
-
-
-class InvalidResetPasswordToken(FastAPIUsersException):
-    pass
-
-
-class InvalidPasswordException(FastAPIUsersException):
-    def __init__(self, reason: Any) -> None:
-        self.reason = reason

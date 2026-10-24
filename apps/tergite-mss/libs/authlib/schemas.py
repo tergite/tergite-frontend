@@ -38,25 +38,7 @@ else:  # pragma: no cover  # type: ignore
         return schema.from_orm(obj)  # type: ignore
 
 
-class CreateUpdateDictModel(BaseModel):
-    def create_update_dict(self):
-        return model_dump(
-            self,
-            exclude_unset=True,
-            exclude={
-                "id",
-                "is_superuser",
-                "is_active",
-                "is_verified",
-                "oauth_accounts",
-            },
-        )
-
-    def create_update_dict_superuser(self):
-        return model_dump(self, exclude_unset=True, exclude={"id"})
-
-
-class BaseUser(CreateUpdateDictModel, Generic[models.ID]):
+class BaseUser(BaseModel, Generic[models.ID]):
     """Base User model."""
 
     id: models.ID
@@ -73,25 +55,7 @@ class BaseUser(CreateUpdateDictModel, Generic[models.ID]):
             orm_mode = True
 
 
-class BaseUserCreate(CreateUpdateDictModel):
-    email: EmailStr
-    password: str
-    is_active: Optional[bool] = True
-    is_superuser: Optional[bool] = False
-    is_verified: Optional[bool] = False
-
-
-class BaseUserUpdate(CreateUpdateDictModel):
-    password: Optional[str] = None
-    email: Optional[EmailStr] = None
-    is_active: Optional[bool] = None
-    is_superuser: Optional[bool] = None
-    is_verified: Optional[bool] = None
-
-
 U = TypeVar("U", bound=BaseUser)
-UC = TypeVar("UC", bound=BaseUserCreate)
-UU = TypeVar("UU", bound=BaseUserUpdate)
 
 
 class BaseOAuthAccount(BaseModel, Generic[models.ID]):

@@ -19,7 +19,7 @@ import pytest_asyncio
 from fastapi import Depends, FastAPI, status
 
 from libs.authlib import FastAPIUsers, schemas
-from tests.libs.authlib.conftest import IDType, User, UserCreate, UserModel, UserUpdate
+from tests.libs.authlib.conftest import IDType, User, UserModel
 
 
 @pytest_asyncio.fixture
@@ -35,8 +35,6 @@ async def test_app_client(
     )
 
     app = FastAPI()
-    app.include_router(fastapi_users.get_register_router(User, UserCreate))
-    app.include_router(fastapi_users.get_reset_password_router())
     app.include_router(fastapi_users.get_auth_router(mock_authentication))
     app.include_router(
         fastapi_users.get_oauth_router(oauth_client, mock_authentication, secret)
@@ -44,15 +42,6 @@ async def test_app_client(
     app.include_router(
         fastapi_users.get_oauth_associate_router(oauth_client, User, secret)
     )
-
-    @app.delete("/users/me")
-    def custom_users_route():
-        return None
-
-    app.include_router(
-        fastapi_users.get_users_router(User, UserUpdate), prefix="/users"
-    )
-    app.include_router(fastapi_users.get_verify_router(User))
 
     @app.get("/current-user", response_model=User)
     def current_user(user: UserModel = Depends(fastapi_users.current_user())):
@@ -135,17 +124,8 @@ async def test_app_client(
 @pytest.mark.parametrize(
     "path,method",
     [
-        ("/register", "POST"),
-        ("/request-verify-token", "POST"),
-        ("/verify", "POST"),
-        ("/forgot-password", "POST"),
-        ("/reset-password", "POST"),
         ("/login", "POST"),
         ("/logout", "POST"),
-        ("/register", "POST"),
-        ("/users/d35d213e-f3d8-4f08-954a-7e0d1bea286f", "GET"),
-        ("/users/d35d213e-f3d8-4f08-954a-7e0d1bea286f", "PATCH"),
-        ("/users/d35d213e-f3d8-4f08-954a-7e0d1bea286f", "DELETE"),
     ],
 )
 async def test_route_exists(test_app_client: httpx.AsyncClient, path: str, method: str):
@@ -154,13 +134,6 @@ async def test_route_exists(test_app_client: httpx.AsyncClient, path: str, metho
         status.HTTP_404_NOT_FOUND,
         status.HTTP_405_METHOD_NOT_ALLOWED,
     )
-
-
-@pytest.mark.fastapi_users
-@pytest.mark.asyncio
-async def test_custom_users_route_not_catched(test_app_client: httpx.AsyncClient):
-    response = await test_app_client.request("DELETE", "/users/me")
-    assert response.status_code == status.HTTP_200_OK
 
 
 @pytest.mark.fastapi_users

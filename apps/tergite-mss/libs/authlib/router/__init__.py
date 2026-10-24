@@ -13,17 +13,9 @@
 from libs.authlib.router.auth import get_auth_router
 from libs.authlib.router.common import ErrorCode
 from libs.authlib.router.oauth import get_oauth_router
-from libs.authlib.router.register import get_register_router
-from libs.authlib.router.reset import get_reset_password_router
-from libs.authlib.router.users import get_users_router
-from libs.authlib.router.verify import get_verify_router
 
 __all__ = [
     "ErrorCode",
     "get_auth_router",
     "get_oauth_router",
-    "get_register_router",
-    "get_reset_password_router",
-    "get_users_router",
-    "get_verify_router",
 ]
