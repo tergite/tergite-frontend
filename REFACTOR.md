@@ -252,8 +252,8 @@ Moving an existing deployment's data from MongoDB to SQL needs an export/import 
 `projects/` and `app_tokens/` are 2,355 of `services/auth`'s 3,725 lines. fastapi-users has no projects or app tokens; this code copies its manager, database, strategy, backend and authenticator structure for features it never offered. It becomes plain functions that take the `Database` first, independent of `authlib`. Every commit keeps the step 1.1 contract.
 
 1. **`projects/service.py`** absorbs `ProjectDatabase`, `ProjectAppTokenManager`, `projects/routers/handlers.py` and `projects/routers/utils.py` as `get_project`, `get_project_if_member`, `find_projects`, `create_project`, `update_project`, `remove_member`, `delete_project`, `ensure_personal_project`, `increment_qpu_seconds`, `get_admin_view`. `notify_membership_change` and the email/id maps go to `projects/membership.py`. `requests/actions.py` calls these and loses `_get_project_manager`, which hand-builds a manager from three "databases". `get_project_db`, `get_app_token_db` and the `ProjectDatabase` and `AppTokenDatabase` that `projects.on_startup` holds since step 3.7 go with them, as every caller then passes the `Database`.
-2. **`app_tokens/service.py`** absorbs `AppTokenDatabase`, `AppTokenStrategy` and `AppTokenAuthenticationBackend` as `create_app_token`, `get_token_owner`, `find_app_tokens`, `update_app_token_expiry`, `delete_app_token`, `delete_project_tokens`, `delete_non_member_tokens`.
-3. **`services/auth/access.py`** plus `get_current_project`, `get_current_lax_project`, `get_current_system_project` and `get_current_project_user_ids` in `api/rest/auth.py`. Delete `AppTokenAuthenticator`, `ProjectBasedAuth`, `AuthMetadata`, the `GET_CURRENT_*PROJECT*` constants and their `makefun` signatures. Add `tests/services/auth/test_access.py`: a parametrised table, no `db` fixture.
+2. **`app_tokens/service.py`** absorbs `AppTokenDatabase` and `ProjectAppTokenManager` as `create_app_token`, `get_token_owner`, `find_app_tokens`, `update_app_token_expiry`, `delete_app_token`, `delete_project_tokens`, `delete_non_member_tokens`. `AppTokenStrategy` and `AppTokenAuthenticationBackend` read tokens through `get_token_owner` until 5.3 deletes them with the authenticator that uses them.
+3. **`services/auth/access.py`** plus `get_current_lax_owner` and `get_current_project_user_ids` in `api/rest/auth.py`, the two the routes use; the job reads need the token's user, so the check returns the `TokenOwner`. Delete `AppTokenAuthenticator`, `ProjectBasedAuth`, `AuthMetadata`, the strategy, the backend, the `GET_CURRENT_*PROJECT*` constants and their `makefun` signatures. Add `tests/services/auth/test_access.py`: a parametrised table, no `db` fixture, which pins the system rule no route uses.
 
 ```python
 STRICT = AccessRule(is_qpu_required=True)
@@ -261,18 +261,18 @@ LAX = AccessRule(is_qpu_required=False)
 SYSTEM = AccessRule(is_qpu_required=True, roles=(UserRole.SYSTEM,))
 
 
-def check_project_access(owner: Optional[TokenOwner], rule: AccessRule) -> Project:
+def check_project_access(owner: Optional[TokenOwner], rule: AccessRule) -> TokenOwner:
     if owner is None or not owner.project.is_active:
-        raise UnauthorizedError()
+        raise UnauthorizedError("Unauthorized")
     if rule.is_qpu_required and owner.project.qpu_seconds <= 0:
         raise ForbiddenError(f"{owner.project.qpu_seconds} QPU seconds left on project {owner.project.name}")
-    if rule.roles and not owner.user.roles & set(rule.roles):
-        raise ForbiddenError()
-    return owner.project
+    if rule.roles and owner.user.roles.isdisjoint(rule.roles):
+        raise ForbiddenError("Forbidden")
+    return owner
 ```
 
 4. **`notices.create_system_notice` and `clear_notices_by_reference` take the `Database`** as their first argument, now that their callers in `auth` have one; step 3.5 gave them the one `notices.on_startup` holds, as those callers had none to pass.
-5. **Routes out of the service.** `projects/routers/__init__.py` and `app_tokens/routers.py` become `api/rest/routers/me/projects.py`, `me/tokens.py` and `admin/projects.py`. `ProjectQuery` and `AppTokenQuery` models, injected with `Depends()`, replace the hand-listed `Query(...)` parameters and are passed to the service functions, which build their filters privately. Path parameters are typed `Id` (step 3.6).
+5. **Routes out of the service**, moved in 5.1 and 5.2 with the code they call. `projects/routers/__init__.py` and `app_tokens/routers.py` become `api/rest/routers/me/projects.py`, `me/tokens.py` and `admin/projects.py`. `ProjectQuery` and `AppTokenQuery` are passed to the service functions, which build their filters privately. They are built by `get_project_query` and `get_app_token_query` in `api/rest/dependencies.py`, not injected with `Depends()` on the model: FastAPI reads a `Depends()` model's list fields as body params, which is why `GET /jobs/` documents a request body today. Path parameters are typed `Id` (step 3.6), except a project's `id`, which stays `str` so a malformed one is a 404.
 
 ## Step 6: `libs/authlib`, a stripped copy of fastapi-users
 

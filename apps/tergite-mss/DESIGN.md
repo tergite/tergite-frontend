@@ -26,20 +26,21 @@ apps/tergite-mss/
 │   └── rest/
 │       ├── __init__.py      # the FastAPI app: middleware, exception handlers, routers
 │       ├── app_kwargs.py    # app metadata + lifespan (startup/shutdown)
-│       ├── auth.py          # the auth backends and current-user dependencies
+│       ├── auth.py          # the auth backends, and the current user and project dependencies
 │       ├── database.py      # opens the one Database in the lifespan; get_database
 │       ├── dependencies.py  # every injectable, as an Annotated alias
 │       ├── errors.py        # the exception handlers
 │       ├── middleware.py    # TergiteCORSMiddleware
+│       ├── users.py         # the user manager, which gives each user a personal project
 │       ├── utils.py         # router-level helpers (request id, BCC ws verification)
 │       └── routers/         # one module per URL prefix
-│           ├── admin.py         /admin
+│           ├── admin/           /admin (projects in admin/projects.py)
 │           ├── auth.py          /auth
 │           ├── booking.py       /bookings
 │           ├── calibrations.py  /calibrations
 │           ├── counts.py        /counts
 │           ├── jobs.py          /jobs
-│           ├── me.py            /me
+│           ├── me/              /me (projects.py, tokens.py)
 │           └── devices/         /devices  (+ the websocket; its event handlers are in services/devices)
 ├── services/                # the domain
 │   ├── auth/                # users, projects, app tokens, providers, user requests
@@ -63,11 +64,11 @@ A service is a package. Its public surface is what `__init__.py` exposes; caller
 | --- | --- |
 | `dtos.py` | Pydantic models — request bodies, responses, and the `libs.storage` `Schema`s that are also the persistence schema. Query-param models too. |
 | `service.py` | The business logic: module-level `async def` functions taking the `Database` as their first argument. |
-| `database.py` | Only where a service needs a repository object rather than free functions (the `auth` submodules). |
-| `routers.py` | Only where the service owns routes that are mounted by an `api/rest/routers/*` module — used by `auth` for the fastapi-users-derived routers. |
-| `manager.py`, `authenticator.py`, `strategy.py`, `auth_backend.py` | fastapi-users extension points; `auth` only. |
+| `database.py` | Only where a service needs a repository object rather than free functions (`auth.users`, until step 7). |
+| `routers.py` | Only where the service owns routes that are mounted by an `api/rest/routers/*` module — used by `auth.users` for the fastapi-users-derived routers. |
+| `manager.py`, `authenticator.py`, `strategy.py` | fastapi-users extension points; `auth.users` only. |
 | `exc.py` | Service-specific exceptions. |
-| `on_startup(...)` | Config, and the `Database` where a module must keep it, from the app lifespan. |
+| `on_startup(...)` | Config from the app lifespan. |
 
 A service's `__init__.py` is its facade: it only re-exports, with `__all__` as strings. Code
 outside the service imports from the facade (`from services.jobs import Job`), never from its
@@ -81,9 +82,7 @@ result in a response envelope. Persistence details, BCC protocol details and cro
 rules live in `services/`. Two consequences worth internalising:
 
 - Services take the `Database` as a parameter; they never reach for a global connection.
-  This is what makes them testable and what lets the lifespan own the connection. A module
-  called from where no `Database` is at hand (`notices`, `auth.projects`) gets it once
-  through its `on_startup`.
+  This is what makes them testable and what lets the lifespan own the connection.
 - `services/` may import `utils/` and other services (e.g. `devices` events call `jobs` and
   `calibration`). `services/` must not import from `api/`.
 - Only `api/rest` reads `settings`. A class gets its config in its constructor (`BccClient`,
@@ -169,9 +168,10 @@ Built on [fastapi-users](https://fastapi-users.github.io/) with Beanie, extended
   components use.
 - A **project** carries `qpu_seconds`. Creating a job requires an active project with
   positive `qpu_seconds`. Job completion decrements it via `update_qpu_usage`.
-- Dependencies, also in `api/rest/auth.py`: `GET_CURRENT_PROJECT_USER_IDS` (strict — enforces
-  QPU seconds) and `GET_CURRENT_LAX_PROJECT_AND_USER` (`should_ignore_qpu_seconds=True`, for
-  reads).
+- Dependencies, also in `api/rest/auth.py`: `get_current_project_user_ids` (strict, enforces
+  QPU seconds) and `get_current_lax_owner` (lax, for reads). Each checks the token's project
+  and user against an `AccessRule` from `services/auth/access.py`: a missing token or an
+  inactive project is 401, too few QPU seconds or a missing role is 403.
 - A JWT is **not** interchangeable with an app token: a JWT works on `/auth…`, `/me…` and
   admin routes; an app token works on the resource routes. Using the wrong one yields
   401/403, which is the single most common confusion when testing by hand.
