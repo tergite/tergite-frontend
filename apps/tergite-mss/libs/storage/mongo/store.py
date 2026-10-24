@@ -11,7 +11,6 @@
 # that they have been altered from the originals.
 
 """MongoStore: the DbStore for MongoDB, on PyMongo's async client"""
-import asyncio
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Type, TypeVar
@@ -57,7 +56,9 @@ class MongoStore(DbStore):
         self._schemas = tuple(schemas)
 
     async def setup(self) -> None:
-        await asyncio.gather(*(self._set_up_collection(s) for s in self._schemas))
+        # one at a time: concurrently, each opens a pooled connection that is never closed
+        for schema in self._schemas:
+            await self._set_up_collection(schema)
 
     async def get(self, schema: Type[T], key: Any) -> Optional[T]:
         key_field = schema.__storage__.key
