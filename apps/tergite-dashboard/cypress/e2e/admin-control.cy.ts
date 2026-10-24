@@ -125,7 +125,6 @@ users.forEach((user) => {
       }
 
       cy.request(`${dbResetUrl}`);
-      cy.wait(500);
 
       cy.visit("/admin-control");
       // prettier-ignore

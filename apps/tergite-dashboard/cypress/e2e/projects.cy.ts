@@ -87,7 +87,6 @@ users.forEach((user) => {
 
       // We need to reset the mongo database before each test
       cy.request(`${dbResetUrl}`);
-      cy.wait(500);
 
       cy.visit("/projects");
       cy.wait("@my-user-info");
@@ -557,7 +556,6 @@ function loginToProjects(user: User) {
   );
 
   cy.request(`${dbResetUrl}`);
-  cy.wait(500);
   cy.visit("/projects");
   cy.wait("@my-user-info");
 }

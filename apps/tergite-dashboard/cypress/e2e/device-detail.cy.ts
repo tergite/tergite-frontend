@@ -81,7 +81,6 @@ users.slice(0, 2).forEach((user) => {
 
         // We need to reset the mongo database before each test
         cy.request(`${dbResetUrl}`);
-        cy.wait(500);
 
         cy.visit(`/devices/${device.name}`);
         cy.wait("@devices-detail");
@@ -254,7 +253,6 @@ users.slice(0, 2).forEach((user) => {
 
           // We need to reset the mongo database before each test
           cy.request(`${dbResetUrl}`);
-          cy.wait(500);
 
           cy.viewport(1280, 750);
           cy.contains("button", /bookings/i).realClick();

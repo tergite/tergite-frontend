@@ -79,7 +79,6 @@ users.forEach((user) => {
 
       // We need to reset the mongo database before each test
       cy.request(`${dbResetUrl}`);
-      cy.wait(500);
 
       cy.viewport(1728, 1117);
       cy.visit("/tokens");

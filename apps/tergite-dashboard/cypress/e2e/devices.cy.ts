@@ -37,7 +37,6 @@ users.forEach((user) => {
 
       // We need to reset the mongo database before each test
       cy.request(`${dbResetUrl}`);
-      cy.wait(500);
     });
 
     it("renders the summaries of all devices", () => {

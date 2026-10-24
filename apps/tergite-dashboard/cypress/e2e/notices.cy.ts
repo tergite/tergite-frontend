@@ -49,7 +49,6 @@ function login(user: User, path: string) {
   );
 
   cy.request(`${dbResetUrl}`);
-  cy.wait(500);
   cy.visit(path);
   cy.wait("@my-user-info");
 }
