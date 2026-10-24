@@ -9,6 +9,8 @@ export function BookingsTable({ data }: Props) {
       columns={bookingsTableColumns}
       data={data}
       filterFormProps={bookingFilterFormProps}
+      // a booking's id is unique only within its backend
+      options={{ getRowId: (booking) => `${booking.backend}/${booking.id}` }}
     />
   );
 }
