@@ -14,19 +14,14 @@
 
 from fastapi import APIRouter
 
-from api.rest.auth import APP_TOKEN_AUTH
-
 from .bcc import router as bcc_router
 from .notices import router as notices_router
+from .projects import router as projects_router
 from .users import router as users_router
 
 router = APIRouter(prefix="/admin")
 
-router.include_router(
-    APP_TOKEN_AUTH.get_projects_router(),
-    prefix="/projects",
-    tags=["projects"],
-)
+router.include_router(projects_router, prefix="/projects", tags=["projects"])
 
 router.include_router(users_router, prefix="/users", tags=["users"])
 router.include_router(notices_router, prefix="/notices", tags=["notices"])

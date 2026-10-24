@@ -8274,7 +8274,7 @@
     },
     "/me/projects/{_id}/members/{member_id}": {
       "delete": {
-        "description": "Removes a member from a project the caller administers.\n\nGoes through the project manager rather than a raw $pull, so that\non_before_update revokes the removed member's app tokens for this project.",
+        "description": "Removes a member from a project the caller administers, revoking their app tokens",
         "operationId": "projects_remove_project_member_me_projects___id__members__member_id__delete",
         "parameters": [
           {

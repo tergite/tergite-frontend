@@ -13,12 +13,11 @@
 import re
 from typing import Dict, Optional, Sequence, Tuple, Union
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi_users import FastAPIUsers, models
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport
 from fastapi_users.jwt import SecretType
 from fastapi_users.manager import UserManagerDependency
-from fastapi_users_db_beanie import BeanieUserDatabase
 from httpx_oauth.oauth2 import BaseOAuth2
 
 from utils.config import Oauth2ClientConfig
@@ -26,7 +25,6 @@ from utils.config import Oauth2ClientConfig
 from . import routers
 from .authenticator import UserAuthenticator
 from .database import UserDatabase
-from .manager import UserManager
 from .strategy import CustomJWTStrategy
 from .transport import JwtCookieTransport
 from .validators import EmailRegexValidator, Validator
@@ -98,14 +96,6 @@ async def get_email_validator() -> Validator:
     yield EmailRegexValidator(_AUTH_EMAIL_REGEX_MAP)
 
 
-async def get_user_manager(
-    user_db: BeanieUserDatabase = Depends(get_user_db),
-    email_validator: Validator = Depends(get_email_validator),
-):
-    """Dependency injector for UserManager"""
-    yield UserManager(user_db, email_validator=email_validator)
-
-
 class UserBasedAuth(FastAPIUsers[models.UP, models.ID]):
     authenticator: UserAuthenticator
 
@@ -114,7 +104,7 @@ class UserBasedAuth(FastAPIUsers[models.UP, models.ID]):
         get_user_manager_dep: UserManagerDependency[models.UP, models.ID],
         auth_backends: Sequence[AuthenticationBackend],
     ):
-        super().__init__(get_user_manager, auth_backends)
+        super().__init__(get_user_manager_dep, auth_backends)
         self.authenticator = UserAuthenticator(auth_backends, get_user_manager_dep)
         self.get_user_manager = get_user_manager_dep
         self.current_user = self.authenticator.current_user

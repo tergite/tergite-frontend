@@ -68,12 +68,7 @@ async def lifespan(app: FastAPI):
     database = await open_database(app, settings.CONFIG.database)
     await open_request_log_database(app, settings.CONFIG.database)
     users_db = open_users_database(app, settings.CONFIG.database)
-    await auth_service.on_startup(
-        users_db,
-        database,
-        conf=settings.CONFIG.auth,
-        projects_conf=settings.CONFIG.projects,
-    )
+    await auth_service.on_startup(users_db, database, conf=settings.CONFIG.auth)
     await jobs_service.on_startup(
         private_key_file=settings.PRIVATE_KEY_FILE,
         private_key_password=settings.CONFIG.private_key_password,

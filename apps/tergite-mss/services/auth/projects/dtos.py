@@ -106,5 +106,16 @@ class DeletedProject(Project):
     __storage__ = StorageSpec(table=DELETED_PROJECT_DB_COLLECTION)
 
 
+class ProjectQuery(BaseModel):
+    """The query params that narrow a list of projects"""
+
+    ids: Optional[List[Id]] = None
+    user_ids: Optional[List[Id]] = None
+    name: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+    min_qpu_seconds: Optional[int] = None
+    max_qpu_seconds: Optional[int] = None
+
+
 ProjectPartial = create_partial_model("ProjectPartial", Project, exclude=("id",))
 """The partial project to be used when updating the database"""

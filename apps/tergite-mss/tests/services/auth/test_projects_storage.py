@@ -9,91 +9,103 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""ProjectDatabase on each database: projects, their members' table and deletions"""
+"""The projects service on each database: projects, their members and deletions"""
 from types import SimpleNamespace
 
 import pytest
 
 from libs.storage import Database, generate_id
 from services import auth
-from services.auth import DeletedProject, Project, ProjectDatabase
-from utils.config import ProjectsConfig
+from services.auth import AppToken, DeletedProject, Project, ProjectQuery
+from utils.exc import ForbiddenError
 
 _ADMIN_ID = generate_id()
 _MEMBER_ID = generate_id()
 
 
 @pytest.fixture
-async def project_db(database_url):
+async def database(database_url):
     database = Database(database_url, schemas=auth.SCHEMAS)
     await database.setup()
-    yield ProjectDatabase(database, conf=ProjectsConfig(personal_qpu_seconds=60))
+    yield database
     await database.close()
 
 
-async def test_a_project_and_its_members_round_trip(project_db):
-    project = await project_db.create(
-        Project(name="p", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID, _MEMBER_ID])
+async def test_a_project_and_its_members_round_trip(database):
+    project = await database.insert(
+        Project, Project(name="p", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID, _MEMBER_ID])
     )
 
-    assert await project_db.get(project.id) == project
-    assert await project_db.get_if_member(project.id, _MEMBER_ID) == project
-    assert await project_db.get_if_member(project.id, generate_id()) is None
+    assert await auth.get_project(database, project.id) == project
+    assert await auth.get_project_if_member(database, project.id, _MEMBER_ID) == project
+    assert await auth.get_project_if_member(database, project.id, generate_id()) is None
+    with pytest.raises(auth.ProjectNotExists):
+        await auth.get_project(database, generate_id())
 
 
-async def test_projects_are_found_by_member_and_by_fields(project_db):
-    first = await project_db.create(
-        Project(name="a", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID], qpu_seconds=5)
+async def test_projects_are_found_by_member_and_by_fields(database):
+    first = await database.insert(
+        Project, Project(name="a", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID], qpu_seconds=5)
     )
-    second = await project_db.create(
-        Project(name="b", admin_id=_ADMIN_ID, user_ids=[_MEMBER_ID], is_active=False)
+    second = await database.insert(
+        Project,
+        Project(name="b", admin_id=_ADMIN_ID, user_ids=[_MEMBER_ID], is_active=False),
     )
 
-    by_member = await project_db.get_many(
-        {"$and": [{"name": {"$in": ["a", "b"]}}, {"user_ids": _MEMBER_ID}]}
+    by_member = await auth.find_projects(
+        database, ProjectQuery(name=["a", "b"]), member_id=_MEMBER_ID
     )
-    active = await project_db.get_many({"is_active": {"$ne": False}})
-    funded = await project_db.get_many({"qpu_seconds": {"$gte": 1, "$lte": 10}})
+    active = await auth.find_projects(database, ProjectQuery(is_active=True))
+    funded = await auth.find_projects(
+        database, ProjectQuery(min_qpu_seconds=1, max_qpu_seconds=10)
+    )
 
     assert by_member == [second]
     assert active == [first]
     assert funded == [first]
 
 
-async def test_members_are_added_and_projects_handed_over(project_db):
-    project = await project_db.create(
-        Project(name="p", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID])
+async def test_members_are_added_and_projects_handed_over(database):
+    project = await database.insert(
+        Project, Project(name="p", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID])
     )
 
-    await project_db.add_member(project.id, _MEMBER_ID)
-    await project_db.add_member(project.id, _MEMBER_ID)
-    handed_over = await project_db.set_admin(project.id, _MEMBER_ID)
-    charged = await project_db.increment_qpu_seconds(project.id, -2.5)
-    renamed = await project_db.update(charged, {"name": "q", "user_ids": [_MEMBER_ID]})
+    await auth.add_member(database, project.id, _MEMBER_ID)
+    await auth.add_member(database, project.id, _MEMBER_ID)
+    handed_over = await auth.set_admin(database, project.id, _MEMBER_ID)
+    charged = await auth.increment_qpu_seconds(database, project.id, -2.5)
 
     assert handed_over.admin_id == _MEMBER_ID
     assert handed_over.user_ids == [_ADMIN_ID, _MEMBER_ID]
     assert charged.qpu_seconds == -2.5
-    assert (renamed.name, renamed.user_ids) == ("q", [_MEMBER_ID])
 
 
-async def test_a_deleted_project_is_kept_among_the_deleted(project_db):
-    project = await project_db.create(
-        Project(name="p", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID, _MEMBER_ID])
+async def test_a_deleted_project_is_kept_with_its_tokens_gone(database):
+    project = await database.insert(
+        Project, Project(name="p", admin_id=_ADMIN_ID, user_ids=[_ADMIN_ID, _MEMBER_ID])
+    )
+    await database.insert(
+        AppToken,
+        AppToken(
+            title="t", token="t", user_id=_MEMBER_ID, project_id=project.id, lifespan_seconds=60
+        ),
     )
 
-    await project_db.delete(project)
+    await auth.delete_project(database, project)
 
-    deleted = await project_db.database.get(DeletedProject, project.id)
-    assert await project_db.get(project.id) is None
+    deleted = await database.get(DeletedProject, project.id)
+    assert await database.get(Project, project.id) is None
     assert deleted.user_ids == [_ADMIN_ID, _MEMBER_ID]
+    assert await database.count(AppToken) == 0
 
 
-async def test_a_personal_project_is_made_once(project_db):
+async def test_a_personal_project_is_made_once_and_kept_from_its_owner(database):
     user = SimpleNamespace(id=_MEMBER_ID, username="ann")
 
-    first = await project_db.create_personal_project_if_not_exist(user)
-    second = await project_db.create_personal_project_if_not_exist(user)
+    first = await auth.ensure_personal_project(database, user, qpu_seconds=60)
+    second = await auth.ensure_personal_project(database, user, qpu_seconds=60)
 
     assert first == second
     assert first.qpu_seconds == 60 and first.user_ids == [_MEMBER_ID]
+    with pytest.raises(ForbiddenError):
+        await auth.delete_project(database, first)

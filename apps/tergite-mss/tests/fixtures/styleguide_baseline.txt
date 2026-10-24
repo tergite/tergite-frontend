@@ -111,31 +111,20 @@ license-header: tests/api/rest/me/__init__.py
 license-header: tests/api/rest/me/notices/__init__.py
 license-header: utils/__init__.py
 facade-import: api/rest/routers/auth.py::import services.auth.providers.dtos
-facade-import: services/auth/projects/routers/__init__.py::import services.notices.dtos
-facade-import: services/auth/projects/routers/utils.py::import services.notices.dtos
 facade-import: services/devices/dtos.py::import services.calibration.dtos
 facade-import: services/devices/dtos.py::import services.jobs.dtos
 facade-import: services/external/bcc/service.py::import services.auth.users
-facade-import: services/jobs/service.py::import services.auth.projects.database
 facade-import: services/jobs/service.py::import services.notices.dtos
 facade-import: services/notices/dtos.py::import services.auth.users.dtos
 facade-import: services/notices/emails.py::import services.auth.users.dtos
 facade-import: services/notices/service.py::import services.auth.projects.dtos
 facade-import: services/notices/service.py::import services.external.email.service
-facade-import: services/requests/actions.py::import services.auth.projects
-facade-import: services/requests/actions.py::import services.auth.projects.dtos
-facade-import: services/requests/actions.py::import services.auth.projects.exc
-facade-import: services/requests/actions.py::import services.auth.projects.manager
-facade-import: services/requests/actions.py::import services.auth.projects.routers
-facade-import: services/requests/actions.py::import services.auth.users.database
-facade-import: services/requests/actions.py::import services.auth.users.dtos
 facade-import: services/requests/dtos.py::import services.auth.projects.dtos
 facade-import: services/requests/dtos.py::import services.notices.dtos
 facade-import: services/requests/service.py::import services.auth.projects.dtos
 facade-import: services/requests/service.py::import services.auth.users.dtos
 http-exception: services/auth/app_tokens/authenticator.py
 http-exception: services/auth/app_tokens/routers.py
-http-exception: services/auth/projects/routers/__init__.py
 http-exception: services/auth/users/authenticator.py
 http-exception: services/auth/users/routers.py
 type-hints: api/rest/__init__.py::health
@@ -181,23 +170,9 @@ type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.get_my_ap
 type-hints: services/auth/app_tokens/routers.py::get_app_tokens_router.update_app_token
 type-hints: services/auth/projects/__init__.py::get_project_manager
 type-hints: services/auth/projects/dtos.py::ProjectRead.model_dump
-type-hints: services/auth/projects/manager.py::ProjectAppTokenManager.create
-type-hints: services/auth/projects/manager.py::ProjectAppTokenManager.update
-type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router
-type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router.destroy
-type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router.get_project
-type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router.get_projects
-type-hints: services/auth/projects/routers/__init__.py::get_my_projects_router.remove_member
-type-hints: services/auth/projects/routers/__init__.py::get_projects_router
-type-hints: services/auth/projects/routers/__init__.py::get_projects_router.create
-type-hints: services/auth/projects/routers/__init__.py::get_projects_router.delete_project
-type-hints: services/auth/projects/routers/__init__.py::get_projects_router.get_many_projects
-type-hints: services/auth/projects/routers/__init__.py::get_projects_router.get_project
-type-hints: services/auth/projects/routers/__init__.py::get_projects_router.update_project
 type-hints: services/auth/providers/__init__.py::_order_by_many.get_key
 type-hints: services/auth/service.py::register_oauth2_client
 type-hints: services/auth/users/__init__.py::get_user_db
-type-hints: services/auth/users/__init__.py::get_user_manager
 type-hints: services/auth/users/authenticator.py::UserAuthenticator._authenticate_without_db
 type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user
 type-hints: services/auth/users/authenticator.py::UserAuthenticator.current_user.current_user_dependency

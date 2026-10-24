@@ -15,7 +15,6 @@ from fastapi import APIRouter, Depends
 from fastapi_users.authentication import BearerTransport
 
 from libs.storage import Database
-from utils.config import ProjectsConfig
 
 from ..app_tokens.auth_backend import AppTokenAuthenticationBackend
 from ..app_tokens.authenticator import AppTokenAuthenticator
@@ -24,32 +23,21 @@ from ..app_tokens.routers import get_app_tokens_router
 from ..app_tokens.strategy import AppTokenStrategy
 from ..users import get_user_db
 from ..users.database import UserDatabase
-from ..users.dtos import CurrentUserDependency
+from ..users.dtos import CurrentUserDependency, CurrentUserIdDependency
 from ..users.manager import UserManagerDependency
-from . import routers
-from .database import ProjectDatabase
-from .dtos import (
-    ProjectCreate,
-    ProjectRead,
-    ProjectUpdate,
-)
 from .manager import ProjectAppTokenManager, ProjectManagerDependency
-from .routers import CurrentSuperUserDependency, CurrentUserIdDependency
 
-_project_db: Optional[ProjectDatabase] = None
+# FIXME: the app tokens' authenticator and manager use this Database until step 5.3
+#   turns them into functions that take one
+_database: Optional[Database] = None
 _app_token_db: Optional[AppTokenDatabase] = None
 
 
-def on_startup(database: Database, conf: ProjectsConfig) -> None:
-    """Sets the database and config the projects and their app tokens are kept with"""
-    global _project_db, _app_token_db
-    _project_db = ProjectDatabase(database, conf=conf)
+def on_startup(database: Database) -> None:
+    """Sets the database the app tokens' authenticator and manager use"""
+    global _database, _app_token_db
+    _database = database
     _app_token_db = AppTokenDatabase(database)
-
-
-async def get_project_db() -> ProjectDatabase:
-    """Dependency injector of the projects database"""
-    return _project_db
 
 
 def get_app_token_backend(
@@ -76,12 +64,11 @@ async def get_app_token_db() -> AppTokenDatabase:
 
 
 async def get_project_manager(
-    project_db: ProjectDatabase = Depends(get_project_db),
     app_token_db: AppTokenDatabase = Depends(get_app_token_db),
     user_db: UserDatabase = Depends(get_user_db),
 ):
     """Dependency injector for ProjectAppTokenManager"""
-    yield ProjectAppTokenManager(project_db, app_token_db=app_token_db, user_db=user_db)
+    yield ProjectAppTokenManager(_database, app_token_db=app_token_db, user_db=user_db)
 
 
 class ProjectBasedAuth:
@@ -91,7 +78,6 @@ class ProjectBasedAuth:
         get_user_manager_dep: UserManagerDependency,
         get_current_user_dep: CurrentUserDependency,
         get_current_user_id_dep: CurrentUserIdDependency,
-        get_current_superuser_dep: CurrentSuperUserDependency,
         auth_backends: Sequence[AppTokenAuthenticationBackend],
     ):
         self.authenticator = AppTokenAuthenticator(
@@ -101,7 +87,6 @@ class ProjectBasedAuth:
         self.get_user_manager = get_user_manager_dep
         self.get_current_user = get_current_user_dep
         self.get_current_user_id = get_current_user_id_dep
-        self.get_current_superuser = get_current_superuser_dep
         self.current_project = self.authenticator.current_project
         self.current_project_and_user_ids = (
             self.authenticator.current_project_and_user_ids
@@ -121,22 +106,4 @@ class ProjectBasedAuth:
             backend=backend,
             get_project_manager=self.get_project_manager,
             get_current_user_id=self.get_current_user_id,
-        )
-
-    def get_projects_router(self) -> APIRouter:
-        """Return a router with routes to manage projects"""
-        return routers.get_projects_router(
-            get_project_manager=self.get_project_manager,
-            get_current_superuser=self.get_current_superuser,
-            project_update_schema=ProjectUpdate,
-            project_create_schema=ProjectCreate,
-        )
-
-    def get_my_projects_router(self) -> APIRouter:
-        """Return a router for viewing current user's projects."""
-        return routers.get_my_projects_router(
-            get_project_manager=self.get_project_manager,
-            get_user_manager=self.get_user_manager,
-            get_current_user_id=self.get_current_user_id,
-            project_schema=ProjectRead,
         )

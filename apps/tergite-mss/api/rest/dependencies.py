@@ -10,18 +10,17 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Dependencies to be injected"""
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
-from fastapi import Depends
+from fastapi import Depends, Query
 from typing_extensions import Annotated
 
-from libs.storage import Database
+from libs.storage import Database, Id
 from services.auth import (
     Project,
-    ProjectDatabase,
+    ProjectQuery,
     User,
     UserDatabase,
-    get_project_db,
     get_user_db,
 )
 
@@ -48,7 +47,28 @@ CurrentLaxProjectAndUserDep = Annotated[
 CurrentStrictProjectUserIdsDep = Annotated[
     Tuple[Optional[str], Optional[str]], Depends(GET_CURRENT_PROJECT_USER_IDS)
 ]
-ProjectDbDep = Annotated[ProjectDatabase, Depends(get_project_db)]
 DatabaseDep = Annotated[Database, Depends(get_database)]
 BccClientDep = Annotated[bcc.BccClient, Depends(bcc.get_client)]
 RequestIdDep = Annotated[str, Depends(get_request_id)]
+
+
+def get_project_query(
+    ids: Optional[List[Id]] = Query(None, alias="id"),
+    user_ids: Optional[List[Id]] = Query(None),
+    name: Optional[List[str]] = Query(None),
+    is_active: Optional[bool] = Query(None),
+    min_qpu_seconds: Optional[int] = Query(None),
+    max_qpu_seconds: Optional[int] = Query(None),
+) -> ProjectQuery:
+    """Dependency injector of the query params that narrow a list of projects"""
+    return ProjectQuery(
+        ids=ids,
+        user_ids=user_ids,
+        name=name,
+        is_active=is_active,
+        min_qpu_seconds=min_qpu_seconds,
+        max_qpu_seconds=max_qpu_seconds,
+    )
+
+
+ProjectQueryDep = Annotated[ProjectQuery, Depends(get_project_query)]

@@ -16,7 +16,6 @@ from typing import Dict
 from libs.storage import Database
 from services import calibration as calibration_service
 from services import jobs as jobs_service
-from services.auth import ProjectDatabase
 from services.calibration import DeviceCalibration
 from services.jobs import JobUpdate
 from utils.api import GeneralMessage
@@ -30,7 +29,6 @@ async def on_job_updated_event(
     device: str,
     data: JobUpdate,
     database: Database,
-    project_db: ProjectDatabase,
     **kwargs,
 ) -> GeneralMessage:
     """Handles the device event of job updated
@@ -41,8 +39,7 @@ async def on_job_updated_event(
     Args:
         device: the name of the device for this job
         data: the new job update
-        database: the database where the jobs are stored
-        project_db: the database containing the project
+        database: the database where the jobs and projects are stored
 
     Returns:
         the general message with the updated job
@@ -56,7 +53,7 @@ async def on_job_updated_event(
     qpu_usage = getattr(data.timestamps, "resource_usage", None)
     if old_job.duration_in_secs is None and qpu_usage is not None:
         await jobs_service.update_qpu_usage(
-            database, project_db=project_db, job_id=job_id, qpu_usage=qpu_usage
+            database, job_id=job_id, qpu_usage=qpu_usage
         )
 
     updated_job = await jobs_service.get_job(

@@ -18,33 +18,45 @@ from .app_tokens.dtos import (
     AppTokenListResponse,
     AppTokenRead,
 )
-from .projects import (
-    ProjectBasedAuth,
-    ProjectDatabase,
-    get_app_token_backend,
-    get_project_db,
-    get_project_manager,
-)
+from .projects import ProjectBasedAuth, get_app_token_backend, get_project_manager
 from .projects.dtos import (
     DeletedProject,
     Project,
     ProjectAdminView,
     ProjectCreate,
+    ProjectQuery,
     ProjectRead,
     ProjectUpdate,
+)
+from .projects.exc import ExtendedErrorCode, ProjectExists, ProjectNotExists
+from .projects.service import (
+    add_member,
+    create_project,
+    delete_project,
+    ensure_personal_project,
+    find_projects,
+    get_admin_view,
+    get_project,
+    get_project_if_member,
+    increment_qpu_seconds,
+    remove_member,
+    set_admin,
+    update_project,
 )
 from .providers.dtos import AuthProvider
 from .service import get_user_emails, on_startup, register_oauth2_client
 from .users import (
     UserBasedAuth,
     UserDatabase,
+    get_email_validator,
     get_jwt_cookie_backend,
     get_jwt_header_backend,
     get_user_db,
-    get_user_manager,
 )
 from .users.dtos import User, UserCreate, UserRead, UserUpdate
 from .users.exc import UnsupportedOauthException
+from .users.manager import UserManager
+from .users.validators import Validator
 
 SCHEMAS = (AppToken, Project, DeletedProject)
 
@@ -62,8 +74,11 @@ __all__ = [
     "ProjectUpdate",
     "ProjectRead",
     "ProjectAdminView",
+    "ProjectQuery",
+    "ProjectExists",
+    "ProjectNotExists",
+    "ExtendedErrorCode",
     "PaginatedListResponse",
-    "ProjectDatabase",
     "UserDatabase",
     "AppToken",
     "AppTokenRead",
@@ -72,7 +87,6 @@ __all__ = [
     "AuthProvider",
     "service",
     "on_startup",
-    "get_project_db",
     "get_user_emails",
     "UnsupportedOauthException",
     "ProjectBasedAuth",
@@ -81,7 +95,21 @@ __all__ = [
     "get_jwt_cookie_backend",
     "get_jwt_header_backend",
     "get_project_manager",
+    "get_email_validator",
+    "Validator",
     "get_user_db",
-    "get_user_manager",
+    "UserManager",
     "register_oauth2_client",
+    "add_member",
+    "create_project",
+    "delete_project",
+    "ensure_personal_project",
+    "find_projects",
+    "get_admin_view",
+    "get_project",
+    "get_project_if_member",
+    "increment_qpu_seconds",
+    "remove_member",
+    "set_admin",
+    "update_project",
 ]

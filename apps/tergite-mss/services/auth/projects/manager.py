@@ -9,17 +9,15 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""FastAPIUsers-inspired logic for managing projects"""
+"""What the app tokens' authenticator and routes need of projects, until step 5.3"""
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from beanie import PydanticObjectId
-from fastapi.requests import Request
 from fastapi_users.exceptions import UserNotExists
-from fastapi_users.models import ID
 from fastapi_users.types import DependencyCallable
-from fastapi_users_db_beanie import ObjectIDIDMixin
 
-from utils.exc import ForbiddenError, TooManyListQueryParams
+from libs.storage import Database
+from utils.exc import TooManyListQueryParams
 
 from ..app_tokens.database import AppTokenDatabase
 from ..app_tokens.dtos import AppToken, AppTokenCreate
@@ -27,138 +25,43 @@ from ..users.database import UserDatabase
 from ..users.dtos import User
 from ..utils import MAX_LIST_QUERY_LEN
 from . import exc
-from .database import ProjectDatabase
-from .dtos import Project, ProjectPartial
+from . import service as projects_service
+from .dtos import Project
 
 
-class ProjectAppTokenManager(ObjectIDIDMixin):
-    """
-    Project management logic.
-
-    Attrs:
-        project_db: Database adapter instance for projects.
-    """
-
-    project_db: ProjectDatabase
-    app_token_db: AppTokenDatabase
-    user_db: UserDatabase
+class ProjectAppTokenManager:
+    """Finds the projects and app tokens that app-token authentication works with"""
 
     def __init__(
         self,
-        project_db: ProjectDatabase,
+        database: Database,
         app_token_db: AppTokenDatabase,
         user_db: UserDatabase,
     ):
-        self.project_db = project_db
+        self.database = database
         self.app_token_db = app_token_db
         self.user_db = user_db
-
-    async def get(self, id: ID) -> Project:
-        """
-        Get a project by id.
-
-        Args:
-            id: ID of the project to retrieve.
-
-        Raises:
-            ProjectNotExists: The project does not exist.
-
-        Returns:
-            the project.
-        """
-        project = await self.project_db.get(str(id))
-
-        if project is None:
-            raise exc.ProjectNotExists()
-
-        return project
 
     async def get_project_user_pair(
         self, project_id: str, user_id: str
     ) -> Tuple[Project, User]:
-        """
-        Get a tuple of project and user for the given by project_id and user_id.
-
-        The user_id must be attached to this project.
-
-        Args:
-            project_id: id of the project to retrieve.
-            user_id: user_id of the project to retrieve.
+        """Gets the project of the given id and the user, who must be a member
 
         Raises:
-            ProjectNotExists: The project does not exist or user_id is not attached to it.
+            ProjectNotExists: the project does not exist or the user is not a member
             UserNotExists: the user does not exist
-
-        Returns:
-            the project
         """
         user = await self.user_db.get(PydanticObjectId(user_id))
-
         if user is None:
             raise UserNotExists()
 
-        project = await self.project_db.get_if_member(pk=project_id, user_id=user_id)
-
+        project = await projects_service.get_project_if_member(
+            self.database, str(project_id), str(user_id)
+        )
         if project is None:
             raise exc.ProjectNotExists()
 
         return project, user
-
-    async def find_projects(
-        self,
-        member_id: Optional[str] = None,
-        ids: Optional[Sequence[str]] = None,
-        user_ids: Optional[Sequence[str]] = None,
-        names: Optional[Sequence[str]] = None,
-        is_active: Optional[bool] = None,
-        min_qpu_seconds: Optional[float] = None,
-        max_qpu_seconds: Optional[float] = None,
-        skip: int = 0,
-        limit: Optional[int] = None,
-    ) -> List[Project]:
-        """Finds the projects that fit the given constraints
-
-        Args:
-            member_id: the user whose projects alone are wanted; None for anyone's
-            ids: the IDs of the projects
-            user_ids: the IDs of users any of whom is a member
-            names: the names of the projects
-            is_active: whether the projects are active
-            min_qpu_seconds: the least QPU seconds the projects have
-            max_qpu_seconds: the most QPU seconds the projects have
-            skip: the number of matched projects to skip
-            limit: the most projects to return; None returns all
-
-        Raises:
-            TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
-        """
-        project_filter: Dict[str, Any] = {}
-        if ids is not None:
-            project_filter["id"] = {"$in": _ensure_short_list("id", ids)}
-        if user_ids is not None:
-            project_filter["user_ids"] = {
-                "$in": _ensure_short_list("user_ids", user_ids)
-            }
-        if names is not None:
-            project_filter["name"] = {"$in": _ensure_short_list("name", names)}
-        if is_active is True:
-            # a project stored without is_active is active, as the field defaults to True
-            project_filter["is_active"] = {"$ne": False}
-        if is_active is False:
-            project_filter["is_active"] = False
-
-        qpu_seconds: Dict[str, float] = {}
-        if min_qpu_seconds is not None:
-            qpu_seconds["$gte"] = min_qpu_seconds
-        if max_qpu_seconds is not None:
-            qpu_seconds["$lte"] = max_qpu_seconds
-        if qpu_seconds:
-            project_filter["qpu_seconds"] = qpu_seconds
-
-        if member_id is not None:
-            # in an $and, so that a user_ids query narrows the member's projects
-            project_filter = {"$and": [project_filter, {"user_ids": member_id}]}
-        return await self.project_db.get_many(project_filter, skip=skip, limit=limit)
 
     async def find_app_tokens(
         self,
@@ -205,114 +108,6 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             token_filter["lifespan_seconds"] = lifespan_seconds
 
         return await self.app_token_db.get_many(token_filter, skip=skip, limit=limit)
-
-    async def create(
-        self,
-        project: Project,
-        request: Optional[Request] = None,
-        **kwargs,
-    ) -> Project:
-        """
-        Create a project in database.
-
-        Args:
-            project: The Project model to create.
-            request: Optional FastAPI request that triggered the operation, defaults to None.
-
-        Returns:
-            a new project.
-
-        Raises:
-            ProjectExists: a project of the same name exists
-        """
-        return await self.project_db.create(project)
-
-    async def update(
-        self,
-        project_partial: ProjectPartial,
-        project: Project,
-        request: Optional[Request] = None,
-        **kwargs,
-    ) -> Project:
-        """Update a project.
-
-        Triggers the on_before_update handler before the update happens
-        Triggers the on_after_update handler on success
-
-        Args:
-            project_partial: The ProjectPartial model containing
-                the changes to apply to the user.
-            project: The current user to update.
-            request: Optional FastAPI request that
-                triggered the operation, defaults to None.
-
-        Returns:
-            the updated project.
-        """
-        await self.on_before_update(project, project_partial)
-        update_dict = project_partial.model_dump(exclude_none=True)
-        updated_project = await self.project_db.update(project, update_dict)
-        return updated_project
-
-    async def delete(
-        self,
-        project: Project,
-        request: Optional[Request] = None,
-        is_superuser: bool = False,
-    ) -> None:
-        """Delete a project.
-
-        Args:
-            project: The user to delete.
-            request: Optional FastAPI request that
-                triggered the operation, defaults to None.
-            is_superuser: whether the caller is acting as a superuser; defaults to False
-                so a caller that does not say is treated as not.
-
-        Raises:
-            ForbiddenError: you cannot delete your own personal project
-        """
-        if project.is_personal and not is_superuser:
-            # a personal project is recreated on next login with a fresh allowance, so
-            # its owner deleting it would be an allowance farm. Superusers may, for
-            # offboarding and erasure.
-            raise ForbiddenError("you cannot delete your own personal project")
-
-        await self.on_before_delete(project, request)
-        await self.project_db.delete(project)
-
-    async def on_before_update(
-        self, original: Project, new_updates: ProjectPartial
-    ) -> None:
-        """Perform logic before the project is updated.
-
-        Here, any AppTokens for this project that have user_ids,
-        whose associated user emails have been removed, are deleted.
-
-        Args:
-            original: the project to be updated
-            new_updates: the new updates
-        """
-        if new_updates.user_ids:
-            await self.app_token_db.delete_many(
-                {
-                    "user_id": {"$nin": new_updates.user_ids},
-                    "project_id": original.id,
-                }
-            )
-
-    async def on_before_delete(
-        self, project: Project, request: Optional[Request] = None
-    ) -> None:
-        """Perform logic before project delete.
-
-        Here, all AppTokens for this project are deleted.
-
-        Args:
-            project: the project to be deleted
-            request: Optional FastAPI request that triggered the operation
-        """
-        await self.app_token_db.delete_many({"project_id": project.id})
 
     async def authenticate(
         self,

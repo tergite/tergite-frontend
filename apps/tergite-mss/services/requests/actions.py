@@ -16,13 +16,9 @@ from typing import Any, Callable, Coroutine, Dict, List, Sequence, cast
 
 from beanie.odm.operators.find.comparison import In
 
-from services.auth.projects import get_app_token_db, get_project_db
-from services.auth.projects.dtos import Project
-from services.auth.projects.exc import ProjectExists
-from services.auth.projects.manager import ProjectAppTokenManager
-from services.auth.projects.routers import handlers as project_handlers
-from services.auth.users.database import UserDatabase
-from services.auth.users.dtos import User
+from libs.storage import Database
+from services import auth
+from services.auth import Project, ProjectExists, User
 from utils.exc import ConflictError, NotFoundError
 
 from .dtos import (
@@ -33,14 +29,17 @@ from .dtos import (
     TransferProjectMetadata,
 )
 
-type Action = Callable[[Request, User], Coroutine[Any, Any, None]]
-"""An action that approving a request does, given the request and its approver"""
+type Action = Callable[[Database, Request, User], Coroutine[Any, Any, None]]
+"""An action that approving a request does, given the database, request and approver"""
 
 
-async def do_many_actions(requests: List[Request], approver: User) -> None:
+async def do_many_actions(
+    database: Database, requests: List[Request], approver: User
+) -> None:
     """Does the actions of multiple requests, each according to its type
 
     Args:
+        database: the database where the projects are stored
         requests: The requests to do that are to be acted on
         approver: The user who is supposed to approve the request
 
@@ -51,7 +50,7 @@ async def do_many_actions(requests: List[Request], approver: User) -> None:
             NotFoundError: no users of emails {emails}
             ConflictError: a project named '{name}' already exists
     """
-    tasks = [_do_action(req, approver) for req in requests]
+    tasks = [_do_action(database, req, approver) for req in requests]
 
     resp = await asyncio.gather(*tasks, return_exceptions=True)
     errors = [item for item in resp if isinstance(item, Exception)]
@@ -60,10 +59,11 @@ async def do_many_actions(requests: List[Request], approver: User) -> None:
         raise ExceptionGroup("errors doing bulk action", errors)
 
 
-async def _do_action(request: Request, approver: User) -> None:
+async def _do_action(database: Database, request: Request, approver: User) -> None:
     """Does what the given request asks for, as it is being approved
 
     Args:
+        database: the database where the projects are stored
         request: the request being approved
         approver: the user approving the request
 
@@ -86,16 +86,17 @@ async def _do_action(request: Request, approver: User) -> None:
     except KeyError:
         raise ValueError(f"no action for request type {request.type}")
 
-    await action(request, approver)
+    await action(database, request, approver)
 
 
-async def _create_project(request: Request, approver: User) -> None:
+async def _create_project(database: Database, request: Request, approver: User) -> None:
     """Creates the project described in the metadata of a create-project request
 
     Users of any emails that do not exist yet are created, as when a superuser
     creates the project directly.
 
     Args:
+        database: the database where the projects are stored
         request: the create-project request
         approver: the user approving the request
 
@@ -104,32 +105,33 @@ async def _create_project(request: Request, approver: User) -> None:
     """
     metadata = cast(CreateProjectMetadata, request.metadata)
     try:
-        await project_handlers.create_project(
-            metadata, project_manager=await _get_project_manager(), actor=approver
-        )
+        await auth.create_project(database, metadata, actor=approver)
     except ProjectExists:
         raise ConflictError(f"a project named '{metadata.name}' already exists")
 
 
-async def _close_project(request: Request, approver: User) -> None:
+async def _close_project(database: Database, request: Request, approver: User) -> None:
     """Closes the project of a close-project request, keeping a copy of it
 
     Args:
+        database: the database where the projects are stored
         request: the close-project request
         approver: the user approving the request
 
     Raises:
         NotFoundError: project {id} not found
     """
-    project = await _get_project(request.resource_id)
-    project_manager = await _get_project_manager()
-    await project_manager.delete(project, is_superuser=True)
+    project = await _get_project(database, request.resource_id)
+    await auth.delete_project(database, project, is_superuser=True)
 
 
-async def _transfer_project(request: Request, approver: User) -> None:
+async def _transfer_project(
+    database: Database, request: Request, approver: User
+) -> None:
     """Makes the user named in a transfer-project request the admin of its project
 
     Args:
+        database: the database where the projects are stored
         request: the transfer-project request
         approver: the user approving the request
 
@@ -138,16 +140,18 @@ async def _transfer_project(request: Request, approver: User) -> None:
         NotFoundError: no users of emails {emails}
     """
     metadata = cast(TransferProjectMetadata, request.metadata)
-    project = await _get_project(request.resource_id)
+    project = await _get_project(database, request.resource_id)
     email_id_map = await _get_user_email_id_map([metadata.admin_email])
-    project_db = await get_project_db()
-    await project_db.set_admin(project.id, email_id_map[metadata.admin_email])
+    await auth.set_admin(database, project.id, email_id_map[metadata.admin_email])
 
 
-async def _add_qpu_seconds(request: Request, approver: User) -> None:
+async def _add_qpu_seconds(
+    database: Database, request: Request, approver: User
+) -> None:
     """Adds the seconds asked for in a project-qpu-seconds request to its project
 
     Args:
+        database: the database where the projects are stored
         request: the project-qpu-seconds request
         approver: the user approving the request
 
@@ -155,53 +159,37 @@ async def _add_qpu_seconds(request: Request, approver: User) -> None:
         NotFoundError: project {id} not found
     """
     metadata = cast(ProjectQpuSecondsMetadata, request.metadata)
-    project = await _get_project(request.resource_id)
-    project_db = await get_project_db()
-    await project_db.increment_qpu_seconds(project.id, metadata.seconds)
+    project = await _get_project(database, request.resource_id)
+    await auth.increment_qpu_seconds(database, project.id, metadata.seconds)
 
 
-async def _add_project_member(request: Request, approver: User) -> None:
+async def _add_project_member(
+    database: Database, request: Request, approver: User
+) -> None:
     """Adds the requester of a project-access request to its project
 
     Args:
+        database: the database where the projects are stored
         request: the project-access request
         approver: the user approving the request
 
     Raises:
         NotFoundError: project {id} not found
     """
-    project = await _get_project(request.resource_id)
-    project_db = await get_project_db()
-    await project_db.add_member(project.id, request.requester_id)
+    project = await _get_project(database, request.resource_id)
+    await auth.add_member(database, project.id, request.requester_id)
 
 
-async def _get_project(project_id: str) -> Project:
+async def _get_project(database: Database, project_id: str) -> Project:
     """Gets the project of the given ID
-
-    Args:
-        project_id: the ID of the project
-
-    Returns:
-        the project
 
     Raises:
         NotFoundError: project {id} not found
     """
-    project_db = await get_project_db()
-    project = await project_db.get(project_id)
-    if project is None:
+    try:
+        return await auth.get_project(database, project_id)
+    except auth.ProjectNotExists:
         raise NotFoundError(f"project {project_id} not found")
-
-    return project
-
-
-async def _get_project_manager() -> ProjectAppTokenManager:
-    """Gets the manager of the projects"""
-    return ProjectAppTokenManager(
-        await get_project_db(),
-        app_token_db=await get_app_token_db(),
-        user_db=UserDatabase(),
-    )
 
 
 async def _get_user_email_id_map(

@@ -23,11 +23,10 @@ from pydantic import ValidationError
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocketDisconnect
 
-from api.rest.dependencies import DatabaseDep, ProjectDbDep
+from api.rest.dependencies import DatabaseDep
 from api.rest.utils import get_verified_device_name
 from libs.storage import Database
 from services import devices
-from services.auth import ProjectDatabase
 from services.devices import Device, DeviceEvent, DeviceQuery
 from utils.api import (
     EventResponse,
@@ -86,7 +85,6 @@ async def handle_device_events(
     websocket: WebSocket,
     name: str,
     database: DatabaseDep,
-    project_db: ProjectDbDep,
     verified_name: str = Depends(get_verified_device_name),
 ):
     """Receives updates about the given device
@@ -94,8 +92,7 @@ async def handle_device_events(
     Args:
         websocket: the websocket instance
         name: the name of the device
-        database: the database holding the devices, calibrations and jobs
-        project_db: the database containing the project
+        database: the database holding the devices, calibrations, jobs and projects
         verified_name: the verified name of the device
     """
     if verified_name != name:
@@ -112,7 +109,6 @@ async def handle_device_events(
                 data,
                 device=verified_name,
                 database=database,
-                project_db=project_db,
             )
             await ws_manager.reply(websocket, response)
 
@@ -128,7 +124,6 @@ async def _handle_frame(
     data: dict,
     device: str,
     database: Database,
-    project_db: ProjectDatabase,
 ) -> EventResponse:
     """Runs the handler of the event in one frame; an error becomes an error reply"""
     response: EventResponse = {"id": "unknown", "status": "success"}
@@ -141,7 +136,6 @@ async def _handle_frame(
                 device=device,
                 data=event.data,
                 database=database,
-                project_db=project_db,
             )
         )
     except ValidationError as exp:

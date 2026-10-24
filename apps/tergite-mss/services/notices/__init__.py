@@ -20,6 +20,8 @@ from .dtos import (
     NoticeTemplate,
     NoticeType,
     NoticeTypeId,
+    ProjectRequestContext,
+    RefType,
 )
 from .service import (
     clear_notices_by_reference,
@@ -48,6 +50,8 @@ __all__ = [
     "NoticeSeverity",
     "NoticeType",
     "NoticeTypeId",
+    "ProjectRequestContext",
+    "RefType",
     "count_many",
     "delete_notice",
     "get_one",

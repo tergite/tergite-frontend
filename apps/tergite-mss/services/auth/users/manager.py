@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 """FastAPIUsers-inspired logic for managing users"""
-from typing import Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from fastapi.requests import Request
 from fastapi.responses import Response
@@ -30,11 +30,13 @@ class UserManager(ObjectIDIDMixin, BaseUserManager):
         user_db: BaseUserDatabase[models.UP, models.ID],
         password_helper: Optional[PasswordHelperProtocol] = None,
         email_validator: Optional[Validator] = None,
+        on_login: Optional[Callable[[models.UP], Awaitable[Any]]] = None,
     ):
         super().__init__(user_db=user_db, password_helper=password_helper)
         self.__email_validator = (
             email_validator if email_validator else EmailRegexValidator()
         )
+        self.__on_login = on_login
 
     async def on_after_login(
         self,
@@ -42,17 +44,9 @@ class UserManager(ObjectIDIDMixin, BaseUserManager):
         request: Optional[Request] = None,
         response: Optional[Response] = None,
     ) -> None:
-        """Ensures the user has their personal project.
-
-        Done on login rather than registration so that users predating this feature, and
-        stub users created by admins listing unknown emails on a project, also get one.
-        """
-        # imported here because projects imports this module at import time
-        from ..projects import get_project_db
-
-        project_db = await get_project_db()
-
-        await project_db.create_personal_project_if_not_exist(user)
+        """Runs what the app does on every login, such as ensuring a personal project"""
+        if self.__on_login is not None:
+            await self.__on_login(user)
 
     async def oauth_callback(
         self,

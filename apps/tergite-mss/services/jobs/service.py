@@ -17,7 +17,7 @@
 # that they have been altered from the originals.
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 from uuid import UUID
 
 from loguru import logger
@@ -31,13 +31,10 @@ from utils.crypto import decrypt_message
 from utils.date_time import datetime_to_zulu, get_current_timestamp
 from utils.exc import NotFoundError
 
-from ..auth import Project, User
+from ..auth import Project, User, increment_qpu_seconds
 from ..notices import NoticeType
 from ..notices.dtos import ProjectRequestContext, RefType
 from .dtos import CreatedJobResponse, Job, JobCreate, JobQuery, JobStatus, JobUpdate
-
-if TYPE_CHECKING:
-    from ..auth.projects.database import ProjectDatabase
 
 # on_startup replaces these with what the app is configured with
 _private_key_file: Optional[Path] = None
@@ -195,15 +192,13 @@ async def update_job(database: Database, job_id: str, payload: JobUpdate) -> Job
 
 async def update_qpu_usage(
     database: Database,
-    project_db: "ProjectDatabase",
     job_id: UUID,
     qpu_usage: float,
 ) -> Optional[Project]:
     """Updates the resource usage for the job of the given job_id
 
     Args:
-        database: the database where the jobs are stored
-        project_db: the ProjectDatabase instance where projects are found
+        database: the database where the jobs and projects are stored
         job_id: the job id of the job
         qpu_usage: the resource usage in seconds
 
@@ -217,8 +212,8 @@ async def update_qpu_usage(
     """
     job = await get_job(database, job_id=job_id)
     project_id = job.project_id
-    project = await project_db.increment_qpu_seconds(
-        project_id=project_id, qpu_seconds=-qpu_usage
+    project = await increment_qpu_seconds(
+        database, project_id=project_id, qpu_seconds=-qpu_usage
     )
     if project is None:
         if project_id is not None:

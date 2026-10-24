@@ -185,7 +185,7 @@ async def update(
         raise NotFoundError("no match found")
 
     if payload.status == RequestStatus.APPROVED:
-        await actions.do_many_actions([record], approver=current_user)
+        await actions.do_many_actions(database, [record], approver=current_user)
 
     # updated_at is never set by the client, so exclude_unset would drop its default
     changes = payload.model_dump(exclude_unset=True)
