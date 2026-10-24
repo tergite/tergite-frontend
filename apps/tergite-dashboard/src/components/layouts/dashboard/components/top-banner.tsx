@@ -64,7 +64,7 @@ export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
         )
         .sort(
           (a, b) =>
-            a.severity_number - b.severity_number ||
+            a.severity - b.severity ||
             (a.starts_at ?? "").localeCompare(b.starts_at ?? "")
         ),
     [unreadNotices, timestamp]

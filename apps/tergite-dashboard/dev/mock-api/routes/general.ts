@@ -19,7 +19,6 @@ import {
   randomUUID,
   getUserNoticesFilter,
   getReadStatusUpdate,
-  getSeverityNumber,
 } from "../utils";
 import {
   AuthProvider,
@@ -1010,7 +1009,6 @@ router.post(
       title: message,
       body: message,
       severity,
-      severity_number: getSeverityNumber(severity),
       created_by: userId,
       ref_type: null,
       ref_id: null,
@@ -1554,7 +1552,6 @@ function createSystemNotice(
 ) {
   mockDb.create<Notice>("notices", {
     ...fields,
-    severity_number: getSeverityNumber(fields.severity),
     created_by: null,
     read_at: null,
     dismissed_by: [],

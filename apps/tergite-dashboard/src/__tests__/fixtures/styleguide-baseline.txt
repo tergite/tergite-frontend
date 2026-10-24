@@ -29,7 +29,6 @@ private-helper-position: dev/mock-api/utils.ts::createCookieHeader
 private-helper-position: dev/mock-api/utils.ts::getAuthenticatedUserId
 private-helper-position: dev/mock-api/utils.ts::getQueryString
 private-helper-position: dev/mock-api/utils.ts::getReadStatusUpdate
-private-helper-position: dev/mock-api/utils.ts::getSeverityNumber
 private-helper-position: dev/mock-api/utils.ts::getUserNoticesFilter
 private-helper-position: dev/mock-api/utils.ts::getUsername
 private-helper-position: dev/mock-api/utils.ts::hasAnyOfRoles

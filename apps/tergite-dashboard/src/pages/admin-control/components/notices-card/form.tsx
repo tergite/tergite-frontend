@@ -9,7 +9,7 @@ import {
   FormMessage,
   Form,
 } from "@/components/ui/form";
-import { mergeDatetime } from "@/lib/utils";
+import { mergeDatetime, SEVERITY_LABELS } from "@/lib/utils";
 import { DateTimeInput } from "@/components/ui/datetime-input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -42,11 +42,11 @@ const SEVERITY_OPTIONS = [
   NoticeSeverity.INFO,
   NoticeSeverity.WARNING,
   NoticeSeverity.CRITICAL,
-] as const;
+];
 
 const formSchema = z.object({
   message: z.string().min(1).max(MAX_CHARS),
-  severity: z.enum(SEVERITY_OPTIONS),
+  severity: z.nativeEnum(NoticeSeverity),
   target_user_emails: z.string().email().min(1).array().optional(),
   starts_at: z
     .object({
@@ -144,9 +144,9 @@ export default function NoticeForm({ onPost }: Props) {
             <FormItem>
               <FormControl>
                 <Select
-                  value={field.value}
+                  value={String(field.value)}
                   name={field.name}
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => field.onChange(Number(value))}
                 >
                   <SelectTrigger className="h-8 text-xs flex-1">
                     <SelectValue
@@ -157,8 +157,8 @@ export default function NoticeForm({ onPost }: Props) {
                   </SelectTrigger>
                   <SelectContent>
                     {SEVERITY_OPTIONS.map((s) => (
-                      <SelectItem key={s} value={s} className="text-xs">
-                        {s}
+                      <SelectItem key={s} value={String(s)} className="text-xs">
+                        {SEVERITY_LABELS[s]}
                       </SelectItem>
                     ))}
                   </SelectContent>

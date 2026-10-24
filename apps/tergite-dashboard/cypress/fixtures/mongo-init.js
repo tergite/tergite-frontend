@@ -76,7 +76,6 @@ const toNoticeDoc = ({
   starts_at_offset_hours,
   expires_at_offset_hours,
   created_at_offset_hours,
-  severity_number, // dropped — the API computes it from the severity
   user_id,
   created_by,
   ref_id,

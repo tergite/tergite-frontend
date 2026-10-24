@@ -40,7 +40,7 @@ export function NoticesCard() {
   const { data: notices, isPlaceholderData } = useQuery(
     noticesQuery({
       ...filters,
-      sort: ["severity_number", "starts_at"],
+      sort: ["severity", "starts_at"],
       limit: 1,
       skip: page - 1,
     }),

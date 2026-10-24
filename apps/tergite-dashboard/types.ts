@@ -421,10 +421,11 @@ export interface RecalibrationInfo {
   interval?: number;
 }
 
+// the most urgent is the lowest, so notices sort by it
 export enum NoticeSeverity {
-  INFO = "info",
-  WARNING = "warning",
-  CRITICAL = "critical",
+  CRITICAL = 1,
+  WARNING = 2,
+  INFO = 3,
 }
 
 export interface NoticePostRequest {
@@ -475,7 +476,6 @@ export interface Notice extends DbRecord {
   title: string;
   body: string;
   severity: NoticeSeverity;
-  severity_number: number;
   user_id?: string | null;
   created_by?: string | null;
   ref_type?: NoticeRefType | null;

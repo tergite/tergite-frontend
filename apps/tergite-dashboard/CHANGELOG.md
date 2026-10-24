@@ -59,6 +59,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 - [BREAKING]: Notifications and notices are one thing, as in MSS: the bell lists and counts
   the unread ones from `/me/notices/`, the top banner shows the announcements among them, and
   the settings page has one email switch per notice type at `/me/notices/preferences/`.
+- [BREAKING]: Notice severities are numbers, as in MSS, so the admin notices card and the top
+  banner sort by `severity`.
 - [BREAKING]: Requests of every kind, including the admin requests page and QPU time, go
   through `/me/requests/`; the profile, backend control and email lookup moved to
   `/me/profile`, `/admin/bcc/*` and `/admin/users/emails/` along with MSS.

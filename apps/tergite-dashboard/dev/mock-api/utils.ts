@@ -750,7 +750,6 @@ interface NoticeFixtureInfo {
   title: string;
   body: string;
   severity: NoticeSeverity;
-  severity_number: number;
   user_id: string | null;
   created_by: string | null;
   ref_type: NoticeRefType | null;
@@ -841,21 +840,3 @@ function isInTimeRange(
   return true;
 }
 
-/**
- * Converts a severity string to its corresponding number
- * 
- * @param severity - the severity passed
- * @returns the number that corresponds to the given severity
- */
-export function getSeverityNumber(severity: string) {
-  switch (severity.toUpperCase()) {
-    case "CRITICAL":
-      return 1;
-    case "WARNING":
-      return 2;
-    case "INFO":
-      return 3;
-    default:
-      throw new Error(`Invalid severity: ${severity}`);
-  }
-}
