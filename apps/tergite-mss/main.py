@@ -30,16 +30,49 @@
 # nuitka-project: --include-package=jwt
 # nuitka-project: --include-package=asyncpg
 # nuitka-project: --include-package=pydantic
+# nuitka-project: --include-package=alembic
+# nuitka-project: --include-data-files={MAIN_DIRECTORY}/alembic.ini=alembic.ini
+# nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/env.py=migrations/env.py
+# nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/versions/*.py=migrations/versions/
+# nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/mongodb/*.json=migrations/mongodb/
 
 import argparse
+from pathlib import Path
 
 import uvicorn
+from alembic import command
+from alembic.config import Config
+from pymongo import MongoClient
 
+import migrations.mongodb
+import settings
 from api.rest import app
+from api.rest.database import get_database_url
+
+_ROOT = Path(__file__).parent
+
+
+def _migrate() -> None:
+    """Brings the configured database to the latest schemas, as start_mss.sh does"""
+    database_url = get_database_url(settings.CONFIG.database)
+    if "+" in database_url.split("://")[0]:
+        command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
+    elif database_url.startswith("mongodb"):
+        with MongoClient(database_url) as client:
+            applied = migrations.mongodb.upgrade(client.get_default_database())
+        print(f"MongoDB migrations applied: {applied or 'none pending'}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Run the compiled FastAPI application."
+        description="Run the compiled FastAPI application, or migrate its database."
+    )
+    parser.add_argument(
+        "command",
+        nargs="?",
+        default="serve",
+        choices=["serve", "migrate"],
+        help="Serve the API (default), or migrate the database and exit.",
     )
     parser.add_argument("--host", default="0.0.0.0", help="Bind socket to this host.")
     parser.add_argument(
@@ -58,12 +91,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    uvicorn.run(
-        app,
-        host=args.host,
-        reload=args.reload,
-        port=args.port,
-        workers=1,
-        proxy_headers=True,
-        forwarded_allow_ips=args.forwarded_allow_ips,
-    )
+    if args.command == "migrate":
+        _migrate()
+    else:
+        uvicorn.run(
+            app,
+            host=args.host,
+            reload=args.reload,
+            port=args.port,
+            workers=1,
+            proxy_headers=True,
+            forwarded_allow_ips=args.forwarded_allow_ips,
+        )

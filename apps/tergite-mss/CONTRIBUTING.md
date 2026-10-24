@@ -191,13 +191,10 @@ python -m nuitka main.py
 cp mss-config.example.toml mss-config.toml
 # create the mss private key
 openssl genpkey -algorithm RSA -out private-mss-key.pem -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc
-# run migrations for mongodb
-MSS_CONFIG_JSON_STR="$(yq -o=json -p=toml mss-config.toml)" uv run python -m migrations.mongodb upgrade
-## if you are using an sql database, run the alembic migrations
-# MSS_CONFIG_JSON_STR="$(yq -o=json -p=toml mss-config.toml)" uv run alembic upgrade head
+# migrate the database, MongoDB or SQL
+MSS_CONFIG_FILE="$PWD/mss-config.toml" PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" ./mss migrate
 # run the app, providing any command line args you wish `--port`, `--host`, `--forwarded-allow-ips`, `--reload`
-MSS_CONFIG_JSON_STR="$(yq -o=json -p=toml mss-config.toml)" \
-PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" ./mss --port 8002
+MSS_CONFIG_FILE="$PWD/mss-config.toml" PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" ./mss --port 8002
 ```
 
 ## References
