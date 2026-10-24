@@ -282,6 +282,13 @@ npm run e2e     # build --mode test, serve, run cypress headless
 npm run visual-e2e   # same, with the cypress UI
 ```
 
+The mock API listens on 8002. To run beside something else on that port, such as the e2e
+docker stack, override the three `.env.test` values that name it:
+
+```bash
+API_PORT=8012 VITE_API_BASE_URL=http://127.0.0.1:8012 DB_RESET_URL=http://127.0.0.1:8012/refreshed-db npm run e2e
+```
+
 Each feature's happy path, and the spec that walks it:
 
 | Feature | Spec |
