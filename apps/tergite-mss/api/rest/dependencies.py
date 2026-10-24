@@ -18,8 +18,8 @@ from typing_extensions import Annotated
 from libs.storage import Database, Id
 from services.auth import (
     AppTokenQuery,
-    Project,
     ProjectQuery,
+    TokenOwner,
     User,
     UserDatabase,
     get_user_db,
@@ -29,11 +29,11 @@ from services.auth import (
 from services.external import bcc
 
 from .auth import (
-    GET_CURRENT_LAX_PROJECT_AND_USER,
-    GET_CURRENT_PROJECT_USER_IDS,
     GET_CURRENT_SUPERUSER,
     GET_CURRENT_USER,
     GET_CURRENT_USER_ID,
+    get_current_lax_owner,
+    get_current_project_user_ids,
 )
 from .database import get_database
 from .utils import get_request_id
@@ -42,11 +42,9 @@ CurrentUserDep = Annotated[User, Depends(GET_CURRENT_USER)]
 CurrentSuperuserDep = Annotated[User, Depends(GET_CURRENT_SUPERUSER)]
 CurrentUserIdDep = Annotated[str, Depends(GET_CURRENT_USER_ID)]
 UserDbDep = Annotated[UserDatabase, Depends(get_user_db)]
-CurrentLaxProjectAndUserDep = Annotated[
-    Tuple[Project, User], Depends(GET_CURRENT_LAX_PROJECT_AND_USER)
-]
+CurrentLaxOwnerDep = Annotated[TokenOwner, Depends(get_current_lax_owner)]
 CurrentStrictProjectUserIdsDep = Annotated[
-    Tuple[Optional[str], Optional[str]], Depends(GET_CURRENT_PROJECT_USER_IDS)
+    Tuple[str, str], Depends(get_current_project_user_ids)
 ]
 DatabaseDep = Annotated[Database, Depends(get_database)]
 BccClientDep = Annotated[bcc.BccClient, Depends(bcc.get_client)]

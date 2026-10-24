@@ -12,7 +12,7 @@
 from utils.api import PaginatedListResponse
 from utils.config import Oauth2ClientConfig, UserRole
 
-from .app_tokens import ProjectBasedAuth, get_app_token_backend
+from .access import LAX, STRICT, SYSTEM, AccessRule, check_project_access
 from .app_tokens.dtos import (
     AppToken,
     AppTokenCreate,
@@ -100,9 +100,12 @@ __all__ = [
     "on_startup",
     "get_user_emails",
     "UnsupportedOauthException",
-    "ProjectBasedAuth",
+    "AccessRule",
+    "LAX",
+    "STRICT",
+    "SYSTEM",
+    "check_project_access",
     "UserBasedAuth",
-    "get_app_token_backend",
     "get_jwt_cookie_backend",
     "get_jwt_header_backend",
     "AppTokenQuery",

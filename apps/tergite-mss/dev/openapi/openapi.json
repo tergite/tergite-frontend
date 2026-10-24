@@ -6737,7 +6737,7 @@
     },
     "/jobs/": {
       "get": {
-        "description": "Gets a paginated list of jobs that fulfill a given set of filters\n\nArgs:\n    database: the database where the jobs are stored\n    project_and_user: the API token's project and user; only the user's jobs, jobs with no recorded user, or all jobs for an admin are listed\n    query: the query params for getting the jobs\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-created_at\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\"",
+        "description": "Gets a paginated list of jobs that fulfill a given set of filters\n\nArgs:\n    database: the database where the jobs are stored\n    owner: the API token's project and user; only the user's jobs, jobs with no recorded user, or all jobs for an admin are listed\n    query: the query params for getting the jobs\n    skip: the number of records to skip\n    limit: the maximum number of records to return\n    sort: the fields to sort by, prefixing any with a '-' means descending; default = (\"-created_at\",)\n        To add multiple fields to sort by, repeat the same query parameter in the url e.g. \"query=tom&q=dick&q=harry\"",
         "operationId": "get_many_jobs__get",
         "parameters": [
           {
@@ -7164,7 +7164,7 @@
         ]
       },
       "get": {
-        "description": "Gets the job of the given job_id\n\nArgs:\n    database: the database where the jobs are stored\n    project_and_user: the API token's project and user; the user must have submitted the job or be an admin\n    job_id: the job_id of the job",
+        "description": "Gets the job of the given job_id\n\nArgs:\n    database: the database where the jobs are stored\n    owner: the API token's project and user; the user must have submitted the job or be an admin\n    job_id: the job_id of the job",
         "operationId": "get_one_jobs__job_id__get",
         "parameters": [
           {
@@ -7275,7 +7275,7 @@
     },
     "/jobs/{job_id}/status": {
       "get": {
-        "description": "Gets the status of the job for the given job_id\n\nArgs:\n    database: the database where the jobs are stored\n    project_and_user: the API token's project and user; the user must have submitted the job or be an admin\n    job_id: the ID of the job\n\nReturns:\n    the status as one value\n\nRaises:\n    utils.exc.NotFoundError: no matches for '{search_filter}'.\n    ValidationError: the document does not satisfy the schema passed",
+        "description": "Gets the status of the job for the given job_id\n\nArgs:\n    database: the database where the jobs are stored\n    owner: the API token's project and user; the user must have submitted the job or be an admin\n    job_id: the ID of the job\n\nReturns:\n    the status as one value\n\nRaises:\n    utils.exc.NotFoundError: no matches for '{search_filter}'.\n    ValidationError: the document does not satisfy the schema passed",
         "operationId": "get_job_status_jobs__job_id__status_get",
         "parameters": [
           {

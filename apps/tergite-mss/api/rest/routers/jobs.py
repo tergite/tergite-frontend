@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.requests import Request
 
 from api.rest.dependencies import (
-    CurrentLaxProjectAndUserDep,
+    CurrentLaxOwnerDep,
     CurrentStrictProjectUserIdsDep,
     CurrentUserDep,
     DatabaseDep,
@@ -46,7 +46,7 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 @router.get("/", responses={200: {"model": PaginatedListResponse[Job]}})
 async def get_many(
     database: DatabaseDep,
-    project_and_user: CurrentLaxProjectAndUserDep,
+    owner: CurrentLaxOwnerDep,
     query: JobQuery = Depends(),
     skip: int = 0,
     limit: Optional[int] = None,
@@ -56,46 +56,42 @@ async def get_many(
 
     Args:
         database: the database where the jobs are stored
-        project_and_user: the API token's project and user; only the user's jobs, jobs with no recorded user, or all jobs for an admin are listed
+        owner: the API token's project and user; only the user's jobs, jobs with no recorded user, or all jobs for an admin are listed
         query: the query params for getting the jobs
         skip: the number of records to skip
         limit: the maximum number of records to return
         sort: the fields to sort by, prefixing any with a '-' means descending; default = ("-created_at",)
             To add multiple fields to sort by, repeat the same query parameter in the url e.g. "query=tom&q=dick&q=harry"
     """
-    _, user = project_and_user
     data = await jobs_service.get_latest_many(
-        database, query, reader=user, sort=sort, skip=skip, limit=limit
+        database, query, reader=owner.user, sort=sort, skip=skip, limit=limit
     )
     return get_paginated_json(data, skip=skip, limit=limit)
 
 
 @router.get("/{job_id}", responses={200: {"model": Job}})
-async def get_one(
-    database: DatabaseDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
-):
+async def get_one(database: DatabaseDep, owner: CurrentLaxOwnerDep, job_id: UUID):
     """Gets the job of the given job_id
 
     Args:
         database: the database where the jobs are stored
-        project_and_user: the API token's project and user; the user must have submitted the job or be an admin
+        owner: the API token's project and user; the user must have submitted the job or be an admin
         job_id: the job_id of the job
     """
-    _, user = project_and_user
     return await jobs_service.get_readable_job(
-        database, job_id=job_id, user=user, should_decrypt_token=True
+        database, job_id=job_id, user=owner.user, should_decrypt_token=True
     )
 
 
 @router.get("/{job_id}/status")
 async def get_job_status(
-    database: DatabaseDep, project_and_user: CurrentLaxProjectAndUserDep, job_id: UUID
+    database: DatabaseDep, owner: CurrentLaxOwnerDep, job_id: UUID
 ) -> JobStatusResponse:
     """Gets the status of the job for the given job_id
 
     Args:
         database: the database where the jobs are stored
-        project_and_user: the API token's project and user; the user must have submitted the job or be an admin
+        owner: the API token's project and user; the user must have submitted the job or be an admin
         job_id: the ID of the job
 
     Returns:
@@ -105,8 +101,7 @@ async def get_job_status(
         utils.exc.NotFoundError: no matches for '{search_filter}'.
         ValidationError: the document does not satisfy the schema passed
     """
-    _, user = project_and_user
-    job = await jobs_service.get_readable_job(database, job_id=job_id, user=user)
+    job = await jobs_service.get_readable_job(database, job_id=job_id, user=owner.user)
     return JobStatusResponse.from_job(job)
 
 

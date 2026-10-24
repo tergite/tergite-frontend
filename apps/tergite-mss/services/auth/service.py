@@ -22,30 +22,26 @@ from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend
 from pymongo.errors import CollectionInvalid
 
-from libs.storage import Database
 from libs.storage.mongo.schema import get_validator
 from utils.config import AuthConfig, Oauth2ClientConfig
 
-from . import app_tokens, providers, users
+from . import providers, users
 from .users.dtos import User
 from .utils import get_oauth2_client
 
 
 async def on_startup(
     db: motor.motor_asyncio.AsyncIOMotorDatabase,
-    database: Database,
     conf: AuthConfig,
 ) -> None:
     """Runs init operations when the application is starting up
 
     Args:
         db: the mongo database where the users are stored
-        database: the database where the projects and app tokens are stored
         conf: the auth configuration, whose clients decide who may sign in and how
     """
     users.set_auth_clients(conf.clients)
     providers.set_auth_providers(conf.clients)
-    app_tokens.on_startup(database)
     await init_beanie(database=db, document_models=[User])
     await _set_users_validator(db)
 
