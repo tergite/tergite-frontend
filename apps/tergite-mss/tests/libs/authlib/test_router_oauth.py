@@ -16,12 +16,17 @@ import httpx
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI, status
-from httpx_oauth.oauth2 import BaseOAuth2, OAuth2
+from httpx_oauth.oauth2 import BaseOAuth2
 
 from libs.authlib import exceptions
-from libs.authlib.authentication import AuthenticationBackend
+from libs.authlib.jwt import decode_jwt
+from libs.authlib.providers import OAuthProvider
 from libs.authlib.router.common import ErrorCode
-from libs.authlib.router.oauth import generate_state_token, get_oauth_router
+from libs.authlib.router.oauth import (
+    STATE_TOKEN_AUDIENCE,
+    generate_state_token,
+    get_oauth_router,
+)
 from tests.libs.authlib.conftest import (
     AsyncMethodMocker,
     UserManagerMock,
@@ -37,12 +42,13 @@ def user_database_kind(request) -> str:
 @pytest.fixture
 def app_factory(secret, get_user_manager_oauth, mock_authentication, oauth_client):
     def _app_factory(redirect_url: str = None) -> FastAPI:
+        provider = OAuthProvider(client=oauth_client, redirect_url=redirect_url)
         oauth_router = get_oauth_router(
-            oauth_client,
+            {"service1": provider},
             mock_authentication,
             get_user_manager_oauth,
             secret,
-            redirect_url,
+            should_add_app_alias=True,
         )
 
         app = FastAPI()
@@ -89,7 +95,7 @@ class TestAuthorize:
         )
 
         response = await test_app_client.get(
-            "/oauth/authorize", params={"scopes": ["scope1", "scope2"]}
+            "/oauth/service1/authorize", params={"scopes": ["scope1", "scope2"]}
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -109,7 +115,7 @@ class TestAuthorize:
         )
 
         response = await test_app_client_redirect_url.get(
-            "/oauth/authorize", params={"scopes": ["scope1", "scope2"]}
+            "/oauth/service1/authorize", params={"scopes": ["scope1", "scope2"]}
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -144,7 +150,7 @@ class TestCallback:
         )
 
         response = await test_app_client.get(
-            "/oauth/callback",
+            "/oauth/service1/callback",
             params={"code": "CODE", "state": "STATE"},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -170,7 +176,7 @@ class TestCallback:
         ).side_effect = exceptions.UserAlreadyExists
 
         response = await test_app_client.get(
-            "/oauth/callback",
+            "/oauth/service1/callback",
             params={"code": "CODE", "state": state_jwt},
         )
 
@@ -200,7 +206,7 @@ class TestCallback:
         )
 
         response = await test_app_client.get(
-            "/oauth/callback",
+            "/oauth/service1/callback",
             params={"code": "CODE", "state": state_jwt},
         )
 
@@ -232,7 +238,7 @@ class TestCallback:
         )
 
         response = await test_app_client.get(
-            "/oauth/callback",
+            "/oauth/service1/callback",
             params={"code": "CODE", "state": state_jwt},
         )
 
@@ -260,7 +266,7 @@ class TestCallback:
         )
 
         response = await test_app_client_redirect_url.get(
-            "/oauth/callback",
+            "/oauth/service1/callback",
             params={"code": "CODE", "state": state_jwt},
         )
 
@@ -293,7 +299,7 @@ class TestCallback:
         )
 
         response = await test_app_client_redirect_url.get(
-            "/oauth/callback",
+            "/oauth/service1/callback",
             params={"code": "CODE", "state": state_jwt},
         )
 
@@ -305,15 +311,89 @@ class TestCallback:
 @pytest.mark.asyncio
 @pytest.mark.oauth
 @pytest.mark.router
-async def test_route_names(
-    test_app: FastAPI, oauth_client: OAuth2, mock_authentication: AuthenticationBackend
-):
-    authorize_route_name = (
-        f"oauth:{oauth_client.name}.{mock_authentication.name}.authorize"
-    )
-    assert test_app.url_path_for(authorize_route_name) == "/oauth/authorize"
+async def test_route_names(test_app: FastAPI):
+    authorize_path = test_app.url_path_for("oauth:authorize", provider="service1")
+    callback_path = test_app.url_path_for("oauth:callback", provider="service1")
 
-    callback_route_name = (
-        f"oauth:{oauth_client.name}.{mock_authentication.name}.callback"
+    assert authorize_path == "/oauth/service1/authorize"
+    assert callback_path == "/oauth/service1/callback"
+
+
+@pytest.mark.asyncio
+@pytest.mark.oauth
+@pytest.mark.router
+async def test_unknown_provider_is_not_found(test_app_client: httpx.AsyncClient):
+    response = await test_app_client.get("/oauth/service9/authorize")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+@pytest.mark.oauth
+@pytest.mark.router
+async def test_app_alias_serves_the_same_routes(
+    async_method_mocker: AsyncMethodMocker,
+    test_app_client: httpx.AsyncClient,
+    oauth_client: BaseOAuth2,
+):
+    async_method_mocker(
+        oauth_client, "get_authorization_url", return_value="AUTHORIZATION_URL"
     )
-    assert test_app.url_path_for(callback_route_name) == "/oauth/callback"
+
+    response = await test_app_client.get("/oauth/app/service1/authorize")
+
+    assert response.json() == {"authorization_url": "AUTHORIZATION_URL"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.oauth
+@pytest.mark.router
+async def test_auto_authorize_redirects_with_next_in_the_state(
+    async_method_mocker: AsyncMethodMocker,
+    test_app_client: httpx.AsyncClient,
+    oauth_client: BaseOAuth2,
+    secret,
+):
+    get_authorization_url_mock = async_method_mocker(
+        oauth_client, "get_authorization_url", return_value="https://camelot.bt/login"
+    )
+
+    response = await test_app_client.get(
+        "/oauth/service1/auto-authorize", params={"next": "https://camelot.bt/home"}
+    )
+
+    _, state, _ = get_authorization_url_mock.call_args.args
+    state_data = decode_jwt(state, secret, [STATE_TOKEN_AUDIENCE])
+    assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
+    assert response.headers["location"] == "https://camelot.bt/login"
+    assert state_data["next"] == "https://camelot.bt/home"
+
+
+@pytest.mark.asyncio
+@pytest.mark.oauth
+@pytest.mark.router
+async def test_callback_redirects_to_next_once_logged_in(
+    async_method_mocker: AsyncMethodMocker,
+    test_app_client: httpx.AsyncClient,
+    oauth_client: BaseOAuth2,
+    user_oauth: UserOAuthModel,
+    user_manager_oauth: UserManagerMock,
+):
+    state_jwt = generate_state_token({"next": "https://camelot.bt/home"}, "SECRET")
+    async_method_mocker(
+        oauth_client, "get_access_token", return_value={"access_token": "TOKEN"}
+    )
+    async_method_mocker(
+        oauth_client, "get_id_email", return_value=("user_oauth1", user_oauth.email)
+    )
+    oauth_callback_mock = async_method_mocker(
+        user_manager_oauth, "oauth_callback", return_value=user_oauth
+    )
+
+    response = await test_app_client.get(
+        "/oauth/service1/callback", params={"code": "CODE", "state": state_jwt}
+    )
+
+    assert response.status_code == status.HTTP_307_TEMPORARY_REDIRECT
+    assert response.headers["location"] == "https://camelot.bt/home"
+    assert oauth_callback_mock.call_args.args[0] == "service1"

@@ -19,7 +19,7 @@ from libs.authlib.exceptions import (
     UserAlreadyExists,
     UserNotExists,
 )
-from libs.authlib.providers import ProviderRules
+from libs.authlib.providers import OAuthProvider
 from libs.storage import generate_id
 from tests.libs.authlib.conftest import (
     UserManager,
@@ -184,11 +184,11 @@ class TestOAuthCallback:
 
 
 @pytest.fixture
-def ruled_user_manager(user_database_oauth):
-    rules = {
-        "service1": ProviderRules(email_regex=r".*@camelot\.bt$", roles=("researcher",))
-    }
-    return UserManagerOAuth(user_database_oauth, UserOAuthModel, rules)
+def ruled_user_manager(user_database_oauth, oauth_client):
+    provider = OAuthProvider(
+        client=oauth_client, email_regex=r".*@camelot\.bt$", roles=("researcher",)
+    )
+    return UserManagerOAuth(user_database_oauth, UserOAuthModel, {"service1": provider})
 
 
 @pytest.mark.asyncio

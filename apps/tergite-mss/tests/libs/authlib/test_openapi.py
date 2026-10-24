@@ -16,6 +16,7 @@ import pytest_asyncio
 from fastapi import FastAPI, status
 
 from libs.authlib.fastapi_users import FastAPIUsers
+from libs.authlib.providers import OAuthProvider
 from tests.libs.authlib.conftest import IDType, UserModel
 
 
@@ -31,7 +32,11 @@ def test_app(
     app = FastAPI()
     app.include_router(fastapi_users.get_auth_router(mock_authentication))
     app.include_router(
-        fastapi_users.get_oauth_router(oauth_client, mock_authentication, secret)
+        fastapi_users.get_oauth_router(
+            {"service1": OAuthProvider(client=oauth_client)},
+            mock_authentication,
+            secret,
+        )
     )
 
     return app
@@ -57,9 +62,9 @@ async def test_openapi_route(test_app_client: httpx.AsyncClient):
 
 class TestOAuth2:
     def test_oauth_authorize_status_codes(self, openapi_dict):
-        route = openapi_dict["paths"]["/authorize"]["get"]
+        route = openapi_dict["paths"]["/{provider}/authorize"]["get"]
         assert list(route["responses"].keys()) == ["200", "422"]
 
     def test_oauth_callback_status_codes(self, openapi_dict):
-        route = openapi_dict["paths"]["/callback"]["get"]
-        assert list(route["responses"].keys()) == ["200", "400", "422"]
+        route = openapi_dict["paths"]["/{provider}/callback"]["get"]
+        assert set(route["responses"]) == {"200", "204", "307", "400", "422"}

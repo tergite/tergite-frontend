@@ -10,12 +10,14 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Optional
+"""The OAuth routes of every provider: /{provider}/authorize, auto-authorize and callback"""
+from typing import Dict, List, Mapping, Optional, Tuple
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
 from httpx_oauth.integrations.fastapi import OAuth2AuthorizeCallback
-from httpx_oauth.oauth2 import BaseOAuth2, OAuth2Token
+from httpx_oauth.oauth2 import OAuth2Token
 from pydantic import BaseModel
 
 from libs.authlib import models
@@ -23,9 +25,11 @@ from libs.authlib.authentication import AuthenticationBackend, Strategy
 from libs.authlib.exceptions import UserAlreadyExists
 from libs.authlib.jwt import SecretType, decode_jwt, generate_jwt
 from libs.authlib.manager import BaseUserManager, UserManagerDependency
+from libs.authlib.providers import OAuthProvider
 from libs.authlib.router.common import ErrorCode, ErrorModel
 
 STATE_TOKEN_AUDIENCE = "fastapi-users:oauth-state"
+CALLBACK_ROUTE_NAME = "oauth:callback"
 
 
 class OAuth2AuthorizeResponse(BaseModel):
@@ -40,57 +44,105 @@ def generate_state_token(
 
 
 def get_oauth_router(
-    oauth_client: BaseOAuth2,
+    providers: Mapping[str, OAuthProvider],
     backend: AuthenticationBackend[models.UP, models.ID],
     get_user_manager: UserManagerDependency[models.UP, models.ID],
     state_secret: SecretType,
-    redirect_url: Optional[str] = None,
-    associate_by_email: bool = False,
-    is_verified_by_default: bool = False,
+    should_add_app_alias: bool = False,
 ) -> APIRouter:
-    """Generate a router with the OAuth routes."""
-    router = APIRouter()
-    callback_route_name = f"oauth:{oauth_client.name}.{backend.name}.callback"
+    """Gets a router with the OAuth routes of the providers, named in each path
 
-    if redirect_url is not None:
-        oauth2_authorize_callback = OAuth2AuthorizeCallback(
-            oauth_client,
-            redirect_url=redirect_url,
-        )
-    else:
-        oauth2_authorize_callback = OAuth2AuthorizeCallback(
-            oauth_client,
-            route_name=callback_route_name,
+    An unknown provider gets a 404.
+
+    Args:
+        providers: the providers by name, as their paths name them
+        backend: the authentication backend that logs users in
+        get_user_manager: the user manager dependency
+        state_secret: the secret of the state token passed through the provider
+        should_add_app_alias: whether the routes are also served under /app, as
+            /app/{provider}/authorize
+    """
+    provider_router = APIRouter()
+
+    def get_provider(provider: str) -> OAuthProvider:
+        if provider not in providers:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        return providers[provider]
+
+    def get_redirect_url(request: Request, provider: str) -> str:
+        redirect_url = get_provider(provider).redirect_url
+        if redirect_url is not None:
+            return redirect_url
+        return str(request.url_for(CALLBACK_ROUTE_NAME, provider=provider))
+
+    async def get_authorization_url(
+        request: Request,
+        provider: str,
+        scopes: Optional[List[str]],
+        next_url: Optional[str],
+    ) -> str:
+        """Gets the provider's authorization URL, with `next` kept in the state"""
+        state_data: Dict[str, Optional[str]] = {"next": next_url}
+        state = generate_state_token(state_data, state_secret)
+        return await get_provider(provider).client.get_authorization_url(
+            get_redirect_url(request, provider), state, scopes
         )
 
-    @router.get(
-        "/authorize",
-        name=f"oauth:{oauth_client.name}.{backend.name}.authorize",
+    async def get_access_token_state(
+        request: Request,
+        provider: str,
+        code: Optional[str] = None,
+        code_verifier: Optional[str] = None,
+        state: Optional[str] = None,
+        error: Optional[str] = None,
+    ) -> Tuple[OAuth2Token, Optional[str]]:
+        """Exchanges the code the provider sent back for an access token"""
+        authorize_callback = OAuth2AuthorizeCallback(
+            get_provider(provider).client,
+            redirect_url=get_redirect_url(request, provider),
+        )
+        return await authorize_callback(request, code, code_verifier, state, error)
+
+    @provider_router.get(
+        "/{provider}/authorize",
+        name="oauth:authorize",
         response_model=OAuth2AuthorizeResponse,
     )
     async def authorize(
-        request: Request, scopes: list[str] = Query(None)
+        request: Request,
+        provider: str,
+        scopes: List[str] = Query(None),
+        next_url: Optional[str] = Query(None, alias="next"),
     ) -> OAuth2AuthorizeResponse:
-        if redirect_url is not None:
-            authorize_redirect_url = redirect_url
-        else:
-            authorize_redirect_url = str(request.url_for(callback_route_name))
-
-        state_data: dict[str, str] = {}
-        state = generate_state_token(state_data, state_secret)
-        authorization_url = await oauth_client.get_authorization_url(
-            authorize_redirect_url,
-            state,
-            scopes,
+        authorization_url = await get_authorization_url(
+            request, provider, scopes, next_url
         )
-
         return OAuth2AuthorizeResponse(authorization_url=authorization_url)
 
-    @router.get(
-        "/callback",
-        name=callback_route_name,
+    @provider_router.get(
+        "/{provider}/auto-authorize",
+        name="oauth:auto-authorize",
+        response_class=RedirectResponse,
+    )
+    async def authorize_by_redirect(
+        request: Request,
+        provider: str,
+        scopes: List[str] = Query(None),
+        next_url: Optional[str] = Query(None, alias="next"),
+    ) -> str:
+        """Redirects to the provider's authorization URL"""
+        return await get_authorization_url(request, provider, scopes, next_url)
+
+    @provider_router.get(
+        "/{provider}/callback",
+        name=CALLBACK_ROUTE_NAME,
         description="The response varies based on the authentication backend used.",
+        status_code=status.HTTP_204_NO_CONTENT,
         responses={
+            **backend.transport.get_openapi_login_responses_success(),
+            status.HTTP_307_TEMPORARY_REDIRECT: {
+                "description": "Logged in; redirects to the `next` URL in the state."
+            },
             status.HTTP_400_BAD_REQUEST: {
                 "model": ErrorModel,
                 "content": {
@@ -112,14 +164,16 @@ def get_oauth_router(
     )
     async def callback(
         request: Request,
-        access_token_state: tuple[OAuth2Token, str] = Depends(
-            oauth2_authorize_callback
+        provider: str,
+        access_token_state: Tuple[OAuth2Token, Optional[str]] = Depends(
+            get_access_token_state
         ),
         user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
         strategy: Strategy[models.UP, models.ID] = Depends(backend.get_strategy),
     ):
+        oauth_provider = get_provider(provider)
         token, state = access_token_state
-        account_id, account_email = await oauth_client.get_id_email(
+        account_id, account_email = await oauth_provider.client.get_id_email(
             token["access_token"]
         )
 
@@ -130,21 +184,21 @@ def get_oauth_router(
             )
 
         try:
-            decode_jwt(state, state_secret, [STATE_TOKEN_AUDIENCE])
+            data = decode_jwt(state, state_secret, [STATE_TOKEN_AUDIENCE])
         except jwt.DecodeError:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = await user_manager.oauth_callback(
-                oauth_client.name,
+                provider,
                 token["access_token"],
                 account_id,
                 account_email,
                 token.get("expires_at"),
                 token.get("refresh_token"),
                 request,
-                associate_by_email=associate_by_email,
-                is_verified_by_default=is_verified_by_default,
+                associate_by_email=oauth_provider.should_associate_by_email,
+                is_verified_by_default=oauth_provider.is_verified_by_default,
             )
         except UserAlreadyExists:
             raise HTTPException(
@@ -161,6 +215,14 @@ def get_oauth_router(
         # Authenticate
         response = await backend.login(strategy, user)
         await user_manager.on_after_login(user, request, response)
+
+        next_url = data.get("next")
+        if next_url is not None:
+            return RedirectResponse(next_url, headers=response.headers)
         return response
 
+    router = APIRouter()
+    router.include_router(provider_router)
+    if should_add_app_alias:
+        router.include_router(provider_router, prefix="/app")
     return router

@@ -208,10 +208,8 @@ boolean: libs/authlib/authentication/authenticator.py::Authenticator.current_use
 boolean: libs/authlib/authentication/transport/cookie.py::CookieTransport.__init__(cookie_httponly)
 boolean: libs/authlib/authentication/transport/cookie.py::CookieTransport.__init__(cookie_secure)
 boolean: libs/authlib/fastapi_users.py::FastAPIUsers.get_auth_router(requires_verification)
-boolean: libs/authlib/fastapi_users.py::FastAPIUsers.get_oauth_router(associate_by_email)
 boolean: libs/authlib/manager.py::BaseUserManager.oauth_callback(associate_by_email)
 boolean: libs/authlib/router/auth.py::get_auth_router(requires_verification)
-boolean: libs/authlib/router/oauth.py::get_oauth_router(associate_by_email)
 http-exception: libs/authlib/authentication/authenticator.py
 http-exception: libs/authlib/router/oauth.py
 private-helper-position: libs/authlib/jwt.py::decode_jwt

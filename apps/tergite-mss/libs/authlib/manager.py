@@ -16,7 +16,7 @@ from typing import Any, Awaitable, Callable, Generic, Mapping, Optional, Set, Ty
 from fastapi import Request, Response
 
 from libs.authlib import exceptions, models, users
-from libs.authlib.providers import ProviderRules
+from libs.authlib.providers import OAuthProvider
 from libs.authlib.types import DependencyCallable
 from libs.storage import Database, is_id
 
@@ -27,25 +27,25 @@ class BaseUserManager(Generic[models.UP, models.ID]):
 
     :param database: The database the users are kept in.
     :param user_schema: The storage schema of the users.
-    :param provider_rules: The rules of each OAuth provider whose sign-ins are taken;
-    None takes every provider's, granting no roles.
+    :param providers: The OAuth providers whose sign-ins are taken, by name; None takes
+    every provider's, granting no roles.
     :param on_after_login: What the app does with each user who logs in, if anything.
     """
 
     database: Database
     user_schema: Type[models.UP]
-    provider_rules: Optional[Mapping[str, ProviderRules]]
+    providers: Optional[Mapping[str, OAuthProvider]]
 
     def __init__(
         self,
         database: Database,
         user_schema: Type[models.UP],
-        provider_rules: Optional[Mapping[str, ProviderRules]] = None,
+        providers: Optional[Mapping[str, OAuthProvider]] = None,
         on_after_login: Optional[Callable[[models.UP], Awaitable[Any]]] = None,
     ):
         self.database = database
         self.user_schema = user_schema
-        self.provider_rules = provider_rules
+        self.providers = providers
         self._on_after_login = on_after_login
 
     def parse_id(self, value: Any) -> models.ID:
@@ -231,14 +231,14 @@ class BaseUserManager(Generic[models.UP, models.ID]):
         :raises UnsupportedProvider: The provider has no rules.
         :raises EmailNotPermitted: The email does not match the provider's email_regex.
         """
-        if self.provider_rules is None:
+        if self.providers is None:
             return set()
-        rules = self.provider_rules.get(oauth_name)
-        if rules is None:
+        provider = self.providers.get(oauth_name)
+        if provider is None:
             raise exceptions.UnsupportedProvider("this oauth login type not supported")
-        if re.match(rules.email_regex, email) is None:
+        if re.match(provider.email_regex, email) is None:
             raise exceptions.EmailNotPermitted("user not permitted")
-        return set(rules.roles)
+        return set(provider.roles)
 
 
 UserManagerDependency = DependencyCallable[BaseUserManager[models.UP, models.ID]]

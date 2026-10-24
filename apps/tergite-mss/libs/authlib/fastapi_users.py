@@ -10,8 +10,8 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from collections.abc import Sequence
-from typing import Generic, Optional
+from collections.abc import Mapping, Sequence
+from typing import Generic
 
 from fastapi import APIRouter
 
@@ -19,14 +19,8 @@ from libs.authlib import models
 from libs.authlib.authentication import AuthenticationBackend, Authenticator
 from libs.authlib.jwt import SecretType
 from libs.authlib.manager import UserManagerDependency
-from libs.authlib.router import get_auth_router
-
-try:
-    from httpx_oauth.oauth2 import BaseOAuth2
-
-    from libs.authlib.router import get_oauth_router
-except ModuleNotFoundError:  # pragma: no cover
-    BaseOAuth2 = type  # type: ignore
+from libs.authlib.providers import OAuthProvider
+from libs.authlib.router import get_auth_router, get_oauth_router
 
 
 class FastAPIUsers(Generic[models.UP, models.ID]):
@@ -73,33 +67,23 @@ class FastAPIUsers(Generic[models.UP, models.ID]):
 
     def get_oauth_router(
         self,
-        oauth_client: BaseOAuth2,
+        providers: Mapping[str, OAuthProvider],
         backend: AuthenticationBackend[models.UP, models.ID],
         state_secret: SecretType,
-        redirect_url: Optional[str] = None,
-        associate_by_email: bool = False,
-        is_verified_by_default: bool = False,
+        should_add_app_alias: bool = False,
     ) -> APIRouter:
         """
-        Return an OAuth router for a given OAuth client and authentication backend.
+        Return the OAuth router of the providers, each named in its routes' paths.
 
-        :param oauth_client: The HTTPX OAuth client instance.
+        :param providers: The providers by name.
         :param backend: The authentication backend instance.
         :param state_secret: Secret used to encode the state JWT.
-        :param redirect_url: Optional arbitrary redirect URL for the OAuth2 flow.
-        If not given, the URL to the callback endpoint will be generated.
-        :param associate_by_email: If True, any existing user with the same
-        e-mail address will be associated to this user. Defaults to False.
-        :param is_verified_by_default: If True, the `is_verified` flag will be
-        set to `True` on newly created user. Make sure the OAuth Provider you're
-        using does verify the email address before enabling this flag.
+        :param should_add_app_alias: Whether the routes are also served under /app.
         """
         return get_oauth_router(
-            oauth_client,
+            providers,
             backend,
             self.get_user_manager,
             state_secret,
-            redirect_url,
-            associate_by_email,
-            is_verified_by_default,
+            should_add_app_alias,
         )

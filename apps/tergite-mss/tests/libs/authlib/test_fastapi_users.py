@@ -19,6 +19,7 @@ import pytest_asyncio
 from fastapi import Depends, FastAPI, status
 
 from libs.authlib import FastAPIUsers, schemas
+from libs.authlib.providers import OAuthProvider
 from tests.libs.authlib.conftest import IDType, User, UserModel
 
 
@@ -37,7 +38,11 @@ async def test_app_client(
     app = FastAPI()
     app.include_router(fastapi_users.get_auth_router(mock_authentication))
     app.include_router(
-        fastapi_users.get_oauth_router(oauth_client, mock_authentication, secret)
+        fastapi_users.get_oauth_router(
+            {"service1": OAuthProvider(client=oauth_client)},
+            mock_authentication,
+            secret,
+        )
     )
 
     @app.get("/current-user", response_model=User)
