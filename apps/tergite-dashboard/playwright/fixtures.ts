@@ -39,9 +39,15 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   ],
 
   page: async ({ page, apiUrl }, use) => {
-    await page.route(`${BUILT_API_URL}/**`, (route) =>
-      route.continue({ url: route.request().url().replace(BUILT_API_URL, apiUrl) }),
-    );
+    // the browser follows a redirect without routing it, so one to the built API must name this
+    // worker's API itself
+    await page.route(`${BUILT_API_URL}/**`, async (route) => {
+      const url = route.request().url().replace(BUILT_API_URL, apiUrl);
+      const response = await route.fetch({ url, maxRedirects: 0 });
+      const headers = response.headers();
+      if (headers.location) headers.location = headers.location.replace(BUILT_API_URL, apiUrl);
+      await route.fulfill({ response, headers });
+    });
     await use(page);
   },
 
@@ -85,7 +91,7 @@ export function waitForApi(page: Page, method: string, pathPrefix: string) {
 }
 
 /** Signs the session cookie's JWT as the mock API's generateJwt does; importing that would load its JSON */
-function signSession(user: User, expiry: number): Promise<string> {
+export function signSession(user: User, expiry: number): Promise<string> {
   return new SignJWT({ sub: user.id, roles: [...user.roles] })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()

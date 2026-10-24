@@ -1,6 +1,6 @@
-import { decodeJwt, SignJWT } from "jose";
+import { decodeJwt } from "jose";
 import { type Page } from "@playwright/test";
-import { expect, readFixture, test, waitForApi } from "./fixtures";
+import { expect, readFixture, signSession, test, waitForApi } from "./fixtures";
 import { type AuthProvider, type User } from "../types";
 
 const invalidFormatEmailAddresses = ["john", "1", "john.com", "http://example.com"];
@@ -25,22 +25,11 @@ for (const user of users) {
       const cookieName = process.env.VITE_COOKIE_NAME!;
       const cookieExpiry = Math.round((Date.now() + 800_000) / 1000);
 
-      // the browser follows redirects unrouted, so the API's redirect to itself must name this worker's API
-      await page.route(
-        (url) => url.href.startsWith(apiBaseUrl) && url.pathname.endsWith("/auto-authorize"),
-        async (route) => {
-          const url = route.request().url().replace(apiBaseUrl, apiUrl);
-          const response = await route.fetch({ url, maxRedirects: 0 });
-          const location = response.headers().location.replace(apiBaseUrl, apiUrl);
-          await route.fulfill({ response, headers: { ...response.headers(), location } });
-        },
-      );
-
       if (isFullE2E) {
         const openidAuthUrl = process.env.OPENID_AUTH_URL!;
         // stand-ins for a real OpenID Connect server
         await page.route(`${dashboardUrl}?set-cookie=true`, async (route) => {
-          const token = await signJwt(user, cookieExpiry);
+          const token = await signSession(user, cookieExpiry);
           const cookie = `${cookieName}=${token}; Domain=${domain}; Secure; HttpOnly; SameSite=Lax; Path=/; Expires=${cookieExpiry}`;
           const response = await route.fetch();
           await route.fulfill({
@@ -202,11 +191,3 @@ function nextButton(page: Page) {
 }
 
 /** Signs a session JWT as the mock API's generateJwt does; importing that would load its JSON */
-function signJwt(user: User, expiry: number): Promise<string> {
-  return new SignJWT({ sub: user.id, roles: [...user.roles] })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setAudience([process.env.AUTH_AUDIENCE!])
-    .setExpirationTime(expiry)
-    .sign(new TextEncoder().encode(process.env.JWT_SECRET!));
-}
