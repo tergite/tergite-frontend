@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from random import randint
 
 import pytest
+from bson import ObjectId
 from pytest_lazyfixture import lazy_fixture
 
 from services.auth import AppToken
@@ -402,6 +403,18 @@ def test_expired_app_token_fails(
 
         assert response.status_code == 401
         assert got == expected
+
+
+def test_app_token_of_deleted_user_fails(db, client):
+    """An app token whose user is gone raises 401 HTTP error"""
+    headers = {"Authorization": f"Bearer {TEST_APP_TOKEN_DICT['token']}"}
+    db["auth_users"].delete_one({"_id": ObjectId(TEST_APP_TOKEN_DICT["user_id"])})
+
+    with client as client:
+        response = client.get("/jobs/", headers=headers)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized"}
 
 
 @pytest.mark.parametrize("app_token", _TOKENS)
