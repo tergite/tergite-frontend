@@ -228,6 +228,7 @@ async def update_qpu_usage(
 
     if is_depleted:
         await notices.create_system_notice(
+            database,
             user_ids=project.user_ids,
             notice_type=NoticeType.QPU_SECONDS_DEPLETED.id,
             context=ProjectRequestContext(
@@ -239,6 +240,7 @@ async def update_qpu_usage(
 
     elif is_running_low and was_above_threshold:
         await notices.create_system_notice(
+            database,
             user_ids=[project.admin_id],
             notice_type=NoticeType.QPU_SECONDS_LOW.id,
             context=ProjectRequestContext(

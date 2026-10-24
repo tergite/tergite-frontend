@@ -65,6 +65,7 @@ async def create(
     # NOTE: We explicitly notify here instead of in a beanie hook because:
     #   - hooks would have hidden the logic to a reader/maintainer in future
     await notices.create_system_notice(
+        database,
         user_ids=target_user_ids,
         notice_type=record.notice_type.id,
         ref_id=record.id,
@@ -202,8 +203,11 @@ async def update(
     if payload.status in _DECIDED_STATUSES:
         resource = updated_record.metadata.resource
         # clear the notice for all possible approvers
-        await notices.clear_notices_by_reference({resource: [updated_record.id]})
+        await notices.clear_notices_by_reference(
+            database, {resource: [updated_record.id]}
+        )
         await notices.create_system_notice(
+            database,
             user_ids=(updated_record.requester_id,),
             notice_type=updated_record.notice_type.id,
             ref_id=updated_record.id,

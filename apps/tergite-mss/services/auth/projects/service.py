@@ -132,7 +132,7 @@ async def create_project(
     except DuplicateKeyError:
         raise ProjectExists()
 
-    await membership.notify_membership_change(None, project, actor)
+    await membership.notify_membership_change(database, None, project, actor)
     return project
 
 
@@ -178,7 +178,7 @@ async def update_project(
     updated_project = await database.update_one(
         Project, {"id": project.id}, {"$set": changes}
     )
-    await membership.notify_membership_change(project, updated_project, actor)
+    await membership.notify_membership_change(database, project, updated_project, actor)
     return updated_project
 
 
@@ -201,7 +201,9 @@ async def remove_member(
     updated_project = await database.update_one(
         Project, {"id": project.id}, {"$set": {"user_ids": user_ids}}
     )
-    await membership.notify_membership_revoked(updated_project, member_id, actor)
+    await membership.notify_membership_revoked(
+        database, updated_project, member_id, actor
+    )
     return updated_project
 
 

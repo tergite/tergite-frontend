@@ -45,10 +45,6 @@ if TYPE_CHECKING:
 # on_startup replaces these with what the app is configured with
 _conf = NoticesConfig()
 _is_email_enabled = False
-# FIXME: create_system_notice and clear_notices_by_reference use this Database because
-#   their callers in auth and requests have none to pass yet; they take one as an
-#   argument once those callers do (step 5)
-_database: Optional[Database] = None
 _BROADCAST_TYPE = NoticeType.CUSTOM_BROADCAST.id
 
 
@@ -172,7 +168,9 @@ async def set_read_status_many(
     return broadcast_count + direct_count
 
 
-async def clear_notices_by_reference(ref_type_ids_map: Dict[RefType, List[str]]) -> int:
+async def clear_notices_by_reference(
+    database: Database, ref_type_ids_map: Dict[RefType, List[str]]
+) -> int:
     """Marks read every unread notice associated with the given reference ids per type
 
     This is useful in bulk clearing notices that no longer have any consequence,
@@ -181,6 +179,7 @@ async def clear_notices_by_reference(ref_type_ids_map: Dict[RefType, List[str]])
     for that admin to go clear all the notices manually.
 
     Args:
+        database: the database where the notices are stored
         ref_type_ids_map: mapping of reference types and the reference IDs
 
     Returns:
@@ -204,15 +203,15 @@ async def clear_notices_by_reference(ref_type_ids_map: Dict[RefType, List[str]])
         ],
     }
     expire_now = {"updated_at": timestamp, "expires_at": now}
-    count = await _database.update_many(
+    count = await database.update_many(
         Notice, {**unread_filter, "type": _BROADCAST_TYPE}, {"$set": expire_now}
     )
 
     # a recipient's notice is read when it holds its own user_id in dismissed_by
     direct_filter = {**unread_filter, "type": {"$ne": _BROADCAST_TYPE}}
-    user_ids = await _database.find_distinct(Notice, "user_id", filter=direct_filter)
+    user_ids = await database.find_distinct(Notice, "user_id", filter=direct_filter)
     for user_id in user_ids:
-        count += await _database.update_many(
+        count += await database.update_many(
             Notice,
             {**direct_filter, "user_id": user_id},
             {
@@ -253,6 +252,7 @@ async def publish_custom_notice(
 
 
 async def create_system_notice(
+    database: Database,
     user_ids: Sequence[str],
     notice_type: NoticeTypeId,
     context: Optional[BaseNoticeContext] = None,
@@ -266,6 +266,7 @@ async def create_system_notice(
     deliver one must not fail the operation that triggered it.
 
     Args:
+        database: the database where the notices are stored
         user_ids: the recipients; one document is written per user
         notice_type: the notice type, which selects the copy and the channel policy
         context: values for generating the notice content; a project request context
@@ -281,10 +282,10 @@ async def create_system_notice(
 
     try:
         user_ids = [str(v) for v in user_ids]
-        context = await _with_project_name(context)
-        template = await _database.get(NoticeTemplate, notice_type)
+        context = await _with_project_name(database, context)
+        template = await database.get(NoticeTemplate, notice_type)
         email_prefs_map = await get_email_preferences_map(
-            _database, notice_type, user_ids=user_ids
+            database, notice_type, user_ids=user_ids
         )
         email_status_map = {
             user_id: (
@@ -308,7 +309,7 @@ async def create_system_notice(
             )
             for user_id in user_ids
         ]
-        return await _database.insert_many(Notice, records)
+        return await database.insert_many(Notice, records)
     except Exception:
         logger.exception(f"failed to emit {notice_type} notification")
         return []
@@ -459,10 +460,9 @@ async def on_startup(
         emailer: the emailer instance that sends emails; None if email is not configured
         conf: the notices configuration
     """
-    global _conf, _is_email_enabled, _database
+    global _conf, _is_email_enabled
     _conf = conf
     _is_email_enabled = emailer is not None
-    _database = database
 
     await _init_notice_templates_in_db(database)
 
@@ -557,6 +557,7 @@ def _with_default_email_preferences(
 
 
 async def _with_project_name(
+    database: Database,
     context: Optional[BaseNoticeContext],
 ) -> Optional[BaseNoticeContext]:
     """Fills in the project name of a project request context that has only a project_id
@@ -576,7 +577,7 @@ async def _with_project_name(
     from services.auth.projects.dtos import DeletedProject, Project
 
     for schema in (Project, DeletedProject):
-        project = await _database.get(schema, context.project_id)
+        project = await database.get(schema, context.project_id)
         if project is not None:
             return context.model_copy(update={"project_name": project.name})
     return context

@@ -16,6 +16,7 @@ from beanie import PydanticObjectId
 from fastapi_users.password import PasswordHelper
 from pydantic import BaseModel, Field
 
+from libs.storage import Database
 from services import notices
 from services.notices import NoticeType, ProjectRequestContext, RefType
 
@@ -26,7 +27,10 @@ _password_helper = PasswordHelper()
 
 
 async def notify_membership_change(
-    initial_project: Optional[Project], final_project: Project, actor: User
+    database: Database,
+    initial_project: Optional[Project],
+    final_project: Project,
+    actor: User,
 ) -> None:
     """Tells users whose standing on a project changed
 
@@ -34,6 +38,7 @@ async def notify_membership_change(
     lost access is only visible as a diff against the previous document.
 
     Args:
+        database: the database where the notices are stored
         initial_project: the project as it was, or None when it has just been created
         final_project: the project as it now is
         actor: the superuser who made the change
@@ -47,6 +52,7 @@ async def notify_membership_change(
     new_ids = set(final_project.user_ids)
 
     await notices.create_system_notice(
+        database,
         user_ids=list(new_ids - old_ids),
         notice_type=NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
         context=context,
@@ -55,6 +61,7 @@ async def notify_membership_change(
     )
 
     await notices.create_system_notice(
+        database,
         user_ids=list(old_ids - new_ids),
         notice_type=NoticeType.PROJECT_MEMBERSHIP_REVOKED.id,
         context=context,
@@ -65,6 +72,7 @@ async def notify_membership_change(
     old_admin = initial_project.admin_id if initial_project else None
     if final_project.admin_id != old_admin:
         await notices.create_system_notice(
+            database,
             user_ids=[final_project.admin_id],
             notice_type=NoticeType.PROJECT_ADMIN_ASSIGNED.id,
             context=context,
@@ -74,10 +82,11 @@ async def notify_membership_change(
 
 
 async def notify_membership_revoked(
-    project: Project, member_id: str, actor: User
+    database: Database, project: Project, member_id: str, actor: User
 ) -> None:
     """Tells a removed member they no longer belong to the project"""
     await notices.create_system_notice(
+        database,
         user_ids=[member_id],
         notice_type=NoticeType.PROJECT_MEMBERSHIP_REVOKED.id,
         context=ProjectRequestContext(

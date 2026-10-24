@@ -32,7 +32,7 @@ async def database(database_url, monkeypatch):
     database = Database(database_url, schemas=schemas)
     await database.setup()
     # on_startup sets the service's module state, which the running app shares
-    for name in ("_database", "_conf", "_is_email_enabled"):
+    for name in ("_conf", "_is_email_enabled"):
         monkeypatch.setattr(notices_service, name, getattr(notices_service, name))
     await notices_service.on_startup(database, None, conf=NoticesConfig())
     yield database

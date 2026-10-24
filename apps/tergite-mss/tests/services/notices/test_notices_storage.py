@@ -34,7 +34,7 @@ async def database(database_url, monkeypatch):
     database = Database(database_url, schemas=notices.SCHEMAS)
     await database.setup()
     # on_startup sets the service's module state, which the running app shares
-    for name in ("_database", "_conf", "_is_email_enabled"):
+    for name in ("_conf", "_is_email_enabled"):
         monkeypatch.setattr(notices_service, name, getattr(notices_service, name))
     await notices_service.on_startup(database, None, conf=NoticesConfig())
     yield database
@@ -43,6 +43,7 @@ async def database(database_url, monkeypatch):
 
 async def test_system_notices_are_written_per_user_from_their_template(database):
     created = await notices.create_system_notice(
+        database,
         user_ids=[_USER_ID, _OTHER_USER_ID],
         notice_type=NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
         context=ProjectRequestContext(project_name="p"),
@@ -118,7 +119,9 @@ async def test_notices_of_a_reference_are_cleared(database):
         ),
     )
 
-    count = await notices.clear_notices_by_reference({RefType.PROJECT: [ref_id]})
+    count = await notices.clear_notices_by_reference(
+        database, {RefType.PROJECT: [ref_id]}
+    )
 
     assert count == 2
     assert await notices.find_many(database, user_id=_USER_ID) == []
