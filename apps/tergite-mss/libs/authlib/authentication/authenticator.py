@@ -126,6 +126,7 @@ class Authenticator(Generic[models.UP, models.ID]):
         get_enabled_backends: Optional[
             EnabledBackendsDependency[models.UP, models.ID]
         ] = None,
+        roles: Sequence[str] = (),
     ):
         """
         Return a dependency callable to retrieve currently authenticated user.
@@ -147,6 +148,8 @@ class Authenticator(Generic[models.UP, models.ID]):
         By default, all specified authentication backends are enabled.
         Please not however that every backends will appear in the OpenAPI documentation,
         as FastAPI resolves it statically.
+        :param roles: The roles of which the user must have one, or throw
+        `403 Forbidden`. Defaults to none required.
         """
         signature = self._get_dependency_signature(get_enabled_backends)
 
@@ -160,6 +163,8 @@ class Authenticator(Generic[models.UP, models.ID]):
                 superuser=superuser,
                 **kwargs,
             )
+            if user and roles and user.roles.isdisjoint(roles):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
             return user
 
         return current_user_dependency

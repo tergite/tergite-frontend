@@ -73,11 +73,11 @@ def get_backend_none():
 
 @pytest.fixture
 def get_backend_user(user: UserModel):
-    def _get_backend_user(name: str = "user"):
+    def _get_backend_user(token_user: Optional[UserModel] = None, name: str = "user"):
         return AuthenticationBackend(
             name=name,
             transport=MockTransport(),
-            get_strategy=lambda: UserStrategy(user),
+            get_strategy=lambda: UserStrategy(token_user or user),
         )
 
     return _get_backend_user
@@ -121,6 +121,12 @@ def get_test_auth_client(get_user_manager, get_test_client):
                     get_enabled_backends=get_enabled_backends,
                 )
             ),
+        ):
+            return user
+
+        @app.get("/test-current-admin", response_model=User)
+        def test_current_admin(
+            user: UserModel = Depends(authenticator.current_user(roles=("admin",))),
         ):
             return user
 
@@ -182,6 +188,26 @@ async def test_authenticator_none_enabled(
     ):
         response = await client.get("/test-current-user")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.authentication
+@pytest.mark.asyncio
+async def test_a_user_without_a_required_role_is_forbidden(
+    get_test_auth_client, get_backend_user
+):
+    async for client in get_test_auth_client([get_backend_user()]):
+        response = await client.get("/test-current-admin")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.authentication
+@pytest.mark.asyncio
+async def test_a_user_with_a_required_role_passes(
+    get_test_auth_client, get_backend_user, superuser
+):
+    async for client in get_test_auth_client([get_backend_user(superuser)]):
+        response = await client.get("/test-current-admin")
+        assert response.json()["id"] == superuser.id
 
 
 @pytest.mark.authentication
