@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 """Data Transfer Objects for the notices service"""
 from datetime import datetime
-from enum import Enum, nonmember
+from enum import Enum
 from typing import Any, Dict, List, Literal, NamedTuple, Optional, Self, Type, cast
 
 from pydantic import (
@@ -252,8 +252,6 @@ class NoticeType(NoticeTypeInfo, Enum):
         context_cls=CustomNoticeContext,
     )
 
-    __str_member_map__ = nonmember({})
-
     @classmethod
     def from_str(cls, value: str) -> Self:
         """Gets the NoticeTypeEnum from a string.
@@ -261,9 +259,10 @@ class NoticeType(NoticeTypeInfo, Enum):
         Raises:
             KeyError: if the string is not a valid notice type.
         """
-        if not cls.__str_member_map__:
-            cls.__str_member_map__ = {v.id: v for v in cls}
-        return cls.__str_member_map__[value]
+        for notice_type in cls:
+            if notice_type.id == value:
+                return notice_type
+        raise KeyError(value)
 
     def __str__(self):
         return self.id
