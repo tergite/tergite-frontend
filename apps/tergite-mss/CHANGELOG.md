@@ -85,6 +85,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   that read it (job creation, bookings, the admin BCC routes); it was an unexplained 500.
 - Fixed GET `/me/profile` reporting `is_superuser` as false for every user, admins included.
 - An app token whose user was deleted now gets a 401 on the job routes; it caused a 500.
+- An app token of a deactivated user now gets a 401 on the job routes; it kept working.
 - The 400 for too many items in a list query param (`id`, `user_ids`, `name`) no longer starts
   its `detail` with `400: `.
 - An unhandled server error now answers with a 500 carrying the CORS headers. Errors with no

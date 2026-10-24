@@ -84,6 +84,17 @@ def test_an_owner_passes_a_rule_only_with_what_it_needs(
 
 
 @pytest.mark.parametrize("rule", [STRICT, LAX, SYSTEM])
+def test_an_inactive_user_is_unauthorized_under_every_rule(rule: AccessRule):
+    owner = TokenOwner(
+        project=Project(name="p", admin_id=generate_id(), user_ids=[], qpu_seconds=10),
+        user=User.model_construct(roles={UserRole.SYSTEM}, is_active=False),
+    )
+
+    with pytest.raises(UnauthorizedError):
+        check_project_access(owner, rule)
+
+
+@pytest.mark.parametrize("rule", [STRICT, LAX, SYSTEM])
 def test_a_missing_token_is_unauthorized_under_every_rule(rule: AccessRule):
     with pytest.raises(UnauthorizedError):
         check_project_access(None, rule)

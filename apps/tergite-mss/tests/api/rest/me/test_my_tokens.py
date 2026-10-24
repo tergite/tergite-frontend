@@ -417,6 +417,21 @@ def test_app_token_of_deleted_user_fails(db, client):
     assert response.json() == {"detail": "Unauthorized"}
 
 
+def test_app_token_of_deactivated_user_fails(db, client):
+    """An app token whose user is deactivated raises 401 HTTP error"""
+    headers = {"Authorization": f"Bearer {TEST_APP_TOKEN_DICT['token']}"}
+    db["auth_users"].update_one(
+        {"_id": ObjectId(TEST_APP_TOKEN_DICT["user_id"])},
+        {"$set": {"is_active": False}},
+    )
+
+    with client as client:
+        response = client.get("/jobs/", headers=headers)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized"}
+
+
 @pytest.mark.parametrize("app_token", _TOKENS)
 def test_app_token_of_unallocated_projects_fails(
     app_token, client, unallocated_projects, inserted_app_tokens

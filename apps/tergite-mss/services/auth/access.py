@@ -43,10 +43,10 @@ def check_project_access(owner: Optional[TokenOwner], rule: AccessRule) -> Token
         the owner, once it passes
 
     Raises:
-        UnauthorizedError: there is no owner or its project is inactive
+        UnauthorizedError: there is no owner, or its project or user is inactive
         ForbiddenError: the rule needs QPU seconds the project lacks, or a role the user lacks
     """
-    if owner is None or not owner.project.is_active:
+    if owner is None or not owner.project.is_active or not owner.user.is_active:
         raise UnauthorizedError("Unauthorized")
     if rule.is_qpu_required and owner.project.qpu_seconds <= 0:
         raise ForbiddenError(
