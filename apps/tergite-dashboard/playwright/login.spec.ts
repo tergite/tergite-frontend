@@ -18,7 +18,7 @@ for (const user of users) {
   const isDomainSupported = availableAuthProviders.length > 0;
 
   test.describe(`login page for authenticated user '${username}'`, () => {
-    test.beforeEach(async ({ page, apiUrl, baseURL }) => {
+    test.beforeEach(async ({ page, resetData, baseURL }) => {
       const dashboardUrl = `${baseURL}/`;
       const isFullE2E = dashboardUrl.startsWith("http://127.0.0.1:3000");
       const domain = process.env.VITE_COOKIE_DOMAIN!;
@@ -62,7 +62,7 @@ for (const user of users) {
         },
       ]);
 
-      await fetch(`${apiUrl}/refreshed-db`);
+      await resetData();
 
       await Promise.all([waitForApi(page, "GET", "/devices/"), page.goto("/")]);
     });
