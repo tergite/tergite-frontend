@@ -139,6 +139,13 @@ start_mss.py
 
 # config
 mss-config.toml
+**.pem
 
 # sequencial tests
 .semaphore.lock
+
+# nuitka builds
+main.dist/
+main.build/
+main.onefile-build/
+mss

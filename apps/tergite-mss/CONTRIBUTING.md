@@ -155,6 +155,51 @@ docker run -p 8002:80 \
 
 - Open your browser at http://localhost:8002/docs and see the docs for mss running.
 
+## Build Executable with [Nuitka](https://nuitka.net/)
+
+- Make sure you have [conda](https://docs.anaconda.com/free/miniconda/index.html) installed.
+- Clone the repo and enter its root folder
+
+```shell
+git clone git@github.com:tergite/tergite-frontend.git
+cd tergite-frontend/apps/tergite-mss
+```
+
+- Create the conda environment
+
+```shell
+conda create -n mss python=3.12
+```
+
+- Install dependencies
+
+```shell
+conda activate mss
+pip install ."[dev]"
+```
+
+- Build the main.py file
+
+```shell
+python -m nuitka main.py
+```
+
+- After the build, the app will be at `./mss`. You can run it.
+
+```shell
+# create the mss-config.toml
+cp mss-config.example.toml mss-config.toml
+# create the mss private key
+openssl genpkey -algorithm RSA -out private-mss-key.pem -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc
+# run migrations for mongodb
+MSS_CONFIG_JSON_STR="$(yq -o=json -p=toml mss-config.toml)" uv run python -m migrations.mongodb upgrade
+## if you are using an sql database, run the alembic migrations
+# MSS_CONFIG_JSON_STR="$(yq -o=json -p=toml mss-config.toml)" uv run alembic upgrade head
+# run the app, providing any command line args you wish `--port`, `--host`, `--forwarded-allow-ips`, `--reload`
+MSS_CONFIG_JSON_STR="$(yq -o=json -p=toml mss-config.toml)" \
+PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" ./mss --port 8002
+```
+
 ## References
 
 This document was adapted from [a gist by Brian A. Danielak](https://gist.github.com/briandk/3d2e8b3ec8daf5a27a62) which
