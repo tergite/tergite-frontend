@@ -19,7 +19,7 @@ box is ticked, or a failure is written beside its box.
 
 - [ ] **7.1–7.4: CI's checks pass.** `.venv/bin/black --check .`, `.venv/bin/isort --check-only .`
       and `.venv/bin/python -m pyflakes api services utils libs migrations settings.py tests dev`
-      report nothing, and `.venv/bin/pytest tests` (under a minute) gives 736 passed.
+      report nothing, and `.venv/bin/pytest tests` (under a minute) gives 747 passed.
 - [ ] **7.1, 7.2: fastapi-users and Beanie are gone.**
       `git grep -nE "fastapi_users|beanie|motor" -- api services utils settings.py pyproject.toml`
       finds nothing, and `ls services/auth/users` lists only `__init__.py` and `dtos.py`.
