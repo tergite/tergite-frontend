@@ -2,11 +2,17 @@ FROM python:3.12-alpine
 
 WORKDIR /code
 
-COPY . /code/
-
 RUN apk update
 RUN apk add python3-dev gcc libc-dev libffi-dev bash
-RUN pip install --no-cache-dir --upgrade /code/
+
+# the dependencies get a layer of their own, so that a change to the code alone keeps it
+COPY pyproject.toml /code/
+RUN python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']))" > requirements.txt \
+  && pip install --no-cache-dir --upgrade -r requirements.txt \
+  && rm requirements.txt
+
+COPY . /code/
+RUN pip install --no-cache-dir --upgrade --no-deps /code/
 
 RUN chmod +x /code/start_mss.sh
 
