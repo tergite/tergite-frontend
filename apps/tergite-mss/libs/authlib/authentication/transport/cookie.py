@@ -13,6 +13,7 @@
 from typing import Literal, Optional
 
 from fastapi import Response, status
+from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyCookie
 
 from libs.authlib.authentication.transport.base import Transport
@@ -46,7 +47,7 @@ class CookieTransport(Transport):
         return self._set_login_cookie(response, token)
 
     async def get_logout_response(self) -> Response:
-        response = Response(status_code=status.HTTP_204_NO_CONTENT)
+        response = JSONResponse({"message": "logged out"})
         return self._set_logout_cookie(response)
 
     def _set_login_cookie(self, response: Response, token: str) -> Response:
@@ -81,4 +82,9 @@ class CookieTransport(Transport):
 
     @staticmethod
     def get_openapi_logout_responses_success() -> OpenAPIResponseType:
-        return {status.HTTP_204_NO_CONTENT: {"model": None}}
+        return {
+            status.HTTP_200_OK: {
+                "description": "Logged out: the session cookie is cleared.",
+                "content": {"application/json": {"example": {"message": "logged out"}}},
+            }
+        }

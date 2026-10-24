@@ -10,6 +10,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
+import json
 import re
 
 import pytest
@@ -94,7 +95,8 @@ async def test_get_logout_response(cookie_transport: CookieTransport):
     response = await cookie_transport.get_logout_response()
 
     assert isinstance(response, Response)
-    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert response.status_code == status.HTTP_200_OK
+    assert json.loads(response.body) == {"message": "logged out"}
 
     cookies = [header for header in response.raw_headers if header[0] == b"set-cookie"]
     assert len(cookies) == 1
@@ -115,6 +117,6 @@ def test_get_openapi_login_responses_success(cookie_transport: CookieTransport):
 @pytest.mark.authentication
 @pytest.mark.openapi
 def test_get_openapi_logout_responses_success(cookie_transport: CookieTransport):
-    assert cookie_transport.get_openapi_logout_responses_success() == {
-        status.HTTP_204_NO_CONTENT: {"model": None}
-    }
+    responses = cookie_transport.get_openapi_logout_responses_success()
+
+    assert list(responses) == [status.HTTP_200_OK]
