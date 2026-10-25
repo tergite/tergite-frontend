@@ -1,0 +1,28 @@
+#!/bin/sh
+# Stops a running daemon before an upgrade replaces it, and creates the hidden service account
+
+set -e
+
+label=se.chalmersnextlabs.tergite-mss
+service_user=_tergite-mss
+
+launchctl bootout "system/$label" 2>/dev/null || true
+
+if ! dscl . -read "/Users/$service_user" >/dev/null 2>&1; then
+	# the first id below 500, macOS's range for system accounts, that no user or group has
+	for id in $(seq 400 499); do
+		if [ -z "$(dscl . -search /Users UniqueID "$id")" ] &&
+			[ -z "$(dscl . -search /Groups PrimaryGroupID "$id")" ]; then
+			break
+		fi
+	done
+	dscl . -create "/Groups/$service_user" PrimaryGroupID "$id"
+	dscl . -create "/Groups/$service_user" Password '*'
+	dscl . -create "/Users/$service_user" UniqueID "$id"
+	dscl . -create "/Users/$service_user" PrimaryGroupID "$id"
+	dscl . -create "/Users/$service_user" UserShell /usr/bin/false
+	dscl . -create "/Users/$service_user" NFSHomeDirectory /var/empty
+	dscl . -create "/Users/$service_user" RealName "Tergite MSS"
+	dscl . -create "/Users/$service_user" Password '*'
+	dscl . -create "/Users/$service_user" IsHidden 1
+fi
