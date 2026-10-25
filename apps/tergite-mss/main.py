@@ -59,13 +59,15 @@ def _migrate() -> None:
         with MongoClient(database_url) as client:
             applied = migrations.mongodb.upgrade(client.get_default_database())
         print(f"MongoDB migrations applied: {applied or 'none pending'}")
-    if "+" in database_url.split("://")[0]:
+    elif database_url.startswith("redis"):
+        print(f"Redis migrations applied: none pending")
+    else:
         command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Run the compiled FastAPI application, or migrate its database."
+        description="Manage the Main Service Server (MSS)."
     )
     parser.add_argument(
         "command",
