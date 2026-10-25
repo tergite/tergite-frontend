@@ -48,6 +48,8 @@ jobs:
         run: docker run --rm -v "$PWD":/src -w /src ${{ matrix.image }} pkg/build-linux.sh
       - name: Package it
         run: |
+          # nfpm takes a -t that does not exist yet for a file to write
+          mkdir -p dist
           for format in ${{ matrix.formats }}; do
             docker run --rm -e VERSION -e ARCH -v "$PWD":/src -w /src \
               goreleaser/nfpm:v2.48.0 package -f pkg/nfpm.yaml -p "$format" -t dist/
