@@ -17,6 +17,11 @@ defaults:
   run:
     working-directory: apps/tergite-mss
 
+env:
+  # the Python the binary is built and tested with; uv would otherwise take the newest it can
+  # download, whose wheels may not exist yet
+  UV_PYTHON: "3.14"
+
 jobs:
   version:
     runs-on: ubuntu-24.04
@@ -46,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the binary
-        run: docker run --rm -v "$PWD":/src -w /src ${{ matrix.image }} pkg/build-linux.sh
+        run: docker run --rm -e UV_PYTHON -v "$PWD":/src -w /src ${{ matrix.image }} pkg/build-linux.sh
       - name: Package it
         run: |
           # nfpm takes a -t that does not exist yet for a file to write

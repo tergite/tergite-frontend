@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds the onefile binary in a container of the libc it targets, Nuitka cannot cross-compile:
-# from apps/tergite-mss, `docker run --rm -v "$PWD":/src -w /src debian:bookworm pkg/build-linux.sh`
+# from apps/tergite-mss, `docker run --rm -e UV_PYTHON=3.14 -v "$PWD":/src -w /src debian:bookworm pkg/build-linux.sh`
 # for deb and rpm, or alpine for apk. Bookworm's glibc 2.36 is the oldest the binary runs on.
 
 set -e
