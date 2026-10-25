@@ -147,16 +147,17 @@ type DeviceEventHandler = Callable[..., Awaitable[GeneralMessage]]
 """An event's handler, called with the device, the event's data and the database"""
 
 
+_EVENT_DATA_CLASSES: Dict[DeviceEventName, Type[DeviceEventData]] = {
+    DeviceEventName.INITIALIZED: DeviceUpsert,
+    DeviceEventName.RECALIBRATED: DeviceCalibrationCreate,
+    DeviceEventName.JOB_UPDATED: JobUpdate,
+    DeviceEventName.SWITCHED_OFF: DeviceSwitchData,
+    DeviceEventName.SWITCHED_ON: DeviceSwitchData,
+}
+
+
 class DeviceEvent(BaseModel):
     """The schema for device events"""
-
-    __status_data_map__: Dict[DeviceEventName, Type[DeviceEventData]] = {
-        DeviceEventName.INITIALIZED: DeviceUpsert,
-        DeviceEventName.RECALIBRATED: DeviceCalibrationCreate,
-        DeviceEventName.JOB_UPDATED: JobUpdate,
-        DeviceEventName.SWITCHED_OFF: DeviceSwitchData,
-        DeviceEventName.SWITCHED_ON: DeviceSwitchData,
-    }
 
     id: str
     name: DeviceEventName
@@ -168,7 +169,7 @@ class DeviceEvent(BaseModel):
         cls, value: DeviceEventData, info: ValidationInfo
     ) -> DeviceEventData:
         """Validates the data depending on the name type"""
-        expected_data_cls = cls.__status_data_map__[info.data["name"]]
+        expected_data_cls = _EVENT_DATA_CLASSES[info.data["name"]]
         if not isinstance(value, expected_data_cls):
             raise ValueError(
                 f"data must be of type {expected_data_cls.__name__}, was {type(value)}"
