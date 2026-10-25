@@ -25,7 +25,6 @@ from pydantic import (
     AnyUrl,
     BaseModel,
     Field,
-    computed_field,
     field_validator,
     model_validator,
 )
@@ -94,12 +93,6 @@ class BccConfig(BaseModel):
             if "public_url" not in data:
                 data["public_url"] = data["url"]
         return data
-
-    @computed_field
-    @property
-    def ip_address(self) -> str:
-        """The IP address of the server where the device is"""
-        return get_ip_addr(self.url.host)
 
 
 class UserRole(str, enum.Enum):
