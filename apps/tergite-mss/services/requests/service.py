@@ -9,17 +9,20 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from libs.storage import Database
 from services import notices
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
+from services.notices import NoticeTypeId, ProjectRequestContext
 from utils.config import UserRole
 from utils.exc import ForbiddenError, NotFoundError
 
 from . import actions
 from .dtos import (
+    CreateProjectMetadata,
+    ProjectQpuSecondsMetadata,
     Request,
     RequestPostBody,
     RequestRole,
@@ -27,11 +30,74 @@ from .dtos import (
     RequestTarget,
     RequestType,
     RequestUpdate,
+    TransferProjectMetadata,
 )
 
 _DECIDED_STATUSES = (RequestStatus.APPROVED, RequestStatus.REJECTED)
 ALL_REQ_TYPES = tuple(RequestType)
 ALL_REQ_STATUSES = tuple(RequestStatus)
+_NOTICE_TYPES: Dict[Tuple[RequestType, RequestStatus], NoticeTypeId] = {
+    (
+        RequestType.CREATE_PROJECT,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PROJECT_CREATE_REQUESTED,
+    (
+        RequestType.CREATE_PROJECT,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PROJECT_CREATE_REJECTED,
+    (
+        RequestType.CREATE_PROJECT,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PROJECT_CREATE_APPROVED,
+    (
+        RequestType.CLOSE_PROJECT,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PROJECT_CLOSE_REQUESTED,
+    (
+        RequestType.CLOSE_PROJECT,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PROJECT_CLOSE_REJECTED,
+    (
+        RequestType.CLOSE_PROJECT,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PROJECT_CLOSE_APPROVED,
+    (
+        RequestType.TRANSFER_PROJECT,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PROJECT_TRANSFER_REQUESTED,
+    (
+        RequestType.TRANSFER_PROJECT,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PROJECT_TRANSFER_REJECTED,
+    (
+        RequestType.TRANSFER_PROJECT,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PROJECT_TRANSFER_APPROVED,
+    (
+        RequestType.PROJECT_QPU_SECONDS,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.QPU_SECONDS_REQUESTED,
+    (
+        RequestType.PROJECT_QPU_SECONDS,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.QPU_SECONDS_DENIED,
+    (
+        RequestType.PROJECT_QPU_SECONDS,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.QPU_SECONDS_GRANTED,
+    (
+        RequestType.PROJECT_ACCESS,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PROJECT_ACCESS_REQUESTED,
+    (
+        RequestType.PROJECT_ACCESS,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PROJECT_ACCESS_REJECTED,
+    (
+        RequestType.PROJECT_ACCESS,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PROJECT_ACCESS_APPROVED,
+}
 
 
 async def create(
@@ -58,8 +124,11 @@ async def create(
         )
 
     target_user_ids = await _get_target_user_ids(database, request_body)
-    record = Request.from_post_body(
-        request_body, requester=requester, target_user_ids=target_user_ids
+    record = Request(
+        **request_body.model_dump(),
+        requester_id=str(requester.id),
+        requester_name=requester.username,
+        target_user_ids=[str(v) for v in target_user_ids],
     )
     await database.insert(Request, record)
     # NOTE: We explicitly notify here instead of in a storage hook because:
@@ -67,10 +136,10 @@ async def create(
     await notices.create_system_notice(
         database,
         user_ids=target_user_ids,
-        notice_type=record.notice_type,
+        notice_type=_NOTICE_TYPES[(record.type, record.status)],
         ref_id=record.id,
         ref_type=record.metadata.resource,
-        context=record.notice_context,
+        context=_get_notice_context(record),
     )
     return record
 
@@ -209,44 +278,12 @@ async def update(
         await notices.create_system_notice(
             database,
             user_ids=(updated_record.requester_id,),
-            notice_type=updated_record.notice_type,
+            notice_type=_NOTICE_TYPES[(updated_record.type, updated_record.status)],
             ref_id=updated_record.id,
             ref_type=resource,
-            context=updated_record.notice_context,
+            context=_get_notice_context(updated_record),
         )
     return updated_record
-
-
-async def _get_target_user_ids(
-    database: Database, request: RequestPostBody
-) -> List[str]:
-    """Gets the IDs of users to whom this request is directed
-
-    Args:
-        database: the database where the projects are stored
-        request: the request post body
-
-    Returns:
-        the IDs of the target users
-
-    Raises:
-        NotFoundError: project {id} not found
-    """
-    if request.target == RequestTarget.PROJECT:
-        # personal projects answer as missing ones do, so they cannot be probed
-        project = await database.find_one(
-            Project, {"id": request.resource_id, "is_personal": {"$ne": True}}
-        )
-        if project is None:
-            raise NotFoundError(f"project {request.resource_id} not found")
-
-        return [project.admin_id]
-
-    elif request.target == RequestTarget.SYSTEM:
-        superusers = await database.find(User, filter={"roles": UserRole.ADMIN})
-        return [user.id for user in superusers]
-
-    return []
 
 
 async def _has_resource_access(
@@ -281,3 +318,60 @@ async def _has_resource_access(
         return user is not None
 
     return False
+
+
+async def _get_target_user_ids(
+    database: Database, request: RequestPostBody
+) -> List[str]:
+    """Gets the IDs of users to whom this request is directed
+
+    Args:
+        database: the database where the projects are stored
+        request: the request post body
+
+    Returns:
+        the IDs of the target users
+
+    Raises:
+        NotFoundError: project {id} not found
+    """
+    if request.target == RequestTarget.PROJECT:
+        # personal projects answer as missing ones do, so they cannot be probed
+        project = await database.find_one(
+            Project, {"id": request.resource_id, "is_personal": {"$ne": True}}
+        )
+        if project is None:
+            raise NotFoundError(f"project {request.resource_id} not found")
+
+        return [project.admin_id]
+
+    elif request.target == RequestTarget.SYSTEM:
+        superusers = await database.find(User, filter={"roles": UserRole.ADMIN})
+        return [user.id for user in superusers]
+
+    return []
+
+
+def _get_notice_context(request: Request) -> ProjectRequestContext:
+    """Gets the context of the notice that tells of the request in its current status"""
+    metadata = request.metadata
+    project_name = ""
+    seconds = ""
+    admin_email = ""
+    if isinstance(metadata, CreateProjectMetadata):
+        project_name = metadata.name
+    elif isinstance(metadata, TransferProjectMetadata):
+        admin_email = metadata.admin_email
+    elif isinstance(metadata, ProjectQpuSecondsMetadata):
+        seconds = metadata.seconds
+
+    is_rejected = request.status == RequestStatus.REJECTED
+    return ProjectRequestContext(
+        requester_name=request.requester_name or "",
+        project_id=str(request.resource_id),
+        project_name=project_name,
+        reason=(request.rejection_reason or "") if is_rejected else request.reason,
+        approver_name=request.approver_name or "",
+        seconds=seconds,
+        admin_email=admin_email,
+    )

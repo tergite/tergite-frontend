@@ -70,7 +70,7 @@ async def update_request(database: Database, request_id: Id, approver: User, dec
 5. **`NoticeType(NoticeTypeInfo, Enum)`** → `NoticeTypeId(StrEnum)` plus a `NOTICE_TYPE_INFO: dict[NoticeTypeId, NoticeTypeInfo]` constant. Delete `from_str`, `__str_member_map__`, the `Literal[tuple(…)]` hack and `utils/types.py`. `DeviceEventHandler(Protocol)` → a `Callable` alias.
 6. **Behaviour off DTOs**, one service per commit; class-level dunder maps become module constants.
    - `notices`: `CustomNoticeCreate.to_documents` (does I/O) → `_get_custom_notices(db, payload, created_by)`; `Notice.from_template` → `_render_notice`
-   - `requests`: `Request.notice_type`, `notice_context`, `from_post_body`, `RequestPostBody.target` and the three `__type_*_map__` → `requests/service.py`
+   - `requests`: `Request.notice_type`, `notice_context`, `from_post_body` and the notice map → `requests/service.py`; `RequestPostBody.target` stays a computed field, as responses carry it, and it and the metadata validator read module constants
    - `devices`: `DeviceEvent.__status_data_map__` → a constant in `events.py`
    - `utils/config.py`: `BccConfig.ip_address` (a DNS lookup in a `computed_field`) → `get_ip_addr(conf.url.host)` at `api/utils.py:87`
    - `jobs`: `JobStatusResponse.from_job` → inline

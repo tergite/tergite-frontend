@@ -15,7 +15,6 @@ verb: services/notices/emails.py::_to_email_body
 verb: services/notices/emails.py::_to_email_details
 verb: services/notices/service.py::_with_default_email_preferences
 verb: services/notices/service.py::_with_project_name
-verb: services/requests/dtos.py::Request.from_post_body
 verb: services/requests/dtos.py::RequestPostBody.has_right_metadata_type
 verb: services/requests/service.py::_has_resource_access
 verb: utils/config.py::AppConfig.dashboard_url_required_for_email

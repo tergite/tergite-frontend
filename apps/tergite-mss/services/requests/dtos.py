@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 import enum
-from typing import Any, List, Literal, Optional, Self, Tuple, Type
+from typing import Any, Dict, List, Literal, Optional, Type
 
 from pydantic import (
     BaseModel,
@@ -24,10 +24,8 @@ from pydantic import (
 )
 
 from libs.storage import Id, Schema, StorageSpec, generate_id
-from services.auth import User
 from services.auth.projects.dtos import ProjectCreate
-from services.notices import NoticeTypeId
-from services.notices.dtos import ProjectRequestContext, RefType
+from services.notices.dtos import RefType
 from utils.date_time import get_current_timestamp
 
 # FIXME:
@@ -81,6 +79,15 @@ class RequestType(str, enum.Enum):
     PROJECT_ACCESS = "project-access"
 
 
+_REQUEST_TARGETS: Dict[RequestType, RequestTarget] = {
+    RequestType.CREATE_PROJECT: RequestTarget.SYSTEM,
+    RequestType.CLOSE_PROJECT: RequestTarget.SYSTEM,
+    RequestType.TRANSFER_PROJECT: RequestTarget.SYSTEM,
+    RequestType.PROJECT_QPU_SECONDS: RequestTarget.SYSTEM,
+    RequestType.PROJECT_ACCESS: RequestTarget.PROJECT,
+}
+
+
 class RequestMetadata(BaseModel):
     """The metadata for a given request"""
 
@@ -111,6 +118,15 @@ class ProjectAccessMetadata(RequestMetadata):
     """Metadata for requesting access to a project"""
 
 
+_METADATA_CLASSES: Dict[RequestType, Type[RequestMetadata]] = {
+    RequestType.CREATE_PROJECT: CreateProjectMetadata,
+    RequestType.CLOSE_PROJECT: CloseProjectMetadata,
+    RequestType.TRANSFER_PROJECT: TransferProjectMetadata,
+    RequestType.PROJECT_QPU_SECONDS: ProjectQpuSecondsMetadata,
+    RequestType.PROJECT_ACCESS: ProjectAccessMetadata,
+}
+
+
 class RequestPostBody(BaseModel):
     """The POST body sent for a request"""
 
@@ -122,27 +138,11 @@ class RequestPostBody(BaseModel):
         default=None, validate_default=True
     )
 
-    __type_target_map__ = {
-        RequestType.CREATE_PROJECT: RequestTarget.SYSTEM,
-        RequestType.CLOSE_PROJECT: RequestTarget.SYSTEM,
-        RequestType.TRANSFER_PROJECT: RequestTarget.SYSTEM,
-        RequestType.PROJECT_QPU_SECONDS: RequestTarget.SYSTEM,
-        RequestType.PROJECT_ACCESS: RequestTarget.PROJECT,
-    }
-
-    __type_metadata_cls_map__: dict[RequestType, Type[RequestMetadata]] = {
-        RequestType.CREATE_PROJECT: CreateProjectMetadata,
-        RequestType.CLOSE_PROJECT: CloseProjectMetadata,
-        RequestType.TRANSFER_PROJECT: TransferProjectMetadata,
-        RequestType.PROJECT_QPU_SECONDS: ProjectQpuSecondsMetadata,
-        RequestType.PROJECT_ACCESS: ProjectAccessMetadata,
-    }
-
     @computed_field
     @property
     def target(self) -> RequestTarget:
         """The target for this request"""
-        return self.__type_target_map__[self.type]
+        return _REQUEST_TARGETS[self.type]
 
     @field_validator("metadata", mode="before")
     @classmethod
@@ -151,7 +151,7 @@ class RequestPostBody(BaseModel):
     ) -> RequestMetadata:
         req_type = RequestType(info.data["type"])
         try:
-            metadata_cls = cls.__type_metadata_cls_map__[req_type]
+            metadata_cls = _METADATA_CLASSES[req_type]
         except KeyError:
             raise ValueError(f"request type {req_type} not supported")
 
@@ -179,133 +179,6 @@ class Request(Schema, RequestPostBody):
     rejection_reason: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
-
-    __type_status_notice_map__: dict[
-        Tuple[RequestType, RequestStatus], NoticeTypeId
-    ] = {
-        # project creation
-        (
-            RequestType.CREATE_PROJECT,
-            RequestStatus.PENDING,
-        ): NoticeTypeId.PROJECT_CREATE_REQUESTED,
-        (
-            RequestType.CREATE_PROJECT,
-            RequestStatus.REJECTED,
-        ): NoticeTypeId.PROJECT_CREATE_REJECTED,
-        (
-            RequestType.CREATE_PROJECT,
-            RequestStatus.APPROVED,
-        ): NoticeTypeId.PROJECT_CREATE_APPROVED,
-        # closing projects
-        (
-            RequestType.CLOSE_PROJECT,
-            RequestStatus.PENDING,
-        ): NoticeTypeId.PROJECT_CLOSE_REQUESTED,
-        (
-            RequestType.CLOSE_PROJECT,
-            RequestStatus.REJECTED,
-        ): NoticeTypeId.PROJECT_CLOSE_REJECTED,
-        (
-            RequestType.CLOSE_PROJECT,
-            RequestStatus.APPROVED,
-        ): NoticeTypeId.PROJECT_CLOSE_APPROVED,
-        # project transfer
-        (
-            RequestType.TRANSFER_PROJECT,
-            RequestStatus.PENDING,
-        ): NoticeTypeId.PROJECT_TRANSFER_REQUESTED,
-        (
-            RequestType.TRANSFER_PROJECT,
-            RequestStatus.REJECTED,
-        ): NoticeTypeId.PROJECT_TRANSFER_REJECTED,
-        (
-            RequestType.TRANSFER_PROJECT,
-            RequestStatus.APPROVED,
-        ): NoticeTypeId.PROJECT_TRANSFER_APPROVED,
-        # QPU seconds requests
-        (
-            RequestType.PROJECT_QPU_SECONDS,
-            RequestStatus.PENDING,
-        ): NoticeTypeId.QPU_SECONDS_REQUESTED,
-        (
-            RequestType.PROJECT_QPU_SECONDS,
-            RequestStatus.REJECTED,
-        ): NoticeTypeId.QPU_SECONDS_DENIED,
-        (
-            RequestType.PROJECT_QPU_SECONDS,
-            RequestStatus.APPROVED,
-        ): NoticeTypeId.QPU_SECONDS_GRANTED,
-        # project access
-        (
-            RequestType.PROJECT_ACCESS,
-            RequestStatus.PENDING,
-        ): NoticeTypeId.PROJECT_ACCESS_REQUESTED,
-        (
-            RequestType.PROJECT_ACCESS,
-            RequestStatus.REJECTED,
-        ): NoticeTypeId.PROJECT_ACCESS_REJECTED,
-        (
-            RequestType.PROJECT_ACCESS,
-            RequestStatus.APPROVED,
-        ): NoticeTypeId.PROJECT_ACCESS_APPROVED,
-    }
-
-    @property
-    def notice_type(self) -> NoticeTypeId:
-        """The notice type for this request given current status"""
-        return self.__type_status_notice_map__[(self.type, self.status)]
-
-    @property
-    def notice_context(self) -> ProjectRequestContext:
-        """The context for the notice that is to be sent out for this request"""
-        metadata = self.metadata
-        project_name = ""
-        seconds = ""
-        admin_email = ""
-
-        if isinstance(metadata, CreateProjectMetadata):
-            project_name = metadata.name
-
-        elif isinstance(metadata, TransferProjectMetadata):
-            admin_email = metadata.admin_email
-
-        elif isinstance(metadata, ProjectQpuSecondsMetadata):
-            seconds = metadata.seconds
-
-        is_rejected = self.status == RequestStatus.REJECTED
-        return ProjectRequestContext(
-            requester_name=self.requester_name or "",
-            project_id=str(self.resource_id),
-            project_name=project_name,
-            reason=(self.rejection_reason or "") if is_rejected else self.reason,
-            approver_name=self.approver_name or "",
-            seconds=seconds,
-            admin_email=admin_email,
-        )
-
-    @classmethod
-    def from_post_body(
-        cls,
-        body: RequestPostBody,
-        requester: User,
-        target_user_ids: List[str],
-    ) -> Self:
-        """Creates a request object given the request post body and requester
-
-        Args:
-            body: The request post body
-            requester: The request post requester
-            target_user_ids: The IDs for the target users
-
-        Returns:
-            the request object
-        """
-        return cls(
-            **body.model_dump(),
-            requester_id=str(requester.id),
-            requester_name=requester.username,
-            target_user_ids=[str(v) for v in target_user_ids],
-        )
 
 
 class RequestUpdate(BaseModel):
