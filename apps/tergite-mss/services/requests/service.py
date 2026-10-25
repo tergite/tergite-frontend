@@ -242,48 +242,14 @@ async def update(
         NotFoundError: no users of emails {emails}
         ConflictError: a project named '{name}' already exists
     """
-    # only pending requests that target the user can be updated
-    record = await database.find_one(
-        Request,
-        filter={
-            "id": str(pk),
-            "target_user_ids": str(current_user.id),
-            "status": RequestStatus.PENDING,
-        },
-    )
-    if record is None:
-        raise NotFoundError("no match found")
-
+    request = await _find_pending_for_approver(database, pk, approver=current_user)
     if payload.status == RequestStatus.APPROVED:
-        await actions.do_many_actions(database, [record], approver=current_user)
-
-    # updated_at is never set by the client, so exclude_unset would drop its default
-    changes = payload.model_dump(exclude_unset=True)
-    changes.update(
-        {
-            "approver_id": str(current_user.id),
-            "approver_name": current_user.username,
-            "updated_at": payload.updated_at,
-        }
-    )
-    await database.update_one(Request, {"id": record.id}, {"$set": changes})
-    updated_record = record.model_copy(update=changes)
-
+        await actions.do_many_actions(database, [request], approver=current_user)
+    decided = await _record_decision(database, request, current_user, payload)
     if payload.status in _DECIDED_STATUSES:
-        resource = updated_record.metadata.resource
-        # clear the notice for all possible approvers
-        await notices.clear_notices_by_reference(
-            database, {resource: [updated_record.id]}
-        )
-        await notices.create_system_notice(
-            database,
-            user_ids=(updated_record.requester_id,),
-            notice_type=_NOTICE_TYPES[(updated_record.type, updated_record.status)],
-            ref_id=updated_record.id,
-            ref_type=resource,
-            context=_get_notice_context(updated_record),
-        )
-    return updated_record
+        await _clear_approver_notices(database, decided)
+        await _notify_requester(database, decided)
+    return decided
 
 
 async def _has_resource_access(
@@ -374,4 +340,61 @@ def _get_notice_context(request: Request) -> ProjectRequestContext:
         approver_name=request.approver_name or "",
         seconds=seconds,
         admin_email=admin_email,
+    )
+
+
+async def _find_pending_for_approver(
+    database: Database, pk: str, approver: User
+) -> Request:
+    """Finds the pending request of the given id that awaits the approver
+
+    Raises:
+        NotFoundError: no match found
+    """
+    request = await database.find_one(
+        Request,
+        filter={
+            "id": str(pk),
+            "target_user_ids": str(approver.id),
+            "status": RequestStatus.PENDING,
+        },
+    )
+    if request is None:
+        raise NotFoundError("no match found")
+    return request
+
+
+async def _record_decision(
+    database: Database, request: Request, approver: User, decision: RequestUpdate
+) -> Request:
+    """Stores the approver's decision on the request, and gets the request as decided"""
+    # updated_at is never set by the client, so exclude_unset would drop its default
+    changes = decision.model_dump(exclude_unset=True)
+    changes.update(
+        {
+            "approver_id": str(approver.id),
+            "approver_name": approver.username,
+            "updated_at": decision.updated_at,
+        }
+    )
+    await database.update_one(Request, {"id": request.id}, {"$set": changes})
+    return request.model_copy(update=changes)
+
+
+async def _clear_approver_notices(database: Database, request: Request) -> None:
+    """Clears the notices that asked every possible approver to decide the request"""
+    await notices.clear_notices_by_reference(
+        database, {request.metadata.resource: [request.id]}
+    )
+
+
+async def _notify_requester(database: Database, request: Request) -> None:
+    """Tells the requester of the decision on their request"""
+    await notices.create_system_notice(
+        database,
+        user_ids=(request.requester_id,),
+        notice_type=_NOTICE_TYPES[(request.type, request.status)],
+        ref_id=request.id,
+        ref_type=request.metadata.resource,
+        context=_get_notice_context(request),
     )
