@@ -14,6 +14,11 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+### Changed
+
+- `dev/e2e_test.sh` keeps the stack's images and build cache between runs, so a repeat run takes
+  about 10 minutes instead of 13; `CLEAN=True` removes them as before.
+
 ## [2026.06.0] - 2026-06-26
 
 This is part of the tergite release v2026.06.0.
