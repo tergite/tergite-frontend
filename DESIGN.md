@@ -186,6 +186,7 @@ using `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID` ([config.alloy](config.alloy)).
 | Dashboard component | `apps/tergite-dashboard/src/**/__tests__` — vitest + happy-dom | `npm run test` |
 | Dashboard e2e | `apps/tergite-dashboard/playwright` — Playwright against the **mock** API, a mock API per worker | `npm run e2e` |
 | Full-stack e2e | [dev/e2e_test.sh](dev/e2e_test.sh) — the same Playwright specs against real MSS + real backend in docker | `./dev/e2e_test.sh` |
+| Full-stack e2e, native | [dev/e2e_native_test.sh](dev/e2e_native_test.sh) — the same, with MongoDB, Redis, MSS and the backends running natively | `BACKEND_PATH=../tergite-backend ./dev/e2e_native_test.sh` |
 
 The dashboard's own e2e suite does not run MSS. It runs an Express mock API
 (`apps/tergite-dashboard/dev/mock-api/`) that serves the same JSON shapes from
@@ -197,7 +198,10 @@ when an MSS response changes.
 `dev/e2e_test.sh` is the one that catches contract drift: it clones `tergite-backend`, builds
 MSS, the dashboard and the backend, seeds Mongo from the same fixtures, wires up a
 mock OpenID provider, and runs the Playwright specs against the real stack, on one worker. It is a manual /
-tag-triggered job in CI, not a per-commit one.
+tag-triggered job in CI, not a per-commit one. `dev/e2e_native_test.sh` runs the same stack
+without docker, from a local `tergite-backend` checkout or a clone: one `main.py serve` per
+backend from the base dependencies, MSS from this checkout, and a MongoDB, a Redis and a
+reset service (`dev/e2e_reset_server.py`) of its own, all from fresh data in `temp-native/`.
 
 Visual regression is Playwright's `toHaveScreenshot`; its baselines are named after the
 platform, so make the Linux ones through the dashboard's `Dockerfile.playwright` (see its

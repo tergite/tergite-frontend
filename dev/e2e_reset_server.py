@@ -1,0 +1,60 @@
+# This code is part of Tergite
+#
+# (C) Copyright Chalmers Next Labs 2026
+#
+# This code is licensed under the Apache License, Version 2.0. You may
+# obtain a copy of this license in the LICENSE.txt file in the root directory
+# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
+"""Serves GET /refreshed-db, which resets the native e2e stack's MongoDB and backend
+databases to the fixtures, as the docker stack's mongo-router.sh does: see dev/e2e_native_test.sh"""
+import argparse
+import subprocess
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--mongo-port", required=True)
+    parser.add_argument("--mongo-init-script", required=True)
+    parser.add_argument("--sql", required=True, help="the SQL to load into each database")
+    parser.add_argument("databases", nargs="*", help="the backends' SQLite files")
+    args = parser.parse_args()
+
+    class ResetHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path != "/refreshed-db":
+                self.send_error(404)
+                return
+
+            _reset(args.mongo_port, args.mongo_init_script, args.sql, args.databases)
+            body = b"success\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args):
+            pass
+
+    HTTPServer(("127.0.0.1", args.port), ResetHandler).serve_forever()
+
+
+def _reset(mongo_port: str, init_script: str, sql: str, databases: list[str]) -> None:
+    subprocess.run(
+        ["mongosh", "--quiet", "--port", mongo_port, init_script],
+        check=True,
+        capture_output=True,
+    )
+    for database in databases:
+        with open(sql, "rb") as sql_file:
+            subprocess.run(["sqlite3", database], stdin=sql_file, check=True)
+
+
+if __name__ == "__main__":
+    main()

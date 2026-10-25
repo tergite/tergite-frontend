@@ -14,6 +14,11 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ## [unreleased]
 
+### Added
+
+- `dev/e2e_native_test.sh` runs the full-stack e2e without docker, with MongoDB, Redis, MSS and
+  the backends running natively, in about 6 minutes; it needs mongod, mongosh, redis-server and uv.
+
 ### Changed
 
 - `dev/e2e_test.sh` keeps the stack's images and build cache between runs, so a repeat run takes
