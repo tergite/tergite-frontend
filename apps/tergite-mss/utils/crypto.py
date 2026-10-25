@@ -19,23 +19,34 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 
-_MSS_PRIVATE_KEYS: Dict[str, RSAPrivateKey] = {}
 _BCC_PUBLIC_KEYS: Dict[str, RSAPublicKey] = {}
 
 
-def sign_message(key_file: Path, message: str, password: Optional[bytes]) -> str:
+def load_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey:
+    """Loads the MSS private key from its PEM file
+
+    Args:
+        key_file: the path to the private key file
+        password: the password that the private key was encrypted with
+
+    Returns:
+        the private key of the MSS
+    """
+    with open(key_file, "rb") as file:
+        return serialization.load_pem_private_key(file.read(), password=password)
+
+
+def sign_message(private_key: RSAPrivateKey, message: str) -> str:
     """Creates an MSS-signed signature given a message
 
     Args:
-        key_file: the path to the private RSA key
+        private_key: the MSS private key
         message: the message from MSS
-        password: the password used to encrypt the key PEM file
 
     Returns:
         the string form of the signature
     """
-    mss_private_key = _get_private_key(key_file, password=password)
-    signature = mss_private_key.sign(
+    signature = private_key.sign(
         message.encode(),
         padding.PSS(
             mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH
@@ -67,64 +78,30 @@ def verify_ws_signature(signature: str, message: str, key_path: Path) -> None:
     )
 
 
-def decrypt_message(
-    private_key_file: Path,
-    msg: str,
-    password: Optional[bytes],
-) -> str:
+def decrypt_message(private_key: RSAPrivateKey, msg: str) -> str:
     """Decrypts the given message that has been encrypted with the MSS public key
 
     Args:
+        private_key: the MSS private key
         msg: the message to decrypt
-        private_key_file: the file path to the RSA private key PEM file
-        password: the password used to encrypt the key PEM file
 
     Returns:
         the plain message
     """
-    key = _get_private_key(private_key_file, password=password)
-    cipher_bytes = base64.b64decode(msg)
-    try:
-        plain_msg = key.decrypt(
-            cipher_bytes,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None,
-            ),
-        )
-    except Exception as exp:
-        raise exp
-
+    plain_msg = private_key.decrypt(
+        base64.b64decode(msg),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None,
+        ),
+    )
     return plain_msg.decode()
 
 
 def get_uuid4_str():
     """Gets a UUID4 string"""
     return str(uuid4())
-
-
-def _get_private_key(key_file: Path, password: Optional[bytes]) -> RSAPrivateKey:
-    """Loads the private key for MSS
-
-    Args:
-        key_file: the path to the private key file
-        password: the password that the private key was encrypted with
-
-    Returns:
-        the private key of the MSS
-    """
-
-    key_file_str = str(key_file)
-
-    try:
-        return _MSS_PRIVATE_KEYS[key_file_str]
-    except KeyError:
-        with open(key_file, "rb") as file:
-            key = _MSS_PRIVATE_KEYS[key_file_str] = serialization.load_pem_private_key(
-                file.read(), password=password
-            )
-        return key
 
 
 def _get_bcc_public_key(key_path: Path) -> RSAPublicKey:

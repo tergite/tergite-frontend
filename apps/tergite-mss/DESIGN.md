@@ -184,7 +184,8 @@ The interaction diagram for the full flow (via MyAccessID) is in
 ## 4. Talking to the backends
 
 `services/external/bcc/service.py` holds a process-global map of `BccClient`s, one per
-`[[backends]]` entry, created in the lifespan. `bcc.get_client(backend)` looks one up and
+`[[backends]]` entry, created in the lifespan with the MSS private key it loads once.
+`bcc.get_client(backend)` looks one up and
 raises `UnknownBccError` for an unknown name; `BccClientDep` calls it with the `{backend}`
 path param, and the jobs router calls it with the job's device.
 

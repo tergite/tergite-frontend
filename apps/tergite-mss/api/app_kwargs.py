@@ -28,6 +28,7 @@ from services.devices import service as devices_service
 from services.external import bcc
 from services.external.email import Emailer
 from services.notices import service as notices_service
+from utils.crypto import load_private_key
 
 from .database import (
     close_database,
@@ -59,17 +60,15 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing Tergite MSS database connections and client services...")
     email_conf = settings.CONFIG.email
     emailer = Emailer(config=email_conf) if email_conf is not None else None
-    await bcc.create_clients(
-        configs=settings.CONFIG.backends,
-        private_key_file=settings.PRIVATE_KEY_FILE,
-        private_key_password=settings.CONFIG.private_key_password,
+    private_key = load_private_key(
+        settings.PRIVATE_KEY_FILE, password=settings.CONFIG.private_key_password
     )
+    await bcc.create_clients(settings.CONFIG.backends, private_key=private_key)
     database = await open_database(app, settings.CONFIG.database)
     await open_request_log_database(app, settings.CONFIG.database)
     await auth_service.on_startup(database, conf=settings.CONFIG.auth)
     await jobs_service.on_startup(
-        private_key_file=settings.PRIVATE_KEY_FILE,
-        private_key_password=settings.CONFIG.private_key_password,
+        private_key=private_key,
         qpu_seconds_low_threshold=settings.CONFIG.projects.qpu_seconds_low_threshold,
     )
     await notices_service.on_startup(database, emailer, conf=settings.CONFIG.notices)

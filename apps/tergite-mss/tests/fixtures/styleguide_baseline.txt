@@ -120,7 +120,6 @@ type-hints: services/auth/providers/__init__.py::_order_by_many.get_key
 type-hints: services/auth/utils.py::get_oauth2_client
 type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
 type-hints: services/external/bcc/dtos.py::Booking.validate_username
-type-hints: services/external/bcc/service.py::BccClient._request
 type-hints: services/external/bcc/service.py::BccClient.close
 type-hints: services/external/bcc/service.py::close_clients
 type-hints: services/external/email/service.py::Emailer.from_value

@@ -13,25 +13,11 @@
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from pathlib import Path
-from typing import (
-    IO,
-    Any,
-    Dict,
-    List,
-    Literal,
-    Mapping,
-    NotRequired,
-    Optional,
-    Sequence,
-    Tuple,
-    TypedDict,
-)
+from typing import Any, Dict, List, Literal, NotRequired, Optional, Tuple, TypedDict
 from uuid import UUID
 
 import httpx
-from httpx import USE_CLIENT_DEFAULT, QueryParams, Timeout
-from httpx._client import UseClientDefault
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from loguru import logger
 
 from libs.storage import Database
@@ -64,17 +50,12 @@ BccClientHeaders = TypedDict(
 """The headers sent via the BCC http client"""
 
 
-async def create_clients(
-    configs: List[BccConfig],
-    private_key_file: Path,
-    private_key_password: Optional[bytes],
-) -> None:
+async def create_clients(configs: List[BccConfig], private_key: RSAPrivateKey) -> None:
     """Creates the Bcc clients for the given BCC configs
 
     Args:
         configs: the configs for the Tergite backends
-        private_key_file: the MSS private key, which signs every request to a BCC
-        private_key_password: the password of that key's PEM file
+        private_key: the MSS private key, which signs every request to a BCC
     """
     global _BCC_CLIENTS
     await close_clients()
@@ -83,8 +64,7 @@ async def create_clients(
             f"{item.url}",
             name=item.name,
             public_base_url=f"{item.public_url}",
-            private_key_file=private_key_file,
-            private_key_password=private_key_password,
+            private_key=private_key,
         )
         for item in configs
     }
@@ -120,7 +100,6 @@ class BccClient:
     """A client for making requests to a Backend Control Computer (BCC) Instance
 
     Attributes:
-        base_url: the base URL for the given BCC instance
         name: name of the backend
         public_base_url: the base URL that can be accessed publicly
     """
@@ -130,16 +109,13 @@ class BccClient:
         base_url: str,
         name: str,
         public_base_url: str,
-        private_key_file: Path,
-        private_key_password: Optional[bytes],
+        private_key: RSAPrivateKey,
     ):
-        self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=base_url)
         self.name = name
         self.public_base_url = public_base_url.rstrip("/")
         # MSS signs its requests to the BCC and decrypts the job tokens it gets with this key
-        self._private_key_file = private_key_file
-        self._private_key_password = private_key_password
+        self._private_key = private_key
 
     async def get_token(
         self,
@@ -169,11 +145,7 @@ class BccClient:
             json={"job_id": job_id, "user_id": user_id},
         )
         encrypted_token = response["access_token"]
-        token = decrypt_message(
-            private_key_file=self._private_key_file,
-            msg=encrypted_token,
-            password=self._private_key_password,
-        )
+        token = decrypt_message(self._private_key, msg=encrypted_token)
         return encrypted_token, token
 
     async def cancel_job(
@@ -659,63 +631,22 @@ class BccClient:
         user_id: str,
         request_id: str,
         json: Optional[dict] = None,
-        files: Mapping[
-            str,
-            IO[bytes]
-            | bytes
-            | str
-            | tuple[str | None, IO[bytes] | bytes | str]
-            | tuple[str | None, IO[bytes] | bytes | str, str | None]
-            | tuple[str | None, IO[bytes] | bytes | str, str | None, Mapping[str, str]],
-        ]
-        | Sequence[
-            tuple[
-                str,
-                IO[bytes]
-                | bytes
-                | str
-                | tuple[str | None, IO[bytes] | bytes | str]
-                | tuple[str | None, IO[bytes] | bytes | str, str | None]
-                | tuple[
-                    str | None, IO[bytes] | bytes | str, str | None, Mapping[str, str]
-                ],
-            ]
-        ]
-        | None = None,
-        params: QueryParams
-        | Mapping[
-            str,
-            str | int | float | bool | None | Sequence[str | int | float | bool | None],
-        ]
-        | list[tuple[str, str | int | float | bool | None]]
-        | tuple[tuple[str, str | int | float | bool | None], ...]
-        | str
-        | bytes
-        | None = None,
-        timeout: float
-        | None
-        | tuple[float | None, float | None, float | None, float | None]
-        | Timeout
-        | UseClientDefault = USE_CLIENT_DEFAULT,
+        params: Optional[Dict[str, Any]] = None,
         is_admin: Optional[bool] = None,
-        **kwargs,
     ) -> dict:
-        """Attempts to cancel the job
+        """Sends a request signed as MSS's to the BCC
 
         Args:
             method: the method to use when hitting the given URL.
             url: the route to hit
             user_id: the app token associated with the job id
             request_id: the unique identifier of the current request
-            json: the payload to post when cancelling
-            files: files to pass in the request
+            json: the payload to send
             params: the query params to add to the request
-            timeout: the timeout for the request
             is_admin: whether the request is from an admin user
-            kwargs: the extra key-word arguments for sending the request
 
         Returns:
-            the pair of the encrypted JWT and the plain JWT
+            the BCC's JSON response
 
         Raises:
             ServiceUnavailableError: device is currently unavailable
@@ -723,22 +654,14 @@ class BccClient:
         """
         try:
             headers = _create_headers(
-                private_key_file=self._private_key_file,
+                self._private_key,
                 request_id=request_id,
                 user_id=f"{user_id}",
                 is_admin=is_admin,
-                key_password=self._private_key_password,
             )
             logger.debug(f"Sending request to BCC: {method} {url}")
             response = await self._client.request(
-                method,
-                url,
-                json=json,
-                headers=headers,
-                files=files,
-                params=params,
-                timeout=timeout,
-                **kwargs,
+                method, url, json=json, headers=headers, params=params
             )
 
             if response.is_error:
@@ -775,27 +698,25 @@ def _extract_error_message(response: httpx.Response) -> str:
 
 
 def _create_headers(
-    private_key_file: Path,
+    private_key: RSAPrivateKey,
     request_id: str,
     user_id: str = "",
     is_admin: Optional[bool] = None,
-    key_password: Optional[bytes] = None,
 ) -> BccClientHeaders:
     """Creates headers to show that the request is a valid one from MSS
 
     Args:
-        private_key_file: the path to the private key file
+        private_key: the MSS private key
         request_id: the unique identifier of the current request
         user_id: the unique identifier of the user
         is_admin: whether the request should show that the user is an admin
-        key_password: the password used to encrypt the key PEM file
 
     Returns:
         The dictionary of headers that show a given request is from MSS
     """
     timestamp = time.time()
     message = f"{user_id}-{request_id}-{timestamp}"
-    signature = sign_message(private_key_file, message=message, password=key_password)
+    signature = sign_message(private_key, message=message)
     headers = {
         "x-mss-request-id": request_id,
         "x-mss-timestamp": f"{timestamp}",

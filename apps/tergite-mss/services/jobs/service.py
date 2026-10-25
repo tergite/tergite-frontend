@@ -16,10 +16,10 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 from uuid import UUID
 
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from loguru import logger
 
 from libs.storage import Database, Returning
@@ -37,8 +37,7 @@ from ..notices.dtos import ProjectRequestContext, RefType
 from .dtos import CreatedJobResponse, Job, JobCreate, JobQuery, JobStatus, JobUpdate
 
 # on_startup replaces these with what the app is configured with
-_private_key_file: Optional[Path] = None
-_private_key_password: Optional[bytes] = None
+_private_key: Optional[RSAPrivateKey] = None
 _qpu_seconds_low_threshold = ProjectsConfig().qpu_seconds_low_threshold
 
 
@@ -65,11 +64,7 @@ async def get_job(
     if result is None:
         raise NotFoundError(f"no matches for '{ {'job_id': str(job_id)} }'")
     if should_decrypt_token and result.access_token:
-        result.access_token = decrypt_message(
-            private_key_file=_private_key_file,
-            msg=result.access_token,
-            password=_private_key_password,
-        )
+        result.access_token = decrypt_message(_private_key, msg=result.access_token)
 
     return result
 
@@ -379,20 +374,16 @@ async def count_job_submitters(
 
 
 async def on_startup(
-    private_key_file: Path,
-    private_key_password: Optional[bytes],
-    qpu_seconds_low_threshold: float,
+    private_key: RSAPrivateKey, qpu_seconds_low_threshold: float
 ) -> None:
     """Gives the jobs service what the app is configured with
 
     Args:
-        private_key_file: the MSS private key, which decrypts the jobs' access tokens
-        private_key_password: the password of that key's PEM file
+        private_key: the MSS private key, which decrypts the jobs' access tokens
         qpu_seconds_low_threshold: the QPU seconds below which a project is running low
     """
-    global _private_key_file, _private_key_password, _qpu_seconds_low_threshold
-    _private_key_file = private_key_file
-    _private_key_password = private_key_password
+    global _private_key, _qpu_seconds_low_threshold
+    _private_key = private_key
     _qpu_seconds_low_threshold = qpu_seconds_low_threshold
 
 
