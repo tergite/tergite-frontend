@@ -4,7 +4,7 @@
 description="Tergite Main Service Server (MSS)"
 supervisor="supervise-daemon"
 command="/usr/bin/tergite-mss"
-command_args="serve --port 8002"
+command_args="start --port 8002"
 command_user="tergite-mss:tergite-mss"
 directory="/var/lib/tergite-mss"
 export MSS_CONFIG_FILE=/etc/tergite-mss/mss-config.toml
@@ -20,6 +20,5 @@ start_pre() {
 		eerror "/etc/tergite-mss/mss-config.toml does not exist yet"
 		return 1
 	fi
-	/usr/share/tergite-mss/provision.sh &&
-		su -s /bin/sh tergite-mss -c "$command migrate"
+	/usr/share/tergite-mss/provision.sh
 }

@@ -6,9 +6,10 @@
 	<string>se.chalmersnextlabs.tergite-mss</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/bin/sh</string>
-		<string>-c</string>
-		<string>/usr/local/bin/tergite-mss migrate &amp;&amp; exec /usr/local/bin/tergite-mss serve --port 8002</string>
+		<string>/usr/local/bin/tergite-mss</string>
+		<string>start</string>
+		<string>--port</string>
+		<string>8002</string>
 	</array>
 	<key>EnvironmentVariables</key>
 	<dict>

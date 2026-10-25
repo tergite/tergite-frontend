@@ -11,8 +11,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 - Added a deb for amd64, for Debian 13 and Ubuntu 24.04 onwards, and a macOS arm64 installer of the Nuitka binary, built and attached to the
   GitHub release of each tag; the deb asks where the database and Redis are and provisions them.
-- Added `mss migrate` to the Nuitka binary, which runs the Alembic or MongoDB migrations
-  that only `start_mss.sh` could run before, so a compiled MSS needs no Python checkout.
+- Added `mss start`, the default command, which runs the Alembic or MongoDB migrations and then
+  serves, and `mss migrate` and `mss serve`, which do one alone, so a compiled MSS needs no Python checkout.
 - Added MongoDB migrations to the start script, as Alembic's for SQL: the pending ones in
   `migrations/mongodb/` apply before MSS starts, so its MongoDB user needs the
   `bypassDocumentValidation` privilege, e.g. the `dbAdmin` role. Each has mongosh scripts too.

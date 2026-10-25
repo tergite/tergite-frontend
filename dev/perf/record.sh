@@ -104,8 +104,7 @@ record_mss() {
 # Migrates the database and serves MSS from MSS_PATH, setting mss_pid
 start_mss() {
   export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
-  (cd "$MSS_PATH" && "$WORK_PATH/venv/bin/python" main.py migrate) > "$WORK_PATH/mss-migrate.log" 2>&1
-  (cd "$MSS_PATH" && exec "$WORK_PATH/venv/bin/python" main.py serve --host 127.0.0.1 --port "$MSS_PORT") \
+  (cd "$MSS_PATH" && exec "$WORK_PATH/venv/bin/python" main.py start --host 127.0.0.1 --port "$MSS_PORT") \
     > "$WORK_PATH/mss.log" 2>&1 &
   mss_pid=$!
 }

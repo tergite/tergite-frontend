@@ -52,29 +52,17 @@ from api.rest.database import get_database_url
 _ROOT = Path(__file__).parent
 
 
-def _migrate() -> None:
-    """Brings the configured database to the latest schemas, as start_mss.sh does"""
-    database_url = get_database_url(settings.CONFIG.database)
-    if database_url.startswith("mongodb"):
-        with MongoClient(database_url) as client:
-            applied = migrations.mongodb.upgrade(client.get_default_database())
-        print(f"MongoDB migrations applied: {applied or 'none pending'}")
-    elif database_url.startswith("redis"):
-        print(f"Redis migrations applied: none pending")
-    else:
-        command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
-
-
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Manage the Main Service Server (MSS)."
     )
     parser.add_argument(
         "command",
         nargs="?",
-        default="serve",
-        choices=["serve", "migrate"],
-        help="Serve the API (default), or migrate the database and exit.",
+        default="start",
+        choices=["start", "serve", "migrate"],
+        help="Migrate the database and serve the API (start, the default), "
+        "only serve it, or only migrate the database and exit.",
     )
     parser.add_argument("--host", default="0.0.0.0", help="Bind socket to this host.")
     parser.add_argument(
@@ -90,18 +78,38 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable reload (not recommended for production binaries).",
     )
-
     args = parser.parse_args()
 
-    if args.command == "migrate":
+    if args.command in ("start", "migrate"):
         _migrate()
+    if args.command in ("start", "serve"):
+        _serve(args.host, args.port, args.forwarded_allow_ips, args.reload)
+
+
+def _migrate() -> None:
+    """Brings the configured database to the latest schemas"""
+    database_url = get_database_url(settings.CONFIG.database)
+    if database_url.startswith("mongodb"):
+        with MongoClient(database_url) as client:
+            applied = migrations.mongodb.upgrade(client.get_default_database())
+        print(f"MongoDB migrations applied: {applied or 'none pending'}")
+    elif database_url.startswith("redis"):
+        print("Redis migrations applied: none pending")
     else:
-        uvicorn.run(
-            app,
-            host=args.host,
-            reload=args.reload,
-            port=args.port,
-            workers=1,
-            proxy_headers=True,
-            forwarded_allow_ips=args.forwarded_allow_ips,
-        )
+        command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
+
+
+def _serve(host: str, port: int, forwarded_allow_ips: str | None, reload: bool) -> None:
+    uvicorn.run(
+        app,
+        host=host,
+        reload=reload,
+        port=port,
+        workers=1,
+        proxy_headers=True,
+        forwarded_allow_ips=forwarded_allow_ips,
+    )
+
+
+if __name__ == "__main__":
+    main()

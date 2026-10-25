@@ -17,9 +17,8 @@ Environment=PRIVATE_KEY_FILE=/etc/tergite-mss/private-mss-key.pem
 # as root, unsandboxed, to create the database accounts; a database still being installed
 # fails it, and Restart= retries until it is up
 ExecStartPre=+/usr/share/tergite-mss/provision.sh
-# as start_mss.sh does, so an upgrade's schema change applies before it serves
-ExecStartPre=/usr/bin/tergite-mss migrate
-ExecStart=/usr/bin/tergite-mss serve --port 8002
+# migrates, so an upgrade's schema change applies before it serves, then serves
+ExecStart=/usr/bin/tergite-mss start --port 8002
 Restart=on-failure
 RestartSec=5s
 

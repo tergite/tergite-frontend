@@ -203,8 +203,7 @@ for backend in "${BACKENDS[@]}"; do
   replace_str "$WORK_PATH/mss-config.toml" "http://$host:8000" "http://127.0.0.1:$BACKEND_PORT/$name"
 done
 export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
-(cd "$MSS_PATH" && "$WORK_PATH/venvs/mss/bin/python" main.py migrate > "$WORK_PATH/logs/mss-migrate.log" 2>&1)
-start_service mss bash -c "cd '$MSS_PATH' && exec '$WORK_PATH/venvs/mss/bin/python' main.py serve --host 127.0.0.1 --port $MSS_PORT"
+start_service mss bash -c "cd '$MSS_PATH' && exec '$WORK_PATH/venvs/mss/bin/python' main.py start --host 127.0.0.1 --port $MSS_PORT"
 mss_pid=$SERVICE_PID
 unset MSS_CONFIG_FILE PRIVATE_KEY_FILE
 wait_for_url mss "http://127.0.0.1:$MSS_PORT/" $mss_pid

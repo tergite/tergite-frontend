@@ -5,5 +5,4 @@ if not exist "%MSS_CONFIG_FILE%" (
   echo %MSS_CONFIG_FILE% does not exist yet
   exit /b 0
 )
-"%~dp0mss.exe" migrate || exit /b 1
-"%~dp0mss.exe" serve --port 8002
+"%~dp0mss.exe" start --port 8002
