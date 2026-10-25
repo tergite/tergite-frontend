@@ -31,12 +31,13 @@ from services.devices import Device, DeviceEvent, DeviceQuery
 from utils.api import (
     EventResponse,
     PaginatedListResponse,
-    WebsocketConnectionManager,
     get_paginated_json,
     get_websocket_json,
 )
 from utils.date_time import get_current_timestamp
 from utils.exc import ForbiddenError, NotFoundError
+
+from .connections import WebsocketConnectionManager
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 ws_manager = WebsocketConnectionManager()
@@ -110,7 +111,7 @@ async def handle_device_events(
                 device=verified_name,
                 database=database,
             )
-            await ws_manager.reply(websocket, response)
+            await websocket.send_json(response)
 
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)

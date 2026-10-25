@@ -211,7 +211,7 @@ devices, calibrations, notices and the auth entities live in MongoDB.
 
 `WS /devices/ws/{name}` is how a backend pushes state. The handshake is verified by
 `get_verified_device_name` (signature, source IP, nonce freshness, nonce replay) and the
-socket is registered with a `WebsocketConnectionManager`. Each JSON frame is a
+socket is registered with the router's `WebsocketConnectionManager` (`connections.py` beside it). Each JSON frame is a
 `DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
 handler for its name:
 

@@ -125,11 +125,6 @@ type-hints: services/notices/dtos.py::Notice.from_template
 type-hints: services/notices/dtos.py::NoticeTemplate.validate_context_cls
 type-hints: services/notices/dtos.py::NoticeType.__str__
 type-hints: services/notices/service.py::create_system_notice
-type-hints: utils/api.py::WebsocketConnectionManager.broadcast
-type-hints: utils/api.py::WebsocketConnectionManager.close_all
-type-hints: utils/api.py::WebsocketConnectionManager.connect
-type-hints: utils/api.py::WebsocketConnectionManager.disconnect
-type-hints: utils/api.py::WebsocketConnectionManager.reply
 type-hints: utils/config.py::BccConfig.validate_public_key_path
 type-hints: utils/crypto.py::get_uuid4_str
 type-hints: utils/exc.py::BaseMssException.__repr__
