@@ -9,6 +9,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Added the dashboard at `/ui`, with `/` redirecting to it, when its build is in the `ui` folder beside `main.py`, as
+  the packages ship it.
 - Added a deb for amd64, for Debian 13 and Ubuntu 24.04 onwards, and a macOS arm64 installer of Nuitka's standalone
   build, built and attached to the GitHub release of each tag; the deb asks where the database and Redis are and provisions them.
 - Added `mss start`, the default command, which runs the Alembic or MongoDB migrations and then

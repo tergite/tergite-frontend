@@ -144,6 +144,9 @@ mss-config.toml
 # sequencial tests
 .semaphore.lock
 
+# the dashboard's build, which MSS serves and Nuitka includes
+ui/
+
 # nuitka builds
 main.dist/
 main.build/

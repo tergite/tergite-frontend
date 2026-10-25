@@ -77,9 +77,9 @@ qpu_seconds_low_threshold = 600
 [notices]
 # days a notice is kept before the TTL index removes it; default = 90
 retention_days = 90
-# base URL of the dashboard, used for the deep links in notice emails.
+# base URL of the dashboard, which MSS serves at /ui, used for the deep links in notice emails.
 # Required whenever [email] is set, since a mail with a dead link is worse than no mail.
-dashboard_url = "https://dashboard.example.com"
+dashboard_url = "https://mss.example.com/ui"
 # seconds between sweeps of the pending-email outbox; default = 60
 email_sweep_interval = 60
 # attempts per notice email before it is marked failed; default = 3

@@ -15,6 +15,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
+from pathlib import Path
+
 from fastapi import FastAPI
 
 import settings
@@ -40,6 +42,7 @@ from utils.exc import (
 from utils.logging import setup_logging
 
 from .app_kwargs import get_app_kwargs
+from .dashboard import include_dashboard
 from .routers.admin import router as admin_router
 from .routers.auth import include_auth_router
 from .routers.booking import router as booking_router
@@ -48,6 +51,9 @@ from .routers.counts import router as counts_router
 from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
+
+# where the dashboard's build is copied before MSS is compiled; a checkout may lack it
+DASHBOARD_DIR = Path(__file__).parents[2] / "ui"
 
 setup_logging(settings.CONFIG.environment)
 
@@ -98,6 +104,8 @@ app.include_router(admin_router)
 app.include_router(jobs_router)
 app.include_router(booking_router)
 app.include_router(counts_router)
+if DASHBOARD_DIR.is_dir():
+    include_dashboard(app, DASHBOARD_DIR)
 
 
 @app.get("/health", include_in_schema=False)

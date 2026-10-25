@@ -107,6 +107,7 @@ VERBS = frozenset(
         "read",
         "receive",
         "record",
+        "redirect",
         "register",
         "reject",
         "remove",
