@@ -22,7 +22,7 @@ ExecStart=/usr/bin/tergite-mss start --port 8002
 Restart=on-failure
 RestartSec=5s
 
-# where a SQLite database lives; the onefile binary unpacks itself into PrivateTmp
+# where a SQLite database lives
 StateDirectory=tergite-mss
 StateDirectoryMode=0750
 WorkingDirectory=/var/lib/tergite-mss

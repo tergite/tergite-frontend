@@ -14,6 +14,6 @@ label=se.chalmersnextlabs.tergite-mss
 
 launchctl bootout "system/$label" 2>/dev/null || true
 rm -f "/Library/LaunchDaemons/$label.plist" /usr/local/bin/tergite-mss
-rm -rf /usr/local/share/tergite-mss
+rm -rf /usr/local/lib/tergite-mss /usr/local/share/tergite-mss
 pkgutil --forget "$label" >/dev/null 2>&1 || true
 echo "tergite-mss: removed; its config, data and log are still in /usr/local/etc, /usr/local/var."

@@ -136,7 +136,7 @@ pip install ."[dev]"
 python -m nuitka main.py
 ```
 
-- After the build, the app will be at `./mss`. You can run it.
+- After the build, the app will be at `main.dist/mss`, a folder that must stay whole. You can run it.
 
 ```shell
 # create the mss-config.toml
@@ -144,8 +144,8 @@ cp mss-config.example.toml mss-config.toml
 # create the mss private key
 openssl genpkey -algorithm RSA -out private-mss-key.pem -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc
 # migrate the database, MongoDB or SQL, and run the app, with any of `--port`, `--host`,
-# `--forwarded-allow-ips` and `--reload`; `./mss migrate` or `./mss serve` does one alone
-MSS_CONFIG_FILE="$PWD/mss-config.toml" PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" ./mss start --port 8002
+# `--forwarded-allow-ips` and `--reload`; `main.dist/mss migrate` or `main.dist/mss serve` does one alone
+MSS_CONFIG_FILE="$PWD/mss-config.toml" PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" main.dist/mss start --port 8002
 ```
 
 ## References

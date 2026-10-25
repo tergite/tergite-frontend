@@ -1,4 +1,4 @@
-# Packages the onefile Nuitka binary, built natively for each target: run from
+# Packages the standalone Nuitka build, built natively for each target: run from
 # apps/tergite-mss with VERSION and ARCH set, e.g.
 # `VERSION=2026.10.0 ARCH=amd64 nfpm package -f pkg/nfpm.yaml -p deb -t dist/`
 name: tergite-mss
@@ -42,10 +42,13 @@ overrides:
       - redis
 
 contents:
-  - src: mss
+  # Nuitka's standalone build, whose executable finds the folder through the link
+  - src: main.dist/
+    dst: /usr/lib/tergite-mss/
+    type: tree
+  - src: /usr/lib/tergite-mss/mss
     dst: /usr/bin/tergite-mss
-    file_info:
-      mode: 0755
+    type: symlink
 
   - src: pkg/tergite-mss.service
     dst: /lib/systemd/system/tergite-mss.service
