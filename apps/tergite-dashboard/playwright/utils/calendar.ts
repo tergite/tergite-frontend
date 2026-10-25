@@ -7,7 +7,9 @@ export async function setCalendarViewportSize(page: Page, size: { width: number;
     .poll(() =>
       page
         .locator("#calendar-view table.fc-col-header")
-        .evaluate((table) => table.offsetWidth === table.parentElement!.clientWidth),
+        .evaluate(
+          (table: HTMLTableElement) => table.offsetWidth === table.parentElement!.clientWidth,
+        ),
     )
     .toBe(true);
 }
