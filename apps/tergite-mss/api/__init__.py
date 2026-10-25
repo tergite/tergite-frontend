@@ -18,6 +18,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 import settings
 from api.errors import (
@@ -25,7 +26,7 @@ from api.errors import (
     make_exception_group_handler,
     make_http_error_handler,
 )
-from api.middleware import RequestIDMiddleware, TergiteCORSMiddleware
+from api.middleware import RequestIDMiddleware
 from libs import authlib
 from utils.date_time import set_datetime_precision
 from utils.exc import (
@@ -63,8 +64,9 @@ app = FastAPI(**get_app_kwargs())
 
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
-    TergiteCORSMiddleware,
-    allow_origins=["*"],
+    CORSMiddleware,
+    # credentialed requests need their origin echoed, never '*'
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

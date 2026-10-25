@@ -11,11 +11,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from starlette.datastructures import Headers, MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.types import Message, Send
 
 import settings
 from services import request_log
@@ -23,33 +20,6 @@ from utils.crypto import get_uuid4_str
 from utils.logging import UNLOGGED_PATHS
 
 from .database import get_request_log_database
-
-
-class TergiteCORSMiddleware(CORSMiddleware):
-    """Custom CORS middleware to handle Tergite specific behaviour"""
-
-    async def send(
-        self, message: Message, send: Send, request_headers: Headers
-    ) -> None:
-        if message["type"] != "http.response.start":
-            await send(message)
-            return
-
-        message.setdefault("headers", [])
-        headers = MutableHeaders(scope=message)
-        headers.update(self.simple_headers)
-        origin = request_headers["Origin"]
-
-        # If all origins are allowed, respond back with the Origin header
-        if self.allow_all_origins:
-            self.allow_explicit_origin(headers, origin)
-
-        # If we only allow specific origins, then we have to mirror back
-        # the Origin header in the response.
-        elif not self.allow_all_origins and self.is_allowed_origin(origin=origin):
-            self.allow_explicit_origin(headers, origin)
-
-        await send(message)
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):

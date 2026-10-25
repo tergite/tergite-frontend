@@ -30,7 +30,7 @@ apps/tergite-mss/
 │       ├── database.py      # opens the one Database in the lifespan; get_database
 │       ├── dependencies.py  # every injectable, as an Annotated alias
 │       ├── errors.py        # the exception handlers
-│       ├── middleware.py    # TergiteCORSMiddleware
+│       ├── middleware.py    # RequestIDMiddleware
 │       ├── users.py         # the user manager, which gives each user a personal project
 │       ├── utils.py         # router-level helpers (request id, BCC ws verification)
 │       └── routers/         # one module per URL prefix
@@ -113,8 +113,8 @@ device websockets, marks every device disconnected, and closes both databases.
 
 ### Per-request pipeline
 
-1. **`TergiteCORSMiddleware`** — a `CORSMiddleware` subclass that always mirrors the request
-   `Origin` back instead of `*`, because the auth cookie requires credentialed CORS.
+1. **`CORSMiddleware`** — Starlette's, with `allow_origin_regex=".*"`, so that it mirrors the
+   request `Origin` back instead of `*`, because the auth cookie requires credentialed CORS.
 2. **`request_logging_middleware`** — resolves or generates a request ID (reusing an
    incoming `x-request-id`), binds it into the loguru context so every log line in the
    request carries it, logs start/finish with duration, records the request id with
