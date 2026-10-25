@@ -281,31 +281,20 @@ async def create_system_notice(
         user_ids = [str(v) for v in user_ids]
         context = await _with_project_name(database, context)
         template = await database.get(NoticeTemplate, notice_type)
-        email_prefs_map = await get_email_preferences_map(
+        preferences = await get_email_preferences_map(
             database, notice_type, user_ids=user_ids
         )
-        email_status_map = {
-            user_id: (
-                EmailStatus.PENDING
-                if _is_email_enabled and email_prefs_map.get(user_id, True)
-                else EmailStatus.NOT_APPLICABLE
-            )
-            for user_id in user_ids
-        }
-        expires_at = get_utc_now() + timedelta(_conf.retention_days)
-        records = [
-            _render_notice(
-                template,
-                context=context,
-                user_id=user_id,
-                type=notice_type,
-                ref_type=ref_type,
-                ref_id=None if ref_id is None else str(ref_id),
-                email_status=email_status_map[user_id],
-                expires_at=expires_at,
-            )
-            for user_id in user_ids
-        ]
+        email_statuses = _get_email_status_map(
+            user_ids, preferences, is_email_enabled=_is_email_enabled
+        )
+        records = _render_notices(
+            template,
+            context=context,
+            email_statuses=email_statuses,
+            ref_type=ref_type,
+            ref_id=None if ref_id is None else str(ref_id),
+            expires_at=get_utc_now() + timedelta(_conf.retention_days),
+        )
         return await database.insert_many(Notice, records)
     except Exception:
         logger.exception(f"failed to emit {notice_type} notification")
@@ -531,6 +520,43 @@ async def _with_project_name(
         if project is not None:
             return context.model_copy(update={"project_name": project.name})
     return context
+
+
+def _get_email_status_map(
+    user_ids: Sequence[str], preferences: Dict[str, bool], is_email_enabled: bool
+) -> Dict[str, EmailStatus]:
+    """Gets each user's email status: pending if email is on and they did not opt out"""
+    return {
+        user_id: (
+            EmailStatus.PENDING
+            if is_email_enabled and preferences.get(user_id, True)
+            else EmailStatus.NOT_APPLICABLE
+        )
+        for user_id in user_ids
+    }
+
+
+def _render_notices(
+    template: NoticeTemplate,
+    context: BaseNoticeContext,
+    email_statuses: Dict[str, EmailStatus],
+    ref_type: Optional[RefType],
+    ref_id: Optional[str],
+    expires_at: datetime,
+) -> List[Notice]:
+    """Gets the template's notice for each user of email_statuses"""
+    return [
+        _render_notice(
+            template,
+            context=context,
+            user_id=user_id,
+            ref_type=ref_type,
+            ref_id=ref_id,
+            email_status=email_status,
+            expires_at=expires_at,
+        )
+        for user_id, email_status in email_statuses.items()
+    ]
 
 
 async def _init_notice_templates_in_db(database: Database) -> None:
