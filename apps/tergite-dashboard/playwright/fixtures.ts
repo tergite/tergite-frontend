@@ -104,9 +104,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 export { expect } from "@playwright/test";
 
-/** Reads a JSON fixture of cypress/fixtures, which the mock API and the docker stack also use */
+/** Reads a JSON fixture of fixtures, which the mock API and the docker stack also use */
 export function readFixture<T>(name: string): T {
-  const url = new URL(`../cypress/fixtures/${name}.json`, import.meta.url);
+  const url = new URL(`../fixtures/${name}.json`, import.meta.url);
   return JSON.parse(readFileSync(url, "utf8")) as T;
 }
 

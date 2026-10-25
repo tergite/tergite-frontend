@@ -4,7 +4,7 @@ import { expect, readFixture, test, waitForApi } from "./fixtures";
 import { clickCalendarCell, dragToGridCell, setCalendarViewportSize } from "./utils/calendar";
 import { type Booking, type BookingsConfig, type Device, type User } from "../types";
 
-// the browser's, from the config's timezoneId; the Cypress spec ran these dates in the browser
+// the browser's, from the config's timezoneId, so that these dates match the page's
 const TIME_ZONE = "Europe/Stockholm";
 
 const users = readFixture<User[]>("users");
@@ -27,7 +27,7 @@ const futureBookingsFixture = readFixture<{ starts_in: number; duration: number 
   "bookings",
 ).filter((v) => v.starts_in > 1500);
 const currentDate = new Date(process.env.CURRENT_DATE!);
-// cypress-image-diff compares the square root of the share of differing pixels to its threshold
+// TEST_THRESHOLD, as CI sets it, is the square root of the share of pixels that may differ
 const testThreshold = parseFloat(process.env.TEST_THRESHOLD || "0.3");
 
 test.use({ viewport: { width: 1280, height: 750 } });

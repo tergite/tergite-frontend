@@ -250,10 +250,10 @@ dev/mock-api/
 │   ├── general.ts   # every MSS resource endpoint, plus GET /refreshed-db
 │   └── oauth.ts     # the mock OAuth2 authorize/callback pair
 ├── views/oauth.hbs  # the fake provider's consent page
-└── utils.ts         # MockDb over the fixtures in cypress/fixtures + JWT signing/verification
+└── utils.ts         # MockDb over the fixtures in fixtures + JWT signing/verification
 ```
 
-- `utils.ts` builds an in-memory `MockDb` from `cypress/fixtures/*.json` and issues real
+- `utils.ts` builds an in-memory `MockDb` from `fixtures/*.json` and issues real
   HS256 JWTs with `jose`, using `JWT_SECRET` / `AUTH_AUDIENCE` from the `.env` file — so the
   cookie handling under test is the real thing, not a stub.
 - `GET /refreshed-db` resets the mock database; the Playwright fixtures call it between tests.
@@ -264,7 +264,7 @@ Run it with `npm run dev-api` (watch mode) or `npm run test-api`. `npm run dev` 
 vite together via `start-server-and-test`.
 
 **When an MSS response shape changes, three places need updating**: `types.ts`, the mock
-route in `dev/mock-api/routes/general.ts`, and the fixture in `cypress/fixtures/`. Missing one shows
+route in `dev/mock-api/routes/general.ts`, and the fixture in `fixtures/`. Missing one shows
 up as a passing UI suite against a stale contract — which is what the repo-level
 `dev/e2e_test.sh` exists to catch.
 
@@ -345,6 +345,6 @@ loader must be exported alongside a component.
 | New table | a `*-table/` folder with `index.tsx`, `columns.tsx`, `filter-form.tsx` (+ `detail-drawer.tsx`) |
 | New API call | a `queryOptions` (reads) or an action function (writes) in `src/lib/api-client.ts` — nowhere else calls `fetch` — then consume it from a `useQuery` or a `useMutation`, never from a bare handler |
 | New destination | a `<Route>` in `src/router.tsx` with its loader; reach it with `<Link>` or `useNavigate`, never `window.location` |
-| New response shape | `types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the `cypress/fixtures/` JSON |
+| New response shape | `types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the `fixtures/` JSON |
 | New shadcn primitive | the shadcn CLI, then edit the generated file in `src/components/ui/` |
 | New env variable | `VITE_`-prefix it if the browser needs it, add it to `.env.development` / `.env.test`, and thread it through `Dockerfile` as a build arg |

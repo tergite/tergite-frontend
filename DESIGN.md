@@ -190,7 +190,7 @@ using `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID` ([config.alloy](config.alloy)).
 
 The dashboard's own e2e suite does not run MSS. It runs an Express mock API
 (`apps/tergite-dashboard/dev/mock-api/`) that serves the same JSON shapes from
-`cypress/fixtures/*.json` (named after the suite that came before Playwright), plus a
+`apps/tergite-dashboard/fixtures/*.json`, plus a
 `GET /refreshed-db` endpoint tests hit to reset state.
 This keeps the UI suite fast and deterministic, at the cost of a second place to update
 when an MSS response changes.

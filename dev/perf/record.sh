@@ -35,7 +35,7 @@ SAMPLE_INTERVAL_SECONDS=2
 LIGHTHOUSE_USER_ID="4939a0b9a7742e2cc52289e0"
 OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration"
 ROOT_PATH="$(cd "$(dirname "$0")/../.." && pwd)"
-FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/cypress/fixtures"
+FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/fixtures"
 COMPOSE=(docker compose -f "$ROOT_PATH/dev/perf/docker-compose.yml")
 
 main() {
@@ -140,7 +140,7 @@ PYTHON
 
 sign_mock_session() {
   npx tsx --env-file=.env.test -e "
-    import users from './cypress/fixtures/users.json';
+    import users from './fixtures/users.json';
     import { generateJwt } from './dev/mock-api/utils';
     const user = users.find((v) => v.id === '$LIGHTHOUSE_USER_ID');
     generateJwt(user, Math.round(Date.now() / 1000) + 3600)

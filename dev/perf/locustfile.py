@@ -22,7 +22,7 @@ from bson import ObjectId
 from locust import HttpUser, between, events, task
 
 FIXTURES_PATH = (
-    Path(__file__).parents[2] / "apps" / "tergite-dashboard" / "cypress" / "fixtures"
+    Path(__file__).parents[2] / "apps" / "tergite-dashboard" / "fixtures"
 )
 MSS_CONFIG = tomllib.loads((FIXTURES_PATH / "mss-config.toml").read_text())
 MONGODB_URL = "mongodb://127.0.0.1:27019"

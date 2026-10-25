@@ -27,7 +27,7 @@ export async function clickCalendarCell(calendar: Locator, dateStr: string, time
     clientX: columnBox.x + columnBox.width / 2,
     clientY: rowBox.y + rowBox.height / 2,
   };
-  // sent to the slot itself, as Cypress's forced click does, since a booking may cover that point
+  // sent to the slot itself, not clicked at a point, since a booking may cover that point
   for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
     await row.dispatchEvent(type, eventInit);
   }

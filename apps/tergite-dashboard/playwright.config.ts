@@ -22,7 +22,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      // Cypress's default viewport, which the specs were written against
+      // the viewport the specs and their screenshot baselines were written against
       use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 750 } },
     },
   ],

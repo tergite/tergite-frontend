@@ -38,7 +38,7 @@ OPENID_CLIENT_SECRET="${OPENID_CLIENT_SECRET:-60Op4HFM0I8ajz0WdiStAbziZ-VFQttXux
 OPENID_AUTH_URL="${OPENID_AUTH_URL:-https://samples.auth0.com/authorize}"
 ROOT_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 TEMP_DIR_PATH="$ROOT_PATH/$TEMP_DIR"
-FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/cypress/fixtures"
+FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/fixtures"
 PLAYWRIGHT_IMAGE="$PLAYWRIGHT_IMAGE"
 # the dashboard service of the stack, which tells Playwright to test it instead of a local build
 DASHBOARD_URL="http://127.0.0.1:3000"

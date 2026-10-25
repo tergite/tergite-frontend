@@ -34,7 +34,7 @@ set -e # exit if any step fails
 
 ROOT_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 WORK_PATH="$ROOT_PATH/temp-native"
-FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/cypress/fixtures"
+FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/fixtures"
 DASHBOARD_PATH="$ROOT_PATH/apps/tergite-dashboard"
 MSS_PATH="$ROOT_PATH/apps/tergite-mss"
 BACKEND_REPO="$BACKEND_REPO"
@@ -52,7 +52,7 @@ REDIS_PORT=6380
 FIRST_BACKEND_PORT=8101
 LOKI_JWT_SECRET="e9fae9efa7c3ff10348acde323baa5273db8021712ecb1f59fdf0e8336240fb7d70c6d8d"
 # name|executor|app settings|JWT secret|max slot|min slot|slots a day|idle time, as in
-# cypress/fixtures/e2e-docker-compose.yml; empty fields keep the backend's defaults
+# fixtures/e2e-docker-compose.yml; empty fields keep the backend's defaults
 BACKENDS=(
   "qiskit_pulse_2q|qiskit_pulse_2q|production|$LOKI_JWT_SECRET||||"
   "qiskit_pulse_1q|qiskit_pulse_1q|production|dd94de9017e976973769aaf5d426fdb95cab46feda584dbdbc5f3f02bbf8ae8ce77211d7||||"

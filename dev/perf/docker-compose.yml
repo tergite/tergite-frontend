@@ -37,9 +37,9 @@ services:
     volumes:
       # the fixture config with its OpenID placeholders filled in, as record.sh writes it
       - ${PERF_MSS_CONFIG_FILE:?}:/code/mss-config.toml:ro
-      - ../../apps/tergite-dashboard/cypress/fixtures/private-mss-key.pem:/code/private-mss-key.pem:ro
+      - ../../apps/tergite-dashboard/fixtures/private-mss-key.pem:/code/private-mss-key.pem:ro
       # the config names each backend's key as bcc_certs/public-<name>-key.pem
-      - ../../apps/tergite-dashboard/cypress/fixtures:/code/bcc_certs:ro
+      - ../../apps/tergite-dashboard/fixtures:/code/bcc_certs:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/health || exit 1"]
       interval: 2s
