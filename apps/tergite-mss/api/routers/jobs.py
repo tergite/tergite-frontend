@@ -102,7 +102,7 @@ async def get_job_status(
         ValidationError: the document does not satisfy the schema passed
     """
     job = await jobs_service.get_readable_job(database, job_id=job_id, user=owner.user)
-    return JobStatusResponse.from_job(job)
+    return JobStatusResponse(status=job.status)
 
 
 @router.post("/")

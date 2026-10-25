@@ -195,11 +195,6 @@ class JobStatusResponse(BaseModel):
 
     status: JobStatus
 
-    @classmethod
-    def from_job(cls, job: Job):
-        """Extracts the job status response from the job"""
-        return cls(status=job.status)
-
 
 JobQuery = create_partial_model("JobQuery", original=Job, default=Query(None))
 JobUpdate = create_partial_model(
