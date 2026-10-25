@@ -10,8 +10,8 @@ import {
 import { ErrorInfo } from "../../types";
 import { cn } from "@/lib/utils";
 import { useNavigate, useRevalidator, useRouteError } from "react-router-dom";
-import { PropsWithChildren, useContext } from "react";
-import { ErrorBoundary, ErrorBoundaryContext } from "react-error-boundary";
+import { useContext } from "react";
+import { ErrorBoundaryContext } from "react-error-boundary";
 
 export default function ErrorAlert({ className = "", error }: Props) {
   // a route's errorElement renders outside any ErrorBoundary, where retrying means reloading the route
@@ -69,11 +69,3 @@ interface Props {
   className?: string;
   error?: ErrorInfo;
 }
-
-export function ErrorBound({ children }: PropsWithChildren<ErrorBoundProps>) {
-  return (
-    <ErrorBoundary FallbackComponent={ErrorAlert}>{children}</ErrorBoundary>
-  );
-}
-
-interface ErrorBoundProps {}

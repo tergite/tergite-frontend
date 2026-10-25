@@ -21,19 +21,19 @@ const CODE_ROOTS = ["src", "dev/mock-api", "types.ts"];
 const SKIPPED_DIRS = new Set(["__tests__", "node_modules"]);
 // a new verb is added here in review, never to the baseline
 const VERBS = new Set([
-  "accept", "add", "apply", "approve", "authenticate", "build", "calculate", "cancel",
-  "check", "choose", "clear", "close", "collect", "compare", "compute",
-  "confirm", "connect", "convert", "copy", "count", "create", "decode",
-  "delete", "derive", "dismiss", "edit", "emit", "encode", "ensure", "extend",
-  "extract", "fetch", "filter", "find", "format", "forward", "generate",
-  "get", "group", "handle", "hide", "init", "insert", "is", "load", "log",
-  "login", "logout", "make", "map", "mark", "merge", "move", "navigate",
-  "normalize", "notify", "open", "order", "parse", "pick", "prepare",
-  "refresh", "reject", "remove", "render", "replace", "request", "require", "reset",
-  "resolve", "respond", "run", "save", "search", "select", "send",
-  "serialize", "set", "should", "show", "sort", "split", "start", "stop",
-  "submit", "switch", "toggle", "transform", "try", "update", "upload",
-  "use", "validate", "verify", "view", "wait", "write",
+  "accept", "add", "apply", "approve", "authenticate", "build", "calculate",
+  "cancel", "check", "choose", "clear", "close", "collect", "compare",
+  "compute", "confirm", "connect", "convert", "copy", "count", "create",
+  "decode", "delete", "derive", "dismiss", "edit", "emit", "encode", "ensure",
+  "extend", "extract", "fetch", "filter", "find", "format", "forward",
+  "generate", "get", "group", "handle", "hide", "init", "insert", "is",
+  "load", "log", "login", "logout", "make", "map", "mark", "merge", "move",
+  "navigate", "normalize", "notify", "open", "order", "parse", "pick",
+  "prepare", "refresh", "reject", "remove", "render", "replace", "request",
+  "require", "reset", "resolve", "respond", "revalidate", "run", "save",
+  "search", "select", "send", "serialize", "set", "should", "show", "sort",
+  "split", "start", "stop", "submit", "switch", "toggle", "transform", "try",
+  "update", "upload", "use", "validate", "verify", "view", "wait", "write",
 ]);
 const HOOK_PREFIX = "on";
 const BOOLEAN_NAME = /^_?(is|should)[A-Z0-9_]/;

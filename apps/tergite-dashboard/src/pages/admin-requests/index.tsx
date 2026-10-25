@@ -16,7 +16,6 @@ import {
   User,
   UserRequestStatus,
   UserRole,
-  type AppState,
   type UserRequest,
 } from "../../../types";
 import { AdminRequestsTable } from "./components/requests-table";
@@ -85,7 +84,7 @@ export function AdminRequests() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<AdminRequestsData> => {
     const cachedCurrentUser = queryClient.getQueryData(
       currentUserQuery.queryKey

@@ -11,6 +11,7 @@ import {
   refreshMyTokensQueries,
 } from "@/lib/api/tokens";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
+import { useAppStore } from "@/lib/app-state";
 import {
   QueryClient,
   useQuery,
@@ -20,7 +21,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
 import {
-  type AppState,
   type AppToken,
   type ExtendedAppToken,
   type Project,
@@ -109,8 +109,9 @@ export function Tokens() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async () => {
+    const { currentProjectId } = useAppStore.getState();
     // project object
     const cachedProjects: Project[] | undefined = queryClient.getQueryData(
       myProjectsQuery.queryKey
@@ -119,7 +120,7 @@ export function loader(appState: AppState, queryClient: QueryClient) {
       cachedProjects ?? (await queryClient.fetchQuery(myProjectsQuery));
 
     const currentProject = projectList.filter(
-      (v) => v.id === appState.currentProjectId
+      (v) => v.id === currentProjectId
     )[0];
 
     // tokens

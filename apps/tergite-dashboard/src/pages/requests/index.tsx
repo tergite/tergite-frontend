@@ -10,7 +10,7 @@ import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
-import { type AppState, type UserRequest } from "types";
+import { type UserRequest } from "types";
 import { MyRequestSidebar } from "./components/request-sidebar";
 import { MyRequestsTable } from "./components/requests-table";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
@@ -59,7 +59,7 @@ export function MyRequests() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async () => {
     const projects = await queryClient.ensureQueryData(myProjectsQuery);
     await queryClient.ensureQueryData(

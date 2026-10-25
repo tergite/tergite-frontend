@@ -1,5 +1,6 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
-import type { AppState, AuthProviderResponse, User } from "../../../types";
+import type { AuthProviderResponse, User } from "../../../types";
+import type { AppState } from "../app-state";
 import { client } from "./client";
 
 export const currentUserQuery = queryOptions({

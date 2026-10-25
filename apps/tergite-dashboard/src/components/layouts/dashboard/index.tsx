@@ -11,9 +11,11 @@ import {
 import { logout, currentUserQuery } from "@/lib/api/auth";
 import { myActiveProjectsQuery } from "@/lib/api/projects";
 import { getAllUserRequestsQuery } from "@/lib/api/requests";
-import { AppState, User, UserRequestStatus, UserRole } from "../../../../types";
-import { useCallback, useContext, useMemo, useState } from "react";
-import { AppStateContext } from "@/lib/app-state";
+import { User, UserRequestStatus, UserRole } from "../../../../types";
+import { useCallback, useMemo, useState } from "react";
+import { useAppStore } from "@/lib/app-state";
+import { ErrorBoundary } from "react-error-boundary";
+import ErrorAlert from "@/pages/error-alert";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
@@ -28,7 +30,7 @@ export function Dashboard() {
     () => projects.filter((v) => v.is_personal)[0],
     [projects],
   );
-  const appState = useContext(AppStateContext);
+  const appState = useAppStore();
   const queryClient = useQueryClient();
   const location = useLocation();
   const isAdminScreen = useMemo(
@@ -70,7 +72,7 @@ export function Dashboard() {
           className={`flex flex-col sm:gap-4 h-full sm:pt-4 ${contentAreaPaddingCls}`}
         >
           <Topbar
-            currentProject={appState.currentProjectId}
+            currentProject={useAppStore.getState().currentProjectId}
             onProjectChange={appState.setCurrentProjectId}
             projects={projects}
             onLogout={handleLogout}
@@ -83,7 +85,9 @@ export function Dashboard() {
             currentUser={currentUser}
             shouldShowApiToken={!isAdminScreen}
           />
-          <Outlet />
+          <ErrorBoundary FallbackComponent={ErrorAlert} resetKeys={[location]}>
+            <Outlet />
+          </ErrorBoundary>
           <Footer />
           <Toaster />
         </div>
@@ -98,7 +102,7 @@ interface DashboardData {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async () => {
     // current user
     const cachedCurrentUser = queryClient.getQueryData(

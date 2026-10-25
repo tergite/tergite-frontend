@@ -69,7 +69,6 @@ verb: src/hooks/use-toast.ts::dispatch
 verb: src/hooks/use-toast.ts::genId
 verb: src/hooks/use-toast.ts::reducer
 verb: src/hooks/use-toast.ts::toast
-verb: src/lib/app-state.ts::newAppState
 verb: src/lib/utils.ts::cn
 verb: src/pages/admin-control/components/backend-control-card/toggle.tsx::mutationFn
 verb: src/pages/admin-control/components/calibration-card/actions.tsx::mutationFn

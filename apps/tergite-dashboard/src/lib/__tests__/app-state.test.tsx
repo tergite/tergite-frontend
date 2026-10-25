@@ -1,18 +1,27 @@
-import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { useRootAppState } from "../app-state";
+import { useAppStore } from "../app-state";
 
-describe("useRootAppState", () => {
+describe("useAppStore", () => {
   it("forgets the current project and api token on clear", () => {
-    const { result } = renderHook(() => useRootAppState());
-    act(() => {
-      result.current.setCurrentProjectId("project-1");
-      result.current.setApiToken("token-1");
-    });
+    const { setCurrentProjectId, setApiToken, clear } = useAppStore.getState();
+    setCurrentProjectId("project-1");
+    setApiToken("token-1");
 
-    act(() => result.current.clear());
+    clear();
 
-    expect(result.current.currentProjectId).toBeUndefined();
-    expect(result.current.apiToken).toBeUndefined();
+    expect(useAppStore.getState().currentProjectId).toBeUndefined();
+    expect(useAppStore.getState().apiToken).toBeUndefined();
+  });
+
+  it("keeps only the theme in storage", () => {
+    const { setApiToken, toggleIsDark, clear } = useAppStore.getState();
+    setApiToken("token-1");
+    toggleIsDark();
+
+    const stored = localStorage.getItem("app-state") ?? "";
+
+    expect(JSON.parse(stored).state).toEqual({ isDark: true });
+    toggleIsDark();
+    clear();
   });
 });

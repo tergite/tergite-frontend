@@ -19,15 +19,16 @@ the single place that uses it, and only moves outward when a second consumer app
 ```
 src/
 ├── main.tsx                 # ReactDOM root
-├── app.tsx                  # QueryClientProvider + AppStateContext + AppRouter
-├── router.tsx               # every route, its element and its loader
+├── app.tsx                  # builds the router once; QueryClientProvider + RouterProvider
+├── router.tsx               # the module-level route array: every route, its element, its loader
 ├── index.css                # Tailwind layers + CSS custom properties (light/dark)
 ├── lib/
 │   ├── api/
 │   │   ├── client.ts        # the typed openapi-fetch client: the only file that talks HTTP
 │   │   ├── schema.d.ts      # generated from MSS's OpenAPI schema by `npm run generate:api`
 │   │   └── devices.ts, …    # one module per resource: its queryOptions and mutations
-│   ├── app-state.ts         # the AppStateContext and its factory
+│   ├── app-state.ts         # useAppStore, the zustand store of app state
+│   ├── query-client.ts      # the one QueryClient, polling by default
 │   ├── loaders.ts           # loadOrRedirectIfAuthErr and tryQueryFetchMany, for route loaders
 │   ├── time.ts              # parsing and formatting times and durations beyond one luxon call
 │   ├── user-requests.ts     # a request's title and details, as every request view shows them
@@ -120,7 +121,7 @@ panel and its dialogs (`tokens/components/tokens-sidebar/{index,delete-dialog,li
 
 ```mermaid
 flowchart TD
-    Route["route in router.tsx"] -->|"loader(appState, queryClient)"| Loader
+    Route["route in router.tsx"] -->|"loader(queryClient)"| Loader
     Loader -->|"ensureQueryData(...)"| RQ["react-query cache"]
     RQ -->|"queryFn"| AC["lib/api/{resource}.ts"]
     AC -->|"client.GET(path, params)"| Client["lib/api/client.ts"]
@@ -152,11 +153,12 @@ MSS's schema; where a read takes the whole of an endpoint's query, its argument 
 that query (`getNoticesQuery`).
 
 Query keys are `[resource, ...discriminators]`. Every query polls at the `QueryClient`'s
-default `refetchInterval`, set in `app.tsx` from `VITE_REFETCH_INTERVAL_MS` (default 2 min),
+default `refetchInterval`, set in `lib/query-client.ts` from `VITE_REFETCH_INTERVAL_MS` (default 2 min),
 which is why the e2e config drops it to 1 s; a query that must not poll says
 `refetchInterval: false`.
 
-**Route loaders.** Every route in `router.tsx` has `loader: xLoader(appState, queryClient)`.
+**Route loaders.** Every route in `router.tsx` has `loader: xLoader(queryClient)`; a loader
+that needs app state reads `useAppStore.getState()`.
 The loader is exported from the page module next to the component (with an
 `// eslint-disable-next-line react-refresh/only-export-components`), pre-fetches through
 `queryClient.ensureQueryData(...)`, and returns a single typed `XData` object. The page reads
@@ -190,17 +192,21 @@ the provider*, not navigation, and it is the only such use.
 
 ### Global state
 
-Deliberately tiny. `AppStateContext` (`lib/app-state.ts`) holds only what is neither server
-data nor URL state:
+Deliberately tiny. The zustand store `useAppStore` (`lib/app-state.ts`) holds only what is
+neither server data nor URL state:
 
-- `currentProjectExtId` / `setCurrentProjectExtId` — the project selected in the topbar,
+- `currentProjectId` / `setCurrentProjectId` — the project selected in the topbar,
   which scopes jobs and tokens across pages
 - `apiToken` / `setApiToken` — a freshly minted token, held long enough to show it once
-- `isDark` / `toggleIsDark` — theme, persisted to localStorage by `app.tsx`
+- `isDark` / `toggleIsDark` — the theme, the one field its `persist` middleware keeps in
+  localStorage; the API token must never reach storage
 - `clear()` — used on logout
 
-Everything else is either in the react-query cache (server state) or in the route (which
-device, which page). Do not add server data to the context.
+Components read it with the hook (`useAppStore((state) => state.isDark)`), loaders with
+`useAppStore.getState()`. The router is built once, in `app.tsx`, and
+`revalidateOnProjectChange` reruns the loaders when the selected project changes. Everything
+else is either in the react-query cache (server state) or in the route (which device, which
+page). Do not add server data to the store.
 
 ### Routes
 
@@ -211,9 +217,10 @@ by their own Playwright specs. `index.html` is the vite entry that mounts `#root
 `/` is the `Dashboard` layout with `dashboardLoader` (fetches the current user, derives
 `isUserAdmin`); its children are `/` (home), `/devices`, `/devices/:deviceName`, `/tokens`,
 `/projects`, `/requests`, `/admin-projects`, `/admin-requests`, `/admin-control`. `/login` sits outside the
-layout. Each route element is wrapped in `<ErrorBound>` and the layout and the child group each
-have an `errorElement` of `<ErrorAlert>`, so a failure inside a page replaces the page rather
-than the whole app.
+layout. An `ErrorBoundary` around the layout's `<Outlet/>`, reset on navigation, and one around
+the login page catch render errors; the layout and the child group each have an
+`errorElement` of `<ErrorAlert>` for loader errors. Either way a failure inside a page
+replaces the page rather than the whole app.
 
 ## 3. UI conventions
 
@@ -221,7 +228,7 @@ than the whole app.
   never literal — use the semantic tokens (`bg-background`, `text-muted-foreground`,
   `border-input`, `bg-destructive`) defined in `tailwind.config.js` against the custom
   properties in `src/index.css`. Dark mode is the `dark` class on the layout root, driven by
-  `appState.isDark`.
+  the store's `isDark`.
 - **Add a shadcn primitive** with the shadcn CLI (config in `components.json`) so it lands in
   `src/components/ui/` with the project's style, then edit it in place — these are vendored
   source files, not a dependency.

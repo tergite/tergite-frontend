@@ -13,7 +13,6 @@ import { useCallback, useState } from "react";
 import {
   User,
   UserRequestStatus,
-  type AppState,
   type Project,
 } from "../../../types";
 import { ProjectsTable } from "./components/project-table";
@@ -102,7 +101,7 @@ export function Projects() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<ProjectsPageData> => {
     const cachedCurrentUser = queryClient.getQueryData(
       currentUserQuery.queryKey

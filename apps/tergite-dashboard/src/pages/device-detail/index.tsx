@@ -3,7 +3,6 @@ import { getBookingsConfigQuery } from "@/lib/api/bookings";
 import { currentUserQuery } from "@/lib/api/auth";
 import { getDeviceCalibrationQuery, getDeviceQuery } from "@/lib/api/devices";
 import {
-  AppState,
   BookingsConfig,
   Device,
   DeviceCalibration,
@@ -128,7 +127,7 @@ export function DeviceDetail() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(
     async ({ params, request }: LoaderFunctionArgs) => {
       const { deviceName = "" } = params;

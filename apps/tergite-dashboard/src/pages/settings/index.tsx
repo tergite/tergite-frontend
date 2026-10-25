@@ -8,7 +8,6 @@ import {
 import { noticePreferencesQuery } from "@/lib/api/notices";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient } from "@tanstack/react-query";
-import { type AppState } from "types";
 import { NotificationPreferencesForm } from "./components/notification-preferences-form";
 
 export function Settings() {
@@ -31,7 +30,7 @@ export function Settings() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async () => {
     await queryClient.ensureQueryData(noticePreferencesQuery);
     return {};

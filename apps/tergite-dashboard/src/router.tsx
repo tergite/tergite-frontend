@@ -1,16 +1,15 @@
 import {
-  createRoutesFromElements,
   createBrowserRouter,
+  createRoutesFromElements,
   Route,
-  RouterProvider,
 } from "react-router-dom";
-import ErrorAlert, { ErrorBound } from "./pages/error-alert";
+import { ErrorBoundary } from "react-error-boundary";
+import ErrorAlert from "./pages/error-alert";
 import LoginPage from "./pages/login";
 import { Home, loader as homeLoader } from "./pages/home";
 import { Devices, loader as devicesLoader } from "./pages/devices";
-import { AppState } from "../types";
-import { MutableRefObject, useContext, useEffect, useMemo, useRef } from "react";
-import { AppStateContext } from "./lib/app-state";
+import { useAppStore } from "./lib/app-state";
+import { queryClient } from "./lib/query-client";
 import {
   Dashboard,
   loader as dashboardLoader,
@@ -19,7 +18,6 @@ import {
   DeviceDetail,
   loader as deviceDetailLoader,
 } from "./pages/device-detail";
-import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import { Tokens, loader as tokensLoader } from "./pages/tokens";
 import { Projects, loader as projectsLoader } from "./pages/projects";
 import {
@@ -38,188 +36,87 @@ import { Approvals, loader as approvalsLoader } from "./pages/approvals";
 import { Settings, loader as settingsLoader } from "./pages/settings";
 import { MyRequests, loader as myRequestsLoader } from "./pages/requests";
 
-export function AppRouter({ routerConstructor }: Props) {
-  const appState = useContext(AppStateContext);
-  const queryClient = useQueryClient();
-  const latestAppState = useRef(appState);
-  const loadedProjectId = useRef(appState.currentProjectId);
-  const router = useMemo(
-    () =>
-      routerConstructor(
-        getRoutes(createLiveAppState(latestAppState), queryClient),
-        { basename: import.meta.env.BASE_URL },
-      ),
-    [routerConstructor, queryClient],
-  );
+export const routes = createRoutesFromElements(
+  <>
+    <Route
+      path="/"
+      element={<Dashboard />}
+      loader={dashboardLoader(queryClient)}
+      errorElement={<ErrorAlert className="h-screen bg-muted" />}
+    >
+      <Route errorElement={<ErrorAlert />}>
+        <Route index element={<Home />} loader={homeLoader(queryClient)} />
+        <Route
+          path="devices"
+          element={<Devices />}
+          loader={devicesLoader(queryClient)}
+        />
+        <Route
+          path="devices/:deviceName"
+          element={<DeviceDetail />}
+          loader={deviceDetailLoader(queryClient)}
+        />
+        <Route
+          path="tokens"
+          element={<Tokens />}
+          loader={tokensLoader(queryClient)}
+        />
+        <Route
+          path="projects"
+          element={<Projects />}
+          loader={projectsLoader(queryClient)}
+        />
+        <Route
+          path="approvals"
+          element={<Approvals />}
+          loader={approvalsLoader(queryClient)}
+        />
+        <Route
+          path="requests"
+          element={<MyRequests />}
+          loader={myRequestsLoader(queryClient)}
+        />
+        <Route
+          path="settings"
+          element={<Settings />}
+          loader={settingsLoader(queryClient)}
+        />
+        <Route
+          path="admin-projects"
+          element={<AdminProjects />}
+          loader={adminProjectsLoader(queryClient)}
+        />
+        <Route
+          path="admin-requests"
+          element={<AdminRequests />}
+          loader={adminRequestsLoader(queryClient)}
+        />
+        <Route
+          path="admin-control"
+          element={<AdminControl />}
+          loader={adminControlLoader(queryClient)}
+        />
+      </Route>
+    </Route>
+    <Route
+      path="login"
+      element={
+        <ErrorBoundary FallbackComponent={ErrorAlert}>
+          <LoginPage />
+        </ErrorBoundary>
+      }
+      errorElement={<ErrorAlert />}
+    />
+  </>,
+);
 
-  useEffect(() => {
-    latestAppState.current = appState;
-    if (appState.currentProjectId !== loadedProjectId.current) {
-      loadedProjectId.current = appState.currentProjectId;
+/** Reruns the loaders when the selected project changes, as most of them read it */
+export function revalidateOnProjectChange(
+  router: ReturnType<typeof createBrowserRouter>,
+) {
+  return useAppStore.subscribe((state, previous) => {
+    if (state.currentProjectId !== previous.currentProjectId) {
       router.revalidate();
     }
-  }, [appState, router]);
-
-  return <RouterProvider router={router} />;
-}
-
-interface Props {
-  routerConstructor: typeof createBrowserRouter;
-}
-
-/**
- * Generates a collection of routes that are aware of the app state
- *
- * @param appState - the global state of the application
- * @param queryClient - the react query client for making queries
- * @returns - the array of routes
- */
-function getRoutes(appState: AppState, queryClient: QueryClient) {
-  return createRoutesFromElements(
-    <>
-      <Route
-        path="/"
-        element={
-          <ErrorBound>
-            <Dashboard />
-          </ErrorBound>
-        }
-        loader={dashboardLoader(appState, queryClient)}
-        errorElement={<ErrorAlert className="h-screen bg-muted" />}
-      >
-        <Route errorElement={<ErrorAlert />}>
-          <Route
-            index
-            element={
-              <ErrorBound>
-                <Home />
-              </ErrorBound>
-            }
-            loader={homeLoader(appState, queryClient)}
-          />
-          <Route
-            path="devices"
-            element={
-              <ErrorBound>
-                <Devices />
-              </ErrorBound>
-            }
-            loader={devicesLoader(appState, queryClient)}
-          />
-          <Route
-            path="devices/:deviceName"
-            element={
-              <ErrorBound>
-                <DeviceDetail />
-              </ErrorBound>
-            }
-            loader={deviceDetailLoader(appState, queryClient)}
-          />
-          <Route
-            path="tokens"
-            element={
-              <ErrorBound>
-                <Tokens />
-              </ErrorBound>
-            }
-            loader={tokensLoader(appState, queryClient)}
-          />
-          <Route
-            path="projects"
-            element={
-              <ErrorBound>
-                <Projects />
-              </ErrorBound>
-            }
-            loader={projectsLoader(appState, queryClient)}
-          />
-          <Route
-            path="approvals"
-            element={
-              <ErrorBound>
-                <Approvals />
-              </ErrorBound>
-            }
-            loader={approvalsLoader(appState, queryClient)}
-          />
-          <Route
-            path="requests"
-            element={
-              <ErrorBound>
-                <MyRequests />
-              </ErrorBound>
-            }
-            loader={myRequestsLoader(appState, queryClient)}
-          />
-          <Route
-            path="settings"
-            element={
-              <ErrorBound>
-                <Settings />
-              </ErrorBound>
-            }
-            loader={settingsLoader(appState, queryClient)}
-          />
-          <Route
-            path="admin-projects"
-            element={
-              <ErrorBound>
-                <AdminProjects />
-              </ErrorBound>
-            }
-            loader={adminProjectsLoader(appState, queryClient)}
-          />
-          <Route
-            path="admin-requests"
-            element={
-              <ErrorBound>
-                <AdminRequests />
-              </ErrorBound>
-            }
-            loader={adminRequestsLoader(appState, queryClient)}
-          />
-          <Route
-            path="admin-control"
-            element={
-              <ErrorBound>
-                <AdminControl />
-              </ErrorBound>
-            }
-            loader={adminControlLoader(appState, queryClient)}
-          />
-        </Route>
-      </Route>
-      <Route
-        path="login"
-        element={
-          <ErrorBound>
-            <LoginPage />
-          </ErrorBound>
-        }
-        errorElement={<ErrorAlert />}
-      />
-    </>,
-  );
-}
-
-/**
- * An app state whose every read and call goes to the latest state, so loaders built once
- * still see the project chosen since
- */
-function createLiveAppState(latest: MutableRefObject<AppState>): AppState {
-  return {
-    get currentProjectId() {
-      return latest.current.currentProjectId;
-    },
-    get apiToken() {
-      return latest.current.apiToken;
-    },
-    get isDark() {
-      return latest.current.isDark;
-    },
-    setCurrentProjectId: (value) => latest.current.setCurrentProjectId(value),
-    setApiToken: (value) => latest.current.setApiToken(value),
-    toggleIsDark: () => latest.current.toggleIsDark(),
-    clear: () => latest.current.clear(),
-  };
+  });
 }

@@ -13,7 +13,6 @@ import {
   ErrorInfo,
   User,
   UserRole,
-  type AppState,
   type AdminProject,
 } from "../../../types";
 import { AdminProjectsTable } from "./components/projects-table";
@@ -127,7 +126,7 @@ export function AdminProjects() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<AdminProjectsData> => {
     const cachedCurrentUser = queryClient.getQueryData(
       currentUserQuery.queryKey

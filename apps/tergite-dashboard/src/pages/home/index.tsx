@@ -16,7 +16,7 @@ import { devicesQuery } from "@/lib/api/devices";
 import { getMyJobsQuery } from "@/lib/api/jobs";
 import { myProjectsQuery } from "@/lib/api/projects";
 import { getUpcomingBookingsQuery } from "@/lib/api/bookings";
-import { Job, Device, AppState, Project, Booking } from "types";
+import { Job, Device, Project, Booking } from "types";
 import { JobsTable } from "./components/jobs-table";
 import { DevicesTable } from "./components/devices-table";
 import {
@@ -29,6 +29,7 @@ import {
   UseQueryResult,
 } from "@tanstack/react-query";
 import { loadOrRedirectIfAuthErr, tryQueryFetchMany } from "@/lib/loaders";
+import { useAppStore } from "@/lib/app-state";
 import { DateTime } from "luxon";
 import { BookingsTable } from "./components/bookings-table";
 
@@ -140,8 +141,9 @@ interface HomeData {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async () => {
+    const { currentProjectId } = useAppStore.getState();
     // devices
     const devices = await queryClient.ensureQueryData(devicesQuery);
 
@@ -149,7 +151,7 @@ export function loader(appState: AppState, queryClient: QueryClient) {
     const projects = await queryClient.ensureQueryData(myProjectsQuery);
 
     const currentProject = projects.filter(
-      (v) => v.id === appState.currentProjectId
+      (v) => v.id === currentProjectId
     )[0];
 
     // jobs

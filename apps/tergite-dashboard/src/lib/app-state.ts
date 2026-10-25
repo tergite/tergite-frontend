@@ -1,65 +1,29 @@
-import { createContext, useCallback, useEffect, useState } from "react";
-import { AppState } from "../../types";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-export const AppStateContext = createContext<AppState>(newAppState());
-
-/**
- * The app state owned by the root component, with setters that change it
- */
-export function useRootAppState(): AppState {
-  const [currentProjectId, setCurrentProjectId] = useState<string>();
-  const [apiToken, setApiToken] = useState<string>();
-  const [isDark, setIsDark] = useState<boolean>(getSavedIsDarkMode());
-  const toggleIsDark = useCallback(() => setIsDark((value) => !value), []);
-  const clear = useCallback(() => {
-    setCurrentProjectId(undefined);
-    setApiToken(undefined);
-  }, []);
-
-  useEffect(() => saveIsDarkMode(isDark), [isDark]);
-
-  return {
-    currentProjectId,
-    setCurrentProjectId,
-    apiToken,
-    setApiToken,
-    isDark,
-    toggleIsDark,
-    clear,
-  };
+/** What is neither server data nor URL state */
+export interface AppState {
+  currentProjectId?: string;
+  setCurrentProjectId: (value?: string) => void;
+  apiToken?: string;
+  setApiToken: (value?: string) => void;
+  clear: () => void;
+  isDark: boolean;
+  toggleIsDark: () => void;
 }
 
-/**
- * A factory function for generating app states to ensure immutability
- *
- * @returns new app state with proper initializations
- */
-export function newAppState(): AppState {
-  const state: AppState = {
-    currentProjectId: undefined,
-    setCurrentProjectId: () => {},
-    apiToken: undefined,
-    isDark: false,
-    setApiToken: () => {},
-    toggleIsDark: () => {},
-    clear: () => {
-      state.setCurrentProjectId(undefined);
-      state.setApiToken(undefined);
-    },
-  };
-
-  return state;
-}
-
-function getSavedIsDarkMode() {
-  return localStorage.getItem("isDarkMode") == "true";
-}
-
-function saveIsDarkMode(isDarkMode: boolean) {
-  localStorage.setItem("isDarkMode", `${isDarkMode}`);
-  if (isDarkMode) {
-    document.documentElement.classList.add("dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-  }
-}
+// only the theme outlives the page: an API token must never reach storage
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      currentProjectId: undefined,
+      setCurrentProjectId: (currentProjectId) => set({ currentProjectId }),
+      apiToken: undefined,
+      setApiToken: (apiToken) => set({ apiToken }),
+      clear: () => set({ currentProjectId: undefined, apiToken: undefined }),
+      isDark: false,
+      toggleIsDark: () => set((state) => ({ isDark: !state.isDark })),
+    }),
+    { name: "app-state", partialize: (state) => ({ isDark: state.isDark }) },
+  ),
+);

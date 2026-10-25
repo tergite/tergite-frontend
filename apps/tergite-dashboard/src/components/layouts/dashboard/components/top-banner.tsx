@@ -1,8 +1,8 @@
 import { Copy, RefreshCcw } from "lucide-react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { AppStateContext } from "@/lib/app-state";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAppStore } from "@/lib/app-state";
 import { createAppToken, refreshMyTokensQueries } from "@/lib/api/tokens";
 import { getMyNoticesQuery } from "@/lib/api/notices";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,8 +13,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { NotificationsBell } from "./notifications";
 
 export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
-  const { apiToken, setApiToken, currentProjectId } =
-    useContext(AppStateContext);
+  const { apiToken, setApiToken, currentProjectId } = useAppStore();
   const queryClient = useQueryClient();
   const [timestamp, setTimestamp] = useState(DateTime.now().toISO());
 

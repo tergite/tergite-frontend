@@ -1,5 +1,5 @@
 import { EventCalendar } from "@/components/ui/event-calendar";
-import { AppStateContext } from "@/lib/app-state";
+import { useAppStore } from "@/lib/app-state";
 import type {
   DayCellContentArg,
   DayHeaderContentArg,
@@ -14,7 +14,7 @@ import {
   PopoverArrow,
 } from "@/components/ui/popover";
 import { DateTime, Duration } from "luxon";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Button, IconButton } from "@/components/ui/button";
 import {
   Booking,
@@ -48,7 +48,7 @@ export function BookingsCalendar({
 }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { isDark } = useContext(AppStateContext);
+  const isDark = useAppStore((state) => state.isDark);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [errMessage, setErrMessage] = useState<string>();
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);

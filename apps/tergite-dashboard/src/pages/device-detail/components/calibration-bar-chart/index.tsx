@@ -9,9 +9,9 @@ import { Group } from "@visx/group";
 import { Grid } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { useParentSize } from "@visx/responsive";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import { CalibrationBar, getXValue, getYValue } from "./calibration-bar";
-import { AppStateContext } from "@/lib/app-state";
+import { useAppStore } from "@/lib/app-state";
 
 const tooltipStyles = {
   ...defaultStyles,
@@ -31,7 +31,7 @@ export function CalibrationBarChart({
     width: _width,
     height,
   } = useParentSize({ debounceTime: 50 });
-  const { isDark } = useContext(AppStateContext);
+  const isDark = useAppStore((state) => state.isDark);
   const graphColor = isDark ? "#f9fafb" : "black";
 
   const width = Math.max(minWidth, _width);

@@ -15,7 +15,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
 import {
   UserRole,
-  type AppState,
   type User,
   type UserRequest,
 } from "../../../types";
@@ -86,7 +85,7 @@ export function Approvals() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<ApprovalsData> => {
     // no role gate: the API returns only what this user may act on, which is the
     // empty list for most people

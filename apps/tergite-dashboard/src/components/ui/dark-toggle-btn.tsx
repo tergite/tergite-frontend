@@ -1,11 +1,11 @@
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import { IconButton } from "./button";
 import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AppStateContext } from "@/lib/app-state";
+import { useAppStore } from "@/lib/app-state";
 
 export function DarkToggleBtn({ className = "" }: Props) {
-  const { isDark, toggleIsDark } = useContext(AppStateContext);
+  const { isDark, toggleIsDark } = useAppStore();
   const iconCls = useMemo(() => (isDark ? Sun : Moon), [isDark]);
 
   return (

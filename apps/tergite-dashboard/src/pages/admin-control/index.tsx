@@ -13,7 +13,6 @@ import { currentUserQuery } from "@/lib/api/auth";
 import { devicesQuery } from "@/lib/api/devices";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import {
-  type AppState,
   type Device,
   type ErrorInfo,
   UserRole,
@@ -129,7 +128,7 @@ export function AdminControl() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loader(_appState: AppState, queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<AdminControlData> => {
     const cachedCurrentUser = queryClient.getQueryData(
       currentUserQuery.queryKey,
