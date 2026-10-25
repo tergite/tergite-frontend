@@ -9,8 +9,8 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Serves GET /refreshed-db, which resets the native e2e stack's MongoDB and backend
-databases to the fixtures, as the docker stack's mongo-router.sh does: see dev/e2e_native_test.sh"""
+"""Serves GET /refreshed-db, which resets the e2e stack's MongoDB and backend databases to
+the fixtures: see dev/e2e_native_test.sh"""
 import argparse
 import subprocess
 from http.server import BaseHTTPRequestHandler, HTTPServer

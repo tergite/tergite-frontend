@@ -266,7 +266,7 @@ vite together via `start-server-and-test`.
 **When an MSS response shape changes, three places need updating**: `types.ts`, the mock
 route in `dev/mock-api/routes/general.ts`, and the fixture in `fixtures/`. Missing one shows
 up as a passing UI suite against a stale contract — which is what the repo-level
-`dev/e2e_test.sh` exists to catch.
+`dev/e2e_native_test.sh` exists to catch.
 
 ## 6. Testing
 
@@ -285,7 +285,7 @@ npm run visual-e2e   # same, in playwright's UI mode
 Each Playwright worker starts its own mock API on `PW_API_PORT_BASE` (8100) plus its index, and
 `playwright/fixtures.ts` redirects the page's requests for the build's API address to it, so
 workers never share data. Runs at the same time need different `PW_API_PORT_BASE`s. With
-`DASHBOARD_URL` set, as [dev/e2e_test.sh](../../dev/e2e_test.sh) sets it, the same specs test
+`DASHBOARD_URL` set, as [dev/e2e_native_test.sh](../../dev/e2e_native_test.sh) sets it, the same specs test
 that dashboard on one worker against its stack's API instead.
 
 Each feature's happy path, and the spec that walks it:

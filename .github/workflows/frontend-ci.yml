@@ -21,7 +21,8 @@ on:
 
 jobs:
   e2e:
-    runs-on: ubuntu-latest
+    # noble, as the MongoDB repository below names it
+    runs-on: ubuntu-24.04
     if: |
       startsWith(github.ref, 'refs/heads/main') || 
       startsWith(github.ref, 'refs/tags/') || 
@@ -33,12 +34,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install dependencies
-        run: sudo apt-get install -y libopenblas-dev jq
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
-        with:
-          version: "latest"
+      - uses: astral-sh/setup-uv@v6
+      - name: Install MongoDB, Redis and SQLite
+        run: |
+          curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |
+            sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
+          echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" |
+            sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-org redis-server sqlite3 jq
       - name: Install the system libraries of Playwright's browser
         run: npx -y playwright@1.64.0 install-deps chromium
       - name: Run end-to-end-tests
@@ -51,9 +55,8 @@ jobs:
           OPENID_CLIENT_SECRET: "${{ secrets.OPENID_CLIENT_SECRET }}"
           OPENID_AUTH_URL: "${{ secrets.OPENID_AUTH_URL }}"
           TEST_THRESHOLD: "${{ vars.TEST_THRESHOLD }}"
-        run: ./dev/e2e_test.sh
+        run: ./dev/e2e_native_test.sh
 
-  # TODO: Add a stage for testing the docker compose loading
   upstream:
     name: Update upstream
     runs-on: ubuntu-latest

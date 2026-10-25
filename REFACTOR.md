@@ -33,7 +33,7 @@ async def update_request(database: Database, request_id: Id, approver: User, dec
     return decided
 ```
 
-**Every commit is verified the same way.** MSS: `black` and `isort` with no flags, then `pytest > "$LOG" 2>&1; echo "exit=$?" >> "$LOG"`. Dashboard: `eslint`, `tsc`, `vitest`, Playwright. `DESIGN.md` changes in the same commit as any file it names. `dev/e2e_test.sh` runs at the end of steps 7 and 9. The style rules a parser can see are tests too: `apps/tergite-mss/tests/test_styleguide.py` and `apps/tergite-dashboard/src/__tests__/styleguide.test.ts`, each with a baseline of the violations that existed when it was added. A commit that fixes a listed violation deletes its line from that baseline, and a commit may never add one.
+**Every commit is verified the same way.** MSS: `black` and `isort` with no flags, then `pytest > "$LOG" 2>&1; echo "exit=$?" >> "$LOG"`. Dashboard: `eslint`, `tsc`, `vitest`, Playwright. `DESIGN.md` changes in the same commit as any file it names. `dev/e2e_native_test.sh` runs at the end of steps 7 and 9. The style rules a parser can see are tests too: `apps/tergite-mss/tests/test_styleguide.py` and `apps/tergite-dashboard/src/__tests__/styleguide.test.ts`, each with a baseline of the violations that existed when it was added. A commit that fixes a listed violation deletes its line from that baseline, and a commit may never add one.
 
 **Every step ends with a sign-off.** Its last commit adds `docs/prototypes/<NN>-<step>.md`, a user acceptance test (UAT) script: how to start the app, what to do, and what should be seen. A user or an agent runs it, reruns the step 1.7 performance checks, and gives the go-ahead before the next step starts.
 
@@ -74,7 +74,7 @@ Tests only. After this step, any refactor commit that changes behaviour fails a 
 3. **CORS:** `Access-Control-Allow-Origin` echoes the request origin on a credentialed request.
 4. **Test helpers by job.** Move `insert_if_not_exist`, `get_db_record` and `update_db_record` from `tests/_utils/auth.py` to `tests/_utils/mongodb.py`.
 5. **Split `tests/conftest.py`** (527 lines, 34 fixtures). OAuth provider mocks go to `tests/_utils/oauth.py`, the `mock_bcc*` fixtures to `tests/_utils/mock_backend.py`, beside the fake BCC handlers they register (`bcc.py` would make an import cycle with it), the `_to_*_record` converters to `tests/_utils/records.py`; register the fixture modules with `pytest_plugins`. `conftest.py` keeps the environment, stores and client, in that order.
-6. **Happy path of every major feature in e2e.** List each feature (login, devices, device detail with bookings and calibrations, projects, tokens, my requests, approvals, notices, settings, admin projects, admin requests, admin control) beside the Playwright spec in `apps/tergite-dashboard/playwright/` that walks its happy path; add a spec for any that has none. These specs also run against the real stack in `dev/e2e_test.sh`. Job submission has no UI; its happy path stays a pytest flow in `tests/api/rest/test_jobs.py`.
+6. **Happy path of every major feature in e2e.** List each feature (login, devices, device detail with bookings and calibrations, projects, tokens, my requests, approvals, notices, settings, admin projects, admin requests, admin control) beside the Playwright spec in `apps/tergite-dashboard/playwright/` that walks its happy path; add a spec for any that has none. These specs also run against the real stack in `dev/e2e_native_test.sh`. Job submission has no UI; its happy path stays a pytest flow in `tests/api/rest/test_jobs.py`.
 7. **Performance baselines**, recorded before any refactor commit and rerun at every step's sign-off:
    - MSS: a Locust scenario in `dev/perf/locustfile.py` drives the main read and write routes against `dev/perf/docker-compose.yml` (MSS built from the working tree, MongoDB and Redis, seeded from the e2e fixtures). Locust records latency percentiles, throughput, error rate and bytes per request. Alongside it, `docker stats` samples the CPU and memory of every container in the stack, and each database's own status command counts open connections.
    - Dashboard: Lighthouse CI (`@lhci/cli`) on the home, devices, device-detail and projects pages against the mock API, configured in `dev/perf/lighthouserc.json`. It records render timings (LCP, TBT), the JavaScript bundle size and network bytes.
@@ -299,7 +299,7 @@ Copy fastapi-users 14.0.2 (2,926 lines, MIT-licensed, in maintenance mode upstre
 
 ## Step 7: MSS switches to `authlib`
 
-Every commit keeps the step 1.1 contract; `dev/e2e_test.sh` runs after the last one.
+Every commit keeps the step 1.1 contract; `dev/e2e_native_test.sh` runs after the last one.
 
 Step 6 made `authlib` read users through the `Database`, so items 1 to 3 land together: MSS's `User` becomes a storage `Schema` in the change that switches to `authlib`, and the subclasses that import the Beanie `User` go with it. The app registers `authlib`'s error handlers with `add_exception_handlers`. The OpenAPI spec changes in three ways the contract accepts: the OAuth routes become `/auth/{provider}/…` and `/auth/app/{provider}/…`, the bearer scheme is `HTTPBearer`, and logout documents the 200 it already answers.
 
@@ -372,5 +372,5 @@ The co-located page hierarchy, the `index / columns / filter-form` table split a
 ## Step 10: close out
 
 1. Read `DESIGN.md` and both app design docs against the tree. Every path they name exists, and every package has the shape they describe. Today they still name `services/notifications`, `outbox.py` and `request_logging_middleware`, and say there is no code generation from the OpenAPI schema.
-2. Run `dev/e2e_test.sh` and the step 1.7 performance checks once more against the merged result.
+2. Run `dev/e2e_native_test.sh` and the step 1.7 performance checks once more against the merged result.
 3. Delete `docs/prototypes/` and this file; the history keeps both.

@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.test" });
 
-// dev/e2e_test.sh sets it to test the docker stack, whose data all tests share
+// dev/e2e_native_test.sh sets it to test the full stack, whose data all tests share
 const stackDashboardUrl = process.env.DASHBOARD_URL;
 
 export default defineConfig({

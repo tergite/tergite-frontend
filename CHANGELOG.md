@@ -16,15 +16,13 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 ### Added
 
-- `dev/e2e_native_test.sh` runs the full-stack e2e without docker, with MongoDB, Redis, MSS and
-  the backends running natively, in about 6 minutes; it needs mongod, mongosh, redis-server and uv.
+- `dev/e2e_native_test.sh` runs the full-stack e2e, with MongoDB, Redis, MSS and the backends
+  running natively, in about 6 minutes; it needs mongod, mongosh, redis-server, sqlite3 and uv.
 
-### Changed
+### Removed
 
-- `dev/e2e_test.sh` keeps the stack's images and build cache between runs, so a repeat run takes
-  about 10 minutes instead of 13; `CLEAN=True` removes them as before.
-- `dev/e2e_test.sh` runs the dashboard's Playwright suite against the stack, so
-  `PLAYWRIGHT_IMAGE` replaces `CYPRESS_IMAGE`, and `VISUAL=True` opens Playwright's UI mode.
+- `dev/e2e_test.sh`, which ran the full-stack e2e in docker, and its compose and Dockerfile
+  fixtures; `dev/e2e_native_test.sh` runs it, in CI too, in about 6 minutes instead of 10 to 13.
 
 ## [2026.06.0] - 2026-06-26
 

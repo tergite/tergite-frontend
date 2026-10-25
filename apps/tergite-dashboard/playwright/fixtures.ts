@@ -1,16 +1,15 @@
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { get } from "node:http";
 import { test as base, type Page } from "@playwright/test";
 import { SignJWT } from "jose";
 import { type User } from "../types";
 
 // the API address the test build was made with; each worker's requests to it go to its own API,
-// unless the tests run against the docker stack, whose API it is
+// unless the tests run against the full stack, whose API it is
 const BUILT_API_URL = process.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8002";
 // set apart for each run of Playwright at once, so that their APIs do not share ports
 const FIRST_API_PORT = parseInt(process.env.PW_API_PORT_BASE ?? "8100");
-// dev/e2e_test.sh sets it to test the docker stack, whose data all tests share
+// dev/e2e_native_test.sh sets it to test the full stack, whose data all tests share
 const IS_STACK = !!process.env.DASHBOARD_URL;
 
 // a test that writes leaves its worker's data for the next test to reset, and one that only
@@ -76,7 +75,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(async () => {
       if (!hasWritten) return;
       hasWritten = false;
-      await (IS_STACK ? resetStack() : fetch(`${apiUrl}/refreshed-db`));
+      await fetch(IS_STACK ? process.env.DB_RESET_URL! : `${apiUrl}/refreshed-db`);
     });
   },
 
@@ -104,7 +103,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 export { expect } from "@playwright/test";
 
-/** Reads a JSON fixture of fixtures, which the mock API and the docker stack also use */
+/** Reads a JSON fixture of fixtures/, which the mock API and the full-stack e2e also use */
 export function readFixture<T>(name: string): T {
   const url = new URL(`../fixtures/${name}.json`, import.meta.url);
   return JSON.parse(readFileSync(url, "utf8")) as T;
@@ -127,17 +126,6 @@ export function signSession(user: User, expiry: number): Promise<string> {
     .setAudience([process.env.AUTH_AUDIENCE!])
     .setExpirationTime(expiry)
     .sign(new TextEncoder().encode(process.env.JWT_SECRET!));
-}
-
-/** Resets the docker stack's data, whose reset service ends its lines with a bare LF, which
- * fetch rejects as malformed HTTP */
-function resetStack(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    get(process.env.DB_RESET_URL!, { insecureHTTPParser: true }, (response) => {
-      response.resume();
-      response.on("end", resolve);
-    }).on("error", reject);
-  });
 }
 
 async function waitUntilServing(url: string): Promise<void> {

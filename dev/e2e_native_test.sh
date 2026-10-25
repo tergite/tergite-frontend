@@ -11,10 +11,9 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 #
-# Runs the dashboard's Playwright suite against the stack that dev/e2e_test.sh runs in docker,
-# with each service running natively instead: MongoDB, Redis, MSS from this checkout and the
-# backends from a tergite-backend checkout, one process serving them all, each under its own
-# path, all from fresh data in temp-native/.
+# Runs the dashboard's Playwright suite against the whole stack, each service running natively:
+# MongoDB, Redis, MSS from this checkout and the backends from a tergite-backend checkout, one
+# process serving them all, each under its own path, all from fresh data in temp-native/.
 # Needs mongod, mongosh, redis-server, sqlite3, uv, npm, jq and curl.
 #
 # Usage
@@ -25,10 +24,10 @@
 #   BACKEND_BRANCH="main" \ # the branch of BACKEND_REPO to clone; default is 'main'
 #   DEBUG="True" \ # Set 'True' to keep the services running and temp-native/ after the tests, default: ''
 #   VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
-#   OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration" \ # as in dev/e2e_test.sh
-#   OPENID_CLIENT_ID="kbyuFDidLLm280LIwVFiazOqjO3ty8KH" \ # as in dev/e2e_test.sh
-#   OPENID_CLIENT_SECRET="60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa" \ # as in dev/e2e_test.sh
-#   OPENID_AUTH_URL="https://samples.auth0.com/authorize" \ # as in dev/e2e_test.sh
+#   OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration" \ # MSS's mock OpenID provider
+#   OPENID_CLIENT_ID="kbyuFDidLLm280LIwVFiazOqjO3ty8KH" \ # its client ID
+#   OPENID_CLIENT_SECRET="60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa" \ # its client secret
+#   OPENID_AUTH_URL="https://samples.auth0.com/authorize" \ # the URL it redirects to for logging in
 #   ./dev/e2e_native_test.sh
 
 set -e # exit if any step fails
@@ -52,8 +51,8 @@ MONGO_PORT=27018
 REDIS_PORT=6380
 BACKEND_PORT=8101
 LOKI_JWT_SECRET="e9fae9efa7c3ff10348acde323baa5273db8021712ecb1f59fdf0e8336240fb7d70c6d8d"
-# name|executor|app settings|JWT secret|max slot|min slot|slots a day|idle time, as in
-# fixtures/e2e-docker-compose.yml; empty fields keep the backend's defaults
+# name|executor|app settings|JWT secret|max slot|min slot|slots a day|idle time; empty fields
+# keep the backend's defaults
 BACKENDS=(
   "qiskit_pulse_2q|qiskit_pulse_2q|production|$LOKI_JWT_SECRET||||"
   "qiskit_pulse_1q|qiskit_pulse_1q|production|dd94de9017e976973769aaf5d426fdb95cab46feda584dbdbc5f3f02bbf8ae8ce77211d7||||"
@@ -64,7 +63,7 @@ BACKENDS=(
   "Likee|quantify|staging|$LOKI_JWT_SECRET|7200|1200|24|100"
   "Thea|quantify|staging|$LOKI_JWT_SECRET|7200|1200|24|100"
 )
-# the backends whose databases a reset reloads, as mongo-router.sh's
+# the backends whose databases a reset reloads
 RESET_BACKENDS=(qiskit_pulse_2q qiskit_pulse_1q Loke Thor Pingu Pegu)
 PIDS=()
 
@@ -145,7 +144,7 @@ stop_stack() {
 }
 
 for port in $MSS_PORT $RESET_PORT $DASHBOARD_PORT $MONGO_PORT $REDIS_PORT $BACKEND_PORT; do
-  ! lsof -nP -iTCP:$port -sTCP:LISTEN &> /dev/null || exit_with_err "port $port is in use"
+  ! (exec 3<> "/dev/tcp/127.0.0.1/$port") 2> /dev/null || exit_with_err "port $port is in use"
 done
 
 trap stop_stack EXIT

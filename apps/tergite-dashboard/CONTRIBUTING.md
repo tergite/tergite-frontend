@@ -102,17 +102,10 @@ npm run test
 
 ## How to Run End-to-end Tests
 
-- Ensure you have [docker](https://docs.docker.com/engine/install/) and [jq](https://jqlang.org/download/) installed
-- If you will not supply the `PLAYWRIGHT_IMAGE` argument, you need [nodejs](https://nodejs.org/en) installed also.
-- Ensure nothing is running on ports:
-
-  - 27018
-  - 8000
-  - 8002
-  - 8001
-  - 6378
-
-- Clone the repo
+- Ensure you have [nodejs](https://nodejs.org/en), [uv](https://docs.astral.sh/uv/), [jq](https://jqlang.org/download/),
+  MongoDB's `mongod` and `mongosh`, `redis-server` and `sqlite3` installed
+- Ensure nothing is running on ports 3000, 3001, 8002, 8101, 27018 and 6380
+- Clone the repo, and tergite-backend beside it unless `BACKEND_REPO` is given
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
@@ -122,17 +115,12 @@ cd tergite-frontend
 - Run the tests command
 
 ```shell
-BACKEND_REPO="https://github.com/tergite/tergite-backend.git" \
-# BACKEND_BRANCH="main" \ # you can set a different backend branch; default is 'main'
-# DEBUG="True" \ # Set 'True' to avoid cleaning up the containers, env, and repos after test, default: ''
-# CLEAN="True" \ # Set 'True' to also remove the stack's images and the build cache, before and after, default: ''
+BACKEND_PATH="../tergite-backend" \
+# BACKEND_REPO="https://github.com/tergite/tergite-backend.git" \ # cloned when BACKEND_PATH is not set
+# BACKEND_BRANCH="main" \ # the branch of BACKEND_REPO to clone; default is 'main'
+# DEBUG="True" \ # Set 'True' to keep the services running and temp-native/ after the tests, default: ''
 # VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
-# PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.64.0-noble" \ # Set the docker image to run the tests. If not provided, it runs on the host machine
-#   OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration" \ # Set the url to get the openID config for mock OpenID connect, default: 'https://samples.auth0.com/.well-known/openid-configuration'
-#   OPENID_CLIENT_ID="kbyuFDidLLm280LIwVFiazOqjO3ty8KH" \ # Set the client id for mock OpenID connect, default: 'kbyuFDidLLm280LIwVFiazOqjO3ty8KH'
-#   OPENID_CLIENT_SECRET="60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa" \ # Set the client secret for mock OpenID connect, default: '60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa'
-#   OPENID_AUTH_URL="https://samples.auth0.com/authorize" \ # Set the url to redirect to for auth for mock OpenID connect, default: 'https://samples.auth0.com/authorize'
-./dev/e2e_test.sh
+./dev/e2e_native_test.sh
 ```
 
 ## How to Build
