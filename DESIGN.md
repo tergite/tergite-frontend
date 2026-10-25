@@ -128,10 +128,12 @@ There are three configuration surfaces, and they overlap deliberately.
 
 ### 4.1 `mss-config.toml` (MSS, and indirectly the dashboard build)
 
-Copy `mss-config.example.toml` → `mss-config.toml`. Sections: `[general]`, `[database]`,
-`[[backends]]` (one per BCC), `[auth]` and `[[auth.clients]]` (one per OAuth2 provider).
-It is parsed by `start_mss.sh` into JSON and handed to the process as
-`MSS_CONFIG_JSON_STR`; the app validates it into `AppConfig`
+Copy [apps/tergite-mss/mss-config.example.toml](apps/tergite-mss/mss-config.example.toml) →
+`mss-config.toml`, or let the deb's provisioning write `/etc/tergite-mss/mss-config.toml`.
+Sections: `[general]`, `[database]`, `[[backends]]` (one per BCC), `[projects]`, `[notices]`,
+`[email]`, `[auth]` and `[[auth.clients]]` (one per OAuth2 provider). MSS reads the file
+`MSS_CONFIG_FILE` names, or `start_mss.sh` hands it over as JSON in `MSS_CONFIG_JSON_STR`;
+the app validates it into `AppConfig`
 ([utils/config.py](apps/tergite-mss/utils/config.py)) at import time in `settings.py` and
 fails fast on anything missing.
 

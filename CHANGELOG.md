@@ -26,6 +26,8 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 - `fresh-docker-compose.yml`, `prebuilt-docker-compose.yml` and their `.env.example`; MSS installs
   from its deb or macOS installer and the dashboard runs from its image or static build, as the
   README's deployment section describes, and `config.alloy` ships MSS's journal instead of docker's logs.
+- The root `mss-config.example.toml`; `apps/tergite-mss/mss-config.example.toml`, which MSS's packages install, is
+  the one example, now with the Puhuri note and the `example` OpenID client only the root one had.
 
 ## [2026.06.0] - 2026-06-26
 
