@@ -199,8 +199,8 @@ when an MSS response changes.
 MSS, the dashboard and the backend, seeds Mongo from the same fixtures, wires up a
 mock OpenID provider, and runs the Playwright specs against the real stack, on one worker. It is a manual /
 tag-triggered job in CI, not a per-commit one. `dev/e2e_native_test.sh` runs the same stack
-without docker, from a local `tergite-backend` checkout or a clone: one `main.py serve` per
-backend from the base dependencies, MSS from this checkout, and a MongoDB, a Redis and a
+without docker, from a local `tergite-backend` checkout or a clone: one `main.py serve` for all
+the backends, each under its own path, from the base dependencies, MSS from this checkout, and a MongoDB, a Redis and a
 reset service (`dev/e2e_reset_server.py`) of its own, all from fresh data in `temp-native/`.
 
 Visual regression is Playwright's `toHaveScreenshot`; its baselines are named after the

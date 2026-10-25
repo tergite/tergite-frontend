@@ -13,7 +13,8 @@
 #
 # Runs the dashboard's Playwright suite against the stack that dev/e2e_test.sh runs in docker,
 # with each service running natively instead: MongoDB, Redis, MSS from this checkout and the
-# backends from a tergite-backend checkout, all from fresh data in temp-native/.
+# backends from a tergite-backend checkout, one process serving them all, each under its own
+# path, all from fresh data in temp-native/.
 # Needs mongod, mongosh, redis-server, sqlite3, uv, npm, jq and curl.
 #
 # Usage
@@ -49,7 +50,7 @@ RESET_PORT=3001
 DASHBOARD_PORT=3000
 MONGO_PORT=27018
 REDIS_PORT=6380
-FIRST_BACKEND_PORT=8101
+BACKEND_PORT=8101
 LOKI_JWT_SECRET="e9fae9efa7c3ff10348acde323baa5273db8021712ecb1f59fdf0e8336240fb7d70c6d8d"
 # name|executor|app settings|JWT secret|max slot|min slot|slots a day|idle time, as in
 # fixtures/e2e-docker-compose.yml; empty fields keep the backend's defaults
@@ -143,8 +144,7 @@ stop_stack() {
   find "$WORK_PATH" -mindepth 1 -maxdepth 1 ! -name venvs -exec rm -rf {} +;
 }
 
-for port in $MSS_PORT $RESET_PORT $DASHBOARD_PORT $MONGO_PORT $REDIS_PORT \
-  $(seq $FIRST_BACKEND_PORT $(( FIRST_BACKEND_PORT + ${#BACKENDS[@]} - 1 ))); do
+for port in $MSS_PORT $RESET_PORT $DASHBOARD_PORT $MONGO_PORT $REDIS_PORT $BACKEND_PORT; do
   ! lsof -nP -iTCP:$port -sTCP:LISTEN &> /dev/null || exit_with_err "port $port is in use"
 done
 
@@ -197,12 +197,11 @@ replace_str "$WORK_PATH/mss-config.toml" "bcc_certs/" "$FIXTURES_PATH/"
 replace_str "$WORK_PATH/mss-config.toml" "OPENID_CLIENT_ID" "$OPENID_CLIENT_ID"
 replace_str "$WORK_PATH/mss-config.toml" "OPENID_CLIENT_SECRET" "$OPENID_CLIENT_SECRET"
 replace_str "$WORK_PATH/mss-config.toml" "OPENID_CONFIG_URL" "$OPENID_CONFIG_URL"
-port=$FIRST_BACKEND_PORT
+# the backend process serves each device at /<its DEFAULT_PREFIX>
 for backend in "${BACKENDS[@]}"; do
   IFS="|" read -r name _ <<< "$backend"
   host="$(echo "$name" | tr '[:upper:]' '[:lower:]')"
-  replace_str "$WORK_PATH/mss-config.toml" "http://$host:8000" "http://127.0.0.1:$port"
-  port=$(( port + 1 ))
+  replace_str "$WORK_PATH/mss-config.toml" "http://$host:8000" "http://127.0.0.1:$BACKEND_PORT/$name"
 done
 export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
 (cd "$MSS_PATH" && "$WORK_PATH/venvs/mss/bin/python" main.py migrate > "$WORK_PATH/logs/mss-migrate.log" 2>&1)
@@ -212,9 +211,8 @@ unset MSS_CONFIG_FILE PRIVATE_KEY_FILE
 wait_for_url mss "http://127.0.0.1:$MSS_PORT/" $mss_pid
 
 echo "Starting the backends"
-port=$FIRST_BACKEND_PORT
 reset_databases=()
-backend_pids=()
+env_file_args=()
 for backend in "${BACKENDS[@]}"; do
   IFS="|" read -r name executor app_settings jwt_secret max_slot min_slot slots_a_day idle_time <<< "$backend"
   stem="$(echo "$name" | tr '[:upper:]' '[:lower:]')"
@@ -227,8 +225,7 @@ for backend in "${BACKENDS[@]}"; do
     echo "JWT_SECRET=$jwt_secret"
     echo "IS_AUTH_ENABLED=True"
     echo "CORS_ORIGINS=127.0.0.1,localhost"
-    echo "BCC_PORT=$port"
-    echo "BCC_MACHINE_ROOT_URL=http://127.0.0.1:$port"
+    echo "BCC_MACHINE_ROOT_URL=http://127.0.0.1:$BACKEND_PORT/$name"
     echo "MSS_MACHINE_ROOT_URL=http://127.0.0.1:$MSS_PORT"
     echo "REDIS_HOST=127.0.0.1"
     echo "REDIS_PORT=$REDIS_PORT"
@@ -244,15 +241,11 @@ for backend in "${BACKENDS[@]}"; do
     [[ -z "$idle_time" ]] || echo "MAX_IDLE_TIME=$idle_time"
     [[ "$app_settings" != "staging" ]] || echo "CURRENT_DATE=2025-10-01T00:00:00.000Z"
   } > "$dir/backend.env"
-  start_service "$name" bash -c "cd '$dir' && ENV_FILE='$dir/backend.env' exec '$WORK_PATH/venvs/backend/bin/python' '$BACKEND_PATH/main.py' serve --host 127.0.0.1 --port $port"
-  backend_pids+=($SERVICE_PID)
+  env_file_args+=(--env-file "$dir/backend.env")
   [[ ! " ${RESET_BACKENDS[*]} " =~ " $name " ]] || reset_databases+=("$dir/booking_db.db")
-  port=$(( port + 1 ))
 done
-for index in "${!BACKENDS[@]}"; do
-  IFS="|" read -r name _ <<< "${BACKENDS[$index]}"
-  wait_for_url "$name" "http://127.0.0.1:$(( FIRST_BACKEND_PORT + index ))/docs" "${backend_pids[$index]}"
-done
+start_service backends bash -c "cd '$WORK_PATH/backends' && exec '$WORK_PATH/venvs/backend/bin/python' '$BACKEND_PATH/main.py' serve --host 127.0.0.1 --port $BACKEND_PORT ${env_file_args[*]}"
+wait_for_url backends "http://127.0.0.1:$BACKEND_PORT/docs" $SERVICE_PID
 
 echo "Starting the reset service and the dashboard"
 start_service reset "$WORK_PATH/venvs/mss/bin/python" "$ROOT_PATH/dev/e2e_reset_server.py" \
