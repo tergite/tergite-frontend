@@ -1,7 +1,8 @@
 name: MSS Release
-# Builds MSS's installers, each on the platform it is for since Nuitka cannot cross-compile,
-# smoke-tests them, and attaches them to the GitHub release of a v* tag. Run by hand, it
-# leaves them as the run's artifacts instead.
+# Builds MSS's deb for amd64 and pkg for macOS arm64, each on that platform since Nuitka
+# cannot cross-compile, smoke-tests them, and attaches them to the GitHub release of a v* tag.
+# Run by hand, it leaves them as the run's artifacts instead. The rpm, apk and Windows
+# packaging in apps/tergite-mss/pkg is kept but not built.
 
 on:
   push:
@@ -36,44 +37,28 @@ jobs:
 
   linux:
     needs: version
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
-    strategy:
-      matrix:
-        include:
-          - { runner: ubuntu-24.04, arch: amd64, image: "debian:bookworm", formats: "deb rpm" }
-          - { runner: ubuntu-24.04-arm, arch: arm64, image: "debian:bookworm", formats: "deb rpm" }
-          - { runner: ubuntu-24.04, arch: amd64, image: "alpine:3.20", formats: "apk" }
-          - { runner: ubuntu-24.04-arm, arch: arm64, image: "alpine:3.20", formats: "apk" }
     env:
       VERSION: ${{ needs.version.outputs.version }}
-      ARCH: ${{ matrix.arch }}
+      ARCH: amd64
     steps:
       - uses: actions/checkout@v4
       - name: Build the binary
-        run: docker run --rm -e UV_PYTHON -v "$PWD":/src -w /src ${{ matrix.image }} pkg/build-linux.sh
+        run: docker run --rm -e UV_PYTHON -v "$PWD":/src -w /src debian:bookworm pkg/build-linux.sh
       - name: Package it
         run: |
           # nfpm takes a -t that does not exist yet for a file to write
           mkdir -p dist
-          for format in ${{ matrix.formats }}; do
-            docker run --rm -e VERSION -e ARCH -v "$PWD":/src -w /src \
-              goreleaser/nfpm:v2.48.0 package -f pkg/nfpm.yaml -p "$format" -t dist/
-          done
-      - name: Install each package and migrate with it
+          docker run --rm -e VERSION -e ARCH -v "$PWD":/src -w /src \
+            goreleaser/nfpm:v2.48.0 package -f pkg/nfpm.yaml -p deb -t dist/
+      - name: Install the package and migrate with it
         run: |
-          for package in dist/*; do
-            case $package in
-              *.deb) image=debian:bookworm install="apt-get update -qq && apt-get install -y -qq --no-install-recommends ./$package" ;;
-              *.rpm) image=fedora:41 install="dnf install -y -q --setopt=install_weak_deps=False ./$package" ;;
-              *.apk) image=alpine:3.20 install="apk add -q --allow-untrusted ./$package" ;;
-            esac
-            docker run --rm -v "$PWD":/src -w /src "$image" \
-              sh -c "$install && pkg/smoke-test.sh /usr/bin/tergite-mss"
-          done
+          docker run --rm -v "$PWD":/src -w /src debian:bookworm sh -c \
+            "apt-get update -qq && apt-get install -y -qq --no-install-recommends ./dist/*.deb && pkg/smoke-test.sh /usr/bin/tergite-mss"
       - uses: actions/upload-artifact@v4
         with:
-          name: mss-linux-${{ matrix.arch }}-${{ matrix.formats == 'apk' && 'musl' || 'glibc' }}
+          name: mss-linux-amd64
           path: apps/tergite-mss/dist/*
 
   macos:
@@ -103,51 +88,9 @@ jobs:
           name: mss-macos-arm64
           path: apps/tergite-mss/dist/*.pkg
 
-  windows:
-    needs: version
-    runs-on: windows-2022
-    timeout-minutes: 90
-    env:
-      VERSION: ${{ needs.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      # Defender scans every object file cl writes, which stalls Nuitka's C compilation
-      - run: Set-MpPreference -DisableRealtimeMonitoring $true
-      - name: Build the binary
-        # MSVC's link-time optimisation, Nuitka's default with it, multiplies the build's time
-        run: |
-          uv sync --extra dev
-          uv run nuitka --assume-yes-for-downloads --lto=no main.py
-      - run: dotnet tool install --global wix --version 5.0.2
-      - run: pwsh pkg/windows/build.ps1
-      - name: Install the package and check its service
-        shell: pwsh
-        run: |
-          $msi = "dist\tergite-mss-$env:VERSION-windows-x64.msi"
-          Start-Process msiexec -ArgumentList "/i", $msi, "/qn", "/l*v", "msi.log" -Wait
-          Get-Service tergite-mss
-          # without a config it stops itself, cleanly; sc.exe, as Start-Service throws on that
-          sc.exe start tergite-mss
-          Start-Sleep 10
-          if ((Get-Service tergite-mss).Status -ne "Stopped") { throw "tergite-mss did not stop without a config" }
-          Get-Content "$env:ProgramData\Tergite MSS\data\logs\*.out.log"
-          $dir = New-Item -ItemType Directory "$env:RUNNER_TEMP\smoke"
-          $url = "sqlite+aiosqlite:///$($dir.FullName -replace '\\', '/')/mss.sqlite"
-          (Get-Content tests\fixtures\config.test.toml -Raw) -replace '(?m)(\[database\][^\[]*?)^url = .*$', "`$1url = `"$url`"" |
-            Set-Content "$dir\mss-config.toml"
-          $env:MSS_CONFIG_FILE = "$dir\mss-config.toml"
-          $env:PRIVATE_KEY_FILE = "$PWD\tests\fixtures\mss_private_key.pem"
-          & "$env:ProgramFiles\Tergite MSS\mss.exe" migrate
-          if ($LASTEXITCODE -ne 0) { throw "mss.exe migrate failed" }
-      - uses: actions/upload-artifact@v4
-        with:
-          name: mss-windows-x64
-          path: apps/tergite-mss/dist/*.msi
-
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [linux, macos, windows]
+    needs: [linux, macos]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
