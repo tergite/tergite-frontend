@@ -22,7 +22,7 @@ from pydantic import (
     model_validator,
 )
 
-from libs.storage import Database, Id, Schema, StorageSpec, generate_id
+from libs.storage import Id, Schema, StorageSpec, generate_id
 from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
 
 NOTICE_DB_COLLECTION = "notices"
@@ -320,34 +320,6 @@ class Notice(Schema):
 
         return self
 
-    @classmethod
-    def from_template(
-        cls,
-        template: "NoticeTemplate",
-        context: Optional[BaseNoticeContext] = None,
-        **kwargs,
-    ) -> Self:
-        """Constructs a notice from a template
-
-        Args:
-            template: The notice template
-            context: The notice context useful for formating the template;
-                defaults to the template's context class with its defaults
-            kwargs: Additional arguments passed to the notice constructor
-
-        Returns:
-            The notice object
-        """
-        # formatted here as validating a record passes no context along
-        values = (context or template.context_cls()).model_dump()
-        data = {
-            **template.model_dump(exclude={"id"}),
-            "title": template.title.format_map(values),
-            "body": template.body.format_map(values),
-            **kwargs,
-        }
-        return cls.model_validate(data)
-
 
 class NoticePreferences(Schema):
     """One user's opt-outs, owned by this service rather than by the auth service"""
@@ -385,41 +357,3 @@ class CustomNoticeCreate(BaseModel):
     expires_at: datetime = Field(default_factory=get_utc_now)
     starts_at: datetime = Field(default_factory=get_utc_now)
     target_user_emails: Optional[List[str]] = None
-
-    async def to_documents(self, database: Database, **kwargs: Any) -> List[Notice]:
-        """Converts the creation request to a list of database model documents
-
-        Args:
-            database: the database where the notice templates are stored
-            kwargs: the extra kwargs passed to each created record
-
-        Returns:
-             the list of notices that come from the CustomNoticeCreate
-        """
-        # imported here to avoid a circular import, as the auth service imports this one
-        from services.auth.users.dtos import User
-
-        kwargs = dict(
-            severity=self.severity,
-            expires_at=self.expires_at,
-            starts_at=self.starts_at,
-            **kwargs,
-        )
-        context = CustomNoticeContext(
-            title=self.message,
-            body=self.message,
-        )
-        if self.target_user_emails:
-            users = await database.find(
-                User, filter={"email": {"$in": self.target_user_emails}}
-            )
-            template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM)
-            return [
-                Notice.from_template(
-                    template=template, context=context, user_id=user.id, **kwargs
-                )
-                for user in users
-            ]
-
-        template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM_BROADCAST)
-        return [Notice.from_template(template=template, context=context, **kwargs)]

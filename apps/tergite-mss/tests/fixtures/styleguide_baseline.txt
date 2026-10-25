@@ -11,8 +11,6 @@ verb: services/auth/providers/dtos.py::AuthProvider.as_public_view
 verb: services/devices/dtos.py::DeviceUpsert.model_dump
 verb: services/jobs/dtos.py::Job.model_dump
 verb: services/jobs/dtos.py::JobStatusResponse.from_job
-verb: services/notices/dtos.py::CustomNoticeCreate.to_documents
-verb: services/notices/dtos.py::Notice.from_template
 verb: services/notices/emails.py::_to_email_body
 verb: services/notices/emails.py::_to_email_details
 verb: services/notices/service.py::_with_default_email_preferences
@@ -75,7 +73,6 @@ facade-import: api/routers/auth.py::import services.auth.providers.dtos
 facade-import: services/devices/dtos.py::import services.calibration.dtos
 facade-import: services/devices/dtos.py::import services.jobs.dtos
 facade-import: services/jobs/service.py::import services.notices.dtos
-facade-import: services/notices/dtos.py::import services.auth.users.dtos
 facade-import: services/notices/emails.py::import services.auth.users.dtos
 facade-import: services/notices/service.py::import services.auth.projects.dtos
 facade-import: services/requests/dtos.py::import services.auth.projects.dtos
@@ -118,7 +115,6 @@ type-hints: services/external/bcc/service.py::close_clients
 type-hints: services/jobs/dtos.py::JobStatusResponse.from_job
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_started
-type-hints: services/notices/dtos.py::Notice.from_template
 type-hints: services/notices/service.py::create_system_notice
 type-hints: utils/config.py::BccConfig.validate_public_key_path
 type-hints: utils/crypto.py::get_uuid4_str

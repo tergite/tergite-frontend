@@ -19,6 +19,7 @@ from libs.storage import Database, Filter, is_id
 from services.notices.dtos import (
     NOTICE_TYPE_INFO,
     BaseNoticeContext,
+    CustomNoticeContext,
     CustomNoticeCreate,
     EmailStatus,
     Notice,
@@ -241,7 +242,9 @@ async def publish_custom_notice(
     Returns:
         the created notices
     """
-    notices = await payload.to_documents(database, created_by=str(current_user_id))
+    notices = await _get_custom_notices(
+        database, payload, created_by=str(current_user_id)
+    )
     return await database.insert_many(Notice, notices)
 
 
@@ -249,7 +252,7 @@ async def create_system_notice(
     database: Database,
     user_ids: Sequence[str],
     notice_type: NoticeTypeId,
-    context: Optional[BaseNoticeContext] = None,
+    context: BaseNoticeContext,
     ref_type: Optional[RefType] = None,
     ref_id: Optional[str] = None,
     **kwargs,
@@ -291,8 +294,8 @@ async def create_system_notice(
         }
         expires_at = get_utc_now() + timedelta(_conf.retention_days)
         records = [
-            Notice.from_template(
-                template=template,
+            _render_notice(
+                template,
                 context=context,
                 user_id=user_id,
                 type=notice_type,
@@ -460,6 +463,76 @@ async def on_startup(
     await _init_notice_templates_in_db(database)
 
 
+async def _get_custom_notices(
+    database: Database, payload: CustomNoticeCreate, created_by: str
+) -> List[Notice]:
+    """Gets a custom notice for each target user, or one broadcast if there are none"""
+    # imported here to avoid a circular import, as the auth service imports this one
+    from services.auth import User
+
+    context = CustomNoticeContext(title=payload.message, body=payload.message)
+    fields = dict(
+        severity=payload.severity,
+        expires_at=payload.expires_at,
+        starts_at=payload.starts_at,
+        created_by=created_by,
+    )
+    if payload.target_user_emails:
+        users = await database.find(
+            User, filter={"email": {"$in": payload.target_user_emails}}
+        )
+        template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM)
+        return [
+            _render_notice(template, context=context, user_id=user.id, **fields)
+            for user in users
+        ]
+
+    template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM_BROADCAST)
+    return [_render_notice(template, context=context, **fields)]
+
+
+def _render_notice(
+    template: NoticeTemplate, context: BaseNoticeContext, **fields: Any
+) -> Notice:
+    """Gets the notice of the template, with its title and body filled in from the context"""
+    values = context.model_dump()
+    return Notice.model_validate(
+        {
+            **template.model_dump(exclude={"id"}),
+            "title": template.title.format_map(values),
+            "body": template.body.format_map(values),
+            **fields,
+        }
+    )
+
+
+async def _with_project_name(
+    database: Database,
+    context: Optional[BaseNoticeContext],
+) -> Optional[BaseNoticeContext]:
+    """Fills in the project name of a project request context that has only a project_id
+
+    Deleted projects are searched too, as approving a close-project request deletes
+    the project before its requester is told.
+    """
+    is_name_missing = (
+        isinstance(context, ProjectRequestContext)
+        and not context.project_name
+        and is_id(context.project_id)
+    )
+    if not is_name_missing:
+        return context
+
+    # imported here to avoid a circular import, as the auth service imports this one
+    from services.auth.projects.dtos import DeletedProject, Project
+
+    for schema in (Project, DeletedProject):
+        project = await database.get(schema, context.project_id)
+        if project is not None:
+            return context.model_copy(update={"project_name": project.name})
+    return context
+
+
 async def _init_notice_templates_in_db(database: Database) -> None:
     """Initializes the notice templates in the database with the default templates"""
     existing_types = set(await database.find_distinct(NoticeTemplate, "type"))
@@ -531,30 +604,3 @@ def _with_default_email_preferences(
 ) -> Dict[NoticeTypeId, bool]:
     """Fills in the default email preference for every notice type missing in prefs"""
     return {type_id: prefs.get(type_id, True) for type_id in NoticeTypeId}
-
-
-async def _with_project_name(
-    database: Database,
-    context: Optional[BaseNoticeContext],
-) -> Optional[BaseNoticeContext]:
-    """Fills in the project name of a project request context that has only a project_id
-
-    Deleted projects are searched too, as approving a close-project request deletes
-    the project before its requester is told.
-    """
-    is_name_missing = (
-        isinstance(context, ProjectRequestContext)
-        and not context.project_name
-        and is_id(context.project_id)
-    )
-    if not is_name_missing:
-        return context
-
-    # imported here to avoid a circular import, as the auth service imports this one
-    from services.auth.projects.dtos import DeletedProject, Project
-
-    for schema in (Project, DeletedProject):
-        project = await database.get(schema, context.project_id)
-        if project is not None:
-            return context.model_copy(update={"project_name": project.name})
-    return context
