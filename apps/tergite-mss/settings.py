@@ -33,7 +33,7 @@ if not PRIVATE_KEY_FILE.exists():
 if _MSS_CONFIG_JSON_STR:
     CONFIG: AppConfig = AppConfig.from_json_str(_MSS_CONFIG_JSON_STR)
 elif _MSS_CONFIG_FILE.exists():
-    CONFIG: AppConfig = AppConfig.from_toml(_MSS_CONFIG_FILE)
+    CONFIG: AppConfig = AppConfig.parse_toml(_MSS_CONFIG_FILE)
 else:
     raise ValueError("MSS config is empty")
 

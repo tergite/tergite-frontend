@@ -329,7 +329,7 @@ class AppConfig(BaseModel, extra="allow"):
         return self
 
     @classmethod
-    def from_toml(cls, file_path: PathLike[str]) -> "AppConfig":
+    def parse_toml(cls, file_path: PathLike[str]) -> "AppConfig":
         """Parses a TOML file into an AppConfig instance
 
         Args:
