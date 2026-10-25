@@ -69,6 +69,8 @@ main() {
 		-pass "pass:$key_password" -out "$dir/private-mss-key.pem"
 	openssl rsa -pubout -passin "pass:$key_password" \
 		-in "$dir/private-mss-key.pem" -out "$dir/public-mss-key.pem" 2>/dev/null
+	# genpkey writes 0600 whatever the umask, which the service, in the group, could not read
+	chmod 0640 "$dir/private-mss-key.pem"
 
 	# written last and whole: its existence is what says provisioning finished
 	cat >"$config.new" <<-EOF
