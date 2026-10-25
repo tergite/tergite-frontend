@@ -1,0 +1,154 @@
+name: MSS Release
+# Builds MSS's installers, each on the platform it is for since Nuitka cannot cross-compile,
+# smoke-tests them, and attaches them to the GitHub release of a v* tag. Run by hand, it
+# leaves them as the run's artifacts instead.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to stamp on the installers, e.g. 2026.10.0"
+        required: true
+
+defaults:
+  run:
+    working-directory: apps/tergite-mss
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: version
+        working-directory: .
+        env:
+          RAW_VERSION: ${{ inputs.version || github.ref_name }}
+        run: echo "version=${RAW_VERSION#v}" >> "$GITHUB_OUTPUT"
+
+  linux:
+    needs: version
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - { runner: ubuntu-24.04, arch: amd64, image: "debian:bookworm", formats: "deb rpm" }
+          - { runner: ubuntu-24.04-arm, arch: arm64, image: "debian:bookworm", formats: "deb rpm" }
+          - { runner: ubuntu-24.04, arch: amd64, image: "alpine:3.20", formats: "apk" }
+          - { runner: ubuntu-24.04-arm, arch: arm64, image: "alpine:3.20", formats: "apk" }
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the binary
+        run: docker run --rm -v "$PWD":/src -w /src ${{ matrix.image }} pkg/build-linux.sh
+      - name: Package it
+        run: |
+          for format in ${{ matrix.formats }}; do
+            docker run --rm -e VERSION -e ARCH -v "$PWD":/src -w /src \
+              goreleaser/nfpm:v2.48.0 package -f pkg/nfpm.yaml -p "$format" -t dist/
+          done
+      - name: Install each package and migrate with it
+        run: |
+          for package in dist/*; do
+            case $package in
+              *.deb) image=debian:bookworm install="apt-get update -qq && apt-get install -y -qq --no-install-recommends ./$package" ;;
+              *.rpm) image=fedora:41 install="dnf install -y -q --setopt=install_weak_deps=False ./$package" ;;
+              *.apk) image=alpine:3.20 install="apk add -q --allow-untrusted ./$package" ;;
+            esac
+            docker run --rm -v "$PWD":/src -w /src "$image" \
+              sh -c "$install && pkg/smoke-test.sh /usr/bin/tergite-mss"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mss-linux-${{ matrix.arch }}-${{ matrix.formats == 'apk' && 'musl' || 'glibc' }}
+          path: apps/tergite-mss/dist/*
+
+  macos:
+    needs: version
+    runs-on: macos-14
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # Nuitka's own download of ccache is Intel-only, and its clang then fails under Rosetta
+      - run: brew install ccache
+      - name: Build the binary
+        run: |
+          uv sync --extra dev
+          uv run nuitka --assume-yes-for-downloads main.py
+      - run: pkg/macos/build.sh
+      - name: Install the package and migrate with it
+        run: |
+          sudo installer -pkg "dist/tergite-mss-$VERSION-macos-arm64.pkg" -target /
+          dscl . -read /Users/_tergite-mss UniqueID
+          pkg/smoke-test.sh /usr/local/bin/tergite-mss
+          sudo /usr/local/share/tergite-mss/uninstall.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mss-macos-arm64
+          path: apps/tergite-mss/dist/*.pkg
+
+  windows:
+    needs: version
+    runs-on: windows-2022
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Build the binary
+        run: |
+          uv sync --extra dev
+          uv run nuitka --assume-yes-for-downloads main.py
+      - run: dotnet tool install --global wix --version 5.0.2
+      - run: pwsh pkg/windows/build.ps1
+      - name: Install the package and check its service
+        shell: pwsh
+        run: |
+          $msi = "dist\tergite-mss-$env:VERSION-windows-x64.msi"
+          Start-Process msiexec -ArgumentList "/i", $msi, "/qn", "/l*v", "msi.log" -Wait
+          Get-Service tergite-mss
+          # without a config it stops itself, cleanly; sc.exe, as Start-Service throws on that
+          sc.exe start tergite-mss
+          Start-Sleep 10
+          if ((Get-Service tergite-mss).Status -ne "Stopped") { throw "tergite-mss did not stop without a config" }
+          Get-Content "$env:ProgramData\Tergite MSS\data\logs\*.out.log"
+          $dir = New-Item -ItemType Directory "$env:RUNNER_TEMP\smoke"
+          $url = "sqlite+aiosqlite:///$($dir.FullName -replace '\\', '/')/mss.sqlite"
+          (Get-Content tests\fixtures\config.test.toml -Raw) -replace '(?m)(\[database\][^\[]*?)^url = .*$', "`$1url = `"$url`"" |
+            Set-Content "$dir\mss-config.toml"
+          $env:MSS_CONFIG_FILE = "$dir\mss-config.toml"
+          $env:PRIVATE_KEY_FILE = "$PWD\tests\fixtures\mss_private_key.pem"
+          & "$env:ProgramFiles\Tergite MSS\mss.exe" migrate
+          if ($LASTEXITCODE -ne 0) { throw "mss.exe migrate failed" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mss-windows-x64
+          path: apps/tergite-mss/dist/*.msi
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Attach the installers to the release
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --notes "See CHANGELOG.md."
+          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber

@@ -9,6 +9,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Added deb, rpm, apk, macOS and Windows installers of the Nuitka binary, built and attached to the
+  GitHub release of each tag; the deb asks where the database and Redis are and provisions them.
 - Added `mss migrate` to the Nuitka binary, which runs the Alembic or MongoDB migrations
   that only `start_mss.sh` could run before, so a compiled MSS needs no Python checkout.
 - Added MongoDB migrations to the start script, as Alembic's for SQL: the pending ones in
