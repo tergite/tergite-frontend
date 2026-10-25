@@ -72,4 +72,3 @@ jobs:
           git pull -r ${{ secrets.UPSTREAM_REPO }} ${{ github.ref_name }} || echo "${{ github.ref_name }} does not exist"
           git push ${{ secrets.UPSTREAM_REPO }} ${{ github.ref_name }} || echo "${{ github.ref_name }} already exists"
 
-# FIXME: Add a smoke test for testing building with docker compose

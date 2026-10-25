@@ -29,99 +29,95 @@ If you are reading this on GitHub, then you are looking at a mirror.
   The server that controls all services on this frontend.  
   It also exposes the REST API through which other clients like [tergite SDK](https://github.com/tergite/tergite) communicate with the quantum computers.
 
-## Dependencies
+## Deployment
 
-- [docker +v23.0.5](https://www.docker.com/products/docker-desktop/)
-- [docker compose](https://docs.docker.com/compose/)
-- Linux OS if the `LOGGING_DRIVER` variable in `.env` is set to 'journald' (**recommended**) since [journald is only for Linux](https://forums.docker.com/t/docker-for-windows-logging-failed-to-initialize-logging-driver-journald-is-not-enabled-on-this-host/68690/4).  
-  _One could use the default `json-file` logging driver but this would quickly fill up one's disk space after some time. See [here](https://docs.docker.com/config/containers/logging/configure/)_.  
-  _One could also use the `local` logging driver but external tools like promtail, our logging aggregator client, cannot work with it. See [here](https://docs.docker.com/config/containers/logging/local/)_
+MSS runs from its package, as a system service, and the dashboard as an image or as static files
+behind a web server. MongoDB, or PostgreSQL, and Redis are expected to be installed already,
+or are installed alongside MSS on Debian and Ubuntu.
 
-## Getting Started
+### MSS
 
-- Ensure you have [docker](https://docs.docker.com/engine/install/) installed.
+- Download the installer of a [release](https://github.com/tergite/tergite-frontend/releases):
+  a deb for amd64, for Debian 13 and Ubuntu 24.04 onwards, or a macOS arm64 installer.
 
-- Clone the repo
+- On Debian or Ubuntu, install the deb. It asks where MSS's database and Redis are, creates
+  their accounts, writes `/etc/tergite-mss/mss-config.toml` with a private key beside it, and
+  starts the `tergite-mss` service on port 8002.
+
+```shell
+sudo apt install ./tergite-mss_<version>_amd64.deb
+```
+
+- Fill in the rest of `/etc/tergite-mss/mss-config.toml`: its backends, the `[auth]` OpenID
+  clients and cookie settings, and the `[email]` SMTP server; then restart MSS. Its log is in
+  the journal.
+
+```shell
+sudo systemctl restart tergite-mss
+journalctl -u tergite-mss -f
+```
+
+- On macOS, install the package, write `/usr/local/etc/tergite-mss/mss-config.toml` from the
+  example it installs, then start the service. Its log is `/usr/local/var/log/tergite-mss.log`.
+
+```shell
+sudo installer -pkg tergite-mss-<version>-macos-arm64.pkg -target /
+sudo cp /usr/local/share/tergite-mss/mss-config.example.toml /usr/local/etc/tergite-mss/mss-config.toml
+sudo launchctl bootstrap system /Library/LaunchDaemons/se.chalmersnextlabs.tergite-mss.plist
+```
+
+- Open [http://localhost:8002/docs](http://localhost:8002/docs) to see MSS's API.
+
+### Dashboard
+
+The dashboard needs MSS's URL and the cookie settings of `[auth]` in MSS's config:
+`cookie_domain` and `cookie_name`.
+
+- Either run its image, which each release publishes, with those as environment variables:
+
+```shell
+docker run -d --restart unless-stopped -p 3000:80 \
+  -e API_BASE_URL=http://mss.example.com:8002 -e COOKIE_DOMAIN=example.com \
+  -e COOKIE_NAME=tergiteauth tergite/tergite-dashboard:<version>
+```
+
+- Or build its static files and serve them from a web server such as nginx, sending every
+  path the files do not cover to `index.html`:
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
+cd tergite-frontend/apps/tergite-dashboard
+npm ci
+VITE_API_BASE_URL=http://mss.example.com:8002 VITE_COOKIE_DOMAIN=example.com \
+  VITE_COOKIE_NAME=tergiteauth npm run build
+sudo cp -r dist/. /var/www/tergite-dashboard/
 ```
 
-- You might need to login to a hosted docker container registry e.g. one based on the [tergite-registry repo](https://github.com/tergite/tergite-registry),
-  especially if you are going to use prebuilt tergite images.
+```nginx
+server {
+    listen 80;
+    root /var/www/tergite-dashboard;
+    location / {
+        try_files $uri /index.html;
+    }
+}
+```
+
+- Open the dashboard: [http://localhost:3000](http://localhost:3000) for the image, or the
+  web server's address.
+
+### Logs
+
+To ship MSS's journal to Grafana Loki, install [Grafana Alloy](https://grafana.com/docs/alloy/latest/set-up/install/)
+beside it with this repository's [config.alloy](./config.alloy), and set its environment, e.g. in
+`/etc/default/alloy` on Debian and Ubuntu:
 
 ```shell
-# e.g. if container registry is hosted at example.com:8002
-# and username is johndoe
-# and password is password123
-CONTAINER_REGISTRY=example.com:8002
-DOCKER_USERNAME=johndoe
-# feed in password when prompted
-docker login ${CONTAINER_REGISTRY} -u $DOCKER_USERNAME
+CONFIG_FILE=/etc/alloy/config.alloy
+ENVIRONMENT=production
+GRAFANA_LOKI_URL=http://loki.example.com:3100/loki/api/v1/push
+LOKI_LOGGER_ID=<some-id>
 ```
-
-- Copy the `mss-config.example.toml` to `mss-config.toml` and update the configuration there.
-
-```shell
-cd tergite-frontend
-cp mss-config.example.toml mss-config.toml
-```
-
-- Create a `.env` file basing on the `.env.example` file.
-  Update the variables therein appropriately.
-
-```shell
-cp .env.example .env
-```
-
-- To rebuild and run the services, use the `fresh-docker-compose.yml`
-
-```shell
-docker compose -f fresh-docker-compose.yml up -d
-```
-
-- To use prebuilt images to run the services, use the `prebuilt-docker-compose.yml`
-
-```shell
-docker compose -f prebuilt-docker-compose.yml up -d
-```
-
-- Open your browser at
-
-  - [http://localhost:8002](http://localhost:8002) to see the MSS service
-  - [http://localhost:3000](http://localhost:3000) to see the dashboard application
-
-- To ensure that the services start up even on server restarts, run:
-
-```shell
-sudo systemctl enable docker
-```
-
-- To stop the services, run:
-
-```shell
-docker compose -f fresh-docker-compose.yml stop
-```
-
-or for prebuilt:
-
-```shell
-docker compose -f prebuilt-docker-compose.yml stop
-```
-
-- To remove stop the services and remove their containers also, run:
-
-```shell
-docker compose -f fresh-docker-compose.yml down
-```
-
-or for prebuilt:
-
-```shell
-docker compose -f prebuilt-docker-compose.yml down
-```
-
-## How to Run wi
 
 ## FAQ
 
@@ -136,12 +132,6 @@ sudo iptables -I INPUT -p tcp -m state --state NEW -m tcp -m multiport --dports 
 ```
 
 You could add `-s nnn.nnn.n.n/nn ` arg to the above command to limit access to only a given subnet e.g. `-s 255.255.0.0/16`
-
-### Why aren't rules set in ufw working?
-
-When docker is installed, it adds its own `iptables` rules which open all ports by default to the entire world. See [this article](https://docs.docker.com/network/packet-filtering-firewalls/) for more information. In order to customize these rules, new rules have to be added to the DOCKER-USER chain.
-
-You can add other rules in the same DOCKER-USER chain, carefully :-)
 
 ## Contribution Guidelines
 

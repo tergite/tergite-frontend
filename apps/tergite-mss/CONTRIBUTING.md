@@ -107,54 +107,6 @@ pip install ."[dev]"
 pytest
 ```
 
-## Publish Docker Manually
-
-- Ensure you have [docker](https://docs.docker.com/engine/install/) installed.
-
-- Clone the repo
-
-```shell
-git clone git@github.com:tergite/tergite-frontend.git
-```
-
-- Login to a hosted docker container registry e.g. one based on the [tergite-registry repo](https://github.com/tergite/tergite-registry)
-
-```shell
-# e.g. if container registry is hosted at example.com:8002
-# and username is johndoe
-# and password is password123
-CONTAINER_REGISTRY=example.com:8002
-DOCKER_USERNAME=johndoe
-# feed in password when prompted
-docker login ${CONTAINER_REGISTRY} -u $DOCKER_USERNAME
-```
-
-- Create a multiplatform docker builder if you haven't already
-
-```shell
-docker buildx create --name multi-platform-builder --bootstrap --use
-```
-
-- Build and push the docker image
-
-```shell
-cd tergite-frontend/apps/tergite-mss
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t ${CONTAINER_REGISTRY}/tergite-mss:local --push .
-docker pull ${CONTAINER_REGISTRY}/tergite-mss:local
-```
-
-- To run a container based on that image, do
-
-```shell
-docker run -p 8002:80 \
-  --name mss-local \
-  -e MSS_CONFIG_FILE="/path/to/your/mss-config.toml" \
-  ${CONTAINER_REGISTRY}/tergite-mss:local
-```
-
-- Open your browser at http://localhost:8002/docs and see the docs for mss running.
-
 ## Build Executable with [Nuitka](https://nuitka.net/)
 
 - Make sure you have [conda](https://docs.anaconda.com/free/miniconda/index.html) installed.

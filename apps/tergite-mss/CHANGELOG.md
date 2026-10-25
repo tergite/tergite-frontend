@@ -113,6 +113,11 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   field" on any project whose member lists were stored as null rather than empty.
 - Fixed error OAUTH_USER_ALREADY_EXISTS when a user signs in with a different Oauth provider but same email.
 
+### Removed
+
+- Removed the Docker image and its release jobs; MSS installs from its deb or macOS installer. Job
+  upload URLs no longer have `host.docker.internal` replaced with `127.0.0.1`, which only the image needed.
+
 ## [2026.06.0] - 2026-06-26
 
 This is part of the tergite release v2026.06.0.

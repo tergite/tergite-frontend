@@ -23,6 +23,9 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 - `dev/e2e_test.sh`, which ran the full-stack e2e in docker, and its compose and Dockerfile
   fixtures; `dev/e2e_native_test.sh` runs it, in CI too, in about 6 minutes instead of 10 to 13.
+- `fresh-docker-compose.yml`, `prebuilt-docker-compose.yml` and their `.env.example`; MSS installs
+  from its deb or macOS installer and the dashboard runs from its image or static build, as the
+  README's deployment section describes, and `config.alloy` ships MSS's journal instead of docker's logs.
 
 ## [2026.06.0] - 2026-06-26
 

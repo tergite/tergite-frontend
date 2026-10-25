@@ -114,13 +114,9 @@ async def create_job(
     await database.insert(Job, job)
     logger.debug(f"Job {job.job_id} successfully saved to database")
 
-    upload_url = _without_special_docker_host_domain(
-        f"{bcc_client.public_base_url}/jobs"
-    )
-
     return {
         "job_id": job.job_id,
-        "upload_url": upload_url,
+        "upload_url": f"{bcc_client.public_base_url}/jobs",
         "access_token": token,
     }
 
@@ -402,18 +398,3 @@ async def on_startup(
 
 def _is_job_readable_by(job: Job, user: User) -> bool:
     return job.user_id is None or job.user_id == str(user.id) or user.is_superuser
-
-
-def _without_special_docker_host_domain(url: str) -> str:
-    """Removes the docker host's URL special domain 'host.docker.internal'
-
-    This is useful when the url is to be used by an application outside
-    the docker instance on which this frontend is running
-
-    Args:
-        url: the URL that might contain the docker host's special domain
-
-    Returns:
-        the URL updated with the special 'host.docker.internal' removed
-    """
-    return url.replace("host.docker.internal", "127.0.0.1")

@@ -15,9 +15,9 @@ Per-app design documents:
 `tergite-frontend` is the user-facing half of the [Tergite stack](https://tergite.github.io/)
 for the WACQT quantum computers. It is a monorepo of two applications that were originally
 developed as separate repositories and later merged under `apps/`. They are still built,
-versioned in CI, and released as two independent Docker images; they share this repo, the
-`mss-config.toml` configuration file, the `.env` file, the docker compose stacks, the
-end-to-end test harness, and the release tag.
+versioned in CI, and released independently, MSS as a deb and a macOS installer and the
+dashboard as a Docker image; they share this repo, the `mss-config.toml` configuration file,
+the end-to-end test harness, and the release tag.
 
 | App | Path | Stack | Role |
 | --- | --- | --- | --- |
@@ -61,12 +61,11 @@ flowchart LR
     BCC1 -->|"websocket events"| MSS
     BCC2 -->|"websocket events"| MSS
     MSS -->|"OAuth2 redirect flow"| IdP
-    frontend -.->|"docker logs"| Loki
+    frontend -.->|"journal, via Grafana Alloy"| Loki
 ```
 
-MongoDB is **not** part of the compose stacks in this repo — it is expected to already
-exist and is reached via `database.url` in `mss-config.toml`. Redis *is* in the stacks
-(service `tergite-redis`).
+MongoDB, or PostgreSQL, and Redis are reached via `database.url` and `database.redis_url` in
+`mss-config.toml`; MSS's deb installs and provisions them alongside it on Debian and Ubuntu.
 
 ## 3. The two apps, and the seam between them
 
@@ -79,15 +78,15 @@ The dashboard depends on MSS only through:
    `credentials: "include"`. The base URL is the build-time `VITE_API_BASE_URL`.
 2. **The auth cookie** — MSS sets a JWT cookie whose name and domain come from
    `auth.cookie_name` / `auth.cookie_domain` in `mss-config.toml`. The dashboard needs the
-   same values as `VITE_COOKIE_NAME` / `VITE_COOKIE_DOMAIN`; its Dockerfile reads them out of
-   the mounted `mss-config.toml` when they are not passed as build args.
+   same values as `VITE_COOKIE_NAME` / `VITE_COOKIE_DOMAIN`, at build time, or as
+   `COOKIE_NAME` / `COOKIE_DOMAIN` when its image starts.
 3. **Response shapes** — mirrored by hand in
    [apps/tergite-dashboard/types.ts](apps/tergite-dashboard/types.ts). There is no code
    generation from the OpenAPI schema, so a change to an MSS DTO must be reflected there
    manually, and in the mock API fixtures.
 
 The classic misconfiguration is `localhost` vs `127.0.0.1`: the cookie domain, the
-`MSS_URL` in `.env`, and the host you type in the browser must all match, or login appears
+dashboard's API base URL, and the host you type in the browser must all match, or login appears
 to succeed and then bounces back to `/login`.
 
 ### 3.2 Job submission — the one flow that crosses everything
@@ -139,12 +138,7 @@ fails fast on anything missing.
 The file may be SOPS-encrypted with a Hashicorp Vault key; `start_mss.sh` detects this and
 decrypts using `VAULT_ADDR` / `VAULT_TOKEN` from the environment.
 
-### 4.2 `.env` (docker compose)
-
-Copy `.env.example` → `.env`. Drives image tags, ports, `MSS_URL`, the docker
-`LOGGING_DRIVER` (`journald` recommended, Linux-only), and the Loki push URL.
-
-### 4.3 `.env*` files in the dashboard
+### 4.2 `.env*` files in the dashboard
 
 Vite conventions. `VITE_`-prefixed variables are baked into the bundle at build time —
 they are not runtime configuration. `.env.development` / `.env.test` also carry
@@ -152,31 +146,25 @@ they are not runtime configuration. `.env.development` / `.env.test` also carry
 
 ## 5. Deployment
 
-Two compose stacks at the repo root, both with services `tergite-redis`, `mss`,
-`dashboard`, `grafana-alloy`:
+MSS installs from its release's deb (amd64, Debian 13 and Ubuntu 24.04 onwards) or macOS arm64
+installer, the Nuitka binary running as the `tergite-mss` systemd service or launchd daemon on
+`8002`. The deb asks debconf where the database and Redis are, and its provisioning writes
+`/etc/tergite-mss/mss-config.toml` and the private key; on macOS the config is written by hand
+to `/usr/local/etc/tergite-mss/`. See the [README](README.md#deployment).
 
-- [fresh-docker-compose.yml](fresh-docker-compose.yml) — builds both images from source.
-- [prebuilt-docker-compose.yml](prebuilt-docker-compose.yml) — pulls tagged images from
-  `$REGISTRY`.
+The dashboard is a static bundle: either its image, a two-stage build in which
+`node:20-alpine` runs `npm run build` and `nginx:1.27-alpine-slim` serves `dist/` with a
+SPA-fallback [nginx.conf](apps/tergite-dashboard/nginx.conf) (`try_files $uri /index.html`) and
+a 10 r/s rate limit, replacing the build-time API URL and cookie settings with
+`API_BASE_URL`, `COOKIE_DOMAIN` and `COOKIE_NAME` when it starts; or `dist/` built with those
+`VITE_` variables and served by any web server with the same fallback.
 
-```bash
-docker compose -f fresh-docker-compose.yml up -d
-```
+Both answer `GET /health` with 200 outside the request log — MSS skips it in
+`request_logging_middleware`, nginx with `access_log off` — so that a frequent probe does not
+bury real traffic.
 
-MSS is exposed on `8002`, the dashboard on `3000`. `mss` waits on a healthy Redis;
-`dashboard` waits on a healthy MSS (`GET /health` returning 200). Both `/health`
-endpoints are deliberately outside the request log — MSS skips them in
-`request_logging_middleware`, nginx with `access_log off` — because a ten-second probe
-otherwise buries real traffic.
-
-The dashboard image is a two-stage build: `node:20-alpine` runs `npm run build`, then the
-`dist/` output is copied into `nginx:1.27-alpine-slim` with a SPA-fallback
-[nginx.conf](apps/tergite-dashboard/nginx.conf) (`try_files $uri /index.html`) and a
-10 r/s rate limit. Its build context needs `parent-folder=./` as an additional context so
-it can read the root `mss-config.toml`.
-
-Logs are shipped by `grafana-alloy`, which tails the docker socket and pushes to Loki
-using `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID` ([config.alloy](config.alloy)).
+Logs reach Loki through Grafana Alloy installed beside MSS, whose [config.alloy](config.alloy)
+reads `tergite-mss.service`'s journal and pushes it with `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID`.
 
 ## 6. Testing
 
@@ -218,8 +206,9 @@ a mirror — see §8).
   eslint, vitest, Playwright. Path-filtered to `apps/tergite-dashboard/**`.
 - `frontend-ci.yml` / `full e2e` — the cross-app `dev/e2e_native_test.sh`, after installing
   MongoDB, Redis, SQLite and uv, on `main`, on `v*` tags, or manually.
-- On a `v*` tag, each app's workflow buildx-builds a multi-platform image and pushes to the
-  staging registry and/or Docker Hub, gated on the `SHOULD_PUBLISH_TO_STAGING` /
+- On a `v*` tag, `mss-release.yml` builds and attaches MSS's deb and macOS installer, and the
+  dashboard's workflow buildx-builds a multi-platform image and pushes it to the staging
+  registry and/or Docker Hub, gated on the `SHOULD_PUBLISH_TO_STAGING` /
   `SHOULD_PUBLISH_TO_PROD` variables.
 
 ## 8. Working on this repo

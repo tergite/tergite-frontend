@@ -10,7 +10,6 @@ verb: services/auth/providers/__init__.py::_to_hash
 verb: services/auth/providers/dtos.py::AuthProvider.as_public_view
 verb: services/devices/dtos.py::DeviceUpsert.model_dump
 verb: services/external/email/dtos.py::EmailDetails.to_email_message
-verb: services/jobs/service.py::_without_special_docker_host_domain
 verb: services/jobs/dtos.py::Job.model_dump
 verb: services/jobs/dtos.py::JobStatusResponse.from_job
 verb: services/notices/dtos.py::CustomNoticeCreate.to_documents
