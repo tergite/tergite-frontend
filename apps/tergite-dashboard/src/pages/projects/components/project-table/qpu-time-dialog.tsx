@@ -15,7 +15,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
-  apiBaseUrl,
   refreshMyRequests,
   requestQpuTimeExtension,
 } from "@/lib/api-client";
@@ -86,7 +85,6 @@ function _QpuTimeDialog({
 
   const qpuExtension = useMutation({
     mutationKey: [
-      apiBaseUrl,
       "me",
       "projects",
       project.id,

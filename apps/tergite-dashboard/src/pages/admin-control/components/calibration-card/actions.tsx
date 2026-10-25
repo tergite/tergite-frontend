@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  apiBaseUrl,
   recalibrationInfoQuery,
   singleDeviceCalibrationQuery,
   startRecalibration,
@@ -37,7 +36,7 @@ export function CalibrationActions({ deviceName, currentJobStatus }: Props) {
   };
 
   const triggerCalib = useMutation({
-    mutationKey: [apiBaseUrl, "admin", "recalibration", deviceName, "init"],
+    mutationKey: ["admin", "recalibration", deviceName, "init"],
     async mutationFn() {
       return await startRecalibration(deviceName);
     },
@@ -49,7 +48,7 @@ export function CalibrationActions({ deviceName, currentJobStatus }: Props) {
   });
 
   const stopCalib = useMutation({
-    mutationKey: [apiBaseUrl, "admin", "recalibration", deviceName, "cancel"],
+    mutationKey: ["admin", "recalibration", deviceName, "cancel"],
     async mutationFn() {
       return await stopRecalibration(deviceName);
     },

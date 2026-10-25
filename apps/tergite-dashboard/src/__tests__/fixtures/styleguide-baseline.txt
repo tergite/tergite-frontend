@@ -101,7 +101,6 @@ verb: src/hooks/use-toast.ts::toast
 verb: src/lib/api-client.ts::allAdminProjectsQuery
 verb: src/lib/api-client.ts::allUserRequestsQuery
 verb: src/lib/api-client.ts::approveMyRequest
-verb: src/lib/api-client.ts::authenticatedFetch
 verb: src/lib/api-client.ts::bookingsConfigQuery
 verb: src/lib/api-client.ts::bookingsOfBackendQuery
 verb: src/lib/api-client.ts::myJobsQuery

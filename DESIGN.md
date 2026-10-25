@@ -71,17 +71,17 @@ MongoDB, or PostgreSQL, and Redis are reached via `database.url` and `database.r
 
 The dashboard depends on MSS only through:
 
-1. **HTTP JSON endpoints** — every call goes through `authenticatedFetch` in
-   [src/lib/api-client.ts](apps/tergite-dashboard/src/lib/api-client.ts), which always sends
+1. **HTTP JSON endpoints** — every call goes through the openapi-fetch client in
+   [src/lib/api/client.ts](apps/tergite-dashboard/src/lib/api/client.ts), which always sends
    `credentials: "include"`. The base URL is the build-time `VITE_API_BASE_URL`, empty in the
    production build, which calls MSS on the origin that served it.
 2. **The auth cookie** — MSS sets a JWT cookie whose name and domain come from
    `auth.cookie_name` / `auth.cookie_domain` in `mss-config.toml`, which the browser sends
    with every call, as the dashboard and the API share MSS's origin.
-3. **Response shapes** — mirrored by hand in
-   [apps/tergite-dashboard/types.ts](apps/tergite-dashboard/types.ts). There is no code
-   generation from the OpenAPI schema, so a change to an MSS DTO must be reflected there
-   manually, and in the mock API fixtures.
+3. **The OpenAPI schema** — MSS commits it as `apps/tergite-mss/dev/openapi/openapi.json`,
+   and the dashboard's `npm run generate:api` regenerates both it and the TypeScript types
+   in `src/lib/api/schema.d.ts` that type the client, so a change to an MSS route or DTO
+   fails the dashboard's `tsc`. The mock API fixtures still follow by hand.
 
 The classic misconfiguration is `localhost` vs `127.0.0.1`: the cookie domain and the host
 you type in the browser must match, or login appears to succeed and then bounces back to
@@ -201,7 +201,8 @@ a mirror — see §8).
 - `mss-ci.yml` / `test mss` — `black --check .`, `pyflakes`, then `pytest` on Python 3.12 and
   3.13 against `mongo` and `redis` services. Path-filtered to `apps/tergite-mss/**`.
 - `dashboard-ci.yml` / `lint dashboard`, `test dashboard`, `e2e test dashboard` —
-  eslint, vitest, Playwright. Path-filtered to `apps/tergite-dashboard/**`.
+  eslint and `npm run check:api`, vitest, Playwright. Path-filtered to
+  `apps/tergite-dashboard/**` and MSS's `dev/openapi/openapi.json`.
 - `frontend-ci.yml` / `full e2e` — the cross-app `dev/e2e_native_test.sh`, after installing
   MongoDB, Redis, SQLite and uv, on `main`, on `v*` tags, or manually.
 - On a `v*` tag, `mss-release.yml` / `build dashboard`, `package mss linux`, `package mss macos`

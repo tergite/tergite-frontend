@@ -16,7 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime, Duration } from "luxon";
 import {
-  apiBaseUrl,
   createNotice,
   refreshAllNoticeCounts,
   refreshAllNotices,
@@ -100,7 +99,7 @@ export default function NoticeForm({ onPost }: Props) {
   });
 
   const noticeCreation = useMutation({
-    mutationKey: [apiBaseUrl, "admin", "notices", "post"],
+    mutationKey: ["admin", "notices", "post"],
     async mutationFn({
       duration,
       starts_at: startTimestamp,
@@ -114,7 +113,6 @@ export default function NoticeForm({ onPost }: Props) {
           starts_at,
           ...rest,
         },
-        { baseUrl: apiBaseUrl },
       );
     },
     async onSuccess(data) {

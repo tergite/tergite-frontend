@@ -22,7 +22,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  apiBaseUrl,
   refreshMyTokensQueries,
   updateAppToken,
 } from "@/lib/api-client";
@@ -66,7 +65,7 @@ export function TokenLifespanDialog({
   });
 
   const tokenEditing = useMutation({
-    mutationKey: [apiBaseUrl, "me", "tokens", token.id, "put"],
+    mutationKey: ["me", "tokens", token.id, "put"],
     mutationFn: useCallback(
       async (values: z.infer<typeof formSchema>) => {
         const payload: AppTokenUpdateRequest = {

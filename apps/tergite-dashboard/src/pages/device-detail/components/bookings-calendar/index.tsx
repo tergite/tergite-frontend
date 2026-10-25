@@ -485,6 +485,6 @@ export interface BookingsMetadata {
   user_id?: string;
   min_start_utc?: string;
   max_start_utc?: string;
-  skip?: string;
-  limit?: string;
+  skip?: number;
+  limit?: number;
 }

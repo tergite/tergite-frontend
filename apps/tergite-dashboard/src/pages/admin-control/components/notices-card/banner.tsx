@@ -1,7 +1,6 @@
 import { IconButton } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
-  apiBaseUrl,
   deleteNotice,
   refreshAllNoticeCounts,
   refreshAllNotices,
@@ -32,9 +31,9 @@ export function AdminNoticeBanner({ notice }: Props) {
   );
 
   const noticeDeletion = useMutation({
-    mutationKey: [apiBaseUrl, "admin", "notices", "delete", notice.id],
+    mutationKey: ["admin", "notices", "delete", notice.id],
     async mutationFn(id: string) {
-      return await deleteNotice(id, { baseUrl: apiBaseUrl });
+      return await deleteNotice(id);
     },
     async onSuccess() {
       await refreshAllNotices(queryClient);

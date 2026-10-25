@@ -1,6 +1,6 @@
 import { IconButton } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { apiBaseUrl, dismissNotice, refreshMyNotices } from "@/lib/api-client";
+import { dismissNotice, refreshMyNotices } from "@/lib/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useMemo } from "react";
@@ -26,9 +26,9 @@ export function NoticeBanner({ notice }: Props) {
   );
 
   const noticeDismissal = useMutation({
-    mutationKey: [apiBaseUrl, "me", "notices", "dismiss", notice.id],
+    mutationKey: ["me", "notices", "dismiss", notice.id],
     async mutationFn(id: string) {
-      return await dismissNotice(id, { baseUrl: apiBaseUrl });
+      return await dismissNotice(id);
     },
     async onSuccess(data) {
       await refreshMyNotices(queryClient);

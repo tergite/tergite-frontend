@@ -68,7 +68,7 @@ export function NotificationsBell({ userId }: Props) {
               size="sm"
               data-cy-mark-all-read
               className="text-xs"
-              onClick={() => markAll.mutate({})}
+              onClick={() => markAll.mutate()}
               disabled={markAll.isPending}
             >
               Mark all read

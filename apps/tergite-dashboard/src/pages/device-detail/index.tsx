@@ -24,7 +24,7 @@ import { CalibrationHeader } from "./components/calibration-header";
 import { CalibrationMapChart } from "./components/calibration-map-chart";
 import { useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr, safeParseInt } from "@/lib/utils";
 import {
   BookingsCalendar,
   BookingsMetadata,
@@ -153,20 +153,14 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
 
       // bookings
       const searchParams = new URL(request.url).searchParams;
-      const skip = searchParams.get("skip");
-      const limit = searchParams.get("limit");
-      const user_id = searchParams.get("user_id");
-      const min_start_utc = searchParams.get("min_start_utc");
-      const max_start_utc = searchParams.get("max_start_utc");
-
-      const bookingsMetadata = {
+      const bookingsMetadata: BookingsMetadata = {
         backend: deviceName,
-        skip,
-        limit,
-        user_id,
-        min_start_utc,
-        max_start_utc,
-      } as BookingsMetadata;
+        skip: safeParseInt(searchParams.get("skip") ?? ""),
+        limit: safeParseInt(searchParams.get("limit") ?? ""),
+        user_id: searchParams.get("user_id") ?? undefined,
+        min_start_utc: searchParams.get("min_start_utc") ?? undefined,
+        max_start_utc: searchParams.get("max_start_utc") ?? undefined,
+      };
 
       // bookings config
       const currentBookingsConfigQuery = bookingsConfigQuery(deviceName);

@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  apiBaseUrl,
   devicesQuery,
   singleDeviceQuery,
   switchBackendOn,
@@ -31,7 +30,7 @@ export function BackendToggle({ deviceName, isOnline }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const goOnline = useMutation({
-    mutationKey: [apiBaseUrl, "admin", "switch", deviceName, "on"],
+    mutationKey: ["admin", "switch", deviceName, "on"],
     async mutationFn() {
       return await switchBackendOn(deviceName);
     },
@@ -46,7 +45,7 @@ export function BackendToggle({ deviceName, isOnline }: Props) {
   });
 
   const goOffline = useMutation({
-    mutationKey: [apiBaseUrl, "admin", "switch", deviceName, "off"],
+    mutationKey: ["admin", "switch", deviceName, "off"],
     async mutationFn() {
       return await switchBackendOff(deviceName);
     },

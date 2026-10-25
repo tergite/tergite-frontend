@@ -23,7 +23,10 @@ src/
 ├── router.tsx               # every route, its element and its loader
 ├── index.css                # Tailwind layers + CSS custom properties (light/dark)
 ├── lib/
-│   ├── api-client.ts        # ALL HTTP + all react-query queryOptions
+│   ├── api/
+│   │   ├── client.ts        # the typed openapi-fetch client: the only file that talks HTTP
+│   │   └── schema.d.ts      # generated from MSS's OpenAPI schema by `npm run generate:api`
+│   ├── api-client.ts        # all react-query queryOptions and the actions behind mutations
 │   ├── app-state.ts         # the AppStateContext and its factory
 │   └── utils.ts             # shared pure helpers (cn, formatting, normalising)
 ├── hooks/
@@ -116,8 +119,9 @@ panel and its dialogs (`tokens/components/tokens-sidebar/{index,delete-dialog,li
 flowchart TD
     Route["route in router.tsx"] -->|"loader(appState, queryClient)"| Loader
     Loader -->|"ensureQueryData(...)"| RQ["react-query cache"]
-    RQ -->|"queryFn"| AC["lib/api-client.ts → authenticatedFetch"]
-    AC -->|"fetch, credentials: include"| MSS[(MSS)]
+    RQ -->|"queryFn"| AC["lib/api-client.ts"]
+    AC -->|"client.GET(path, params)"| Client["lib/api/client.ts"]
+    Client -->|"fetch, credentials: include"| MSS[(MSS)]
     Loader -->|"returns typed *Data object"| Page["page component"]
     Page -->|"useLoaderData() as XData"| Initial["initial render, no spinner"]
     Page -->|"useQuery(sameQueryOptions)"| RQ
@@ -128,17 +132,20 @@ flowchart TD
 
 Three layers, each with one job:
 
-**`lib/api-client.ts`** is the only module that calls `fetch`. It exports, for each
-resource, a react-query `queryOptions` object (`devicesQuery`, `myJobsQuery(...)`,
-`noticesQuery(...)`, …) and, for each write, an async action function (`createAppToken`,
-`approveUserRequest`, `switchBackendOff`, `dismissNotice`, …), plus `refresh*Queries`
-helpers that invalidate the right keys after a mutation. Everything goes through the private
-`authenticatedFetch`, which sets `credentials: "include"` and converts a non-ok response
-into an `ErrorInfo` (an `Error` carrying `status`, message taken from the `detail` field).
+**`lib/api/client.ts`** is the only module that talks HTTP: an
+[openapi-fetch](https://openapi-ts.dev/openapi-fetch/) client typed by the generated
+`schema.d.ts` (§4), holding the base URL and `credentials: "include"`. Its one middleware
+throws an `ErrorInfo` (an `Error` carrying `status`, message taken from the `detail` field)
+for every non-2xx response, so a call that returns has its `data`, hence the `data!`.
 
-Query keys are always `[baseUrl, resource, ...discriminators]` so a different API base URL
-cannot collide in the cache. `refetchInterval` comes from `VITE_REFETCH_INTERVAL_MS`
-(default 2 min), which is why the e2e config drops it to 1 s.
+**`lib/api-client.ts`** exports, for each resource, a react-query `queryOptions` object
+(`devicesQuery`, `myJobsQuery(...)`, `noticesQuery(...)`, …) and, for each write, an async
+action function (`createAppToken`, `approveMyRequest`, `switchBackendOff`, `dismissNotice`,
+…), plus `refresh*Queries` helpers that invalidate the right keys after a mutation. Each
+calls the client with a path and parameters that `tsc` checks against MSS's schema.
+
+Query keys are `[resource, ...discriminators]`. `refetchInterval` comes from
+`VITE_REFETCH_INTERVAL_MS` (default 2 min), which is why the e2e config drops it to 1 s.
 
 **Route loaders.** Every route in `router.tsx` has `loader: xLoader(appState, queryClient)`.
 The loader is exported from the page module next to the component (with an
@@ -225,10 +232,16 @@ than the whole app.
 
 ## 4. Types
 
-All shared types live in the single top-level [types.ts](./types.ts) — not in `src/`, because
-the mock API server and the Playwright specs import them too. It mirrors the MSS DTOs by hand
-(`Device`, `Job`, `Project`, `AppToken`, `UserRequest`, `Booking`, `Notice`, `User`,
-`PaginatedData<T>`, the `JobStatus` / `UserRole` / `NoticeSeverity` enums, …).
+The API contract is generated: `npm run generate:api` runs MSS's `dev/openapi/export.py`,
+which writes `apps/tergite-mss/dev/openapi/openapi.json`, and `openapi-typescript` turns that
+into `src/lib/api/schema.d.ts`. Never edit the generated file; rerun the command. CI runs
+`npm run check:api`, which fails when `schema.d.ts` is stale. The client's paths, parameters,
+bodies and responses come from it, so a change to an MSS route or DTO fails `tsc` here.
+
+The components still use the hand-written types in the top-level [types.ts](./types.ts),
+which the mock API server and the Playwright specs import too (`Device`, `Job`, `Project`,
+`AppToken`, `UserRequest`, `Booking`, `Notice`, `User`, the `JobStatus` / `UserRole` /
+`NoticeSeverity` enums, …); `api-client.ts` casts the client's data to them.
 
 Component-local prop types stay in the component file, conventionally as
 `interface Props { … }` **below** the component that uses them, matching the existing files.
@@ -263,8 +276,8 @@ dev/mock-api/
 Run it with `npm run dev-api` (watch mode) or `npm run test-api`. `npm run dev` starts it and
 vite together via `start-server-and-test`.
 
-**When an MSS response shape changes, three places need updating**: `types.ts`, the mock
-route in `dev/mock-api/routes/general.ts`, and the fixture in `fixtures/`. Missing one shows
+**When an MSS response shape changes**, rerun `npm run generate:api`, then update
+`types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the fixture in `fixtures/`. Missing one shows
 up as a passing UI suite against a stale contract — which is what the repo-level
 `dev/e2e_native_test.sh` exists to catch.
 
@@ -342,8 +355,8 @@ loader must be exported alongside a component.
 | New component used by one page | `src/pages/{page}/components/` — a file if it is a leaf, a folder with `index.tsx` if it has children |
 | New component used by two+ pages | promote to `src/components/ui/` and strip any page knowledge |
 | New table | a `*-table/` folder with `index.tsx`, `columns.tsx`, `filter-form.tsx` (+ `detail-drawer.tsx`) |
-| New API call | a `queryOptions` (reads) or an action function (writes) in `src/lib/api-client.ts` — nowhere else calls `fetch` — then consume it from a `useQuery` or a `useMutation`, never from a bare handler |
+| New API call | a `queryOptions` (reads) or an action function (writes) in `src/lib/api-client.ts` calling `client` from `src/lib/api/client.ts` — nowhere else talks HTTP — then consume it from a `useQuery` or a `useMutation`, never from a bare handler; if MSS gained the route, `npm run generate:api` first |
 | New destination | a `<Route>` in `src/router.tsx` with its loader; reach it with `<Link>` or `useNavigate`, never `window.location` |
-| New response shape | `types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the `fixtures/` JSON |
+| New response shape | `npm run generate:api`, then `types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the `fixtures/` JSON |
 | New shadcn primitive | the shadcn CLI, then edit the generated file in `src/components/ui/` |
 | New env variable | `VITE_`-prefix it if the browser needs it, and add it to `.env.development` / `.env.test`, and to `.env.production` if the build MSS serves needs a value |

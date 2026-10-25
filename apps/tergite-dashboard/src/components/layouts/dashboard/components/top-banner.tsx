@@ -7,7 +7,6 @@ import { copyToClipboard } from "@/lib/utils";
 import {
   createAppToken,
   refreshMyTokensQueries,
-  apiBaseUrl,
   myNoticesQuery,
 } from "@/lib/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,7 +24,6 @@ export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
 
   const appTokenCreation = useMutation({
     mutationKey: [
-      apiBaseUrl,
       "me",
       "tokens",
       "?project_id=",
