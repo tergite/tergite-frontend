@@ -2,6 +2,7 @@
 # Builds the standalone binary on a machine that is not Linux, in a container of the libc it
 # targets, as Nuitka cannot cross-compile; on Linux, run its last two lines: from apps/tergite-mss, `docker run --rm -e UV_PYTHON=3.14 -v "$PWD":/src -w /src ubuntu:24.04 pkg/build-linux.sh`
 # for deb and rpm, or alpine for apk. Its glibc 2.39, as the release's, is the oldest the binary runs on.
+# ui/ must hold the dashboard's build first, as CONTRIBUTING.md describes.
 
 set -e
 

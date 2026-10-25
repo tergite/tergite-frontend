@@ -31,9 +31,9 @@ If you are reading this on GitHub, then you are looking at a mirror.
 
 ## Deployment
 
-MSS runs from its package, as a system service, and the dashboard as an image or as static files
-behind a web server. MongoDB, or PostgreSQL, and Redis are expected to be installed already,
-or are installed alongside MSS on Debian and Ubuntu.
+MSS runs from its package, as a system service, and serves the dashboard. MongoDB, or
+PostgreSQL, and Redis are expected to be installed already, or are installed alongside MSS on
+Debian and Ubuntu.
 
 ### MSS
 
@@ -70,41 +70,9 @@ sudo launchctl bootstrap system /Library/LaunchDaemons/se.chalmersnextlabs.tergi
 
 ### Dashboard
 
-The dashboard needs MSS's URL and the cookie settings of `[auth]` in MSS's config:
-`cookie_domain` and `cookie_name`.
-
-- Either run its image, which each release publishes, with those as environment variables:
-
-```shell
-docker run -d --restart unless-stopped -p 3000:80 \
-  -e API_BASE_URL=http://mss.example.com:8002 -e COOKIE_DOMAIN=example.com \
-  -e COOKIE_NAME=tergiteauth tergite/tergite-dashboard:<version>
-```
-
-- Or build its static files and serve them from a web server such as nginx, sending every
-  path the files do not cover to `index.html`:
-
-```shell
-git clone git@github.com:tergite/tergite-frontend.git
-cd tergite-frontend/apps/tergite-dashboard
-npm ci
-VITE_API_BASE_URL=http://mss.example.com:8002 VITE_COOKIE_DOMAIN=example.com \
-  VITE_COOKIE_NAME=tergiteauth npm run build
-sudo cp -r dist/. /var/www/tergite-dashboard/
-```
-
-```nginx
-server {
-    listen 80;
-    root /var/www/tergite-dashboard;
-    location / {
-        try_files $uri /index.html;
-    }
-}
-```
-
-- Open the dashboard: [http://localhost:3000](http://localhost:3000) for the image, or the
-  web server's address.
+MSS serves the dashboard at `/ui`, to which `/` redirects: open
+[http://localhost:8002/ui](http://localhost:8002/ui). The `cookie_domain` of `[auth]` in MSS's
+config must be the host you open it at.
 
 ### Logs
 

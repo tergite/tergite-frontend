@@ -13,8 +13,6 @@ and this project follows versions of format {year}.{month}.{patch_number}.
   project forms, so a superuser no longer has to recall an address exactly. It is a
   combobox rather than a `<datalist>`, which Firefox and iOS Safari render only partially,
   and it searches the server on a pause in typing rather than filtering one fetched page.
-- Added an unlogged `/health` location to the nginx config for the container healthcheck,
-  which used to fetch the whole SPA every ten seconds and fill the access log.
 - Added the "Added to project" and "Made project admin" notifications to the bell and to
   the per-type email switches on the settings page.
 - Added Approve and Reject buttons to each pending row of the admin requests table, so a
@@ -37,6 +35,11 @@ and this project follows versions of format {year}.{month}.{patch_number}.
   administer, reached from a notification or the projects page rather than the nav.
 - Added the remaining QPU time of the user's personal project at the foot of the sidebar,
   pointing at the request flow when it is empty.
+
+### Removed
+
+- Removed the Docker image, with its nginx config and `run-nginx.sh`; MSS's packages ship the dashboard, which MSS
+  serves at `/ui`.
 
 ### Changed
 

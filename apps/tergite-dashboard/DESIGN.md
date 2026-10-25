@@ -7,8 +7,8 @@ backends, QPU-time requests and notices.
 Read [../../DESIGN.md](../../DESIGN.md) first for the monorepo context, deployment and the
 cross-app conventions.
 
-The dashboard has **no backend of its own**. In production it is a static bundle served by
-nginx; every piece of data comes from MSS over HTTP with a cookie. The Express server in
+The dashboard has **no backend of its own**. In production it is a static bundle MSS serves
+at `/ui`; every piece of data comes from MSS over HTTP with a cookie. The Express server in
 `dev/mock-api/` is a development and testing mock only — it is never deployed.
 
 ## 1. Architecture: co-located hierarchy
@@ -325,10 +325,9 @@ Snapshots for CI" section of [CONTRIBUTING.md](./CONTRIBUTING.md).
 ## 7. Build and serve
 
 `npm run build` = `tsc` (type-check only, `noEmit`) then `vite build` → `dist/`. Because
-`VITE_*` variables are inlined at build time, **a different API URL or cookie name means a
-different build** — the production image cannot be re-pointed by changing an environment
-variable at container start; that is why the Dockerfile takes them as build args (or reads
-them out of the mounted `mss-config.toml`).
+`VITE_*` variables are inlined at build time, **a different API URL means a different
+build**. Every mode's base is `/ui/`, where MSS serves the build, and the router takes it as its
+basename; the production build's empty `VITE_API_BASE_URL` calls MSS's own origin.
 
 `npm run lint` is eslint with `--max-warnings 0`, extending
 `@typescript-eslint/recommended`, `react-hooks/recommended` and `react-refresh`. It is a CI
@@ -347,4 +346,4 @@ loader must be exported alongside a component.
 | New destination | a `<Route>` in `src/router.tsx` with its loader; reach it with `<Link>` or `useNavigate`, never `window.location` |
 | New response shape | `types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the `fixtures/` JSON |
 | New shadcn primitive | the shadcn CLI, then edit the generated file in `src/components/ui/` |
-| New env variable | `VITE_`-prefix it if the browser needs it, add it to `.env.development` / `.env.test`, and thread it through `Dockerfile` as a build arg |
+| New env variable | `VITE_`-prefix it if the browser needs it, and add it to `.env.development` / `.env.test`, and to `.env.production` if the build MSS serves needs a value |
