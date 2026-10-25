@@ -11,13 +11,11 @@
 # that they have been altered from the originals.
 #
 from datetime import datetime, timedelta
-from functools import partial
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 from loguru import logger
 
 from libs.storage import Database, Filter, is_id
-from services.external.email.service import Emailer
 from services.notices.dtos import (
     BaseNoticeContext,
     CustomNoticeCreate,
@@ -30,11 +28,7 @@ from services.notices.dtos import (
     ProjectRequestContext,
     RefType,
 )
-from services.notices.emails import (
-    get_email_preferences_map,
-    get_pending_email_batches,
-    process_email_batch_results,
-)
+from services.notices.emails import get_email_preferences_map
 from utils.config import NoticesConfig
 from utils.date_time import get_current_timestamp, get_utc_now
 from utils.exc import NotFoundError
@@ -451,38 +445,19 @@ async def set_email_preferences(
 
 
 async def on_startup(
-    database: Database, emailer: Optional[Emailer], conf: NoticesConfig
+    database: Database, conf: NoticesConfig, is_email_enabled: bool
 ) -> None:
     """Runs init operations when the application is starting up
 
     Args:
         database: the database where the notices are stored
-        emailer: the emailer instance that sends emails; None if email is not configured
         conf: the notices configuration
+        is_email_enabled: whether an emailer sends the notices' emails
     """
     global _conf, _is_email_enabled
     _conf = conf
-    _is_email_enabled = emailer is not None
-
+    _is_email_enabled = is_email_enabled
     await _init_notice_templates_in_db(database)
-
-    if emailer is None:
-        return
-
-    batch_generator = get_pending_email_batches(
-        database,
-        batch_size=50,
-        dashboard_url=conf.dashboard_url,
-        app_name=conf.app_name,
-        max_attempts=conf.email_retry_limit,
-    )
-    emailer.register_batch_schedule(
-        "notices",
-        interval=conf.email_sweep_interval,
-        batch_generator=batch_generator,
-        batch_callback=partial(process_email_batch_results, database),
-        ignore_errors=True,
-    )
 
 
 async def _init_notice_templates_in_db(database: Database) -> None:

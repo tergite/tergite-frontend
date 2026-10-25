@@ -104,8 +104,8 @@ exists. Any config error is a startup crash, not a runtime surprise.
 The FastAPI `lifespan` in `app_kwargs.py` creates the BCC httpx clients, opens the
 `Database` (whose `setup` creates every schema's collection, validator and indexes) and the
 request log's, then runs the `on_startup` of `auth` (which stores the roles users may hold),
-`jobs` and `notices`. `notices` starts the only background loop in the app, the email sweeper, when
-`[email]` is configured. On shutdown it stops the emailer, closes the BCC clients, closes all
+`jobs` and `notices`, and, when `[email]` is configured, starts the only background loop in the
+app: the `Emailer` sending the notices' pending emails. On shutdown it stops the emailer, closes the BCC clients, closes all
 device websockets, marks every device disconnected, and closes both databases.
 
 `docs_url` / `redoc_url` / `openapi_url` are set to `None` unless
@@ -198,8 +198,9 @@ turns connection/timeout failures into `ServiceUnavailableError` → 503. Client
 `init_recalibration`, `get_recalibration_info`, `stop_recalibration`, `switch_off`,
 `switch_on`.
 
-`services/external/email/` is the other outbound client: a thin `aiosmtplib` wrapper whose
-only caller is the notification outbox sweeper (`services/notifications/outbox.py`). Nothing on
+`services/external/email/` is the other outbound client: an `Emailer` that sends, every
+`email_sweep_interval` seconds, the batch of pending notice emails that
+`services/notices/emails.py` yields, and records each result through its callback. Nothing on
 a request path sends mail, so a dead mail server cannot fail a request.
 
 **Bookings and BCC users are not persisted by MSS.** The `/bookings` and

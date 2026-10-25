@@ -9,7 +9,6 @@ verb: services/auth/projects/dtos.py::ProjectRead.model_dump
 verb: services/auth/providers/__init__.py::_to_hash
 verb: services/auth/providers/dtos.py::AuthProvider.as_public_view
 verb: services/devices/dtos.py::DeviceUpsert.model_dump
-verb: services/external/email/dtos.py::EmailDetails.to_email_message
 verb: services/jobs/dtos.py::Job.model_dump
 verb: services/jobs/dtos.py::JobStatusResponse.from_job
 verb: services/notices/dtos.py::CustomNoticeCreate.to_documents
@@ -44,8 +43,6 @@ boolean: services/devices/dtos.py::DeviceUpsert.open_pulse
 boolean: services/external/bcc/service.py::BccClient.stop_recalibration(ignore_errors)
 boolean: services/external/email/dtos.py::EmailDetails.can_retry
 boolean: services/external/email/dtos.py::EmailResult.can_retry
-boolean: services/external/email/service.py::Emailer.register_batch_schedule(ignore_errors)
-boolean: services/external/email/service.py::_send_on_repeat(ignore_errors)
 boolean: services/jobs/dtos.py::Job.model_dump(by_alias)
 boolean: services/jobs/dtos.py::Job.model_dump(exclude_defaults)
 boolean: services/jobs/dtos.py::Job.model_dump(exclude_none)
@@ -83,7 +80,6 @@ facade-import: services/jobs/service.py::import services.notices.dtos
 facade-import: services/notices/dtos.py::import services.auth.users.dtos
 facade-import: services/notices/emails.py::import services.auth.users.dtos
 facade-import: services/notices/service.py::import services.auth.projects.dtos
-facade-import: services/notices/service.py::import services.external.email.service
 facade-import: services/requests/dtos.py::import services.auth.projects.dtos
 facade-import: services/requests/dtos.py::import services.notices.dtos
 facade-import: services/requests/service.py::import services.auth.projects.dtos
@@ -122,10 +118,6 @@ type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
 type-hints: services/external/bcc/dtos.py::Booking.validate_username
 type-hints: services/external/bcc/service.py::BccClient.close
 type-hints: services/external/bcc/service.py::close_clients
-type-hints: services/external/email/service.py::Emailer.from_value
-type-hints: services/external/email/service.py::Emailer.register_batch_schedule
-type-hints: services/external/email/service.py::Emailer.send
-type-hints: services/external/email/service.py::_send_on_repeat
 type-hints: services/jobs/dtos.py::JobStatusResponse.from_job
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_started

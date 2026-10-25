@@ -23,6 +23,7 @@ from .dtos import (
     ProjectRequestContext,
     RefType,
 )
+from .emails import get_pending_email_batches, process_email_batch_results
 from .service import (
     clear_notices_by_reference,
     count_many,
@@ -61,6 +62,8 @@ __all__ = [
     "create_system_notice",
     "publish_custom_notice",
     "on_startup",
+    "get_pending_email_batches",
+    "process_email_batch_results",
     "set_read_status_many",
     "set_email_preferences",
     "set_read_status",

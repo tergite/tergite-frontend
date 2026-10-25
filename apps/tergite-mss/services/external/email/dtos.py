@@ -10,7 +10,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 import dataclasses
-from email.message import EmailMessage
 from typing import (
     Any,
     AsyncGenerator,
@@ -64,12 +63,3 @@ class EmailDetails(BaseModel):
     body: str
     ref_id: Any = None
     can_retry: bool = True
-
-    def to_email_message(self, from_value: str) -> EmailMessage:
-        """Converts the details to an email message."""
-        message = EmailMessage()
-        message["From"] = from_value
-        message["To"] = self.to
-        message["Subject"] = self.subject
-        message.set_content(self.body)
-        return message

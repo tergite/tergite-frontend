@@ -16,18 +16,21 @@
 # that they have been altered from the originals.
 """Collection of key-word args for the FastAPI app"""
 from contextlib import asynccontextmanager
+from functools import partial
 from typing import Any, Dict
 
 from fastapi import FastAPI
 from loguru import logger
 
 import settings
+from libs.storage import Database
 from services import jobs as jobs_service
+from services import notices
 from services.auth import service as auth_service
 from services.devices import service as devices_service
 from services.external import bcc
 from services.external.email import Emailer
-from services.notices import service as notices_service
+from utils.config import NoticesConfig
 from utils.crypto import load_private_key
 
 from .database import (
@@ -71,9 +74,11 @@ async def lifespan(app: FastAPI):
         private_key=private_key,
         qpu_seconds_low_threshold=settings.CONFIG.projects.qpu_seconds_low_threshold,
     )
-    await notices_service.on_startup(database, emailer, conf=settings.CONFIG.notices)
+    await notices.on_startup(
+        database, conf=settings.CONFIG.notices, is_email_enabled=emailer is not None
+    )
     if emailer is not None:
-        emailer.start()
+        _start_notice_emails(emailer, database, conf=settings.CONFIG.notices)
     logger.info("Tergite MSS startup sequence completed successfully.")
 
     yield
@@ -87,3 +92,20 @@ async def lifespan(app: FastAPI):
         emailer.close()
     await close_database(app)
     logger.info("Tergite MSS shutdown sequence completed.")
+
+
+def _start_notice_emails(
+    emailer: Emailer, database: Database, conf: NoticesConfig
+) -> None:
+    """Starts the emailer on the notices' pending emails"""
+    emailer.start(
+        interval=conf.email_sweep_interval,
+        batch_generator=notices.get_pending_email_batches(
+            database,
+            batch_size=50,
+            dashboard_url=conf.dashboard_url,
+            app_name=conf.app_name,
+            max_attempts=conf.email_retry_limit,
+        ),
+        batch_callback=partial(notices.process_email_batch_results, database),
+    )
