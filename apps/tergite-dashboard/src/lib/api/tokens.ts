@@ -7,7 +7,7 @@ import type {
   ExtendedAppToken,
   Project,
 } from "../../../types";
-import { extendAppToken } from "../utils";
+import { DateTime } from "luxon";
 import { client } from "./client";
 
 export function getMyTokensQuery(options: { project_id?: string } = {}) {
@@ -59,4 +59,15 @@ export async function deleteMyToken(id: string): Promise<void> {
 
 export function refreshMyTokensQueries(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: ["me", "tokens"] });
+}
+
+export function extendAppToken(
+  token: AppToken,
+  project: Project,
+): ExtendedAppToken {
+  const expires_at = DateTime.fromISO(token.created_at).plus({
+    seconds: token.lifespan_seconds,
+  });
+  const is_expired = DateTime.now() > expires_at;
+  return { ...token, expires_at, is_expired, project_name: project.name };
 }

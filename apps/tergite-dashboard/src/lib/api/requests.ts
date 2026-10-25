@@ -10,7 +10,6 @@ import {
   UserRequestType,
   UserRole,
 } from "../../../types";
-import { extendUserRequest } from "../utils";
 import { client } from "./client";
 
 /**
@@ -161,5 +160,8 @@ function extendUserRequests(
   projectList: Project[],
 ): ExtendedUserRequest[] {
   const projectMap = Object.fromEntries(projectList.map((v) => [v.id, v]));
-  return requests.map((v) => extendUserRequest(v, projectMap[v.resource_id]));
+  return requests.map((v) => ({
+    ...v,
+    project_name: projectMap[v.resource_id]?.name,
+  }));
 }

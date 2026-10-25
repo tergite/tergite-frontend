@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import { SEVERITY_LABELS } from "@/lib/utils";
+import { SEVERITY_LABELS } from "@/components/ui/notice-banner";
 import { NoticeSeverity, Notice } from "../../../../../types";
 
 const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {

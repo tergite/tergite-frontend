@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import { myProjectsQuery } from "@/lib/api/projects";
 import { getMyRequestsQuery } from "@/lib/api/requests";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useState } from "react";

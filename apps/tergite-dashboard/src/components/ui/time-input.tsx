@@ -1,4 +1,4 @@
-import { extractTime, timeAsString } from "@/lib/utils";
+import { extractTime, formatTime } from "@/lib/time";
 import { ChangeEvent, useCallback, useMemo } from "react";
 import { Time } from "types";
 import { Input } from "./input";
@@ -10,7 +10,7 @@ export function TimeInput({
   onInput,
   ...props
 }: Props) {
-  const valueStr = useMemo(() => value && timeAsString(value), [value]);
+  const valueStr = useMemo(() => value && formatTime(value), [value]);
   const handleChangeEvent = useCallback(
     (ev: ChangeEvent<HTMLInputElement>) => {
       ev.preventDefault();

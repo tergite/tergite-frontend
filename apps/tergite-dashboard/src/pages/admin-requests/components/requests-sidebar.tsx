@@ -7,7 +7,8 @@ import {
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
 import { approveMyRequest, rejectMyRequest } from "@/lib/api/requests";
-import { cn, getUserRequestDetails, getUserRequestTitle } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { getUserRequestDetails, getUserRequestTitle } from "@/lib/user-requests";
 import { useMutation } from "@tanstack/react-query";
 import { AnyValue, type UserRequest } from "types";
 import { Separator } from "@/components/ui/separator";

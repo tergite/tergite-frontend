@@ -8,7 +8,8 @@ import { DetailItem } from "@/components/ui/detail-item";
 import { ProgressStatus } from "@/components/ui/progress-status";
 import { Separator } from "@/components/ui/separator";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
-import { cn, getUserRequestDetails, getUserRequestTitle } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { getUserRequestDetails, getUserRequestTitle } from "@/lib/user-requests";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import {

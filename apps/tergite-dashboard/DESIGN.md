@@ -28,7 +28,10 @@ src/
 │   │   ├── schema.d.ts      # generated from MSS's OpenAPI schema by `npm run generate:api`
 │   │   └── devices.ts, …    # one module per resource: its queryOptions and mutations
 │   ├── app-state.ts         # the AppStateContext and its factory
-│   └── utils.ts             # shared pure helpers (cn, formatting, normalising)
+│   ├── loaders.ts           # loadOrRedirectIfAuthErr and tryQueryFetchMany, for route loaders
+│   ├── time.ts              # parsing and formatting times and durations beyond one luxon call
+│   ├── user-requests.ts     # a request's title and details, as every request view shows them
+│   └── utils.ts             # cn, and nothing else
 ├── hooks/
 │   └── use-toast.ts
 ├── components/
@@ -161,7 +164,7 @@ it with `useLoaderData() as XData` and uses those values as the `default` for it
 calls — so the first paint has real data and no loading state, and react-query takes over
 afterwards for polling and invalidation.
 
-Every loader is wrapped in `loadOrRedirectIfAuthErr` (`lib/utils.ts`), which catches a 401/403
+Every loader is wrapped in `loadOrRedirectIfAuthErr` (`lib/loaders.ts`), which catches a 401/403
 from any of the pre-fetches and redirects to `/login`. That is the whole auth guard — there is
 no separate `<RequireAuth>` component. Non-fatal per-item fetches use `tryQueryFetchMany`,
 which swallows the failure of one item rather than failing the page (used for per-backend
@@ -351,7 +354,8 @@ basename; the production build's empty `VITE_API_BASE_URL` calls MSS's own origi
 `npm run lint` is eslint with `--max-warnings 0`, extending
 `@typescript-eslint/recommended`, `react-hooks/recommended` and `react-refresh`. It is a CI
 gate, so keep the `react-refresh/only-export-components` disables minimal and only where a
-loader must be exported alongside a component.
+loader, or a constant other files share (`SEVERITY_LABELS` in `ui/notice-banner.tsx`), must be
+exported alongside a component.
 
 ## 8. Adding things — where to start
 

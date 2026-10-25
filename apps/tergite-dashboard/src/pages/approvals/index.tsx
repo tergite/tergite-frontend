@@ -8,7 +8,7 @@ import { getAllAdminProjectsQuery, myProjectsQuery, refreshMyProjectsQueries } f
 import { currentUserQuery } from "@/lib/api/auth";
 import { getMyRequestsQuery, refreshMyRequests } from "@/lib/api/requests";
 import { refreshMyNotices } from "@/lib/api/notices";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";

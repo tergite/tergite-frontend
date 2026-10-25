@@ -2,7 +2,7 @@ import { SortHeader } from "@/components/ui/data-table";
 import { Booking } from "../../../../../types";
 import { ColumnDef } from "@tanstack/react-table";
 import { DateTime, Duration } from "luxon";
-import { toRelative } from "@/lib/utils";
+import { formatRelative } from "@/lib/time";
 
 export const bookingsTableColumns: ColumnDef<Booking>[] = [
   {
@@ -28,7 +28,7 @@ export const bookingsTableColumns: ColumnDef<Booking>[] = [
       const startUtc = DateTime.fromISO(startUtcString);
       return (
         <div data-booking-id={row.original.id} className="hidden md:table-cell">
-          {toRelative(startUtc)}
+          {formatRelative(startUtc)}
         </div>
       );
     },

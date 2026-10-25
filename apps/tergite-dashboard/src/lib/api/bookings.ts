@@ -8,7 +8,6 @@ import type {
   NewBookingInfo,
   RawBooking,
 } from "../../../types";
-import { toClientSideBooking } from "../utils";
 import { client } from "./client";
 
 /** The backend's bookings from now on, by default the next five */
@@ -92,7 +91,7 @@ export async function createNewBooking(
     params: { path: { backend } },
     body: payload,
   });
-  return toClientSideBooking(data! as RawBooking, { backend });
+  return { ...(data! as RawBooking), backend };
 }
 
 export async function updateBooking(
@@ -139,5 +138,5 @@ async function getBookings(
   const { data } = await client.GET("/bookings/{backend}", {
     params: { path: { backend }, query },
   });
-  return data!.data.map((v) => toClientSideBooking(v as RawBooking, { backend }));
+  return data!.data.map((v) => ({ ...(v as RawBooking), backend }));
 }

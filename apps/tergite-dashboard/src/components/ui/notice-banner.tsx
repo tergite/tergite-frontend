@@ -5,7 +5,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useMemo } from "react";
 import { NoticeSeverity, Notice } from "../../../types";
-import { SEVERITY_LABELS } from "@/lib/utils";
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const SEVERITY_LABELS: Record<NoticeSeverity, string> = {
+  [NoticeSeverity.INFO]: "Info",
+  [NoticeSeverity.WARNING]: "Warning",
+  [NoticeSeverity.CRITICAL]: "Critical",
+};
 
 const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {
   [NoticeSeverity.INFO]:

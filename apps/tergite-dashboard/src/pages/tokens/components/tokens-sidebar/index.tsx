@@ -8,7 +8,8 @@ import {
 import { DetailItem } from "@/components/ui/detail-item";
 import { HealthStatus } from "@/components/ui/health-status";
 import { deleteMyToken } from "@/lib/api/tokens";
-import { cn, toRelative } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatRelative } from "@/lib/time";
 import { useMutation } from "@tanstack/react-query";
 import { ExtendedAppToken } from "types";
 import { TokenDeleteDialog } from "./delete-dialog";
@@ -57,7 +58,7 @@ function TokenSummary({ token, className = "", onDelete }: TokenSummaryProps) {
             </DetailItem>
 
             <DetailItem label="Expires">
-              {toRelative(token.expires_at)}
+              {formatRelative(token.expires_at)}
             </DetailItem>
 
             <DetailItem label="Project">{token.project_name}</DetailItem>

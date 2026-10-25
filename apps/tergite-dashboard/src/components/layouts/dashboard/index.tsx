@@ -15,7 +15,8 @@ import { AppState, User, UserRequestStatus, UserRole } from "../../../../types";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { AppStateContext } from "@/lib/app-state";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cn, loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { Toaster } from "@/components/ui/toaster";
 import { Footer } from "./components/footer";
 

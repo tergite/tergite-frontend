@@ -21,7 +21,7 @@ import { CalibrationHeader } from "./components/calibration-header";
 import { CalibrationMapChart } from "./components/calibration-map-chart";
 import { useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
-import { loadOrRedirectIfAuthErr, safeParseInt } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import {
   BookingsCalendar,
   BookingsMetadata,
@@ -152,8 +152,10 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
       const searchParams = new URL(request.url).searchParams;
       const bookingsMetadata: BookingsMetadata = {
         backend: deviceName,
-        skip: safeParseInt(searchParams.get("skip") ?? ""),
-        limit: safeParseInt(searchParams.get("limit") ?? ""),
+        skip: searchParams.has("skip") ? Number(searchParams.get("skip")) : undefined,
+        limit: searchParams.has("limit")
+          ? Number(searchParams.get("limit"))
+          : undefined,
         user_id: searchParams.get("user_id") ?? undefined,
         min_start_utc: searchParams.get("min_start_utc") ?? undefined,
         max_start_utc: searchParams.get("max_start_utc") ?? undefined,

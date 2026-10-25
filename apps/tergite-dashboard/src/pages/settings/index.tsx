@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { noticePreferencesQuery } from "@/lib/api/notices";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient } from "@tanstack/react-query";
 import { type AppState } from "types";
 import { NotificationPreferencesForm } from "./components/notification-preferences-form";

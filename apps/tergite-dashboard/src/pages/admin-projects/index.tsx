@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import { getAllAdminProjectsQuery, refreshAllAdminQueries, refreshMyProjectsQueries } from "@/lib/api/projects";
 import { currentUserQuery } from "@/lib/api/auth";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {

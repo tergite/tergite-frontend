@@ -28,7 +28,7 @@ import {
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
-import { loadOrRedirectIfAuthErr, tryQueryFetchMany } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr, tryQueryFetchMany } from "@/lib/loaders";
 import { DateTime } from "luxon";
 import { BookingsTable } from "./components/bookings-table";
 

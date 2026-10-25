@@ -22,7 +22,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { refreshMyTokensQueries, updateAppToken } from "@/lib/api/tokens";
-import { cn, mergeDatetime } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { mergeDatetime } from "@/lib/time";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";

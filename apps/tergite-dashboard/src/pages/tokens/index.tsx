@@ -10,7 +10,7 @@ import {
   getMyTokensQuery,
   refreshMyTokensQueries,
 } from "@/lib/api/tokens";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import {
   QueryClient,
   useQuery,

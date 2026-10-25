@@ -7,7 +7,7 @@ import {
 import { currentUserQuery } from "@/lib/api/auth";
 import { getMyProjectsQpuTimeRequestsQuery, getMyRequestsQuery } from "@/lib/api/requests";
 import { myProjectsQuery, refreshMyProjectsQueries } from "@/lib/api/projects";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {

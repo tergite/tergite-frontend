@@ -3,7 +3,6 @@ import { Button, IconButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AppStateContext } from "@/lib/app-state";
-import { copyToClipboard } from "@/lib/utils";
 import { createAppToken, refreshMyTokensQueries } from "@/lib/api/tokens";
 import { getMyNoticesQuery } from "@/lib/api/notices";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -66,7 +65,7 @@ export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
   );
 
   const handleApiTokenCopy = useCallback(
-    () => copyToClipboard(apiToken || ""),
+    () => navigator.clipboard.writeText(apiToken || ""),
     [apiToken]
   );
 

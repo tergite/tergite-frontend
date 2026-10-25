@@ -1,6 +1,6 @@
 import { ChangeEvent, useCallback, forwardRef, useMemo } from "react";
 import { Input } from "./input";
-import { safeParseInt } from "@/lib/utils";
+import { parseOptionalInt } from "@/lib/time";
 import { ButtonGroup } from "./button-group";
 import { Button } from "./button";
 
@@ -15,7 +15,7 @@ const DurationInput = forwardRef<HTMLInputElement, Props>(
       (ev: ChangeEvent<HTMLInputElement>) => {
         ev.preventDefault();
         const oldValue = value ?? { hours: 0, minutes: 0, seconds: 0 };
-        const hours = safeParseInt(ev.target.value) ?? 0;
+        const hours = parseOptionalInt(ev.target.value) ?? 0;
         return onChange && onChange({ ...oldValue, hours });
       },
       [onChange, value]
@@ -28,7 +28,7 @@ const DurationInput = forwardRef<HTMLInputElement, Props>(
       (ev: ChangeEvent<HTMLInputElement>) => {
         ev.preventDefault();
         const oldValue = value ?? { hours: 0, minutes: 0, seconds: 0 };
-        const minutes = safeParseInt(ev.target.value) ?? 0;
+        const minutes = parseOptionalInt(ev.target.value) ?? 0;
         return onChange && onChange({ ...oldValue, minutes });
       },
       [onChange, value]
@@ -41,7 +41,7 @@ const DurationInput = forwardRef<HTMLInputElement, Props>(
       (ev: ChangeEvent<HTMLInputElement>) => {
         ev.preventDefault();
         const oldValue = value ?? { hours: 0, minutes: 0, seconds: 0 };
-        const seconds = safeParseInt(ev.target.value) ?? 0;
+        const seconds = parseOptionalInt(ev.target.value) ?? 0;
         return onChange && onChange({ ...oldValue, seconds });
       },
       [onChange, value]

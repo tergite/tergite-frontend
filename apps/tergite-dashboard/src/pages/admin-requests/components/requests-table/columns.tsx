@@ -1,6 +1,6 @@
 import { SortHeader } from "@/components/ui/data-table";
 import { ProgressStatus } from "@/components/ui/progress-status";
-import { getUserRequestTitle } from "@/lib/utils";
+import { getUserRequestTitle } from "@/lib/user-requests";
 import { ColumnDef } from "@tanstack/table-core";
 import { DateTime } from "luxon";
 import type { UserRequest } from "types";

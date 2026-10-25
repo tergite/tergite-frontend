@@ -1,6 +1,9 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { Device, DeviceCalibration } from "../../../types";
-import { normalizeCalibrationData } from "../utils";
+import type {
+  CalibrationValue,
+  Device,
+  DeviceCalibration,
+} from "../../../types";
 import { client } from "./client";
 
 export const devicesQuery = queryOptions({
@@ -36,4 +39,30 @@ export function getDeviceCalibrationQuery(name: string) {
     },
     throwOnError: true,
   });
+}
+
+/** Puts frequencies in GHz and decoherence times in microseconds */
+function normalizeCalibrationData(item: DeviceCalibration): DeviceCalibration {
+  const qubits = item.qubits.map((v) => ({
+    ...v,
+    frequency: convertHzToGHz(v.frequency),
+    t1_decoherence: convertSecToMicrosec(v.t1_decoherence),
+    t2_decoherence: convertSecToMicrosec(v.t2_decoherence),
+    anharmonicity: convertHzToGHz(v.anharmonicity),
+  }));
+  return { ...item, qubits };
+}
+
+function convertHzToGHz(value?: CalibrationValue): CalibrationValue | undefined {
+  return value?.unit === "Hz"
+    ? { ...value, unit: "GHz", value: value.value / 1000_000_000 }
+    : value;
+}
+
+function convertSecToMicrosec(
+  value?: CalibrationValue,
+): CalibrationValue | undefined {
+  return value?.unit === "s"
+    ? { ...value, unit: "us", value: value.value * 1000_000 }
+    : value;
 }

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { cn, toRelative } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatRelative } from "@/lib/time";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useCallback } from "react";
@@ -59,7 +60,7 @@ export function NotificationItem({ notice }: Props) {
         <div className="flex items-start justify-between gap-2">
           <span className="font-medium">{notice.title}</span>
           <span className="text-xs text-muted-foreground shrink-0">
-            {toRelative(DateTime.fromISO(notice.created_at))}
+            {formatRelative(DateTime.fromISO(notice.created_at))}
           </span>
         </div>
         <span className="text-muted-foreground">{notice.body}</span>

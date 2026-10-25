@@ -23,7 +23,8 @@ import { Project, QpuTimeExtensionPostBody, User, UserRequest } from "types";
 import { z } from "zod";
 import { Duration } from "luxon";
 import { Textarea } from "@/components/ui/textarea";
-import { cn, safeParseInt } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { parseOptionalInt } from "@/lib/time";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -160,7 +161,7 @@ function _QpuTimeDialog({
                             {...field}
                             value={field.value}
                             onChange={(ev) =>
-                              field.onChange(safeParseInt(ev.target.value) ?? 0)
+                              field.onChange(parseOptionalInt(ev.target.value) ?? 0)
                             }
                           />
                           <Label htmlFor={id}>{label}</Label>

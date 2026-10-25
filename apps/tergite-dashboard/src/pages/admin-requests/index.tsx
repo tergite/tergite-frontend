@@ -7,7 +7,7 @@ import {
 import { getAllAdminProjectsQuery, refreshMyProjectsQueries } from "@/lib/api/projects";
 import { getAllUserRequestsQuery, refreshMyRequests } from "@/lib/api/requests";
 import { currentUserQuery } from "@/lib/api/auth";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useLoaderData } from "react-router-dom";

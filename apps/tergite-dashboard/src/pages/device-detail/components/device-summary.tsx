@@ -9,11 +9,13 @@ import {
 import { DeviceStatusDiv } from "@/components/ui/device-status-div";
 import { Separator } from "@/components/ui/separator";
 import {
+  AggregateValue,
+  CalibrationValue,
   DeviceCalibrationMedians,
   Device,
   DeviceCalibration,
 } from "../../../../types";
-import { getCalibrationMedians, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import { DetailItem } from "./detail-item";
@@ -102,4 +104,39 @@ interface Props {
   device: Device;
   calibrationData: DeviceCalibration;
   className?: string;
+}
+
+/** The median of each field, over the values present, in the unit of the first */
+function getCalibrationMedians(
+  values: { [k: string]: CalibrationValue | null | undefined }[],
+  fields: string[],
+): { [k: string]: AggregateValue } {
+  const constituentLists: { [k: string]: number[] } = Object.fromEntries(
+    fields.map((field) => [
+      field,
+      values
+        .map((v) => v[field]?.value)
+        .filter((v) => v != undefined)
+        .sort((a, b) => (a as number) - (b as number)) as number[],
+    ]),
+  );
+
+  return Object.fromEntries(
+    fields
+      .filter((field) => constituentLists[field]?.length > 0)
+      .map((field) => [
+        field,
+        {
+          unit: values[0][field]?.unit ?? "",
+          value: computeMedian(constituentLists[field]),
+        },
+      ]),
+  );
+}
+
+function computeMedian(sorted: number[]): number {
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
 }

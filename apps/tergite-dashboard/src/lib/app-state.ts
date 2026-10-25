@@ -1,6 +1,5 @@
 import { createContext, useCallback, useEffect, useState } from "react";
 import { AppState } from "../../types";
-import { getSavedIsDarkMode, saveIsDarkMode } from "./utils";
 
 export const AppStateContext = createContext<AppState>(newAppState());
 
@@ -50,4 +49,17 @@ export function newAppState(): AppState {
   };
 
   return state;
+}
+
+function getSavedIsDarkMode() {
+  return localStorage.getItem("isDarkMode") == "true";
+}
+
+function saveIsDarkMode(isDarkMode: boolean) {
+  localStorage.setItem("isDarkMode", `${isDarkMode}`);
+  if (isDarkMode) {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
 }

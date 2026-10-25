@@ -1,4 +1,5 @@
-import { cn, mergeDatetime, toInputDuration } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { mergeDatetime, convertToInputDuration } from "@/lib/time";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookingsConfig, ErrorInfo, NewBookingInfo } from "types";
 import { useCallback, useMemo } from "react";
@@ -57,20 +58,20 @@ export function BookingForm({
   const initialEndTimestamp =
     initialBooking?.end_utc && DateTime.fromISO(initialBooking.end_utc);
 
-  const minDuration = toInputDuration(
+  const minDuration = convertToInputDuration(
     {
       seconds: bookingsConfig.min_time_slot_length,
     },
     { maxUnit: "hours", minUnit: "seconds" }
   );
-  const maxDuration = toInputDuration(
+  const maxDuration = convertToInputDuration(
     {
       seconds: bookingsConfig.max_time_slot_length,
     },
     { maxUnit: "hours", minUnit: "seconds" }
   );
   const initialDuration = initialEndTimestamp
-    ? toInputDuration(initialEndTimestamp.diff(initialStartTimestamp), {
+    ? convertToInputDuration(initialEndTimestamp.diff(initialStartTimestamp), {
         maxUnit: "hours",
         minUnit: "seconds",
       })

@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { currentUserQuery } from "@/lib/api/auth";
 import { devicesQuery } from "@/lib/api/devices";
-import { loadOrRedirectIfAuthErr } from "@/lib/utils";
+import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import {
   type AppState,
   type Device,

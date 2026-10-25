@@ -1,4 +1,5 @@
-import { cn, mergeDatetime } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { mergeDatetime } from "@/lib/time";
 import { CalendarIcon } from "lucide-react";
 import { DateTime } from "luxon";
 import { FormControl } from "./form";

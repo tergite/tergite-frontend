@@ -9,7 +9,8 @@ import {
   FormMessage,
   Form,
 } from "@/components/ui/form";
-import { mergeDatetime, SEVERITY_LABELS } from "@/lib/utils";
+import { mergeDatetime } from "@/lib/time";
+import { SEVERITY_LABELS } from "@/components/ui/notice-banner";
 import { DateTimeInput } from "@/components/ui/datetime-input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
