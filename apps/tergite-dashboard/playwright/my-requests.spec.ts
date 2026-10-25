@@ -1,5 +1,5 @@
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import { getUserRequestDetails } from "../cypress/support/utils";
+import { getUserRequestDetails } from "./utils/records";
 import { type User, type UserRequest } from "../types";
 
 const users = readFixture<User[]>("users");

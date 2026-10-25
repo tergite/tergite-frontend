@@ -23,10 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-cypress/screenshots/*
-cypress-image-diff-html-report/*
-cypress-image-diff-screenshots/comparison/*
-cypress-image-diff-screenshots/diff/*
 
 .npm/
 # lighthouse ci working folder, from dev/perf/record.sh

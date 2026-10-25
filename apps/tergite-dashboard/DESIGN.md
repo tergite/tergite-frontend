@@ -190,7 +190,7 @@ device, which page). Do not add server data to the context.
 
 `public/` holds the assets copied verbatim into the bundle, including two **static** pages
 outside React entirely — `privacy.html` and `terms.html`, linked from the footer and covered
-by their own cypress specs. `index.html` is the vite entry that mounts `#root`.
+by their own Playwright specs. `index.html` is the vite entry that mounts `#root`.
 
 `/` is the `Dashboard` layout with `dashboardLoader` (fetches the current user, derives
 `isUserAdmin`); its children are `/` (home), `/devices`, `/devices/:deviceName`, `/tokens`,
@@ -220,13 +220,13 @@ than the whole app.
   `Date` arithmetic; `date-fns` is present only for `react-day-picker`.
 - **Icons** are `lucide-react`.
 - **e2e hooks**: give anything a test needs to find a stable `id` (`id="jobs-table"`) or a
-  `data-cy-*` attribute (`data-cy-login-link`). Cypress selectors must not depend on
+  `data-cy-*` attribute (`data-cy-login-link`). Test selectors must not depend on
   Tailwind classes or DOM position.
 
 ## 4. Types
 
 All shared types live in the single top-level [types.ts](./types.ts) — not in `src/`, because
-the mock API server and the cypress specs import them too. It mirrors the MSS DTOs by hand
+the mock API server and the Playwright specs import them too. It mirrors the MSS DTOs by hand
 (`Device`, `Job`, `Project`, `AppToken`, `UserRequest`, `Booking`, `Notice`, `User`,
 `PaginatedData<T>`, the `JobStatus` / `UserRole` / `NoticeSeverity` enums, …).
 
@@ -250,13 +250,13 @@ dev/mock-api/
 │   ├── general.ts   # every MSS resource endpoint, plus GET /refreshed-db
 │   └── oauth.ts     # the mock OAuth2 authorize/callback pair
 ├── views/oauth.hbs  # the fake provider's consent page
-└── utils.ts         # MockDb over the cypress fixtures + JWT signing/verification
+└── utils.ts         # MockDb over the fixtures in cypress/fixtures + JWT signing/verification
 ```
 
 - `utils.ts` builds an in-memory `MockDb` from `cypress/fixtures/*.json` and issues real
   HS256 JWTs with `jose`, using `JWT_SECRET` / `AUTH_AUDIENCE` from the `.env` file — so the
   cookie handling under test is the real thing, not a stub.
-- `GET /refreshed-db` resets the mock database; cypress specs call it between tests.
+- `GET /refreshed-db` resets the mock database; the Playwright fixtures call it between tests.
 - `CURRENT_DATE` in `.env.test` pins "now" so date-sensitive fixtures and visual snapshots
   are stable.
 
@@ -273,61 +273,54 @@ up as a passing UI suite against a stale contract — which is what the repo-lev
 | Suite | Runner | Scope |
 | --- | --- | --- |
 | Component | vitest + happy-dom + Testing Library | files matching `src/**/__tests__/*` only |
-| e2e | cypress against vite preview + the mock API | `cypress/e2e/*.cy.ts`, one spec per page |
-| e2e, Playwright | the same specs, each worker against its own mock API | `playwright/*.spec.ts`, beside Cypress until it replaces it |
-| Visual | `cypress-image-diff-js` inside the e2e run | baselines in `cypress-image-diff-screenshots/baseline/` |
+| e2e | Playwright against vite preview, each worker with its own mock API | `playwright/*.spec.ts`, one spec per page |
+| Visual | Playwright's `toHaveScreenshot` inside the e2e run | baselines in `playwright/*-snapshots/`, one set per platform |
 
 ```bash
 npm run test    # component tests
-npm run e2e     # build --mode test, serve, run cypress headless
-npm run visual-e2e   # same, with the cypress UI
-npm run e2e:playwright   # build --mode test, serve, run playwright on parallel workers
+npm run e2e     # build --mode test, serve, run playwright on parallel workers
+npm run visual-e2e   # same, in playwright's UI mode
 ```
 
 Each Playwright worker starts its own mock API on `PW_API_PORT_BASE` (8100) plus its index, and
 `playwright/fixtures.ts` redirects the page's requests for the build's API address to it, so
-workers never share data. Runs at the same time need different `PW_API_PORT_BASE`s.
-
-The mock API listens on 8002. To run beside something else on that port, such as the e2e
-docker stack, override the three `.env.test` values that name it:
-
-```bash
-API_PORT=8012 VITE_API_BASE_URL=http://127.0.0.1:8012 DB_RESET_URL=http://127.0.0.1:8012/refreshed-db npm run e2e
-```
+workers never share data. Runs at the same time need different `PW_API_PORT_BASE`s. With
+`DASHBOARD_URL` set, as [dev/e2e_test.sh](../../dev/e2e_test.sh) sets it, the same specs test
+that dashboard on one worker against its stack's API instead.
 
 Each feature's happy path, and the spec that walks it:
 
 | Feature | Spec |
 | --- | --- |
-| Login | `login.cy.ts` |
-| Layout: sidebar, top bar, project switch, app token | `dashboard.cy.ts` |
-| Home: devices, jobs, bookings | `home.cy.ts` |
-| Devices | `devices.cy.ts` |
-| Device detail, bookings and calibrations | `device-detail.cy.ts` |
-| Projects, QPU-time and access requests | `projects.cy.ts` |
-| Tokens | `tokens.cy.ts` |
-| My requests | `my-requests.cy.ts` |
-| Approvals | `approvals.cy.ts` |
-| Notices | `notices.cy.ts` |
-| Settings | `settings.cy.ts` |
-| Admin projects | `admin-projects.cy.ts` |
-| Admin requests | `admin-requests.cy.ts` |
-| Admin control | `admin-control.cy.ts` |
-| Error page | `error-alert.cy.ts` |
+| Login | `login.spec.ts` |
+| Layout: sidebar, top bar, project switch, app token | `dashboard.spec.ts` |
+| Home: devices, jobs, bookings | `home.spec.ts` |
+| Devices | `devices.spec.ts` |
+| Device detail, bookings and calibrations | `device-detail.spec.ts` |
+| Projects, QPU-time and access requests | `projects.spec.ts` |
+| Tokens | `tokens.spec.ts` |
+| My requests | `my-requests.spec.ts` |
+| Approvals | `approvals.spec.ts` |
+| Notices | `notices.spec.ts` |
+| Settings | `settings.spec.ts` |
+| Admin projects | `admin-projects.spec.ts` |
+| Admin requests | `admin-requests.spec.ts` |
+| Admin control | `admin-control.spec.ts` |
+| Error page | `error-alert.spec.ts` |
 
 Job submission has no UI; its happy path is the MSS pytest flow in `tests/api/rest/test_jobs.py`.
 
 Component tests are the thin layer: `vite.config.ts` restricts them to `__tests__`
 directories, and only pure-ish primitives are covered there (`ui/__tests__/donut-chart.test.tsx`).
-The real coverage is the cypress suite, which drives the app through the mock API. Each
+The real coverage is the Playwright suite, which drives the app through the mock API. Each
 spec names the fixture users whose roles or data change its pages, and runs its tests for
-each (`users.forEach((user) => …)`). `cy.resetDatabase()` resets the data before a test only
-if an earlier test wrote (`cypress/support/database.ts`), so read-only tests share a reset.
-`TZ=Europe/Stockholm` is set for every cypress run — timezone changes will move snapshots.
+each (`for (const user of users)`). The `resetData` fixture resets a worker's data before a
+test only if an earlier test wrote, so read-only tests share a reset. The browser runs in
+`Europe/Stockholm`, the config's `timezoneId` — a change of zone will move snapshots.
 
-Visual baselines are Linux-specific. Regenerate them through `Dockerfile.e2e` rather than
-locally on macOS; see the "How to Generate Snapshots for CI" section of
-[CONTRIBUTING.md](./CONTRIBUTING.md).
+Playwright names visual baselines after the platform, so CI needs the linux ones. Generate
+them in Playwright's linux image through `Dockerfile.playwright`; see the "How to Generate
+Snapshots for CI" section of [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## 7. Build and serve
 

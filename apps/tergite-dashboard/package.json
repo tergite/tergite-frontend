@@ -14,11 +14,8 @@
     "preview": "vite preview",
     "test-api-and-app": "start-server-and-test test-api http://0.0.0.0:${API_PORT:-8002} \"npm run preview -- --host 0.0.0.0 --port 5173\"",
     "start-e2e-server": "npm run build -- --mode test && start-server-and-test test-api-and-app http://127.0.0.1:5173",
-    "e2e": "npm run start-e2e-server -- \"TZ=Europe/Stockholm cypress run\"",
-    "visual-e2e": "npm run start-e2e-server -- \"TZ=Europe/Stockholm cypress open\"",
-    "e2e:playwright": "playwright test",
-    "cypress-only": "TZ=Europe/Stockholm cypress run",
-    "visual-cypress-only": "TZ=Europe/Stockholm cypress open"
+    "e2e": "playwright test",
+    "visual-e2e": "playwright test --ui"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",
@@ -97,10 +94,6 @@
     "baseline-browser-mapping": "^2.10.32",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
-    "cypress": "^13.13.1",
-    "cypress-image-diff-html-report": "^2.2.0",
-    "cypress-image-diff-js": "^2.2.1",
-    "cypress-real-events": "^1.13.0",
     "dotenv": "^16.4.5",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",

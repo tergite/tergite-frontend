@@ -103,7 +103,7 @@ npm run test
 ## How to Run End-to-end Tests
 
 - Ensure you have [docker](https://docs.docker.com/engine/install/) and [jq](https://jqlang.org/download/) installed
-- If you will not supply the `CYPRESS_IMAGE` argument, you need [nodejs](https://nodejs.org/en) installed also.
+- If you will not supply the `PLAYWRIGHT_IMAGE` argument, you need [nodejs](https://nodejs.org/en) installed also.
 - Ensure nothing is running on ports:
 
   - 27018
@@ -125,8 +125,9 @@ cd tergite-frontend
 BACKEND_REPO="https://github.com/tergite/tergite-backend.git" \
 # BACKEND_BRANCH="main" \ # you can set a different backend branch; default is 'main'
 # DEBUG="True" \ # Set 'True' to avoid cleaning up the containers, env, and repos after test, default: ''
-# VISUAL="True" \ # Set 'True' to see the e2e in a graphical user interface, default: ''
-# CYPRESS_IMAGE="cypress/base:20.17.0" \ # Set the docker image to run the tests. If not provided, it runs on the host machine
+# CLEAN="True" \ # Set 'True' to also remove the stack's images and the build cache, before and after, default: ''
+# VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
+# PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.64.0-noble" \ # Set the docker image to run the tests. If not provided, it runs on the host machine
 #   OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration" \ # Set the url to get the openID config for mock OpenID connect, default: 'https://samples.auth0.com/.well-known/openid-configuration'
 #   OPENID_CLIENT_ID="kbyuFDidLLm280LIwVFiazOqjO3ty8KH" \ # Set the client id for mock OpenID connect, default: 'kbyuFDidLLm280LIwVFiazOqjO3ty8KH'
 #   OPENID_CLIENT_SECRET="60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa" \ # Set the client secret for mock OpenID connect, default: '60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa'
@@ -160,7 +161,9 @@ npm run build
 
 ## How to Generate Snapshots for CI
 
-The end-to-end tests in the CI files require some linux-specific snapshots. If one is developing non-linux computer, one can generate these snapshots using docker.
+Playwright names each screenshot baseline after the platform (`-chromium-darwin.png`,
+`-chromium-linux.png`), so CI on linux needs the linux ones beside those made on a mac. Generate
+them in Playwright's own linux image, which has the browsers:
 
 - Make sure you have [docker](https://docs.docker.com/engine/install/) installed.
 
@@ -171,34 +174,7 @@ git clone git@github.com:tergite/tergite-frontend.git
 cd apps/tergite-dashboard
 ```
 
-- Generate the end-to-end testing image `tergite-dashboard-e2e`
-
-```shell
-docker build -t tergite-dashboard-e2e:latest -f Dockerfile.e2e .
-```
-
-- Run the end-to-end tests using that image
-
-```shell
-docker run --name dash-e2e-test -v ./cypress-image-diff-screenshots:/app/cypress-image-diff-screenshots -e TEST_THRESHOLD=0.4 tergite-dashboard-e2e:latest
-```
-
-- The new baseline snapshots should be added to the [`./cypress-image-diff-screenshots/baseline/`](./cypress-image-diff-screenshots/baseline/) folder
-
-- Now you can commit them to git if anything has changed
-
-```shell
-git add .
-git commit -m "Updated the baseline snapshots for end-to-end tests"
-```
-
-### For the Playwright suite
-
-Playwright names each screenshot baseline after the platform (`-chromium-darwin.png`,
-`-chromium-linux.png`), so CI on linux needs the linux ones beside those made on a mac. Generate
-them in Playwright's own linux image, which has the browsers:
-
-- Generate the image `tergite-dashboard-playwright`, from `apps/tergite-dashboard`
+- Generate the image `tergite-dashboard-playwright`
 
 ```shell
 docker build -t tergite-dashboard-playwright:latest -f Dockerfile.playwright .
@@ -211,7 +187,12 @@ docker run --rm -v ./playwright:/app/playwright tergite-dashboard-playwright:lat
 ```
 
 - The new baselines are the `-chromium-linux.png` files in the `playwright/*-snapshots/` folders;
-  commit them as above
+  commit them if anything has changed
+
+```shell
+git add playwright
+git commit -m "Updated the baseline snapshots for end-to-end tests"
+```
 
 ## References
 

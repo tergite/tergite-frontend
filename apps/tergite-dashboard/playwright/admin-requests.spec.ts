@@ -1,7 +1,7 @@
 import { type Page } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import { innermost } from "./utils/locators";
-import { getUserRequestDetails } from "../cypress/support/utils";
+import { getUserRequestDetails } from "./utils/records";
 import {
   type Project,
   type User,

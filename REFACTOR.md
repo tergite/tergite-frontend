@@ -33,7 +33,7 @@ async def update_request(database: Database, request_id: Id, approver: User, dec
     return decided
 ```
 
-**Every commit is verified the same way.** MSS: `black` and `isort` with no flags, then `pytest > "$LOG" 2>&1; echo "exit=$?" >> "$LOG"`. Dashboard: `eslint`, `tsc`, `vitest`, `cypress`. `DESIGN.md` changes in the same commit as any file it names. `dev/e2e_test.sh` runs at the end of steps 7 and 9. The style rules a parser can see are tests too: `apps/tergite-mss/tests/test_styleguide.py` and `apps/tergite-dashboard/src/__tests__/styleguide.test.ts`, each with a baseline of the violations that existed when it was added. A commit that fixes a listed violation deletes its line from that baseline, and a commit may never add one.
+**Every commit is verified the same way.** MSS: `black` and `isort` with no flags, then `pytest > "$LOG" 2>&1; echo "exit=$?" >> "$LOG"`. Dashboard: `eslint`, `tsc`, `vitest`, Playwright. `DESIGN.md` changes in the same commit as any file it names. `dev/e2e_test.sh` runs at the end of steps 7 and 9. The style rules a parser can see are tests too: `apps/tergite-mss/tests/test_styleguide.py` and `apps/tergite-dashboard/src/__tests__/styleguide.test.ts`, each with a baseline of the violations that existed when it was added. A commit that fixes a listed violation deletes its line from that baseline, and a commit may never add one.
 
 **Every step ends with a sign-off.** Its last commit adds `docs/prototypes/<NN>-<step>.md`, a user acceptance test (UAT) script: how to start the app, what to do, and what should be seen. A user or an agent runs it, reruns the step 1.7 performance checks, and gives the go-ahead before the next step starts.
 
@@ -344,7 +344,7 @@ Step 6 made `authlib` read users through the `Database`, so items 1 to 3 land to
 
 The co-located page hierarchy, the `index / columns / filter-form` table split and loaders beside their pages stay. The two largest hand-written pieces, the API client and the response types mirrored from MSS, become generated code.
 
-1. **Generate the API contract.** `openapi-typescript` generates `src/lib/api/schema.d.ts` from `dev/openapi/openapi.json` (step 2.8) with `npm run generate:api`; CI fails when it is stale. An `openapi-fetch` client in `src/lib/api/client.ts` (base URL, `credentials: "include"`, one error middleware) replaces `authenticatedFetch`, `getQueryString` and `extractError`; it is the only file that talks HTTP. A change to an MSS DTO now fails `tsc` in the dashboard instead of a Cypress run.
+1. **Generate the API contract.** `openapi-typescript` generates `src/lib/api/schema.d.ts` from `dev/openapi/openapi.json` (step 2.8) with `npm run generate:api`; CI fails when it is stale. An `openapi-fetch` client in `src/lib/api/client.ts` (base URL, `credentials: "include"`, one error middleware) replaces `authenticatedFetch`, `getQueryString` and `extractError`; it is the only file that talks HTTP. A change to an MSS DTO now fails `tsc` in the dashboard instead of an e2e run.
 2. **Split `src/lib/api-client.ts`** (1,836 lines) into one module per resource under `src/lib/api/` (`devices`, `bookings`, `projects`, `tokens`, `requests`, `notices`, `admin-control`, `auth`), each holding react-query options and mutations that call the typed client in one line. In the same commit:
    - the `baseUrl` option on about 50 functions goes; the client holds the base URL
    - the dozen single-use private getters fold into their `queryFn`; `getFutureBookings` folds into `upcomingBookingsQuery`
@@ -367,7 +367,7 @@ The co-located page hierarchy, the `index / columns / filter-form` table split a
 8. **Delete `types.ts`.** Response and request types come from `schema.d.ts`; the client-only shapes (`Time`, `InputDuration`, `CalibrationDataPoint`, `AppState`) move next to their users in `src/`.
 9. **Names.** `isFormDirty` (a number) → a boolean; `use` → `forwardAsyncErrors`; `NotFound` → `createNotFoundError`; `handleEventDrop` → `bookingMove`; `sortBookings` → `pickEarliestBookings`; `chatData` → `chartData`; `meta.ts` → `notice-type-styles.ts`; `isUserAdmin` → `isAdmin`.
 10. **Split the mock API** (`dev/mock-api/routes/general.ts` 1,825 lines, `dev/mock-api/utils.ts` 880) into `db.ts`, `auth.ts` (no db import), `http.ts`, `notices.ts`, `requests.ts` and `routes/{me,devices,bookings,admin-projects,bcc,notices,requests}.ts`. Its handlers are typed against `schema.d.ts`, so the mock cannot drift from MSS unnoticed. `requireUser` and `requireRole(UserRole.ADMIN)` Express middleware replace 46 copies of the auth preamble and 19 role checks. `MockDb` keeps its rows as data, with `createFreshDb()` replacing the initial state written twice.
-11. **Cypress.** `cy.loginAs(user)` and `cy.resetDb()` replace the block repeated in 14 specs; specs import `dev/mock-api/auth.ts`, not `dev/mock-api/utils.ts`; `cypress/support/utils.ts` imports `extendAppToken` and `getUserRequestDetails` from `src/` instead of copying them.
+11. **Playwright.** `playwright/utils/records.ts` imports `extendAppToken` and `getUserRequestDetails` from `src/` instead of copying them.
 
 ## Step 10: close out
 

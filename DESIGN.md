@@ -184,23 +184,24 @@ using `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID` ([config.alloy](config.alloy)).
 | --- | --- | --- |
 | MSS unit/integration | `apps/tergite-mss/tests` — pytest against real MongoDB + Redis | `pytest` |
 | Dashboard component | `apps/tergite-dashboard/src/**/__tests__` — vitest + happy-dom | `npm run test` |
-| Dashboard e2e | `apps/tergite-dashboard/cypress/e2e` — cypress against the **mock** API | `npm run e2e` |
-| Full-stack e2e | [dev/e2e_test.sh](dev/e2e_test.sh) — the Playwright specs against real MSS + real backend in docker | `./dev/e2e_test.sh` |
+| Dashboard e2e | `apps/tergite-dashboard/playwright` — Playwright against the **mock** API, a mock API per worker | `npm run e2e` |
+| Full-stack e2e | [dev/e2e_test.sh](dev/e2e_test.sh) — the same Playwright specs against real MSS + real backend in docker | `./dev/e2e_test.sh` |
 
 The dashboard's own e2e suite does not run MSS. It runs an Express mock API
 (`apps/tergite-dashboard/dev/mock-api/`) that serves the same JSON shapes from
-`cypress/fixtures/*.json`, plus a `GET /refreshed-db` endpoint tests hit to reset state.
+`cypress/fixtures/*.json` (named after the suite that came before Playwright), plus a
+`GET /refreshed-db` endpoint tests hit to reset state.
 This keeps the UI suite fast and deterministic, at the cost of a second place to update
 when an MSS response changes.
 
 `dev/e2e_test.sh` is the one that catches contract drift: it clones `tergite-backend`, builds
-MSS, the dashboard and the backend, seeds Mongo from the same cypress fixtures, wires up a
+MSS, the dashboard and the backend, seeds Mongo from the same fixtures, wires up a
 mock OpenID provider, and runs the Playwright specs against the real stack, on one worker. It is a manual /
 tag-triggered job in CI, not a per-commit one.
 
-Visual regression is via `cypress-image-diff-js`; baselines in
-`cypress-image-diff-screenshots/baseline/` are Linux-specific, so regenerate them through
-`Dockerfile.e2e` rather than on macOS (see the dashboard's `CONTRIBUTING.md`).
+Visual regression is Playwright's `toHaveScreenshot`; its baselines are named after the
+platform, so make the Linux ones through the dashboard's `Dockerfile.playwright` (see its
+`CONTRIBUTING.md`).
 
 ## 7. CI
 
@@ -211,7 +212,7 @@ a mirror — see §8).
 - `mss-ci.yml` / `test mss` — `black --check .`, `pyflakes`, then `pytest` on Python 3.12 and
   3.13 against `mongo` and `redis` services. Path-filtered to `apps/tergite-mss/**`.
 - `dashboard-ci.yml` / `lint dashboard`, `test dashboard`, `e2e test dashboard` —
-  eslint, vitest, cypress. Path-filtered to `apps/tergite-dashboard/**`.
+  eslint, vitest, Playwright. Path-filtered to `apps/tergite-dashboard/**`.
 - `frontend-ci.yml` / `full e2e` — the cross-app `dev/e2e_test.sh`, on `main`, on `v*` tags, or
   manually.
 - On a `v*` tag, each app's workflow buildx-builds a multi-platform image and pushes to the

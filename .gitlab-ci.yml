@@ -7,7 +7,7 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 .setup_dashboard: &setup_dashboard
-  image: cypress/base:20.17.0
+  image: mcr.microsoft.com/playwright:v1.64.0-noble
   variables:
     FF_NETWORK_PER_BUILD: 1
     REDIS_PORT: 6380

@@ -40,6 +40,8 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ### Changed
 
+- The end-to-end tests run on Playwright instead of Cypress, each worker against its own mock
+  API, so `npm run e2e` takes about 1.5 minutes instead of 3.5; Cypress and its plugins are gone.
 - The user menu no longer repeats Projects and Tokens, which the sidebar now carries. It
   keeps only what lives nowhere else: Settings and Logout.
 - The "Request Pending" button on the projects page now carries how much QPU time was
