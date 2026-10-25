@@ -12,17 +12,20 @@
 # that they have been altered from the originals.
 #
 # Records the performance measures of REFACTOR.md step 1.7 into <out-dir>: Lighthouse on the
-# dashboard against the mock API, then Locust on MSS in dev/perf/docker-compose.yml, both over
-# the e2e fixtures.
+# dashboard against the mock API, then Locust on MSS from this working tree, with a MongoDB and
+# a Redis of its own, all running natively, both over the e2e fixtures. It samples the CPU and
+# memory of the MSS, mongod and redis-server processes, and each database's connections.
 #
 # Usage
 # =====
 #
 #   ./dev/perf/record.sh dev/perf/baselines           # the baseline
 #   ./dev/perf/record.sh /tmp/perf-step-3             # a sign-off run
+#   ./dev/perf/record.sh /tmp/perf-step-3 mss         # MSS alone, or dashboard alone
 #   python3 dev/perf/compare.py dev/perf/baselines /tmp/perf-step-3
 #
-# Needs docker running, and port 8002 free: the mock API, then the MSS container, take it in turn.
+# Needs node, uv, mongod, mongosh, redis-server and redis-cli, and ports 8002, 27019 and 6381
+# free: the mock API, then MSS, take 8002 in turn; the locustfile reaches MongoDB at 27019.
 # Compare only runs made on the same machine: the numbers are this machine's.
 
 set -e
@@ -36,16 +39,21 @@ LIGHTHOUSE_USER_ID="4939a0b9a7742e2cc52289e0"
 OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration"
 ROOT_PATH="$(cd "$(dirname "$0")/../.." && pwd)"
 FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/fixtures"
-COMPOSE=(docker compose -f "$ROOT_PATH/dev/perf/docker-compose.yml")
+MSS_PATH="$ROOT_PATH/apps/tergite-mss"
+MSS_PORT=8002
+MONGO_PORT=27019
+REDIS_PORT=6381
 
 main() {
   [[ -n "$1" ]] || exit_with_err "usage: $0 <out-dir>"
-  docker info &> /dev/null || exit_with_err "docker is not running"
+  for tool in node uv mongod mongosh redis-server redis-cli; do
+    command -v "$tool" &> /dev/null || exit_with_err "$tool is not available"
+  done
   mkdir -p "$1"
   OUT_PATH="$(cd "$1" && pwd)"
 
-  record_dashboard
-  record_mss
+  [[ "${2:-dashboard}" != "dashboard" ]] || record_dashboard
+  [[ "${2:-mss}" != "mss" ]] || record_mss
 }
 
 record_dashboard() {
@@ -61,26 +69,56 @@ record_dashboard() {
 }
 
 record_mss() {
-  export PERF_MSS_CONFIG_FILE
-  PERF_MSS_CONFIG_FILE="$(mktemp)"
-  sed -e "s|OPENID_CONFIG_URL|$OPENID_CONFIG_URL|" -e "s|OPENID_CLIENT_ID|perf|" \
-    -e "s|OPENID_CLIENT_SECRET|perf|" "$FIXTURES_PATH/mss-config.toml" > "$PERF_MSS_CONFIG_FILE"
-  "${COMPOSE[@]}" up -d --build --wait
-  trap 'kill "$sampler_pid" 2> /dev/null; "${COMPOSE[@]}" down --volumes; rm "$PERF_MSS_CONFIG_FILE"' EXIT
+  WORK_PATH="$(mktemp -d)"
+  trap stop_mss EXIT
+  sed -e "s|mongodb://tergite-mongo:27017|mongodb://127.0.0.1:$MONGO_PORT|" \
+    -e "s|redis://tergite-redis:6379|redis://127.0.0.1:$REDIS_PORT|" -e "s|bcc_certs/|$FIXTURES_PATH/|" \
+    -e "s|OPENID_CONFIG_URL|$OPENID_CONFIG_URL|" -e "s|OPENID_CLIENT_ID|perf|" \
+    -e "s|OPENID_CLIENT_SECRET|perf|" "$FIXTURES_PATH/mss-config.toml" > "$WORK_PATH/mss-config.toml"
+
+  mkdir "$WORK_PATH/mongo"
+  mongod --dbpath "$WORK_PATH/mongo" --port "$MONGO_PORT" --bind_ip 127.0.0.1 > "$WORK_PATH/mongod.log" 2>&1 &
+  mongo_pid=$!
+  redis-server --port "$REDIS_PORT" --bind 127.0.0.1 --save "" --appendonly no > "$WORK_PATH/redis.log" 2>&1 &
+  redis_pid=$!
+  until mongosh --quiet --port "$MONGO_PORT" --eval "db.runCommand('ping').ok" &> /dev/null; do sleep 0.5; done
   seed_database
 
-  sample_resources &
+  UV_PROJECT_ENVIRONMENT="$WORK_PATH/venv" uv sync -q --frozen --no-dev --project "$MSS_PATH"
+  start_mss
+  until curl -sf "http://127.0.0.1:$MSS_PORT/health" > /dev/null; do
+    kill -0 "$mss_pid" 2> /dev/null || exit_with_err "MSS stopped; see $WORK_PATH/mss.log"
+    sleep 0.5
+  done
+
+  sample_processes &
   sampler_pid=$!
+  sample_connections &
+  connections_pid=$!
   uvx --from "locust==$LOCUST_VERSION" --with pymongo --with pyjwt \
     locust -f "$ROOT_PATH/dev/perf/locustfile.py" --headless --only-summary \
-    --host http://127.0.0.1:8002 -u "$LOAD_USERS" -r "$LOAD_USERS" -t "$LOAD_DURATION" \
+    --host "http://127.0.0.1:$MSS_PORT" -u "$LOAD_USERS" -r "$LOAD_USERS" -t "$LOAD_DURATION" \
     --csv "$OUT_PATH/locust"
+}
+
+# Migrates the database and serves MSS from MSS_PATH, setting mss_pid
+start_mss() {
+  export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
+  (cd "$MSS_PATH" && "$WORK_PATH/venv/bin/python" main.py migrate) > "$WORK_PATH/mss-migrate.log" 2>&1
+  (cd "$MSS_PATH" && exec "$WORK_PATH/venv/bin/python" main.py serve --host 127.0.0.1 --port "$MSS_PORT") \
+    > "$WORK_PATH/mss.log" 2>&1 &
+  mss_pid=$!
+}
+
+stop_mss() {
+  kill "$sampler_pid" "$connections_pid" "$mss_pid" "$redis_pid" "$mongo_pid" 2> /dev/null
+  wait 2> /dev/null
+  rm -rf "$WORK_PATH"
 }
 
 # Runs the e2e mongo-init.js with the fixtures spliced in where it holds "[]"
 seed_database() {
-  local script
-  script="$(mktemp)"
+  local script="$WORK_PATH/init.js"
   node -e '
     const fs = require("fs");
     const dir = process.argv[1];
@@ -95,24 +133,53 @@ seed_database() {
     }
     process.stdout.write(script);
   ' "$FIXTURES_PATH" > "$script"
-  "${COMPOSE[@]}" cp "$script" tergite-mongo:/tmp/init.js
-  "${COMPOSE[@]}" exec -T tergite-mongo mongosh --quiet /tmp/init.js > /dev/null
-  rm "$script"
+  mongosh --quiet --port "$MONGO_PORT" "$script" > /dev/null
 }
 
-# Appends one row per container to docker-stats.csv, and the open connections of
-# each database to connections.csv, every SAMPLE_INTERVAL_SECONDS
-sample_resources() {
-  echo "time,container,cpu,memory" > "$OUT_PATH/docker-stats.csv"
+# Writes a row of each process's CPU and resident memory to process-stats.csv every
+# SAMPLE_INTERVAL_SECONDS, the CPU being its share of a core over that interval
+sample_processes() {
+  uv run -q --no-project --with psutil python - "$OUT_PATH/process-stats.csv" "$SAMPLE_INTERVAL_SECONDS" \
+    "mss=$mss_pid" "mongodb=$mongo_pid" "redis=$redis_pid" <<'PYTHON'
+import csv
+import sys
+import time
+
+import psutil
+
+path, interval, *named_pids = sys.argv[1:]
+processes = {
+    name: psutil.Process(int(pid))
+    for name, pid in (named_pid.split("=") for named_pid in named_pids)
+}
+for process in processes.values():
+    process.cpu_percent()
+with open(path, "w", newline="") as file:
+    writer = csv.writer(file)
+    writer.writerow(["time", "process", "cpu", "memory"])
+    # until stop_mss stops the processes
+    while all(process.is_running() for process in processes.values()):
+        time.sleep(float(interval))
+        now = int(time.time())
+        try:
+            for name, process in processes.items():
+                memory = process.memory_info().rss / 2**20
+                writer.writerow([now, name, f"{process.cpu_percent():.2f}%", f"{memory:.1f}MiB"])
+        except psutil.NoSuchProcess:
+            break
+        file.flush()
+PYTHON
+}
+
+# Appends the open connections of each database to connections.csv every SAMPLE_INTERVAL_SECONDS
+sample_connections() {
   echo "time,database,connections" > "$OUT_PATH/connections.csv"
   while true; do
     local now
     now="$(date +%s)"
-    docker stats --no-stream --format "{{.Name}},{{.CPUPerc}},{{.MemUsage}}" $("${COMPOSE[@]}" ps -q) \
-      | sed "s|^|$now,|" >> "$OUT_PATH/docker-stats.csv"
-    echo "$now,mongodb,$("${COMPOSE[@]}" exec -T tergite-mongo mongosh --quiet \
+    echo "$now,mongodb,$(mongosh --quiet --port "$MONGO_PORT" \
       --eval 'db.serverStatus().connections.current')" >> "$OUT_PATH/connections.csv"
-    echo "$now,redis,$("${COMPOSE[@]}" exec -T tergite-redis redis-cli info clients \
+    echo "$now,redis,$(redis-cli -p "$REDIS_PORT" info clients \
       | awk -F: '/^connected_clients/ {print $2}' | tr -d '\r')" >> "$OUT_PATH/connections.csv"
     sleep "$SAMPLE_INTERVAL_SECONDS"
   done

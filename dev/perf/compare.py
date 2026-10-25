@@ -38,7 +38,7 @@ def main(baseline_path: Path, run_path: Path) -> int:
 def read_measures(path: Path) -> dict[str, float]:
     return {
         **read_latencies(path / "locust_stats.csv"),
-        **read_peaks(path / "docker-stats.csv", "container", "memory", "memory MiB"),
+        **read_peaks(path / "process-stats.csv", "process", "memory", "memory MiB"),
         **read_peaks(
             path / "connections.csv", "database", "connections", "connections"
         ),

@@ -11,3 +11,5 @@ temp-native/
 !apps/tergite-dashboard/fixtures/mss-config.toml
 
 .vscode/
+
+__pycache__/
