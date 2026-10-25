@@ -29,7 +29,7 @@ request_log_ttl = 1209600
 # configurations for the database
 name = "sample-database"
 # database URI: mongodb:// or mongodb+srv://. The storage layer also takes a SQLAlchemy URL
-# with an async driver (postgresql+asyncpg://, sqlite+aiosqlite://), which start_mss.sh
+# with an async driver (postgresql+asyncpg://, sqlite+aiosqlite://), which `tergite-mss start`
 # migrates with Alembic
 url = "mongodb://user:pass@host:port"
 # the database of the request log, which a cache suits; default=redis://tergite-redis:6379/0

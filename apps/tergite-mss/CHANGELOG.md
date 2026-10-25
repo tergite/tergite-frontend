@@ -60,6 +60,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Changed
 
+- `start_mss.sh` runs `main.py start`, after decrypting a SOPS config, instead of migrating and starting uvicorn
+  itself, and no longer installs sops or yq; `main.py` serves on the config's `general.mss_port` by default.
 - Users sign in through `libs/authlib` instead of fastapi-users and are kept by the storage
   layer instead of Beanie. Emails are now unique in any case, so startup fails while two
   users' emails differ only in case: merge them first.

@@ -66,7 +66,9 @@ def main() -> None:
     )
     parser.add_argument("--host", default="0.0.0.0", help="Bind socket to this host.")
     parser.add_argument(
-        "--port", type=int, default=8002, help="Bind socket to this port."
+        "--port",
+        type=int,
+        help="Bind socket to this port; default: the config's general.mss_port.",
     )
     parser.add_argument(
         "--forwarded-allow-ips",
@@ -83,7 +85,8 @@ def main() -> None:
     if args.command in ("start", "migrate"):
         _migrate()
     if args.command in ("start", "serve"):
-        _serve(args.host, args.port, args.forwarded_allow_ips, args.reload)
+        port = args.port or settings.CONFIG.general.mss_port
+        _serve(args.host, port, args.forwarded_allow_ips, args.reload)
 
 
 def _migrate() -> None:

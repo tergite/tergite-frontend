@@ -21,7 +21,7 @@ It should hold no business logic.
 ```
 apps/tergite-mss/
 ├── settings.py              # loads + validates config at import time; fails fast
-├── start_mss.sh             # entrypoint: parse/decrypt config → uvicorn
+├── start_mss.sh             # from a checkout: decrypt a SOPS config → main.py start
 ├── api/                     # HTTP adapter layer
 │   └── rest/
 │       ├── __init__.py      # the FastAPI app: middleware, exception handlers, routers
@@ -92,10 +92,11 @@ rules live in `services/`. Two consequences worth internalising:
 
 ### Startup
 
-`start_mss.sh` → reads `MSS_CONFIG_FILE` (default `mss-config.toml`), SOPS-decrypts it if it
-carries a `hc_vault` block, converts TOML → JSON with `yq`, exports it as
-`MSS_CONFIG_JSON_STR`, and starts `uvicorn api.rest:app` (with `--reload` outside
-production, and `--forwarded-allow-ips` when it detects `/.dockerenv`).
+`main.py start`, the default command, migrates the database and then serves `api.rest:app`
+with uvicorn on the config's `general.mss_port`; `migrate` and `serve` do one alone. The
+packages run it as `tergite-mss start`. From a checkout, `start_mss.sh` does the same, after
+SOPS-decrypting `MSS_CONFIG_FILE` (default `mss-config.toml`) into `MSS_CONFIG_JSON_STR` with
+`sops` and `yq` when it carries a `hc_vault` block.
 
 `settings.py` then validates that JSON into `AppConfig` and asserts the private key file
 exists. Any config error is a startup crash, not a runtime surprise.

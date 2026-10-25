@@ -132,13 +132,13 @@ Copy [apps/tergite-mss/mss-config.example.toml](apps/tergite-mss/mss-config.exam
 `mss-config.toml`, or let the deb's provisioning write `/etc/tergite-mss/mss-config.toml`.
 Sections: `[general]`, `[database]`, `[[backends]]` (one per BCC), `[projects]`, `[notices]`,
 `[email]`, `[auth]` and `[[auth.clients]]` (one per OAuth2 provider). MSS reads the file
-`MSS_CONFIG_FILE` names, or `start_mss.sh` hands it over as JSON in `MSS_CONFIG_JSON_STR`;
+`MSS_CONFIG_FILE` names, or the JSON in `MSS_CONFIG_JSON_STR` when it is set;
 the app validates it into `AppConfig`
 ([utils/config.py](apps/tergite-mss/utils/config.py)) at import time in `settings.py` and
 fails fast on anything missing.
 
 The file may be SOPS-encrypted with a Hashicorp Vault key; `start_mss.sh` detects this and
-decrypts using `VAULT_ADDR` / `VAULT_TOKEN` from the environment.
+decrypts it into `MSS_CONFIG_JSON_STR` using `VAULT_ADDR` / `VAULT_TOKEN` from the environment.
 
 ### 4.2 `.env*` files in the dashboard
 
