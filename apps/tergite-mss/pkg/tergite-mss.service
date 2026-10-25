@@ -1,0 +1,55 @@
+[Unit]
+Description=Tergite Main Service Server (MSS)
+After=network-online.target postgresql.service mongod.service redis-server.service redis.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=tergite-mss
+Group=tergite-mss
+
+Environment=MSS_CONFIG_FILE=/etc/tergite-mss/mss-config.toml
+Environment=PRIVATE_KEY_FILE=/etc/tergite-mss/private-mss-key.pem
+
+# as start_mss.sh does, so an upgrade's schema change applies before it serves
+ExecStartPre=/usr/bin/tergite-mss migrate
+ExecStart=/usr/bin/tergite-mss serve --port 8002
+Restart=on-failure
+RestartSec=5s
+
+# where a SQLite database lives; the onefile binary unpacks itself into PrivateTmp
+StateDirectory=tergite-mss
+StateDirectoryMode=0750
+WorkingDirectory=/var/lib/tergite-mss
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tergite-mss
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+RemoveIPC=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
