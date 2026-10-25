@@ -13,7 +13,7 @@
 import asyncio
 from contextlib import aclosing
 from email.message import EmailMessage
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 import aiosmtplib
 from loguru import logger
@@ -83,33 +83,36 @@ async def _send_on_repeat(
     assert interval > 0, "interval must be greater than 0"
 
     async with aclosing(batch_generator) as email_batches:
-        async for batch in email_batches:  # type: Sequence[EmailDetails]
-            errors: List[Optional[Exception]] = [None] * len(batch)
-            try:
-                if batch:
-                    async with smtp:
-                        for idx, detail in enumerate(batch):
-                            try:
-                                msg = _get_email_message(detail, from_value=from_value)
-                                await smtp.send_message(msg)
-                            except Exception as exp:
-                                logger.exception("sending email on repeat failed")
-                                errors[idx] = exp
-            except Exception as exp:
-                # e.g. connecting to the SMTP server failed, so nothing was sent
-                logger.exception("sending email batch on repeat failed")
-                errors = [exp] * len(batch)
-
-            results = [
-                EmailResult(
-                    error=error, ref_id=detail.ref_id, can_retry=detail.can_retry
-                )
-                for detail, error in zip(batch, errors)
-            ]
-
-            # close processing for current batch, prepare for the next one
+        async for batch in email_batches:
+            results = await _send_batch(smtp, batch, from_value=from_value)
             await batch_callback(results)
             await asyncio.sleep(interval)
+
+
+async def _send_batch(
+    smtp: aiosmtplib.SMTP, batch: Sequence[EmailDetails], from_value: str
+) -> List[EmailResult]:
+    """Sends the batch over one connection, getting each email's result in its place"""
+    errors: List[Optional[Exception]] = [None] * len(batch)
+    try:
+        if batch:
+            async with smtp:
+                for idx, detail in enumerate(batch):
+                    try:
+                        msg = _get_email_message(detail, from_value=from_value)
+                        await smtp.send_message(msg)
+                    except Exception as exp:
+                        logger.exception("sending email on repeat failed")
+                        errors[idx] = exp
+    except Exception as exp:
+        # e.g. connecting to the SMTP server failed, so nothing was sent
+        logger.exception("sending email batch on repeat failed")
+        errors = [exp] * len(batch)
+
+    return [
+        EmailResult(error=error, ref_id=detail.ref_id, can_retry=detail.can_retry)
+        for detail, error in zip(batch, errors)
+    ]
 
 
 def _get_email_message(details: EmailDetails, from_value: str) -> EmailMessage:
