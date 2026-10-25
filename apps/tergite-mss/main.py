@@ -55,12 +55,12 @@ _ROOT = Path(__file__).parent
 def _migrate() -> None:
     """Brings the configured database to the latest schemas, as start_mss.sh does"""
     database_url = get_database_url(settings.CONFIG.database)
-    if "+" in database_url.split("://")[0]:
-        command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
-    elif database_url.startswith("mongodb"):
+    if database_url.startswith("mongodb"):
         with MongoClient(database_url) as client:
             applied = migrations.mongodb.upgrade(client.get_default_database())
         print(f"MongoDB migrations applied: {applied or 'none pending'}")
+    if "+" in database_url.split("://")[0]:
+        command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
 
 
 if __name__ == "__main__":
