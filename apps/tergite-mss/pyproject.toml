@@ -73,6 +73,8 @@ dev = [
     "pyflakes>=3.2",
     "asgi-lifespan>=2.1.0",
     "nuitka>=4.3.1",
+    # compresses Nuitka's onefile binaries; nuitka's sdist does not declare its onefile extra
+    "zstandard>=0.15",
 ]
 
 [project.urls]
