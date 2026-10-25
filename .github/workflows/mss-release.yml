@@ -32,6 +32,7 @@ jobs:
   linux:
     needs: version
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
     strategy:
       matrix:
         include:
@@ -73,6 +74,7 @@ jobs:
   macos:
     needs: version
     runs-on: macos-14
+    timeout-minutes: 60
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
@@ -99,15 +101,19 @@ jobs:
   windows:
     needs: version
     runs-on: windows-2022
+    timeout-minutes: 90
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+      # Defender scans every object file cl writes, which stalls Nuitka's C compilation
+      - run: Set-MpPreference -DisableRealtimeMonitoring $true
       - name: Build the binary
+        # MSVC's link-time optimisation, Nuitka's default with it, multiplies the build's time
         run: |
           uv sync --extra dev
-          uv run nuitka --assume-yes-for-downloads main.py
+          uv run nuitka --assume-yes-for-downloads --lto=no main.py
       - run: dotnet tool install --global wix --version 5.0.2
       - run: pwsh pkg/windows/build.ps1
       - name: Install the package and check its service
