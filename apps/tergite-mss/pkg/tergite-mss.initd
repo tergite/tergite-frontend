@@ -16,5 +16,10 @@ depend() {
 }
 
 start_pre() {
-	su -s /bin/sh tergite-mss -c "$command migrate"
+	if [ ! -f /etc/tergite-mss/mss-config.toml ] && [ ! -f /etc/tergite-mss/provision.env ]; then
+		eerror "/etc/tergite-mss/mss-config.toml does not exist yet"
+		return 1
+	fi
+	/usr/share/tergite-mss/provision.sh &&
+		su -s /bin/sh tergite-mss -c "$command migrate"
 }

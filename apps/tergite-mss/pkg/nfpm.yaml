@@ -19,9 +19,27 @@ scripts:
   preremove: pkg/preremove.sh
   postremove: pkg/postremove.sh
 
+deb:
+  scripts:
+    templates: pkg/debian/templates
+    config: pkg/debian/config
+
 apk:
   scripts:
     postupgrade: pkg/postinstall.sh
+
+depends:
+  - openssl
+
+overrides:
+  deb:
+    recommends:
+      - postgresql
+      - redis-server
+  rpm:
+    recommends:
+      - postgresql-server
+      - redis
 
 contents:
   - src: mss
@@ -41,6 +59,10 @@ contents:
     file_info:
       mode: 0755
 
+  - src: pkg/provision.sh
+    dst: /usr/share/tergite-mss/provision.sh
+    file_info:
+      mode: 0755
   - src: mss-config.example.toml
     dst: /usr/share/tergite-mss/mss-config.example.toml
   - src: LICENSE.txt

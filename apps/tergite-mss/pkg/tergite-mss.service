@@ -2,6 +2,9 @@
 Description=Tergite Main Service Server (MSS)
 After=network-online.target postgresql.service mongod.service redis-server.service redis.service
 Wants=network-online.target
+# not until there is a config, or debconf's answers to write one from
+ConditionPathExists=|/etc/tergite-mss/mss-config.toml
+ConditionPathExists=|/etc/tergite-mss/provision.env
 
 [Service]
 Type=exec
@@ -11,6 +14,9 @@ Group=tergite-mss
 Environment=MSS_CONFIG_FILE=/etc/tergite-mss/mss-config.toml
 Environment=PRIVATE_KEY_FILE=/etc/tergite-mss/private-mss-key.pem
 
+# as root, unsandboxed, to create the database accounts; a database still being installed
+# fails it, and Restart= retries until it is up
+ExecStartPre=+/usr/share/tergite-mss/provision.sh
 # as start_mss.sh does, so an upgrade's schema change applies before it serves
 ExecStartPre=/usr/bin/tergite-mss migrate
 ExecStart=/usr/bin/tergite-mss serve --port 8002
