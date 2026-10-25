@@ -9,6 +9,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Added
 
+- Added GitLab jobs that, on a `v*` tag, build the deb and macOS installer, upload them to the package registry and
+  link them from the GitLab release; the macOS one runs where `PUBLISH_MACOS_ARM64` is `true`, on a runner tagged `macos`.
 - Added the dashboard at `/ui`, with `/` redirecting to it, when its build is in the `ui` folder beside `main.py`, as
   the packages ship it.
 - Added a deb for amd64, for Debian 13 and Ubuntu 24.04 onwards, and a macOS arm64 installer of Nuitka's standalone

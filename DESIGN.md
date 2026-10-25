@@ -204,8 +204,11 @@ a mirror — see §8).
   eslint, vitest, Playwright. Path-filtered to `apps/tergite-dashboard/**`.
 - `frontend-ci.yml` / `full e2e` — the cross-app `dev/e2e_native_test.sh`, after installing
   MongoDB, Redis, SQLite and uv, on `main`, on `v*` tags, or manually.
-- On a `v*` tag, `mss-release.yml` builds the dashboard, then MSS's deb and macOS installer
-  with it, and attaches them to the release.
+- On a `v*` tag, `mss-release.yml` / `build dashboard`, `package mss linux`, `package mss macos`
+  and `release` build the dashboard, then MSS's deb and macOS installer with it, and attach
+  them to the release. GitLab's jobs upload them to the project's package registry and link
+  them from its release; its macOS job runs only where `PUBLISH_MACOS_ARM64` is `true`, on a
+  runner tagged `macos`.
 
 ## 8. Working on this repo
 
