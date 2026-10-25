@@ -19,7 +19,7 @@ for (const user of users) {
 
   test.describe(`login page for authenticated user '${username}'`, () => {
     test.beforeEach(async ({ page, resetData, baseURL }) => {
-      const dashboardUrl = `${baseURL}/`;
+      const dashboardUrl = baseURL!;
       const isFullE2E = dashboardUrl.startsWith("http://127.0.0.1:3000");
       const domain = process.env.VITE_COOKIE_DOMAIN!;
       const cookieName = process.env.VITE_COOKIE_NAME!;
@@ -67,7 +67,7 @@ for (const user of users) {
 
       await resetData();
 
-      await Promise.all([waitForApi(page, "GET", "/devices/"), page.goto("/")]);
+      await Promise.all([waitForApi(page, "GET", "/devices/"), page.goto("./")]);
     });
 
     test("renders correctly", async ({ page }) => {
@@ -97,7 +97,7 @@ for (const user of users) {
 
     if (isDomainSupported) {
       test(`redirects to the home page of the dashboard`, async ({ page, baseURL }) => {
-        const dashboardUrl = `${baseURL}/`;
+        const dashboardUrl = baseURL!;
         const isFullE2E = dashboardUrl.startsWith("http://127.0.0.1:3000");
         await page.locator("input[name=email]").fill(user.email);
         await nextButton(page).click();
@@ -117,7 +117,7 @@ for (const user of users) {
 
   test.describe(`login page for unauthenticated user '${username}'`, () => {
     test.beforeEach(async ({ page }) => {
-      await Promise.all([waitForApi(page, "GET", "/devices/"), page.goto("/")]);
+      await Promise.all([waitForApi(page, "GET", "/devices/"), page.goto("./")]);
     });
 
     test("toggles dark mode", async ({ page }) => {
@@ -140,7 +140,7 @@ for (const user of users) {
 
     if (isDomainSupported) {
       test(`redirects to the home page of the dashboard`, async ({ page, baseURL }) => {
-        const dashboardUrl = `${baseURL}/`;
+        const dashboardUrl = baseURL!;
         await page.locator("input[name=email]").fill(user.email);
         await Promise.all([
           page.waitForResponse(
@@ -156,7 +156,7 @@ for (const user of users) {
             page.locator("a", { hasText: new RegExp(`login with ${provider.name}`, "i") }).first(),
           ).toHaveAttribute(
             "href",
-            `${apiBaseUrl}/auth/${provider.name}/auto-authorize?next=${dashboardUrl.slice(0, -1)}`,
+            `${apiBaseUrl}/auth/${provider.name}/auto-authorize?next=${dashboardUrl}`,
           );
         }
       });
@@ -167,7 +167,7 @@ for (const user of users) {
 for (const email of invalidFormatEmailAddresses) {
   test.describe(`login with invalid email ${email}`, () => {
     test.beforeEach(async ({ page }) => {
-      await Promise.all([waitForApi(page, "GET", "/devices/"), page.goto("/")]);
+      await Promise.all([waitForApi(page, "GET", "/devices/"), page.goto("./")]);
     });
 
     test(`renders error message`, async ({ page }) => {

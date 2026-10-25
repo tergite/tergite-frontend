@@ -9,11 +9,11 @@ const PREFERENCES_PATH = "/me/notices/preferences/";
 
 test.describe(`settings for ${user.email.split("@")[0]}`, () => {
   test.beforeEach(async ({ page, loginAs }) => {
-    await Promise.all([waitForApi(page, "GET", PREFERENCES_PATH), loginAs(user, "/settings")]);
+    await Promise.all([waitForApi(page, "GET", PREFERENCES_PATH), loginAs(user, "settings")]);
   });
 
   test("is reachable from the user menu", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("./");
     await page.locator("[data-testid='topbar'] [aria-label='UserRound']").click({ force: true });
     await page.locator("[data-cy-settings-link]").click();
 
@@ -63,7 +63,7 @@ test.describe(`settings for ${user.email.split("@")[0]}`, () => {
 
 test.describe("settings when unauthenticated", () => {
   test("redirects to login", async ({ page }) => {
-    await page.goto("/settings");
+    await page.goto("settings");
 
     await expect(page).toHaveURL(/\/login/);
   });

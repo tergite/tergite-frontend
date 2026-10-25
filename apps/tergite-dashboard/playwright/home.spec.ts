@@ -40,7 +40,7 @@ for (const user of users) {
         waitForApi(page, "GET", "/me/projects/"),
         waitForApi(page, "GET", "/devices/"),
         waitForApiTimes(page, "GET", "/bookings/", devices.length),
-        loginAs(user, "/"),
+        loginAs(user, "./"),
       ]);
     });
 
@@ -106,7 +106,7 @@ for (const user of users) {
         waitForApi(page, "GET", "/me/projects/"),
         waitForApi(page, "GET", "/devices/"),
         waitForApiTimes(page, "GET", "/bookings/", devices.length),
-        page.goto("/"),
+        page.goto("./"),
       ]);
 
       const card = page.locator(".bg-card", { hasText: /my upcoming bookings/i });

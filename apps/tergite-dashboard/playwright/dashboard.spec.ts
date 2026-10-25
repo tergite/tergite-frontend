@@ -29,7 +29,7 @@ for (const user of users) {
       await Promise.all([
         waitForApi(page, "GET", "/me/projects/"),
         waitForApi(page, "GET", "/devices/"),
-        loginAs(user, "/"),
+        loginAs(user, "./"),
       ]);
     });
 
@@ -41,21 +41,21 @@ for (const user of users) {
       await expect(
         sidebar.getByText(/Wallenberg Centre for Quantum Technology/i).first(),
       ).toBeVisible();
-      await expectTextVisible(sidebar.locator("nav a[href='/']"), /dashboard/i);
-      await expectTextVisible(sidebar.locator("nav a[href='/devices']"), /devices/i);
+      await expectTextVisible(sidebar.locator("nav a[href='/ui/']"), /dashboard/i);
+      await expectTextVisible(sidebar.locator("nav a[href='/ui/devices']"), /devices/i);
 
       const access = sidebar.locator("nav [data-testid='access-submenu']");
       await expectTextVisible(access.locator("button"), /access/i);
-      await expectTextVisible(access.locator("a[href='/projects']"), /projects/i);
-      await expectTextVisible(access.locator("a[href='/tokens']"), /tokens/i);
-      await expectTextVisible(access.locator("a[href='/requests']"), /requests/i);
+      await expectTextVisible(access.locator("a[href='/ui/projects']"), /projects/i);
+      await expectTextVisible(access.locator("a[href='/ui/tokens']"), /tokens/i);
+      await expectTextVisible(access.locator("a[href='/ui/requests']"), /requests/i);
 
       if (isAdmin) {
         const admin = sidebar.locator("nav [data-testid='admin-submenu']");
         await expectTextVisible(admin.locator("button"), /admin/i);
-        await expectTextVisible(admin.locator("a[href='/admin-projects']"), /projects/i);
-        await expectTextVisible(admin.locator("a[href='/admin-control']"), /control/i);
-        await expectTextVisible(admin.locator("a[href='/admin-requests']"), /requests/i);
+        await expectTextVisible(admin.locator("a[href='/ui/admin-projects']"), /projects/i);
+        await expectTextVisible(admin.locator("a[href='/ui/admin-control']"), /control/i);
+        await expectTextVisible(admin.locator("a[href='/ui/admin-requests']"), /requests/i);
       }
 
       await expect(sidebar.locator("[aria-label='PanelLeftClose']")).toBeVisible();
@@ -70,19 +70,19 @@ for (const user of users) {
 
       await toggle.click();
 
-      await expectTextVisible(menu.locator("a[href='/']"), /dashboard/i);
-      await expectTextVisible(menu.locator("a[href='/devices']"), /devices/i);
+      await expectTextVisible(menu.locator("a[href='/ui/']"), /dashboard/i);
+      await expectTextVisible(menu.locator("a[href='/ui/devices']"), /devices/i);
 
       const access = menu.locator("nav [data-testid='access-submenu']");
-      await expectTextVisible(access.locator("a[href='/projects']"), /projects/i);
-      await expectTextVisible(access.locator("a[href='/tokens']"), /tokens/i);
-      await expectTextVisible(access.locator("a[href='/requests']"), /requests/i);
+      await expectTextVisible(access.locator("a[href='/ui/projects']"), /projects/i);
+      await expectTextVisible(access.locator("a[href='/ui/tokens']"), /tokens/i);
+      await expectTextVisible(access.locator("a[href='/ui/requests']"), /requests/i);
 
       if (isAdmin) {
         const admin = menu.locator("nav [data-testid='admin-submenu']");
-        await expectTextVisible(admin.locator("a[href='/admin-requests']"), /requests/i);
-        await expectTextVisible(admin.locator("a[href='/admin-projects']"), /projects/i);
-        await expectTextVisible(admin.locator("a[href='/admin-control']"), /control/i);
+        await expectTextVisible(admin.locator("a[href='/ui/admin-requests']"), /requests/i);
+        await expectTextVisible(admin.locator("a[href='/ui/admin-projects']"), /projects/i);
+        await expectTextVisible(admin.locator("a[href='/ui/admin-control']"), /control/i);
       }
     });
 
@@ -93,7 +93,7 @@ for (const user of users) {
       const collapseIcon = sidebar.locator("[aria-label='PanelLeftClose']");
       const expandIcon = sidebar.locator("[aria-label='PanelRightClose']");
       const linkText = (href: string, text: RegExp) =>
-        nav.locator(`a[href='${href}'] div`, { hasText: text }).first();
+        nav.locator(`a[href='/ui${href}'] div`, { hasText: text }).first();
 
       const expectIsUncollapsed = async () => {
         await expect(linkText("/", /dashboard/i)).toHaveText("DashboardDashboard");
@@ -108,11 +108,11 @@ for (const user of users) {
         if (isAdmin) {
           const admin = nav.locator("[data-testid='admin-submenu']");
           await expectTextVisible(admin.locator("button"), /admin/i);
-          await expect(admin.locator("a[href='/admin-requests']")).toHaveText(
+          await expect(admin.locator("a[href='/ui/admin-requests']")).toHaveText(
             `RequestsRequests ${requestsCount}`,
           );
-          await expect(admin.locator("a[href='/admin-projects']")).toHaveText("ProjectsProjects");
-          await expect(admin.locator("a[href='/admin-control']")).toHaveText("ControlControl");
+          await expect(admin.locator("a[href='/ui/admin-projects']")).toHaveText("ProjectsProjects");
+          await expect(admin.locator("a[href='/ui/admin-control']")).toHaveText("ControlControl");
         }
         await expect(collapseIcon).toBeVisible();
         await expect(expandIcon).toHaveCount(0);
@@ -132,14 +132,14 @@ for (const user of users) {
 
         await expect(nav.locator("div", { hasText: /dashboard/i }).first()).toHaveText("Dashboard");
         await expect(nav.locator("div", { hasText: /devices/i }).first()).toHaveText("Devices");
-        await expect(nav.locator("a[href='/projects']")).toHaveText("Projects");
-        await expect(nav.locator("a[href='/tokens']")).toHaveText("Tokens");
-        await expect(nav.locator("a[href='/requests']")).toHaveText("Requests");
+        await expect(nav.locator("a[href='/ui/projects']")).toHaveText("Projects");
+        await expect(nav.locator("a[href='/ui/tokens']")).toHaveText("Tokens");
+        await expect(nav.locator("a[href='/ui/requests']")).toHaveText("Requests");
 
         if (isAdmin) {
-          await expect(nav.locator("a[href='/admin-requests']")).toHaveText("Requests ");
-          await expect(nav.locator("a[href='/admin-projects']")).toHaveText("Projects");
-          await expect(nav.locator("a[href='/admin-control']")).toHaveText("Control");
+          await expect(nav.locator("a[href='/ui/admin-requests']")).toHaveText("Requests ");
+          await expect(nav.locator("a[href='/ui/admin-projects']")).toHaveText("Projects");
+          await expect(nav.locator("a[href='/ui/admin-control']")).toHaveText("Control");
         }
       };
 
@@ -189,7 +189,7 @@ for (const user of users) {
         waitForApi(page, "POST", "/auth/logout"),
         page.getByText(/logout/i).first().click(),
       ]);
-      await expect(page).toHaveURL("/login");
+      await expect(page).toHaveURL("login");
     });
 
     test("current project can be selected from list of projects", async ({ page }) => {

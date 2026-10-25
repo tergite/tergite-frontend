@@ -36,16 +36,16 @@ for (const user of users) {
       await Promise.all([
         waitForApi(page, "GET", "/me/projects/"),
         waitForApi(page, "GET", "/me/tokens/"),
-        loginAs(user, "/tokens"),
+        loginAs(user, "tokens"),
       ]);
     });
 
     test("renders the tokens page when nav item is clicked", async ({ page }) => {
-      await page.goto("/");
-      await expect(page).toHaveURL("/");
+      await page.goto("./");
+      await expect(page).toHaveURL("./");
 
-      await page.locator("[data-testid='sidebar'] a[href='/tokens']").click();
-      await expect(page).toHaveURL("/tokens");
+      await page.locator("[data-testid='sidebar'] a[href='/ui/tokens']").click();
+      await expect(page).toHaveURL("tokens");
     });
 
     test("renders all user's tokens with no project selected", async ({ page }) => {

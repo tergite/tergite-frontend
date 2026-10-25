@@ -46,7 +46,7 @@ users.slice(0, 2).forEach((user) => {
         await Promise.all([
           waitForApi(page, "GET", `/devices/${device.name}`),
           waitForApi(page, "GET", `/calibrations/${device.name}`),
-          loginAs(user, `/devices/${device.name}`),
+          loginAs(user, `devices/${device.name}`),
         ]);
       });
 

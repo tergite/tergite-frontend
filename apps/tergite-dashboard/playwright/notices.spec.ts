@@ -31,7 +31,7 @@ for (const user of users) {
 
   test.describe(`notices for ${username}`, () => {
     test.beforeEach(async ({ page, loginAs }) => {
-      await Promise.all([waitForApi(page, "GET", "/me/notices/"), loginAs(user, "/")]);
+      await Promise.all([waitForApi(page, "GET", "/me/notices/"), loginAs(user, "./")]);
     });
 
     test("shows the unread count on the bell", async ({ page }) => {

@@ -15,7 +15,7 @@ for (const user of users) {
 
   test.describe(`devices list page for ${username}`, () => {
     test("renders the summaries of all devices", async ({ page, loginAs }) => {
-      await Promise.all([waitForApi(page, "GET", "/devices/"), loginAs(user, "/devices")]);
+      await Promise.all([waitForApi(page, "GET", "/devices/"), loginAs(user, "devices")]);
 
       await page.setViewportSize({ width: 1080, height: 750 });
       for (const device of devices) {
@@ -36,7 +36,7 @@ for (const user of users) {
       await page.route(`${process.env.VITE_API_BASE_URL}/devices/*`, (route) =>
         route.fulfill({ json: { data: [], limit: null, skip: 0 } }),
       );
-      await Promise.all([waitForApi(page, "GET", "/devices/"), loginAs(user, "/devices")]);
+      await Promise.all([waitForApi(page, "GET", "/devices/"), loginAs(user, "devices")]);
 
       await page.setViewportSize({ width: 1080, height: 750 });
       await expect(page.locator("main", { hasText: /no devices found/i })).toBeAttached();

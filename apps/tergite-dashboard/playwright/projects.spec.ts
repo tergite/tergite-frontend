@@ -34,16 +34,16 @@ for (const user of users) {
     test.beforeEach(async ({ page, loginAs }) => {
       await Promise.all([
         waitForApi(page, "GET", "/me/projects/"),
-        loginAs(user, "/projects"),
+        loginAs(user, "projects"),
       ]);
     });
 
     test("renders the projects page when nav item is clicked", async ({ page }) => {
-      await Promise.all([waitForApi(page, "GET", "/me/profile"), page.goto("/")]);
-      await expect(page).toHaveURL("/");
+      await Promise.all([waitForApi(page, "GET", "/me/profile"), page.goto("./")]);
+      await expect(page).toHaveURL("./");
 
-      await page.locator("[data-testid='sidebar'] a[href='/projects']").click();
-      await expect(page).toHaveURL("/projects");
+      await page.locator("[data-testid='sidebar'] a[href='/ui/projects']").click();
+      await expect(page).toHaveURL("projects");
     });
 
     test("renders all user's projects", async ({ page }) => {
@@ -247,7 +247,7 @@ test.describe("requesting project access", () => {
   ) as Project;
 
   test.beforeEach(async ({ page, loginAs }) => {
-    await Promise.all([waitForApi(page, "GET", "/me/projects/"), loginAs(requester, "/projects")]);
+    await Promise.all([waitForApi(page, "GET", "/me/projects/"), loginAs(requester, "projects")]);
   });
 
   test("submits a request for a project the user is not on", async ({ page }) => {

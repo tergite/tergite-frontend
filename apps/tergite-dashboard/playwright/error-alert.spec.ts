@@ -20,17 +20,17 @@ for (const user of users) {
     });
 
     test("renders on unexpected error on home screen", async ({ page, loginAs }) => {
-      await Promise.all([waitForApi(page, "GET", "/devices/"), loginAs(user, "/")]);
+      await Promise.all([waitForApi(page, "GET", "/devices/"), loginAs(user, "./")]);
       await expectServerErrorAlert(page);
     });
 
     test("renders on unexpected error on devices screen", async ({ page, loginAs }) => {
-      await Promise.all([waitForApi(page, "GET", "/devices/"), loginAs(user, "/devices")]);
+      await Promise.all([waitForApi(page, "GET", "/devices/"), loginAs(user, "devices")]);
       await expectServerErrorAlert(page);
     });
 
     test("renders on unexpected error on device-detail screen", async ({ page, loginAs }) => {
-      await Promise.all([waitForApi(page, "GET", "/devices/loke"), loginAs(user, "/devices/loke")]);
+      await Promise.all([waitForApi(page, "GET", "/devices/loke"), loginAs(user, "devices/loke")]);
       await expectServerErrorAlert(page);
     });
   });

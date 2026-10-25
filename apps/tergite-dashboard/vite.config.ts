@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // where MSS serves it, as the dashboard's pages are API paths too; dev and test runs share it
+  base: "/ui/",
   plugins: [react()],
   test: {
     globals: true,

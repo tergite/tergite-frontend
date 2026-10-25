@@ -42,7 +42,7 @@ for (const user of users) {
           waitForApi(page, "GET", "/me/projects/"),
           waitForApi(page, "GET", "/devices/"),
         ]);
-      await loginAs(user, "/admin-control");
+      await loginAs(user, "admin-control");
       await loaded;
     });
 

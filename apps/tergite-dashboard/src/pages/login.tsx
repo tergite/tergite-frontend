@@ -76,7 +76,7 @@ export default function LoginForm() {
               >
                 <Button variant="outline" asChild>
                   <a
-                    href={`${provider.url}?next=${window.location.origin}`}
+                    href={`${provider.url}?next=${window.location.origin}${import.meta.env.BASE_URL}`}
                     data-cy-login-link
                   >
                     Login with {provider.name}

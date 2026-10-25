@@ -93,7 +93,8 @@ def read_page_measures(manifest_path: Path) -> dict[str, float]:
         # the manifest holds absolute paths of the machine that recorded it
         report_path = manifest_path.parent / Path(entry["jsonPath"]).name
         audits = json.loads(report_path.read_text())["audits"]
-        page = entry["url"].split("5173", 1)[-1]
+        # the baselines were recorded before the dashboard moved under /ui
+        page = entry["url"].split("5173", 1)[-1].removeprefix("/ui")
         scripts = audits["resource-summary"]["details"]["items"]
         measures[f"LCP ms: {page}"] = audits["largest-contentful-paint"]["numericValue"]
         measures[f"TBT ms: {page}"] = audits["total-blocking-time"]["numericValue"]

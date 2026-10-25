@@ -15,12 +15,12 @@ for (const user of requesters) {
   test.describe(`my requests page for ${user.id}`, () => {
     test.beforeEach(async ({ page, loginAs }) => {
       await page.setViewportSize({ width: 1728, height: 1000 });
-      await Promise.all([waitForApi(page, "GET", "/me/requests/"), loginAs(user, "/requests")]);
+      await Promise.all([waitForApi(page, "GET", "/me/requests/"), loginAs(user, "requests")]);
     });
 
     test("is reachable from the Access group in the sidebar", async ({ page }) => {
-      await page.goto("/");
-      await page.locator("[data-testid='sidebar'] a[href='/requests']").click();
+      await page.goto("./");
+      await page.locator("[data-testid='sidebar'] a[href='/ui/requests']").click();
       await expect(page).toHaveURL(/\/requests$/);
     });
 

@@ -15,7 +15,7 @@ export default defineConfig({
   // apart per API port base, so that runs at the same time keep their own traces
   outputDir: `test-results/${process.env.PW_API_PORT_BASE ?? "8100"}`,
   use: {
-    baseURL: stackDashboardUrl ?? "http://127.0.0.1:5173",
+    baseURL: stackDashboardUrl ?? "http://127.0.0.1:5173/ui/",
     timezoneId: "Europe/Stockholm",
     trace: "retain-on-failure",
   },
@@ -30,7 +30,7 @@ export default defineConfig({
   webServer: stackDashboardUrl ? undefined : {
     command:
       "npm run build -- --mode test && npm run preview -- --host 127.0.0.1 --port 5173 --strictPort",
-    url: "http://127.0.0.1:5173",
+    url: "http://127.0.0.1:5173/ui/",
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

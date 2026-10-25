@@ -47,6 +47,7 @@ export function AppRouter({ routerConstructor }: Props) {
     () =>
       routerConstructor(
         getRoutes(createLiveAppState(latestAppState), queryClient),
+        { basename: import.meta.env.BASE_URL },
       ),
     [routerConstructor, queryClient],
   );

@@ -42,7 +42,7 @@ for (const user of users) {
       await Promise.all([
         waitForApi(page, "GET", "/me/projects/"),
         isAdmin && waitForApi(page, "GET", "/me/requests/"),
-        loginAs(user, "/admin-requests"),
+        loginAs(user, "admin-requests"),
       ]);
     });
 
@@ -69,20 +69,20 @@ for (const user of users) {
       test("renders the admin requests page when nav item is clicked", async ({ page }) => {
         await openHome(page);
 
-        await page.locator("[data-testid='sidebar'] a[href='/admin-requests']").click();
-        await expect(page).toHaveURL("/admin-requests");
+        await page.locator("[data-testid='sidebar'] a[href='/ui/admin-requests']").click();
+        await expect(page).toHaveURL("admin-requests");
       });
     } else {
       test("requests link in sidebar does not exist", async ({ page }) => {
         await openHome(page);
 
-        await expect(page.locator("[data-testid='sidebar'] a[href='/admin-requests']")).toHaveCount(
+        await expect(page.locator("[data-testid='sidebar'] a[href='/ui/admin-requests']")).toHaveCount(
           0,
         );
       });
 
       test("redirects to home when admin-requests URL is visited", async ({ page }) => {
-        await expect(page).toHaveURL("/");
+        await expect(page).toHaveURL("./");
       });
     }
 
@@ -309,12 +309,12 @@ for (const user of users) {
 }
 
 async function openHome(page: Page) {
-  await Promise.all([waitForApi(page, "GET", "/me/profile"), page.goto("/")]);
-  await expect(page).toHaveURL("/");
+  await Promise.all([waitForApi(page, "GET", "/me/profile"), page.goto("./")]);
+  await expect(page).toHaveURL("./");
 }
 
 function pendingCount(page: Page, count: number) {
-  return page.locator("[data-testid='sidebar'] a[href='/admin-requests'] .bg-primary", {
+  return page.locator("[data-testid='sidebar'] a[href='/ui/admin-requests'] .bg-primary", {
     hasText: `${count}`,
   });
 }
@@ -326,7 +326,7 @@ async function expectTitleListed(page: Page, title: string) {
 }
 
 async function expectQpuSeconds(page: Page, projectId: string, seconds: number) {
-  await Promise.all([waitForApi(page, "GET", "/me/projects/"), page.goto("/projects")]);
+  await Promise.all([waitForApi(page, "GET", "/me/projects/"), page.goto("projects")]);
   await expect(
     page.locator(
       `.bg-card tbody tr[data-id='${projectsIndex[projectId]}'] td[data-header='qpu_seconds']`,
@@ -336,7 +336,7 @@ async function expectQpuSeconds(page: Page, projectId: string, seconds: number) 
 }
 
 async function respondFromSummary(page: Page, title: string, response: RegExp) {
-  await Promise.all([waitForApi(page, "GET", "/me/requests/"), page.goto("/admin-requests")]);
+  await Promise.all([waitForApi(page, "GET", "/me/requests/"), page.goto("admin-requests")]);
   const titleCell = page.locator(".bg-card tbody td", { hasText: title });
   const summary = page.locator("#request-summary");
 

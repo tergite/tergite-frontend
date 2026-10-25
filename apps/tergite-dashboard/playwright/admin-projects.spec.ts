@@ -40,7 +40,7 @@ for (const user of users) {
         // shifting the layout under a click
         waitForApi(page, "GET", "/me/notices/"),
         waitForApi(page, "GET", "/counts/notices"),
-        loginAs(user, "/admin-projects"),
+        loginAs(user, "admin-projects"),
       ]);
     });
 
@@ -48,20 +48,20 @@ for (const user of users) {
       test("renders the admin projects page when nav item is clicked", async ({ page }) => {
         await openHome(page);
 
-        await page.locator("[data-testid='sidebar'] a[href='/admin-projects']").click();
-        await expect(page).toHaveURL("/admin-projects");
+        await page.locator("[data-testid='sidebar'] a[href='/ui/admin-projects']").click();
+        await expect(page).toHaveURL("admin-projects");
       });
     } else {
       test("admin projects link in sidebar does not exist", async ({ page }) => {
         await openHome(page);
 
-        await expect(page.locator("[data-testid='sidebar'] a[href='/admin-projects']")).toHaveCount(
+        await expect(page.locator("[data-testid='sidebar'] a[href='/ui/admin-projects']")).toHaveCount(
           0,
         );
       });
 
       test("redirects to home when admin-projects URL is visited", async ({ page }) => {
-        await expect(page).toHaveURL("/");
+        await expect(page).toHaveURL("./");
       });
     }
 
@@ -609,8 +609,8 @@ for (const user of users) {
 }
 
 async function openHome(page: Page) {
-  await Promise.all([waitForApi(page, "GET", "/me/profile"), page.goto("/")]);
-  await expect(page).toHaveURL("/");
+  await Promise.all([waitForApi(page, "GET", "/me/profile"), page.goto("./")]);
+  await expect(page).toHaveURL("./");
 }
 
 async function expectNameListed(page: Page, name: string) {

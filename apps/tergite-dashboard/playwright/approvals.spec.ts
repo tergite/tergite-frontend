@@ -18,11 +18,11 @@ for (const user of approvers) {
   test.describe(`approvals page for ${user.id}`, () => {
     test.beforeEach(async ({ page, loginAs }) => {
       await page.setViewportSize({ width: 1728, height: 1000 });
-      await Promise.all([waitForApi(page, "GET", "/me/requests/"), loginAs(user, "/approvals")]);
+      await Promise.all([waitForApi(page, "GET", "/me/requests/"), loginAs(user, "approvals")]);
     });
 
     test("is reachable from the pending count on the projects page", async ({ page }) => {
-      await page.goto("/projects");
+      await page.goto("projects");
       const link = page.locator("[data-cy-approvals-link]");
       await expect(link).toContainText(`${pending.length} awaiting your approval`);
       await link.click();
@@ -56,7 +56,7 @@ for (const user of approvers) {
 
       await expect(page.locator("#sidebar-placeholder")).toBeVisible();
       await expect(page.locator("tbody tr").first()).toContainText("approved");
-      await page.goto("/projects");
+      await page.goto("projects");
       await expect(page.locator("[data-cy-approvals-link]")).toHaveCount(0);
     });
 

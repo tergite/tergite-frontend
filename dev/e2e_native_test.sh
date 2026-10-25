@@ -256,10 +256,10 @@ npm run build -- --mode test > "$WORK_PATH/logs/dashboard-build.log"
 # vite itself, not npm, so that stopping it frees the port
 start_service dashboard node_modules/.bin/vite preview --host 127.0.0.1 --port $DASHBOARD_PORT --strictPort
 wait_for_url reset "http://127.0.0.1:$RESET_PORT/" $reset_pid
-wait_for_url dashboard "http://127.0.0.1:$DASHBOARD_PORT/login" $SERVICE_PID
+wait_for_url dashboard "http://127.0.0.1:$DASHBOARD_PORT/ui/login" $SERVICE_PID
 
 echo "Running end-to-end test suite..."
-export DASHBOARD_URL="http://127.0.0.1:$DASHBOARD_PORT"
+export DASHBOARD_URL="http://127.0.0.1:$DASHBOARD_PORT/ui/"
 export DB_RESET_URL="http://127.0.0.1:$RESET_PORT/refreshed-db"
 export OPENID_AUTH_URL
 if [[ $(echo "${VISUAL}" | tr '[:lower:]' '[:upper:]') = "TRUE" ]]; then
