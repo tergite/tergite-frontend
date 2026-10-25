@@ -17,7 +17,7 @@ import {
 import { DateTime } from "luxon";
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { noticeCountQuery, noticesQuery } from "@/lib/api-client";
+import { getNoticeCountQuery, getNoticesQuery } from "@/lib/api/notices";
 import { AdminNoticeBanner } from "./banner";
 import { CUSTOM_NOTICE_TYPES } from "../../../../../types";
 
@@ -31,21 +31,21 @@ export function NoticesCard() {
     [],
   );
   const filters = {
-    types: CUSTOM_NOTICE_TYPES,
+    type: CUSTOM_NOTICE_TYPES,
     max_start_utc: currentTimestamp,
     min_expires_utc: currentTimestamp,
     include_dismissed: true,
   };
 
   const { data: notices, isPlaceholderData } = useQuery(
-    noticesQuery({
+    getNoticesQuery({
       ...filters,
       sort: ["severity", "starts_at"],
       limit: 1,
       skip: page - 1,
     }),
   );
-  const { data: noticeCount } = useQuery(noticeCountQuery(filters));
+  const { data: noticeCount } = useQuery(getNoticeCountQuery(filters));
 
   const handlePaginationNext = useCallback(() => {
     setPage((old) => old + 1);

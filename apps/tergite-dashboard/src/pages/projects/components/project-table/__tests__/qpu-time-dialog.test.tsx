@@ -8,7 +8,7 @@ import type { Project, User } from "../../../../../../types";
 
 const requestQpuTimeExtension = vi.fn();
 
-vi.mock("@/lib/api-client", () => ({
+vi.mock("@/lib/api/requests", () => ({
   requestQpuTimeExtension: (...args: unknown[]) =>
     requestQpuTimeExtension(...args),
   refreshMyRequests: vi.fn(),

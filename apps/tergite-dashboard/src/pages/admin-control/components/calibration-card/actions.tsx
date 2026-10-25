@@ -2,12 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
-import {
-  recalibrationInfoQuery,
-  singleDeviceCalibrationQuery,
-  startRecalibration,
-  stopRecalibration,
-} from "@/lib/api-client";
+import { getRecalibrationInfoQuery, startRecalibration, stopRecalibration } from "@/lib/api/admin-control";
+import { getDeviceCalibrationQuery } from "@/lib/api/devices";
 import { RqJobStatus } from "../../../../../types";
 
 const ACTIVE_STATUSES: RqJobStatus[] = [
@@ -28,10 +24,10 @@ export function CalibrationActions({ deviceName, currentJobStatus }: Props) {
 
   const refreshCalibCache = async () => {
     await queryClient.invalidateQueries({
-      queryKey: recalibrationInfoQuery(deviceName).queryKey,
+      queryKey: getRecalibrationInfoQuery(deviceName).queryKey,
     });
     await queryClient.invalidateQueries({
-      queryKey: singleDeviceCalibrationQuery(deviceName).queryKey,
+      queryKey: getDeviceCalibrationQuery(deviceName).queryKey,
     });
   };
 

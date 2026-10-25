@@ -6,10 +6,8 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  recalibrationInfoQuery,
-  singleDeviceCalibrationQuery,
-} from "@/lib/api-client";
+import { getRecalibrationInfoQuery } from "@/lib/api/admin-control";
+import { getDeviceCalibrationQuery } from "@/lib/api/devices";
 import { RqJobStatus } from "../../../../../types";
 import { CalibrationMetrics } from "./metrics";
 import { CalibrationActions } from "./actions";
@@ -27,10 +25,10 @@ interface Props {
 
 export function CalibrationCard({ deviceName }: Props) {
   const { data: calibration = null } = useQuery(
-    singleDeviceCalibrationQuery(deviceName),
+    getDeviceCalibrationQuery(deviceName),
   );
 
-  const { data: recalibInfo } = useQuery(recalibrationInfoQuery(deviceName));
+  const { data: recalibInfo } = useQuery(getRecalibrationInfoQuery(deviceName));
 
   const currentJobStatus = recalibInfo?.current_job_status;
   const isRunning =

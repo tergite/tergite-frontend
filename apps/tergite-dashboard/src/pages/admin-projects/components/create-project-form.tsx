@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MultiInput } from "@/components/ui/multi-input";
 import { UserEmailInput } from "./user-email-input";
 import { useToast } from "@/hooks/use-toast";
-import { createAdminProject } from "@/lib/api-client";
+import { createAdminProject } from "@/lib/api/projects";
 import { DateTime } from "luxon";
 import { X } from "lucide-react";
 

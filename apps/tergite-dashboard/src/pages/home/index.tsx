@@ -11,13 +11,11 @@ import {
 import { Link, useLoaderData } from "react-router-dom";
 import DonutChart from "@/components/ui/donut-chart";
 
-import {
-  currentUserQuery,
-  devicesQuery,
-  myJobsQuery,
-  myProjectsQuery,
-  upcomingBookingsQuery,
-} from "@/lib/api-client";
+import { currentUserQuery } from "@/lib/api/auth";
+import { devicesQuery } from "@/lib/api/devices";
+import { getMyJobsQuery } from "@/lib/api/jobs";
+import { myProjectsQuery } from "@/lib/api/projects";
+import { getUpcomingBookingsQuery } from "@/lib/api/bookings";
 import { Job, Device, AppState, Project, Booking } from "types";
 import { JobsTable } from "./components/jobs-table";
 import { DevicesTable } from "./components/devices-table";
@@ -44,7 +42,7 @@ export function Home() {
   } = useLoaderData() as HomeData;
   const { data: devices = defaultDevices } = useQuery(devicesQuery);
   const { data: jobs = defaultJobs } = useQuery(
-    myJobsQuery({ project_id: currentProject?.id })
+    getMyJobsQuery({ project_id: currentProject?.id })
   );
 
   const { data: bookings = defaultBookings } = useQueries({
@@ -156,7 +154,7 @@ export function loader(appState: AppState, queryClient: QueryClient) {
 
     // jobs
     const jobs = await queryClient.ensureQueryData(
-      myJobsQuery({ project_id: currentProject?.id })
+      getMyJobsQuery({ project_id: currentProject?.id })
     );
 
     // current user
@@ -164,10 +162,10 @@ export function loader(appState: AppState, queryClient: QueryClient) {
 
     // Bookings
     const bookingsQueries = devices.map(({ name: backend }) =>
-      upcomingBookingsQuery({
+      getUpcomingBookingsQuery({
         backend,
         user_id: currentUser.id,
-        throwOnError: false,
+        shouldThrowOnError: false,
       }),
     );
 

@@ -8,12 +8,9 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import {
-  logout,
-  myActiveProjectsQuery,
-  currentUserQuery,
-  allUserRequestsQuery,
-} from "@/lib/api-client";
+import { logout, currentUserQuery } from "@/lib/api/auth";
+import { myActiveProjectsQuery } from "@/lib/api/projects";
+import { getAllUserRequestsQuery } from "@/lib/api/requests";
 import { AppState, User, UserRequestStatus, UserRole } from "../../../../types";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { AppStateContext } from "@/lib/app-state";
@@ -45,7 +42,7 @@ export function Dashboard() {
     setIsExpanded(!isExpanded);
   }, [setIsExpanded, isExpanded]);
   const { data: userRequests = [] } = useQuery(
-    allUserRequestsQuery({
+    getAllUserRequestsQuery({
       status: UserRequestStatus.PENDING,
       currentUser,
     })

@@ -1,6 +1,6 @@
 import { ComboboxInput } from "@/components/ui/combobox-input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { userEmailsQuery } from "@/lib/api-client";
+import { getUserEmailsQuery } from "@/lib/api/projects";
 import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
 
@@ -21,7 +21,7 @@ export function UserEmailInput(
   props: React.InputHTMLAttributes<HTMLInputElement>
 ) {
   const search = useDebouncedValue(`${props.value ?? ""}`, SEARCH_DELAY_MS);
-  const { data: emails = [] } = useQuery(userEmailsQuery({ search }));
+  const { data: emails = [] } = useQuery(getUserEmailsQuery({ search }));
 
   return <ComboboxInput {...props} suggestions={emails} />;
 }

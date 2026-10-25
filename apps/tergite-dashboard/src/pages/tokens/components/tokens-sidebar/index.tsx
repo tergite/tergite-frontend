@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
 import { HealthStatus } from "@/components/ui/health-status";
-import { deleteMyToken } from "@/lib/api-client";
+import { deleteMyToken } from "@/lib/api/tokens";
 import { cn, toRelative } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { ExtendedAppToken } from "types";

@@ -18,11 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  refreshMyProjectsQueries,
-  refreshMyRequests,
-  requestProjectAccess,
-} from "@/lib/api-client";
+import { refreshMyProjectsQueries } from "@/lib/api/projects";
+import { refreshMyRequests, requestProjectAccess } from "@/lib/api/requests";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";

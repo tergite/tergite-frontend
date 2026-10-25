@@ -6,7 +6,7 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { singleDeviceQuery } from "@/lib/api-client";
+import { getDeviceQuery } from "@/lib/api/devices";
 import { BackendToggle } from "./toggle";
 import { DateTime } from "luxon";
 
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function BackendControlCard({ deviceName }: Props) {
-  const { data: device } = useQuery(singleDeviceQuery(deviceName));
+  const { data: device } = useQuery(getDeviceQuery(deviceName));
 
   if (!device) return null;
 

@@ -4,14 +4,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useCallback } from "react";
 import { Notice } from "../../../../../../types";
-import {
-  approveMyRequest,
-  dismissNotice,
-  rejectMyRequest,
-  refreshMyNotices,
-  refreshMyRequests,
-  refreshMyProjectsQueries,
-} from "@/lib/api-client";
+import { approveMyRequest, rejectMyRequest, refreshMyRequests } from "@/lib/api/requests";
+import { dismissNotice, refreshMyNotices } from "@/lib/api/notices";
+import { refreshMyProjectsQueries } from "@/lib/api/projects";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { getNotificationMeta } from "./meta";
 

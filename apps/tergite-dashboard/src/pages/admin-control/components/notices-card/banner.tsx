@@ -1,10 +1,6 @@
 import { IconButton } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import {
-  deleteNotice,
-  refreshAllNoticeCounts,
-  refreshAllNotices,
-} from "@/lib/api-client";
+import { deleteNotice, refreshAllNoticeCounts, refreshAllNotices } from "@/lib/api/notices";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { DateTime } from "luxon";

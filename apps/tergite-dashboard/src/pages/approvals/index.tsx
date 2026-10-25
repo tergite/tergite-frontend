@@ -4,15 +4,10 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import {
-  allAdminProjectsQuery,
-  currentUserQuery,
-  myProjectsQuery,
-  myRequestsQuery,
-  refreshMyNotices,
-  refreshMyProjectsQueries,
-  refreshMyRequests,
-} from "@/lib/api-client";
+import { getAllAdminProjectsQuery, myProjectsQuery, refreshMyProjectsQueries } from "@/lib/api/projects";
+import { currentUserQuery } from "@/lib/api/auth";
+import { getMyRequestsQuery, refreshMyRequests } from "@/lib/api/requests";
+import { refreshMyNotices } from "@/lib/api/notices";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
@@ -34,14 +29,14 @@ export function Approvals() {
   const { data: myProjects = [] } = useQuery(myProjectsQuery);
   // a superuser decides requests on projects they are not in, so sees them all
   const { data: adminProjects = [] } = useQuery(
-    allAdminProjectsQuery({ currentUser }),
+    getAllAdminProjectsQuery({ currentUser }),
   );
   const projectList = useMemo(
     () => [...myProjects, ...adminProjects],
     [myProjects, adminProjects],
   );
   const { data: requests = [] } = useQuery(
-    myRequestsQuery({ role: "approver", projectList }),
+    getMyRequestsQuery({ role: "approver", projectList }),
   );
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -98,10 +93,10 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
     const currentUser = await queryClient.ensureQueryData(currentUserQuery);
     const myProjects = await queryClient.ensureQueryData(myProjectsQuery);
     const adminProjects = currentUser.roles.includes(UserRole.ADMIN)
-      ? await queryClient.ensureQueryData(allAdminProjectsQuery({ currentUser }))
+      ? await queryClient.ensureQueryData(getAllAdminProjectsQuery({ currentUser }))
       : [];
     await queryClient.ensureQueryData(
-      myRequestsQuery({
+      getMyRequestsQuery({
         role: "approver",
         projectList: [...myProjects, ...adminProjects],
       }),

@@ -15,11 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime, Duration } from "luxon";
-import {
-  createNotice,
-  refreshAllNoticeCounts,
-  refreshAllNotices,
-} from "@/lib/api-client";
+import { createNotice, refreshAllNoticeCounts, refreshAllNotices } from "@/lib/api/notices";
 import { NoticeSeverity } from "../../../../../types";
 import { Textarea } from "@/components/ui/textarea";
 import {

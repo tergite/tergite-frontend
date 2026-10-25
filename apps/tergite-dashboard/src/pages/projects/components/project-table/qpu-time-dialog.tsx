@@ -14,10 +14,7 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  refreshMyRequests,
-  requestQpuTimeExtension,
-} from "@/lib/api-client";
+import { refreshMyRequests, requestQpuTimeExtension } from "@/lib/api/requests";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";

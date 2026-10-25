@@ -1,6 +1,6 @@
 import { IconButton } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { dismissNotice, refreshMyNotices } from "@/lib/api-client";
+import { dismissNotice, refreshMyNotices } from "@/lib/api/notices";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useMemo } from "react";

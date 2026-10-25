@@ -4,11 +4,12 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
+import { myProjectsQuery } from "@/lib/api/projects";
 import {
-  myProjectsQuery,
-  myTokensQuery,
+  addProjectNames,
+  getMyTokensQuery,
   refreshMyTokensQueries,
-} from "@/lib/api-client";
+} from "@/lib/api/tokens";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import {
   QueryClient,
@@ -18,7 +19,12 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
-import { type AppState, type ExtendedAppToken, type Project } from "types";
+import {
+  type AppState,
+  type AppToken,
+  type ExtendedAppToken,
+  type Project,
+} from "types";
 import { TokensTable } from "./components/tokens-table";
 import { TokensSidebar } from "./components/tokens-sidebar";
 import { Row, RowSelectionState } from "@tanstack/react-table";
@@ -27,9 +33,18 @@ import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function Tokens() {
   const queryClient = useQueryClient();
-  const { currentProject, tokensQuery } = useLoaderData() as TokensPageData;
+  const {
+    currentProject,
+    projects: defaultProjects,
+    tokensQuery,
+  } = useLoaderData() as TokensPageData;
   const [previousProject, setPreviousProject] = useState<Project>();
-  const { data: tokens, isPending } = useQuery(tokensQuery);
+  const { data: projects = defaultProjects } = useQuery(myProjectsQuery);
+  const { data: rawTokens, isPending } = useQuery(tokensQuery);
+  const tokens = useMemo(
+    () => rawTokens && addProjectNames(rawTokens, projects),
+    [rawTokens, projects]
+  );
   const projectName = useMemo(
     () => currentProject?.name ?? "all projects",
     [currentProject]
@@ -108,13 +123,11 @@ export function loader(appState: AppState, queryClient: QueryClient) {
     )[0];
 
     // tokens
-    const tokensQuery = myTokensQuery({
-      project_id: currentProject?.id,
-      projectList,
-    });
+    const tokensQuery = getMyTokensQuery({ project_id: currentProject?.id });
 
     return {
       currentProject,
+      projects: projectList,
       tokensQuery,
     } as TokensPageData;
   });
@@ -122,5 +135,6 @@ export function loader(appState: AppState, queryClient: QueryClient) {
 
 interface TokensPageData {
   currentProject?: Project;
-  tokensQuery: UseQueryOptions<ExtendedAppToken[]>;
+  projects: Project[];
+  tokensQuery: UseQueryOptions<AppToken[]>;
 }

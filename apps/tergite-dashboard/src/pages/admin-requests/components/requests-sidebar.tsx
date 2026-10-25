@@ -6,7 +6,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
-import { approveMyRequest, rejectMyRequest } from "@/lib/api-client";
+import { approveMyRequest, rejectMyRequest } from "@/lib/api/requests";
 import { cn, getUserRequestDetails, getUserRequestTitle } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { AnyValue, type UserRequest } from "types";

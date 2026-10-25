@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { refreshBookingsQueries } from "@/lib/api-client";
+import { refreshBookingsQueries } from "@/lib/api/bookings";
 import { DateTime, Duration } from "luxon";
 
 import { Booking } from "types";

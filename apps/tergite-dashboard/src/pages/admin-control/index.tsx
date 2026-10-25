@@ -9,7 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { currentUserQuery, devicesQuery } from "@/lib/api-client";
+import { currentUserQuery } from "@/lib/api/auth";
+import { devicesQuery } from "@/lib/api/devices";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import {
   type AppState,

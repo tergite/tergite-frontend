@@ -4,13 +4,9 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import {
-  allAdminProjectsQuery,
-  allUserRequestsQuery,
-  currentUserQuery,
-  refreshMyRequests,
-  refreshMyProjectsQueries,
-} from "@/lib/api-client";
+import { getAllAdminProjectsQuery, refreshMyProjectsQueries } from "@/lib/api/projects";
+import { getAllUserRequestsQuery, refreshMyRequests } from "@/lib/api/requests";
+import { currentUserQuery } from "@/lib/api/auth";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
@@ -32,10 +28,10 @@ export function AdminRequests() {
   const queryClient = useQueryClient();
   const { currentUser } = useLoaderData() as AdminRequestsData;
   const { data: projects = [] } = useQuery(
-    allAdminProjectsQuery({ currentUser })
+    getAllAdminProjectsQuery({ currentUser })
   );
   const { data: requests = [] } = useQuery(
-    allUserRequestsQuery({
+    getAllUserRequestsQuery({
       status: UserRequestStatus.PENDING,
       currentUser,
       projectList: projects,

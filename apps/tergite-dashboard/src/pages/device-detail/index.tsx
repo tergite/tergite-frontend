@@ -1,10 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  bookingsConfigQuery,
-  currentUserQuery,
-  singleDeviceCalibrationQuery,
-  singleDeviceQuery,
-} from "@/lib/api-client";
+import { getBookingsConfigQuery } from "@/lib/api/bookings";
+import { currentUserQuery } from "@/lib/api/auth";
+import { getDeviceCalibrationQuery, getDeviceQuery } from "@/lib/api/devices";
 import {
   AppState,
   BookingsConfig,
@@ -137,13 +134,13 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
       const { deviceName = "" } = params;
 
       // device
-      const deviceQuery = singleDeviceQuery(deviceName);
+      const deviceQuery = getDeviceQuery(deviceName);
       const cachedDevice = queryClient.getQueryData(deviceQuery.queryKey);
       const device =
         cachedDevice ?? (await queryClient.fetchQuery(deviceQuery));
 
       // calibration
-      const calibrationQuery = singleDeviceCalibrationQuery(deviceName);
+      const calibrationQuery = getDeviceCalibrationQuery(deviceName);
       const cachedCalibrationData = queryClient.getQueryData(
         calibrationQuery.queryKey
       );
@@ -163,7 +160,7 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
       };
 
       // bookings config
-      const currentBookingsConfigQuery = bookingsConfigQuery(deviceName);
+      const currentBookingsConfigQuery = getBookingsConfigQuery(deviceName);
       const cachedBookingsConfig = queryClient.getQueryData(
         currentBookingsConfigQuery.queryKey
       );

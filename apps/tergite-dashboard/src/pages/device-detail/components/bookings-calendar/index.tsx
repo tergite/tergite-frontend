@@ -27,13 +27,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  bookingsOfBackendQuery,
-  cancelBooking,
-  createNewBooking,
-  refreshBookingsQueries,
-  updateBooking,
-} from "@/lib/api-client";
+import { getBookingsOfBackendQuery, cancelBooking, createNewBooking, refreshBookingsQueries, updateBooking } from "@/lib/api/bookings";
 import { BookingForm } from "./booking-form";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -62,7 +56,7 @@ export function BookingsCalendar({
   const [defaultStartTimestamp, setDefaultStartTimestamp] = useState<string>();
   const currentUserId = currentUser.id;
   const { data: bookings = [] } = useQuery(
-    bookingsOfBackendQuery(bookingsMetadata)
+    getBookingsOfBackendQuery(bookingsMetadata)
   );
   const calendarEvents = useMemo(
     (): EventSourceInput =>

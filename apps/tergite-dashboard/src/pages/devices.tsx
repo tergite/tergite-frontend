@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
 import { DeviceStatusDiv } from "@/components/ui/device-status-div";
-import { devicesQuery } from "@/lib/api-client";
+import { devicesQuery } from "@/lib/api/devices";
 import { AppState, Device } from "../../types";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient } from "@tanstack/react-query";

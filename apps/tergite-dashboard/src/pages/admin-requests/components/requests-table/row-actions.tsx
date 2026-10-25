@@ -1,10 +1,6 @@
 import { Button } from "@/components/ui/button";
-import {
-  approveMyRequest,
-  refreshMyRequests,
-  refreshMyProjectsQueries,
-  rejectMyRequest,
-} from "@/lib/api-client";
+import { approveMyRequest, refreshMyRequests, rejectMyRequest } from "@/lib/api/requests";
+import { refreshMyProjectsQueries } from "@/lib/api/projects";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";

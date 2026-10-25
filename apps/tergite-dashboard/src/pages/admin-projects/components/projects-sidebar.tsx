@@ -6,7 +6,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
-import { deleteAdminProject, updateAdminProject } from "@/lib/api-client";
+import { deleteAdminProject, updateAdminProject } from "@/lib/api/projects";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { AdminProject } from "types";

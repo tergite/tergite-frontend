@@ -21,10 +21,7 @@ import {
   PopoverContentNoPortal,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  refreshMyTokensQueries,
-  updateAppToken,
-} from "@/lib/api-client";
+import { refreshMyTokensQueries, updateAppToken } from "@/lib/api/tokens";
 import { cn, mergeDatetime } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

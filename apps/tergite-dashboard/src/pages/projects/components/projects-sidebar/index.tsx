@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
 import { HealthStatus } from "@/components/ui/health-status";
-import { deleteMyProject } from "@/lib/api-client";
+import { deleteMyProject } from "@/lib/api/projects";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { Project } from "types";

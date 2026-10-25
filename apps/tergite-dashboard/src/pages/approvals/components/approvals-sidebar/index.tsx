@@ -10,7 +10,7 @@ import { DetailItem } from "@/components/ui/detail-item";
 import { ProgressStatus } from "@/components/ui/progress-status";
 import { Separator } from "@/components/ui/separator";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
-import { approveMyRequest, rejectMyRequest } from "@/lib/api-client";
+import { approveMyRequest, rejectMyRequest } from "@/lib/api/requests";
 import { cn, getUserRequestDetails, getUserRequestTitle } from "@/lib/utils";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation } from "@tanstack/react-query";

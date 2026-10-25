@@ -1,9 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  noticePreferencesQuery,
-  updateNoticePreferences,
-} from "@/lib/api-client";
+import { noticePreferencesQuery, updateNoticePreferences } from "@/lib/api/notices";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { NoticeType } from "../../../../types";
@@ -37,13 +34,13 @@ const ORDERED_TYPES: NoticeType[] = [
 
 export function NotificationPreferencesForm() {
   const queryClient = useQueryClient();
-  const { data: prefs } = useQuery(noticePreferencesQuery());
+  const { data: prefs } = useQuery(noticePreferencesQuery);
 
   const update = useMutation({
     mutationFn: updateNoticePreferences,
     // the response is the full, server-resolved set, so trust it over the toggle
     onSuccess: (data) =>
-      queryClient.setQueryData(noticePreferencesQuery().queryKey, data),
+      queryClient.setQueryData(noticePreferencesQuery.queryKey, data),
     throwOnError: true,
   });
 

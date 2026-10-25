@@ -4,7 +4,8 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { myProjectsQuery, myRequestsQuery } from "@/lib/api-client";
+import { myProjectsQuery } from "@/lib/api/projects";
+import { getMyRequestsQuery } from "@/lib/api/requests";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
@@ -17,7 +18,7 @@ import { findSelectedRow } from "@/components/ui/data-table/selection";
 export function MyRequests() {
   const { data: projects = [] } = useQuery(myProjectsQuery);
   const { data: requests = [] } = useQuery(
-    myRequestsQuery({ role: "requester", projectList: projects })
+    getMyRequestsQuery({ role: "requester", projectList: projects })
   );
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -62,7 +63,7 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async () => {
     const projects = await queryClient.ensureQueryData(myProjectsQuery);
     await queryClient.ensureQueryData(
-      myRequestsQuery({ role: "requester", projectList: projects })
+      getMyRequestsQuery({ role: "requester", projectList: projects })
     );
     return {};
   });

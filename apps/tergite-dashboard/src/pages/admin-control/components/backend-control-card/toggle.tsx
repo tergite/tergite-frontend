@@ -12,12 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import {
-  devicesQuery,
-  singleDeviceQuery,
-  switchBackendOn,
-  switchBackendOff,
-} from "@/lib/api-client";
+import { devicesQuery, getDeviceQuery } from "@/lib/api/devices";
+import { switchBackendOn, switchBackendOff } from "@/lib/api/admin-control";
 
 interface Props {
   deviceName: string;
@@ -37,7 +33,7 @@ export function BackendToggle({ deviceName, isOnline }: Props) {
     async onSuccess() {
       await queryClient.invalidateQueries({ queryKey: devicesQuery.queryKey });
       await queryClient.invalidateQueries({
-        queryKey: singleDeviceQuery(deviceName).queryKey,
+        queryKey: getDeviceQuery(deviceName).queryKey,
       });
       toast({ title: "Backend brought online", description: deviceName });
     },
@@ -52,7 +48,7 @@ export function BackendToggle({ deviceName, isOnline }: Props) {
     async onSuccess() {
       await queryClient.invalidateQueries({ queryKey: devicesQuery.queryKey });
       await queryClient.invalidateQueries({
-        queryKey: singleDeviceQuery(deviceName).queryKey,
+        queryKey: getDeviceQuery(deviceName).queryKey,
       });
       toast({ title: "Backend taken offline", description: deviceName });
     },

@@ -5,12 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  dismissAllMyNotices,
-  myNoticesQuery,
-  noticeCountQuery,
-  refreshMyNotices,
-} from "@/lib/api-client";
+import { dismissAllMyNotices, getMyNoticesQuery, getNoticeCountQuery, refreshMyNotices } from "@/lib/api/notices";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellIcon } from "lucide-react";
 import { NotificationItem } from "./notification-item";
@@ -18,11 +13,11 @@ import { NotificationItem } from "./notification-item";
 export function NotificationsBell({ userId }: Props) {
   const queryClient = useQueryClient();
   const { data: notices = [] } = useQuery(
-    myNoticesQuery({ limit: 20, is_read: false })
+    getMyNoticesQuery({ limit: 20, is_read: false })
   );
   // user_id, or a superuser would count everyone's notices
   const { data: unreadCount = 0 } = useQuery(
-    noticeCountQuery({ user_id: userId, is_read: false }),
+    getNoticeCountQuery({ user_id: userId, is_read: false }),
   );
 
   const markAll = useMutation({

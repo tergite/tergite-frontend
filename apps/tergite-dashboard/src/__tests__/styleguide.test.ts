@@ -21,7 +21,7 @@ const CODE_ROOTS = ["src", "dev/mock-api", "types.ts"];
 const SKIPPED_DIRS = new Set(["__tests__", "node_modules"]);
 // a new verb is added here in review, never to the baseline
 const VERBS = new Set([
-  "accept", "add", "apply", "authenticate", "build", "calculate", "cancel",
+  "accept", "add", "apply", "approve", "authenticate", "build", "calculate", "cancel",
   "check", "choose", "clear", "close", "collect", "compare", "compute",
   "confirm", "connect", "convert", "copy", "count", "create", "decode",
   "delete", "derive", "dismiss", "edit", "emit", "encode", "ensure", "extend",
@@ -29,7 +29,7 @@ const VERBS = new Set([
   "get", "group", "handle", "hide", "init", "insert", "is", "load", "log",
   "login", "logout", "make", "map", "mark", "merge", "move", "navigate",
   "normalize", "notify", "open", "order", "parse", "pick", "prepare",
-  "refresh", "remove", "render", "replace", "request", "require", "reset",
+  "refresh", "reject", "remove", "render", "replace", "request", "require", "reset",
   "resolve", "respond", "run", "save", "search", "select", "send",
   "serialize", "set", "should", "show", "sort", "split", "start", "stop",
   "submit", "switch", "toggle", "transform", "try", "update", "upload",
@@ -41,7 +41,7 @@ const PASCAL_CASE = /^[A-Z][A-Za-z0-9]*$/;
 const CONSTANT_NAME = /^_?[A-Z][A-Z0-9_]*$/;
 const BANNER_COMMENT =
   /^(?:\/\/|\/\*+)\s*(?:[-=*#~_]{10,}|[-=*#~_]{3,}\s*\S.*\S\s*[-=*#~_]{3,})\s*(?:\*\/)?$/;
-const FETCH_HOMES = new Set(["src/lib/api-client.ts", "src/lib/api/client.ts"]);
+const FETCH_HOMES = new Set(["src/lib/api/client.ts"]);
 const UI_DIR = "src/components/ui/";
 const PAGES_DIR = "src/pages/";
 const MOCK_API_DIR = "dev/mock-api/";
