@@ -13,8 +13,6 @@ verb: services/jobs/dtos.py::Job.model_dump
 verb: services/jobs/dtos.py::JobStatusResponse.from_job
 verb: services/notices/dtos.py::CustomNoticeCreate.to_documents
 verb: services/notices/dtos.py::Notice.from_template
-verb: services/notices/dtos.py::NoticeTemplate.from_notice_type
-verb: services/notices/dtos.py::NoticeType.from_str
 verb: services/notices/emails.py::_to_email_body
 verb: services/notices/emails.py::_to_email_details
 verb: services/notices/service.py::_with_default_email_preferences
@@ -114,7 +112,6 @@ type-hints: services/auth/app_tokens/dtos.py::AppTokenUpdate.serialize_expires_a
 type-hints: services/auth/projects/dtos.py::ProjectRead.model_dump
 type-hints: services/auth/providers/__init__.py::_order_by_many.get_key
 type-hints: services/auth/utils.py::get_oauth2_client
-type-hints: services/devices/dtos.py::DeviceEventHandler.__call__
 type-hints: services/external/bcc/dtos.py::Booking.validate_username
 type-hints: services/external/bcc/service.py::BccClient.close
 type-hints: services/external/bcc/service.py::close_clients
@@ -122,8 +119,6 @@ type-hints: services/jobs/dtos.py::JobStatusResponse.from_job
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished
 type-hints: services/jobs/dtos.py::TimestampPair.serialize_started
 type-hints: services/notices/dtos.py::Notice.from_template
-type-hints: services/notices/dtos.py::NoticeTemplate.validate_context_cls
-type-hints: services/notices/dtos.py::NoticeType.__str__
 type-hints: services/notices/service.py::create_system_notice
 type-hints: utils/config.py::BccConfig.validate_public_key_path
 type-hints: utils/crypto.py::get_uuid4_str

@@ -20,6 +20,7 @@ from migrations.mongodb import RECORDS_COLLECTION, rollback, upgrade
 from tests._utils.env import TEST_MONGODB_URL
 
 _SEVERITY_REVISION = "b109440758fe"
+_CONTEXT_CLASS_REVISION = "01f3a918b5dd"
 
 
 @pytest.fixture
@@ -66,7 +67,22 @@ def test_notice_severities_become_numbers_and_back_past_each_validator(database)
         "i": "info",
     }
     assert database.notice_templates.find_one()["severity"] == "warning"
-    assert database[RECORDS_COLLECTION].count_documents({}) == 0
+    assert (
+        database[RECORDS_COLLECTION].count_documents({"_id": _SEVERITY_REVISION}) == 0
+    )
+
+
+def test_notice_templates_lose_their_context_class(database):
+    database.notice_templates.insert_one(
+        {
+            "type": "custom",
+            "context_cls_path": "services.notices.dtos.CustomNoticeContext",
+        }
+    )
+
+    assert _CONTEXT_CLASS_REVISION in upgrade(database)
+
+    assert "context_cls_path" not in database.notice_templates.find_one()
 
 
 def test_upgrade_refuses_a_migration_named_after_no_alembic_revision(

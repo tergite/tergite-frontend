@@ -1623,6 +1623,7 @@
         "type": "integer"
       },
       "NoticeTypeId": {
+        "description": "The kinds of notices",
         "enum": [
           "project-access-requested",
           "project-access-approved",
@@ -1647,6 +1648,7 @@
           "custom",
           "custom-broadcast"
         ],
+        "title": "NoticeTypeId",
         "type": "string"
       },
       "OAuth2AuthorizeResponse": {

@@ -26,7 +26,7 @@ from pydantic import (
 from libs.storage import Id, Schema, StorageSpec, generate_id
 from services.auth import User
 from services.auth.projects.dtos import ProjectCreate
-from services.notices import NoticeType
+from services.notices import NoticeTypeId
 from services.notices.dtos import ProjectRequestContext, RefType
 from utils.date_time import get_current_timestamp
 
@@ -180,76 +180,78 @@ class Request(Schema, RequestPostBody):
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
-    __type_status_notice_map__: dict[Tuple[RequestType, RequestStatus], NoticeType] = {
+    __type_status_notice_map__: dict[
+        Tuple[RequestType, RequestStatus], NoticeTypeId
+    ] = {
         # project creation
         (
             RequestType.CREATE_PROJECT,
             RequestStatus.PENDING,
-        ): NoticeType.PROJECT_CREATE_REQUESTED,
+        ): NoticeTypeId.PROJECT_CREATE_REQUESTED,
         (
             RequestType.CREATE_PROJECT,
             RequestStatus.REJECTED,
-        ): NoticeType.PROJECT_CREATE_REJECTED,
+        ): NoticeTypeId.PROJECT_CREATE_REJECTED,
         (
             RequestType.CREATE_PROJECT,
             RequestStatus.APPROVED,
-        ): NoticeType.PROJECT_CREATE_APPROVED,
+        ): NoticeTypeId.PROJECT_CREATE_APPROVED,
         # closing projects
         (
             RequestType.CLOSE_PROJECT,
             RequestStatus.PENDING,
-        ): NoticeType.PROJECT_CLOSE_REQUESTED,
+        ): NoticeTypeId.PROJECT_CLOSE_REQUESTED,
         (
             RequestType.CLOSE_PROJECT,
             RequestStatus.REJECTED,
-        ): NoticeType.PROJECT_CLOSE_REJECTED,
+        ): NoticeTypeId.PROJECT_CLOSE_REJECTED,
         (
             RequestType.CLOSE_PROJECT,
             RequestStatus.APPROVED,
-        ): NoticeType.PROJECT_CLOSE_APPROVED,
+        ): NoticeTypeId.PROJECT_CLOSE_APPROVED,
         # project transfer
         (
             RequestType.TRANSFER_PROJECT,
             RequestStatus.PENDING,
-        ): NoticeType.PROJECT_TRANSFER_REQUESTED,
+        ): NoticeTypeId.PROJECT_TRANSFER_REQUESTED,
         (
             RequestType.TRANSFER_PROJECT,
             RequestStatus.REJECTED,
-        ): NoticeType.PROJECT_TRANSFER_REJECTED,
+        ): NoticeTypeId.PROJECT_TRANSFER_REJECTED,
         (
             RequestType.TRANSFER_PROJECT,
             RequestStatus.APPROVED,
-        ): NoticeType.PROJECT_TRANSFER_APPROVED,
+        ): NoticeTypeId.PROJECT_TRANSFER_APPROVED,
         # QPU seconds requests
         (
             RequestType.PROJECT_QPU_SECONDS,
             RequestStatus.PENDING,
-        ): NoticeType.QPU_SECONDS_REQUESTED,
+        ): NoticeTypeId.QPU_SECONDS_REQUESTED,
         (
             RequestType.PROJECT_QPU_SECONDS,
             RequestStatus.REJECTED,
-        ): NoticeType.QPU_SECONDS_DENIED,
+        ): NoticeTypeId.QPU_SECONDS_DENIED,
         (
             RequestType.PROJECT_QPU_SECONDS,
             RequestStatus.APPROVED,
-        ): NoticeType.QPU_SECONDS_GRANTED,
+        ): NoticeTypeId.QPU_SECONDS_GRANTED,
         # project access
         (
             RequestType.PROJECT_ACCESS,
             RequestStatus.PENDING,
-        ): NoticeType.PROJECT_ACCESS_REQUESTED,
+        ): NoticeTypeId.PROJECT_ACCESS_REQUESTED,
         (
             RequestType.PROJECT_ACCESS,
             RequestStatus.REJECTED,
-        ): NoticeType.PROJECT_ACCESS_REJECTED,
+        ): NoticeTypeId.PROJECT_ACCESS_REJECTED,
         (
             RequestType.PROJECT_ACCESS,
             RequestStatus.APPROVED,
-        ): NoticeType.PROJECT_ACCESS_APPROVED,
+        ): NoticeTypeId.PROJECT_ACCESS_APPROVED,
     }
 
     @property
-    def notice_type(self) -> NoticeType:
+    def notice_type(self) -> NoticeTypeId:
         """The notice type for this request given current status"""
         return self.__type_status_notice_map__[(self.type, self.status)]
 

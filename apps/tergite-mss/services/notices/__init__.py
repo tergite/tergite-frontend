@@ -12,13 +12,13 @@
 #
 
 from .dtos import (
+    NOTICE_TYPE_INFO,
     CustomNoticeCreate,
     EmailStatus,
     Notice,
     NoticePreferences,
     NoticeSeverity,
     NoticeTemplate,
-    NoticeType,
     NoticeTypeId,
     ProjectRequestContext,
     RefType,
@@ -49,7 +49,7 @@ __all__ = [
     "Notice",
     "NoticePreferences",
     "NoticeSeverity",
-    "NoticeType",
+    "NOTICE_TYPE_INFO",
     "NoticeTypeId",
     "ProjectRequestContext",
     "RefType",

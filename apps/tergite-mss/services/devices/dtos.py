@@ -19,13 +19,13 @@ from typing import (
     TYPE_CHECKING,
     AbstractSet,
     Any,
+    Awaitable,
     Callable,
     Dict,
     List,
     Literal,
     Mapping,
     Optional,
-    Protocol,
     Tuple,
     Type,
     Union,
@@ -143,21 +143,8 @@ type DeviceEventData = Union[
 """Data type for the data attached to device events"""
 
 
-class DeviceEventHandler(Protocol):
-    """The signature of all event handlers for device events"""
-
-    async def __call__(
-        self, device: str, data: DeviceEventData, **kwargs
-    ) -> GeneralMessage:
-        """Handles the given device event
-
-        Args:
-            device: The device where the event occurred
-            data: The data associated with the event
-
-        Returns:
-            the general message showing the output from the handler
-        """
+type DeviceEventHandler = Callable[..., Awaitable[GeneralMessage]]
+"""An event's handler, called with the device, the event's data and the database"""
 
 
 class DeviceEvent(BaseModel):

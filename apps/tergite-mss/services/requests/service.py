@@ -67,7 +67,7 @@ async def create(
     await notices.create_system_notice(
         database,
         user_ids=target_user_ids,
-        notice_type=record.notice_type.id,
+        notice_type=record.notice_type,
         ref_id=record.id,
         ref_type=record.metadata.resource,
         context=record.notice_context,
@@ -209,7 +209,7 @@ async def update(
         await notices.create_system_notice(
             database,
             user_ids=(updated_record.requester_id,),
-            notice_type=updated_record.notice_type.id,
+            notice_type=updated_record.notice_type,
             ref_id=updated_record.id,
             ref_type=resource,
             context=updated_record.notice_context,

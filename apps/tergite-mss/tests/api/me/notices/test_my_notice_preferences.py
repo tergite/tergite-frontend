@@ -11,10 +11,10 @@
 # that they have been altered from the originals.
 """Integration tests for the /me/notices/preferences routes"""
 
-from services.notices import NoticePreferences, NoticeType
+from services.notices import NoticePreferences, NoticeTypeId
 from tests._utils.auth import TEST_USER_ID
 
-_DEFAULT_PREFS = {item.id: True for item in NoticeType}
+_DEFAULT_PREFS = {item: True for item in NoticeTypeId}
 
 
 def test_view_default_email_preferences(client, user_jwt_cookie):

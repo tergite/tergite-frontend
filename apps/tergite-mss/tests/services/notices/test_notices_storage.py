@@ -17,7 +17,7 @@ import pytest
 
 from libs.storage import Database, generate_id
 from services import notices
-from services.notices import Notice, NoticeType
+from services.notices import Notice, NoticeTypeId
 from services.notices import service as notices_service
 from services.notices.dtos import ProjectRequestContext, RefType
 from services.notices.emails import process_email_batch_results
@@ -47,7 +47,7 @@ async def test_system_notices_are_written_per_user_from_their_template(database)
     created = await notices.create_system_notice(
         database,
         user_ids=[_USER_ID, _OTHER_USER_ID],
-        notice_type=NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
+        notice_type=NoticeTypeId.PROJECT_MEMBERSHIP_GRANTED,
         context=ProjectRequestContext(project_name="p"),
         ref_type=RefType.PROJECT,
         ref_id=generate_id(),
@@ -63,7 +63,7 @@ async def test_system_notices_are_written_per_user_from_their_template(database)
 async def test_direct_and_broadcast_notices_are_read_and_unread(database):
     direct = await database.insert(Notice, _get_notice(user_id=_USER_ID))
     broadcast = await database.insert(
-        Notice, _get_notice(type=NoticeType.CUSTOM_BROADCAST.id)
+        Notice, _get_notice(type=NoticeTypeId.CUSTOM_BROADCAST)
     )
 
     read_direct = await notices.set_read_status(database, direct.id, _USER_ID, True)
@@ -102,7 +102,7 @@ async def test_notices_are_filtered_by_type_time_and_expiry(database):
         database, user_id=_USER_ID, min_start_utc=now - timedelta(hours=2)
     )
     by_type = await notices.find_many(
-        database, user_id=_USER_ID, types=[NoticeType.CUSTOM.id]
+        database, user_id=_USER_ID, types=[NoticeTypeId.CUSTOM]
     )
 
     assert [notice.id for notice in by_time] == [current.id]
@@ -117,7 +117,7 @@ async def test_notices_of_a_reference_are_cleared(database):
     await database.insert(
         Notice,
         _get_notice(
-            type=NoticeType.CUSTOM_BROADCAST.id, ref_type=RefType.PROJECT, ref_id=ref_id
+            type=NoticeTypeId.CUSTOM_BROADCAST, ref_type=RefType.PROJECT, ref_id=ref_id
         ),
     )
 
@@ -130,7 +130,7 @@ async def test_notices_of_a_reference_are_cleared(database):
 
 
 async def test_email_preferences_and_attempts_are_kept(database):
-    custom = NoticeType.CUSTOM.id
+    custom = NoticeTypeId.CUSTOM
     notice = await database.insert(Notice, _get_notice(user_id=_USER_ID))
 
     await notices.set_email_preferences(database, _USER_ID, {custom: False})
@@ -147,5 +147,5 @@ async def test_email_preferences_and_attempts_are_kept(database):
 
 def _get_notice(**fields) -> Notice:
     """Gets a custom notice from an admin, unless fields say otherwise"""
-    values = {"type": NoticeType.CUSTOM.id, "created_by": _ADMIN_ID, **fields}
+    values = {"type": NoticeTypeId.CUSTOM, "created_by": _ADMIN_ID, **fields}
     return Notice(title="t", body="b", **values)

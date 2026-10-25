@@ -14,7 +14,7 @@ import pytest
 
 from libs.storage import generate_id
 from services.auth import DeletedProject, Project, User
-from services.notices import NoticeType
+from services.notices import NoticeTypeId
 from services.requests import Request
 from tests._utils.auth import (
     TEST_OUTSIDER_EMAIL,
@@ -89,7 +89,7 @@ def test_request_project_access_notifies_the_project_admin(
         admin_notices = get_user_notices(db, TEST_USER_ID)
 
         assert [item.type for item in admin_notices] == [
-            NoticeType.PROJECT_ACCESS_REQUESTED.id
+            NoticeTypeId.PROJECT_ACCESS_REQUESTED
         ]
         assert admin_notices[0].title == f"Access request for {TEST_PROJECT_NAME}"
         assert admin_notices[0].body == (
@@ -147,7 +147,7 @@ def test_request_qpu_seconds(client, user_jwt_cookie, db):
         assert got["target_user_ids"] == [TEST_SUPERUSER_ID]
         assert got["metadata"]["seconds"] == 120
         assert [item.type for item in superuser_notices] == [
-            NoticeType.QPU_SECONDS_REQUESTED.id
+            NoticeTypeId.QPU_SECONDS_REQUESTED
         ]
         assert "120.0s" in superuser_notices[0].body
 
@@ -334,7 +334,7 @@ def test_approve_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db
         assert got["approver_name"] == "john.doe"
         assert project.user_ids.count(TEST_OUTSIDER_ID) == 1
         assert [item.type for item in requester_notices] == [
-            NoticeType.PROJECT_ACCESS_APPROVED.id
+            NoticeTypeId.PROJECT_ACCESS_APPROVED
         ]
         assert requester_notices[0].body == (
             f"john.doe approved your request to join {TEST_PROJECT_NAME}."
@@ -397,7 +397,7 @@ def test_reject_project_access(client, outsider_jwt_cookie, user_jwt_cookie, db)
         assert got["status"] == "rejected"
         assert got["rejection_reason"] == "wrong team"
         assert TEST_OUTSIDER_ID not in project.user_ids
-        assert requester_notices[0].type == NoticeType.PROJECT_ACCESS_REJECTED.id
+        assert requester_notices[0].type == NoticeTypeId.PROJECT_ACCESS_REJECTED
         assert requester_notices[0].body.endswith("wrong team")
 
 
@@ -420,7 +420,7 @@ def test_approve_qpu_seconds(client, user_jwt_cookie, admin_jwt_cookie, db):
         assert response.status_code == 200
         assert project_after.qpu_seconds == project_before.qpu_seconds + 120
         assert [item.type for item in requester_notices] == [
-            NoticeType.QPU_SECONDS_GRANTED.id
+            NoticeTypeId.QPU_SECONDS_GRANTED
         ]
         assert requester_notices[0].title == (
             f"120.0s of QPU time added to {TEST_PROJECT_NAME}"
@@ -516,7 +516,7 @@ def test_approve_project_creation_notifies_the_members(
         member_notices = get_user_notices(db, TEST_USER_ID)
 
         assert [item.type for item in member_notices] == [
-            NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
+            NoticeTypeId.PROJECT_MEMBERSHIP_GRANTED
         ]
         assert member_notices[0].title == "You were added to thesis project"
 
@@ -565,7 +565,7 @@ def test_approve_project_close_names_the_closed_project(
         )
         requester_notices = get_user_notices(db, TEST_USER_ID)
 
-        assert requester_notices[-1].type == NoticeType.PROJECT_CLOSE_APPROVED.id
+        assert requester_notices[-1].type == NoticeTypeId.PROJECT_CLOSE_APPROVED
         assert requester_notices[-1].title == (
             f"Your project {TEST_PROJECT_NAME} was closed"
         )

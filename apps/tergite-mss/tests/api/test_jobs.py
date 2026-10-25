@@ -23,7 +23,7 @@ import settings
 from libs.storage import generate_id
 from services.auth import AppToken, Project
 from services.jobs import Job
-from services.notices import Notice, NoticeSeverity, NoticeType
+from services.notices import Notice, NoticeSeverity, NoticeTypeId
 from tests._utils.auth import (
     TEST_PROJECT_ID,
     TEST_PROJECT_NAME,
@@ -608,7 +608,7 @@ def test_dropping_below_the_qpu_threshold_warns_the_project_admin(client, db):
     assert db.get(Project, TEST_PROJECT_ID).qpu_seconds == (
         pytest.approx(start - _BILLED_JOB_COST)
     )
-    assert [item.type for item in admin_notices] == [NoticeType.QPU_SECONDS_LOW.id]
+    assert [item.type for item in admin_notices] == [NoticeTypeId.QPU_SECONDS_LOW]
     assert admin_notices[0].title == (f"{TEST_PROJECT_NAME} is running low on QPU time")
     assert admin_notices[0].body == (
         f"{TEST_PROJECT_NAME} has {_QPU_THRESHOLD - 1:.0f}s of QPU time left. "
@@ -633,14 +633,14 @@ def test_a_second_job_below_the_qpu_threshold_does_not_warn_again(client, db):
     _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD - 1)
 
     assert [item.type for item in get_user_notices(db, TEST_USER_ID)] == [
-        NoticeType.QPU_SECONDS_LOW.id
+        NoticeTypeId.QPU_SECONDS_LOW
     ]
 
 
 def test_running_out_of_qpu_time_tells_all_members(client, db):
     """Members cannot request more time, but they need to know why their jobs stopped"""
     _bill_a_job(client, db, starting_seconds=1)
-    depleted_notices = db.find(Notice, {"type": NoticeType.QPU_SECONDS_DEPLETED.id})
+    depleted_notices = db.find(Notice, {"type": NoticeTypeId.QPU_SECONDS_DEPLETED})
 
     assert {item.user_id for item in depleted_notices} == {
         TEST_USER_ID,
@@ -657,8 +657,8 @@ def test_running_out_of_qpu_time_after_running_low(client, db):
     _bill_a_job(client, db, starting_seconds=1)
 
     assert [item.type for item in get_user_notices(db, TEST_USER_ID)] == [
-        NoticeType.QPU_SECONDS_LOW.id,
-        NoticeType.QPU_SECONDS_DEPLETED.id,
+        NoticeTypeId.QPU_SECONDS_LOW,
+        NoticeTypeId.QPU_SECONDS_DEPLETED,
     ]
 
 

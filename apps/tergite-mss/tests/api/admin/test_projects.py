@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 import pytest
 
 from services.auth import DeletedProject, Project, User
-from services.notices import Notice, NoticeType
+from services.notices import Notice, NoticeTypeId
 from tests._utils.auth import (
     TEST_NO_QPU_PROJECT_DICT,
     TEST_OUTSIDER_EMAIL,
@@ -386,7 +386,7 @@ def test_project_creation_notifies_the_new_members(client, admin_jwt_cookie, db)
 
         assert response.status_code == 201
         assert [item.type for item in member_notices] == [
-            NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
+            NoticeTypeId.PROJECT_MEMBERSHIP_GRANTED
         ]
         assert member_notices[0].body == (
             "jane.doe added you to notified project "
@@ -403,8 +403,8 @@ def test_project_creation_notifies_the_admin(client, admin_jwt_cookie, db):
         admin_notice_types = {item.type for item in get_user_notices(db, TEST_USER_ID)}
 
         assert admin_notice_types == {
-            NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
-            NoticeType.PROJECT_ADMIN_ASSIGNED.id,
+            NoticeTypeId.PROJECT_MEMBERSHIP_GRANTED,
+            NoticeTypeId.PROJECT_ADMIN_ASSIGNED,
         }
 
 
@@ -421,10 +421,10 @@ def test_project_update_notifies_the_added_and_the_removed(
 
         assert response.status_code == 200
         assert [item.type for item in get_user_notices(db, TEST_OUTSIDER_ID)] == [
-            NoticeType.PROJECT_MEMBERSHIP_GRANTED.id
+            NoticeTypeId.PROJECT_MEMBERSHIP_GRANTED
         ]
         assert [item.type for item in get_user_notices(db, TEST_SYSTEM_USER_ID)] == [
-            NoticeType.PROJECT_MEMBERSHIP_REVOKED.id
+            NoticeTypeId.PROJECT_MEMBERSHIP_REVOKED
         ]
         assert get_user_notices(db, TEST_USER_ID) == []
 
@@ -440,7 +440,7 @@ def test_project_update_notifies_the_new_admin(client, admin_jwt_cookie, db):
 
         assert response.status_code == 200
         assert [item.type for item in get_user_notices(db, TEST_SYSTEM_USER_ID)] == [
-            NoticeType.PROJECT_ADMIN_ASSIGNED.id
+            NoticeTypeId.PROJECT_ADMIN_ASSIGNED
         ]
 
 

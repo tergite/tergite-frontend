@@ -11,21 +11,19 @@
 # that they have been altered from the originals.
 """Data Transfer Objects for the notices service"""
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Literal, NamedTuple, Optional, Self, Type, cast
+from enum import Enum, StrEnum
+from typing import Any, Dict, List, NamedTuple, Optional, Self
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     field_serializer,
-    field_validator,
     model_validator,
 )
 
 from libs.storage import Database, Id, Schema, StorageSpec, generate_id
 from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
-from utils.types import get_class_import_path, load_class
 
 NOTICE_DB_COLLECTION = "notices"
 NOTICE_PREFS_DB_COLLECTION = "notice_preferences"
@@ -84,193 +82,155 @@ class CustomNoticeContext(BaseNoticeContext):
     body: str = ""
 
 
+class NoticeTypeId(StrEnum):
+    """The kinds of notices"""
+
+    PROJECT_ACCESS_REQUESTED = "project-access-requested"
+    PROJECT_ACCESS_APPROVED = "project-access-approved"
+    PROJECT_ACCESS_REJECTED = "project-access-rejected"
+    PROJECT_CREATE_REQUESTED = "project-create-requested"
+    PROJECT_CREATE_APPROVED = "project-create-approved"
+    PROJECT_CREATE_REJECTED = "project-create-rejected"
+    PROJECT_CLOSE_REQUESTED = "project-close-requested"
+    PROJECT_CLOSE_APPROVED = "project-close-approved"
+    PROJECT_CLOSE_REJECTED = "project-close-rejected"
+    PROJECT_TRANSFER_REQUESTED = "project-transfer-requested"
+    PROJECT_TRANSFER_APPROVED = "project-transfer-approved"
+    PROJECT_TRANSFER_REJECTED = "project-transfer-rejected"
+    QPU_SECONDS_REQUESTED = "qpu-seconds-requested"
+    QPU_SECONDS_GRANTED = "qpu-seconds-granted"
+    QPU_SECONDS_DENIED = "qpu-seconds-denied"
+    QPU_SECONDS_LOW = "qpu-seconds-low"
+    QPU_SECONDS_DEPLETED = "qpu-seconds-depleted"
+    PROJECT_MEMBERSHIP_GRANTED = "project-membership-granted"
+    PROJECT_MEMBERSHIP_REVOKED = "project-membership-revoked"
+    PROJECT_ADMIN_ASSIGNED = "project-admin-assigned"
+    CUSTOM = "custom"
+    CUSTOM_BROADCAST = "custom-broadcast"
+
+
 class NoticeTypeInfo(NamedTuple):
-    id: str
+    """The default template of a kind of notice"""
+
     title: str
     body: str
     severity: NoticeSeverity
-    context_cls: Type[BaseNoticeContext] = BaseNoticeContext
 
 
-class NoticeType(NoticeTypeInfo, Enum):
-    """The kinds of notices plus their associated data"""
-
-    PROJECT_ACCESS_REQUESTED = NoticeTypeInfo(
-        id="project-access-requested",
+NOTICE_TYPE_INFO: Dict[NoticeTypeId, NoticeTypeInfo] = {
+    NoticeTypeId.PROJECT_ACCESS_REQUESTED: NoticeTypeInfo(
         title="Access request for {project_name}",
         body="{requester_name} is asking to join {project_name}: {reason}",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_ACCESS_APPROVED = NoticeTypeInfo(
-        id="project-access-approved",
+    ),
+    NoticeTypeId.PROJECT_ACCESS_APPROVED: NoticeTypeInfo(
         title="You were added to {project_name}",
         body="{approver_name} approved your request to join {project_name}.",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_ACCESS_REJECTED = NoticeTypeInfo(
-        id="project-access-rejected",
+    ),
+    NoticeTypeId.PROJECT_ACCESS_REJECTED: NoticeTypeInfo(
         title="Access to {project_name} was declined",
         body="{approver_name} declined your request to join {project_name}. {reason}",
         severity=NoticeSeverity.WARNING,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_CREATE_REQUESTED = NoticeTypeInfo(
-        id="project-create-requested",
+    ),
+    NoticeTypeId.PROJECT_CREATE_REQUESTED: NoticeTypeInfo(
         title="Create request for {project_name}",
         body="{requester_name} is asking to create {project_name}: {reason}",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_CREATE_APPROVED = NoticeTypeInfo(
-        id="project-create-approved",
+    ),
+    NoticeTypeId.PROJECT_CREATE_APPROVED: NoticeTypeInfo(
         title="Your project {project_name} was created",
         body="{approver_name} approved your request to create {project_name}.",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_CREATE_REJECTED = NoticeTypeInfo(
-        id="project-create-rejected",
+    ),
+    NoticeTypeId.PROJECT_CREATE_REJECTED: NoticeTypeInfo(
         title="Project {project_name} was declined",
         body="{approver_name} declined your request to create {project_name}. {reason}",
         severity=NoticeSeverity.WARNING,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_CLOSE_REQUESTED = NoticeTypeInfo(
-        id="project-close-requested",
+    ),
+    NoticeTypeId.PROJECT_CLOSE_REQUESTED: NoticeTypeInfo(
         title="Deletion request for {project_name}",
         body="{requester_name} is asking to close {project_name}: {reason}",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_CLOSE_APPROVED = NoticeTypeInfo(
-        id="project-close-approved",
+    ),
+    NoticeTypeId.PROJECT_CLOSE_APPROVED: NoticeTypeInfo(
         title="Your project {project_name} was closed",
         body="{approver_name} approved your request to close {project_name}.",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_CLOSE_REJECTED = NoticeTypeInfo(
-        id="project-close-rejected",
+    ),
+    NoticeTypeId.PROJECT_CLOSE_REJECTED: NoticeTypeInfo(
         title="Deletion of project {project_name} was declined",
         body="{approver_name} declined your request to close {project_name}. {reason}",
         severity=NoticeSeverity.WARNING,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_TRANSFER_REQUESTED = NoticeTypeInfo(
-        id="project-transfer-requested",
+    ),
+    NoticeTypeId.PROJECT_TRANSFER_REQUESTED: NoticeTypeInfo(
         title="Transfer request for {project_name}",
         body="{requester_name} is asking to transfer {project_name} to {admin_email}: {reason}",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_TRANSFER_APPROVED = NoticeTypeInfo(
-        id="project-transfer-approved",
+    ),
+    NoticeTypeId.PROJECT_TRANSFER_APPROVED: NoticeTypeInfo(
         title="Project {project_name} was transferred",
         body="{approver_name} approved {requester_name}'s request to transfer {project_name} to {admin_email}.",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_TRANSFER_REJECTED = NoticeTypeInfo(
-        id="project-transfer-rejected",
+    ),
+    NoticeTypeId.PROJECT_TRANSFER_REJECTED: NoticeTypeInfo(
         title="Transfer of project {project_name} was declined",
         body="{approver_name} declined your request to transfer {project_name} to {admin_email}. {reason}",
         severity=NoticeSeverity.WARNING,
-        context_cls=ProjectRequestContext,
-    )
-    QPU_SECONDS_REQUESTED = NoticeTypeInfo(
-        id="qpu-seconds-requested",
+    ),
+    NoticeTypeId.QPU_SECONDS_REQUESTED: NoticeTypeInfo(
         title="QPU time request for {project_name}",
         body="{requester_name} is asking for {seconds}s on {project_name}: {reason}",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    QPU_SECONDS_GRANTED = NoticeTypeInfo(
-        id="qpu-seconds-granted",
+    ),
+    NoticeTypeId.QPU_SECONDS_GRANTED: NoticeTypeInfo(
         title="{seconds}s of QPU time added to {project_name}",
         body="{approver_name} granted {seconds}s of QPU time on {project_name}.",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    QPU_SECONDS_DENIED = NoticeTypeInfo(
-        id="qpu-seconds-denied",
+    ),
+    NoticeTypeId.QPU_SECONDS_DENIED: NoticeTypeInfo(
         title="QPU time for {project_name} was declined",
         body="{approver_name} declined the QPU time request for {project_name}. {reason}",
         severity=NoticeSeverity.WARNING,
-        context_cls=ProjectRequestContext,
-    )
-    QPU_SECONDS_LOW = NoticeTypeInfo(
-        id="qpu-seconds-low",
+    ),
+    NoticeTypeId.QPU_SECONDS_LOW: NoticeTypeInfo(
         title="{project_name} is running low on QPU time",
         body="{project_name} has {seconds}s of QPU time left. Request more before it runs out.",
         severity=NoticeSeverity.WARNING,
-        context_cls=ProjectRequestContext,
-    )
-    QPU_SECONDS_DEPLETED = NoticeTypeInfo(
-        id="qpu-seconds-depleted",
+    ),
+    NoticeTypeId.QPU_SECONDS_DEPLETED: NoticeTypeInfo(
         title="{project_name} is out of QPU time",
         body="{project_name} has no QPU time left, so its jobs will be rejected until more is granted.",
         severity=NoticeSeverity.CRITICAL,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_MEMBERSHIP_GRANTED = NoticeTypeInfo(
-        id="project-membership-granted",
+    ),
+    NoticeTypeId.PROJECT_MEMBERSHIP_GRANTED: NoticeTypeInfo(
         title="You were added to {project_name}",
         body="{approver_name} added you to {project_name} ({project_id}). You can now create API tokens for it.",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_MEMBERSHIP_REVOKED = NoticeTypeInfo(
-        id="project-membership-revoked",
+    ),
+    NoticeTypeId.PROJECT_MEMBERSHIP_REVOKED: NoticeTypeInfo(
         title="You were removed from {project_name}",
         body="{approver_name} removed you from {project_name}. Any API tokens you held for it no longer work.",
         severity=NoticeSeverity.WARNING,
-        context_cls=ProjectRequestContext,
-    )
-    PROJECT_ADMIN_ASSIGNED = NoticeTypeInfo(
-        id="project-admin-assigned",
+    ),
+    NoticeTypeId.PROJECT_ADMIN_ASSIGNED: NoticeTypeInfo(
         title="You now administer {project_name}",
         body="{approver_name} made you the admin of {project_name} ({project_id}). Requests to join it come to you.",
         severity=NoticeSeverity.INFO,
-        context_cls=ProjectRequestContext,
-    )
-    CUSTOM = NoticeTypeInfo(
-        id="custom",
+    ),
+    NoticeTypeId.CUSTOM: NoticeTypeInfo(
         title="{title}",
         body="{body}",
         # FIXME: severity depends on the author of the notice. See this as a default.
         severity=NoticeSeverity.INFO,
-        context_cls=CustomNoticeContext,
-    )
-    CUSTOM_BROADCAST = NoticeTypeInfo(
-        id="custom-broadcast",
+    ),
+    NoticeTypeId.CUSTOM_BROADCAST: NoticeTypeInfo(
         title="{title}",
         body="{body}",
         # FIXME: severity depends on the author of the notice. See this as a default.
         severity=NoticeSeverity.INFO,
-        context_cls=CustomNoticeContext,
-    )
-
-    @classmethod
-    def from_str(cls, value: str) -> Self:
-        """Gets the NoticeTypeEnum from a string.
-
-        Raises:
-            KeyError: if the string is not a valid notice type.
-        """
-        for notice_type in cls:
-            if notice_type.id == value:
-                return notice_type
-        raise KeyError(value)
-
-    def __str__(self):
-        return self.id
-
-
-type NoticeTypeId = Literal[tuple(v.id for v in NoticeType)]  # type: ignore[valid-type]
-"""A kind of NoticeTypes"""
-# FIXME: Maybe find a stronger type for the strings in Notice type or just setup a map of dict[NoticeType, NoticeInfo]
+    ),
+}
 
 
 class Notice(Schema):
@@ -336,8 +296,8 @@ class Notice(Schema):
             - 'read_at' must be None if 'type' is custom-broadcast
 
         """
-        custom_kind = NoticeType.CUSTOM.id
-        custom_broadcast_kind = NoticeType.CUSTOM_BROADCAST.id
+        custom_kind = NoticeTypeId.CUSTOM
+        custom_broadcast_kind = NoticeTypeId.CUSTOM_BROADCAST
 
         if self.created_by is None and self.type == custom_kind:
             raise ValueError("Custom notice cannot be created by no one")
@@ -415,40 +375,6 @@ class NoticeTemplate(Schema):
     title: str
     body: str
     severity: NoticeSeverity
-    context_cls_path: str = get_class_import_path(BaseNoticeContext)
-
-    __context_cls: Optional[Type[BaseNoticeContext]] = None
-
-    @property
-    def context_cls(self) -> Type[BaseNoticeContext]:
-        """The context class for this template"""
-        if self.__context_cls is None:
-            self.__context_cls = cast(
-                Type[BaseNoticeContext], load_class(self.context_cls_path)
-            )
-        return self.__context_cls
-
-    @field_validator("context_cls_path", mode="before")
-    @classmethod
-    def validate_context_cls(cls, value: Any):
-        """Convert object fields to string always"""
-        if isinstance(value, type):
-            return get_class_import_path(value)
-        return value
-
-    @classmethod
-    def from_notice_type(cls, value: NoticeType | str) -> Self:
-        """Converts a notice type to a notice template document."""
-        if isinstance(value, str):
-            value = NoticeType.from_str(value)
-
-        return cls(
-            type=value.id,
-            title=value.title,
-            body=value.body,
-            severity=value.severity,
-            context_cls_path=get_class_import_path(value.context_cls),
-        )
 
 
 class CustomNoticeCreate(BaseModel):
@@ -487,7 +413,7 @@ class CustomNoticeCreate(BaseModel):
             users = await database.find(
                 User, filter={"email": {"$in": self.target_user_emails}}
             )
-            template = await database.get(NoticeTemplate, NoticeType.CUSTOM.id)
+            template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM)
             return [
                 Notice.from_template(
                     template=template, context=context, user_id=user.id, **kwargs
@@ -495,5 +421,5 @@ class CustomNoticeCreate(BaseModel):
                 for user in users
             ]
 
-        template = await database.get(NoticeTemplate, NoticeType.CUSTOM_BROADCAST.id)
+        template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM_BROADCAST)
         return [Notice.from_template(template=template, context=context, **kwargs)]

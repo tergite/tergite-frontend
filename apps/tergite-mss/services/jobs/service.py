@@ -32,7 +32,7 @@ from utils.date_time import datetime_to_zulu, get_current_timestamp
 from utils.exc import NotFoundError
 
 from ..auth import Project, User, increment_qpu_seconds
-from ..notices import NoticeType
+from ..notices import NoticeTypeId
 from ..notices.dtos import ProjectRequestContext, RefType
 from .dtos import CreatedJobResponse, Job, JobCreate, JobQuery, JobStatus, JobUpdate
 
@@ -221,7 +221,7 @@ async def update_qpu_usage(
         await notices.create_system_notice(
             database,
             user_ids=project.user_ids,
-            notice_type=NoticeType.QPU_SECONDS_DEPLETED.id,
+            notice_type=NoticeTypeId.QPU_SECONDS_DEPLETED,
             context=ProjectRequestContext(
                 project_id=str(project.id), project_name=project.name
             ),
@@ -233,7 +233,7 @@ async def update_qpu_usage(
         await notices.create_system_notice(
             database,
             user_ids=[project.admin_id],
-            notice_type=NoticeType.QPU_SECONDS_LOW.id,
+            notice_type=NoticeTypeId.QPU_SECONDS_LOW,
             context=ProjectRequestContext(
                 project_id=str(project.id),
                 project_name=project.name,

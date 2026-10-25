@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 
 from libs.storage import Database
 from services import notices
-from services.notices import NoticeType, ProjectRequestContext, RefType
+from services.notices import NoticeTypeId, ProjectRequestContext, RefType
 
 from ..users.dtos import User
 from .dtos import Project
@@ -48,7 +48,7 @@ async def notify_membership_change(
     await notices.create_system_notice(
         database,
         user_ids=list(new_ids - old_ids),
-        notice_type=NoticeType.PROJECT_MEMBERSHIP_GRANTED.id,
+        notice_type=NoticeTypeId.PROJECT_MEMBERSHIP_GRANTED,
         context=context,
         ref_type=RefType.PROJECT,
         ref_id=final_project.id,
@@ -57,7 +57,7 @@ async def notify_membership_change(
     await notices.create_system_notice(
         database,
         user_ids=list(old_ids - new_ids),
-        notice_type=NoticeType.PROJECT_MEMBERSHIP_REVOKED.id,
+        notice_type=NoticeTypeId.PROJECT_MEMBERSHIP_REVOKED,
         context=context,
         ref_type=RefType.PROJECT,
         ref_id=final_project.id,
@@ -68,7 +68,7 @@ async def notify_membership_change(
         await notices.create_system_notice(
             database,
             user_ids=[final_project.admin_id],
-            notice_type=NoticeType.PROJECT_ADMIN_ASSIGNED.id,
+            notice_type=NoticeTypeId.PROJECT_ADMIN_ASSIGNED,
             context=context,
             ref_type=RefType.PROJECT,
             ref_id=final_project.id,
@@ -82,7 +82,7 @@ async def notify_membership_revoked(
     await notices.create_system_notice(
         database,
         user_ids=[member_id],
-        notice_type=NoticeType.PROJECT_MEMBERSHIP_REVOKED.id,
+        notice_type=NoticeTypeId.PROJECT_MEMBERSHIP_REVOKED,
         context=ProjectRequestContext(
             project_id=str(project.id),
             project_name=project.name,

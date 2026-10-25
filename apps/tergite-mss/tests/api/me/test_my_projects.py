@@ -15,7 +15,7 @@ from pytest_lazyfixture import lazy_fixture
 
 from libs.storage import generate_id
 from services.auth import AppToken, DeletedProject, Project
-from services.notices import Notice, NoticeType
+from services.notices import Notice, NoticeTypeId
 from tests._utils.auth import (
     TEST_NO_QPU_PROJECT_DICT,
     TEST_OUTSIDER_ID,
@@ -296,7 +296,7 @@ def test_removing_a_member_notifies_them(client, user_jwt_cookie, db):
         member_notices = get_user_notices(db, TEST_SYSTEM_USER_ID)
 
         assert [item.type for item in member_notices] == [
-            NoticeType.PROJECT_MEMBERSHIP_REVOKED.id
+            NoticeTypeId.PROJECT_MEMBERSHIP_REVOKED
         ]
         assert member_notices[0].title == f"You were removed from {TEST_PROJECT_NAME}"
 

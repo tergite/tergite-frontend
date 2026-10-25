@@ -17,13 +17,13 @@ from loguru import logger
 
 from libs.storage import Database, Filter, is_id
 from services.notices.dtos import (
+    NOTICE_TYPE_INFO,
     BaseNoticeContext,
     CustomNoticeCreate,
     EmailStatus,
     Notice,
     NoticePreferences,
     NoticeTemplate,
-    NoticeType,
     NoticeTypeId,
     ProjectRequestContext,
     RefType,
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 # on_startup replaces these with what the app is configured with
 _conf = NoticesConfig()
 _is_email_enabled = False
-_BROADCAST_TYPE = NoticeType.CUSTOM_BROADCAST.id
+_BROADCAST_TYPE = NoticeTypeId.CUSTOM_BROADCAST
 
 
 async def set_read_status(
@@ -464,9 +464,11 @@ async def _init_notice_templates_in_db(database: Database) -> None:
     """Initializes the notice templates in the database with the default templates"""
     existing_types = set(await database.find_distinct(NoticeTemplate, "type"))
     new_records = [
-        NoticeTemplate.from_notice_type(v)
-        for v in NoticeType
-        if v.id not in existing_types
+        NoticeTemplate(
+            type=type_id, title=info.title, body=info.body, severity=info.severity
+        )
+        for type_id, info in NOTICE_TYPE_INFO.items()
+        if type_id not in existing_types
     ]
     if new_records:
         await database.insert_many(NoticeTemplate, new_records)
@@ -528,7 +530,7 @@ def _with_default_email_preferences(
     prefs: Dict[NoticeTypeId, bool]
 ) -> Dict[NoticeTypeId, bool]:
     """Fills in the default email preference for every notice type missing in prefs"""
-    return {v.id: prefs.get(v.id, True) for v in NoticeType}
+    return {type_id: prefs.get(type_id, True) for type_id in NoticeTypeId}
 
 
 async def _with_project_name(
