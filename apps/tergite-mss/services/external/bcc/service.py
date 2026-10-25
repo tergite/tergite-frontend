@@ -652,26 +652,44 @@ class BccClient:
             ServiceUnavailableError: device is currently unavailable
             BccHttpError: the BCC answered with an HTTP error
         """
+        response = await self._send(
+            method,
+            url,
+            user_id=user_id,
+            request_id=request_id,
+            json=json,
+            params=params,
+            is_admin=is_admin,
+        )
+        _raise_for_bcc_error(response)
+        return response.json()
+
+    async def _send(
+        self,
+        method: str,
+        url: str,
+        user_id: str,
+        request_id: str,
+        json: Optional[dict],
+        params: Optional[Dict[str, Any]],
+        is_admin: Optional[bool],
+    ) -> httpx.Response:
+        """Sends the request with headers signed as MSS's
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+        """
+        headers = _create_headers(
+            self._private_key,
+            request_id=request_id,
+            user_id=f"{user_id}",
+            is_admin=is_admin,
+        )
+        logger.debug(f"Sending request to BCC: {method} {url}")
         try:
-            headers = _create_headers(
-                self._private_key,
-                request_id=request_id,
-                user_id=f"{user_id}",
-                is_admin=is_admin,
-            )
-            logger.debug(f"Sending request to BCC: {method} {url}")
-            response = await self._client.request(
+            return await self._client.request(
                 method, url, json=json, headers=headers, params=params
             )
-
-            if response.is_error:
-                message = _extract_error_message(response)
-                logger.warning(
-                    f"BCC returned HTTP error {response.status_code}: {message}"
-                )
-                raise BccHttpError(response.status_code, message)
-
-            return response.json()
         except (httpx.ConnectError, httpx.TimeoutException):
             logger.exception("BCC connection failed")
             raise ServiceUnavailableError("device is currently unavailable")
@@ -679,6 +697,18 @@ class BccClient:
     async def close(self):
         """Closes the client"""
         await self._client.aclose()
+
+
+def _raise_for_bcc_error(response: httpx.Response) -> None:
+    """Raises the BCC's HTTP error, if the response is one
+
+    Raises:
+        BccHttpError: the BCC answered with an HTTP error
+    """
+    if response.is_error:
+        message = _extract_error_message(response)
+        logger.warning(f"BCC returned HTTP error {response.status_code}: {message}")
+        raise BccHttpError(response.status_code, message)
 
 
 def _extract_error_message(response: httpx.Response) -> str:
