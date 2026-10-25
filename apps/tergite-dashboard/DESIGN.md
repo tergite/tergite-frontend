@@ -308,7 +308,7 @@ Each feature's happy path, and the spec that walks it:
 | Admin control | `admin-control.spec.ts` |
 | Error page | `error-alert.spec.ts` |
 
-Job submission has no UI; its happy path is the MSS pytest flow in `tests/api/rest/test_jobs.py`.
+Job submission has no UI; its happy path is the MSS pytest flow in `tests/api/test_jobs.py`.
 
 Component tests are the thin layer: `vite.config.ts` restricts them to `__tests__`
 directories, and only pure-ish primitives are covered there (`ui/__tests__/donut-chart.test.tsx`).

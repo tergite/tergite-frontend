@@ -17,7 +17,7 @@ import argparse
 from pymongo import MongoClient
 
 import settings
-from api.rest.database import get_database_url
+from api.database import get_database_url
 from migrations.mongodb import rollback, upgrade
 
 parser = argparse.ArgumentParser(prog="python -m migrations.mongodb")

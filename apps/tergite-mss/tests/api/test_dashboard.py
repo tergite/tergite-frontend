@@ -14,7 +14,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.rest.dashboard import include_dashboard
+from api.dashboard import include_dashboard
 
 
 @pytest.fixture

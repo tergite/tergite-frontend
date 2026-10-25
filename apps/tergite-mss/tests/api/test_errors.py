@@ -16,7 +16,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.rest.errors import make_exception_group_handler, make_http_error_handler
+from api.errors import make_exception_group_handler, make_http_error_handler
 from utils.exc import ConflictError, NotFoundError
 
 

@@ -10,7 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from api.rest import app
+from api import app
 from dev.openapi.export import SCHEMA_FILE, render_schema
 
 

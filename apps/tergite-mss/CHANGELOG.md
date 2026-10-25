@@ -64,6 +64,7 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ### Changed
 
+- Moved the `api.rest` package into `api`, so the ASGI app is `api:app`.
 - `start_mss.sh` runs `main.py start`, after decrypting a SOPS config, instead of migrating and starting uvicorn
   itself, and no longer installs sops or yq; `main.py` serves on the config's `general.mss_port` by default.
 - Users sign in through `libs/authlib` instead of fastapi-users and are kept by the storage

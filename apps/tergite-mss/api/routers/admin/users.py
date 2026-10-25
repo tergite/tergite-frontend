@@ -14,7 +14,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import CurrentSuperuserDep, DatabaseDep
+from api.dependencies import CurrentSuperuserDep, DatabaseDep
 from services.auth import service as auth_service
 
 router = APIRouter()

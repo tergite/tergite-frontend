@@ -173,7 +173,7 @@ FORBIDDEN_IMPORTS = {
     "libs": ("api", "services", "utils", "settings"),
     "settings.py": ("api", "services"),
 }
-HTTP_EXCEPTION_HOME = "api/rest/"
+HTTP_EXCEPTION_HOME = "api/"
 DEFINITIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
 FunctionNode = Union[ast.FunctionDef, ast.AsyncFunctionDef]

@@ -23,7 +23,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import settings
-from api.rest.database import SCHEMAS, get_database_url
+from api.database import SCHEMAS, get_database_url
 from libs.storage.sql import get_metadata
 
 if context.config.config_file_name is not None:

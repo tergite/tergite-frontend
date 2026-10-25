@@ -16,7 +16,7 @@ from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, FastAPI, Query
 from loguru import logger
 
-from api.rest.auth import AUTH
+from api.auth import AUTH
 from libs import authlib
 from services.auth import AuthProvider, providers
 from services.auth.providers.dtos import AuthProviderQuery

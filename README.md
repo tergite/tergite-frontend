@@ -136,7 +136,7 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 - Handle the disconnection issues between MSS and the backends
     - NEEDS A DECISION, not just a patch. `is_online` is set True on websocket connect and
       False only in the `WebSocketDisconnect` handler
-      (`api/rest/routers/devices/__init__.py`), so a backend that dies without closing
+      (`api/routers/devices/__init__.py`), so a backend that dies without closing
       cleanly stays "online" until TCP notices. Two candidate fixes, neither safe to land
       unreviewed:
       - **Liveness TTL in MSS alone.** Stamp `last_seen` on every websocket frame and treat

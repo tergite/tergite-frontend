@@ -17,7 +17,7 @@ from typing import Optional, Tuple
 from fastapi import APIRouter, Query
 from fastapi import status as http_status
 
-from api.rest.dependencies import CurrentUserDep, DatabaseDep
+from api.dependencies import CurrentUserDep, DatabaseDep
 from libs.storage import Id
 from services import requests as requests_service
 from services.requests import (

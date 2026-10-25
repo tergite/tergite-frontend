@@ -49,8 +49,8 @@ from pymongo import MongoClient
 
 import migrations.mongodb
 import settings
-from api.rest import app
-from api.rest.database import get_database_url
+from api import app
+from api.database import get_database_url
 
 _ROOT = Path(__file__).parent
 

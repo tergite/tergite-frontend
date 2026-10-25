@@ -15,7 +15,7 @@ from typing import Dict
 
 from fastapi import APIRouter
 
-from api.rest.dependencies import CurrentUserIdDep, DatabaseDep
+from api.dependencies import CurrentUserIdDep, DatabaseDep
 from services import notices as notices_service
 from services.notices import NoticeTypeId
 

@@ -23,8 +23,8 @@ from pydantic import ValidationError
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocketDisconnect
 
-from api.rest.dependencies import DatabaseDep
-from api.rest.utils import get_verified_device_name
+from api.dependencies import DatabaseDep
+from api.utils import get_verified_device_name
 from libs.storage import Database
 from services import devices
 from services.devices import Device, DeviceEvent, DeviceQuery

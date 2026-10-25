@@ -15,7 +15,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, DatabaseDep
+from api.dependencies import CurrentUserDep, CurrentUserIdDep, DatabaseDep
 from libs.storage import Id
 from services import notices as notices_service
 from services.notices import Notice, NoticeTypeId

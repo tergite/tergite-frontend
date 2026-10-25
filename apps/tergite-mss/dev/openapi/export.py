@@ -26,7 +26,7 @@ SCHEMA_FILE = Path(__file__).parent / "openapi.json"
 
 def main():
     setup_test_env()
-    from api.rest import app  # settings read the environment set above on import
+    from api import app  # settings read the environment set above on import
 
     SCHEMA_FILE.write_text(render_schema(app.openapi()))
 

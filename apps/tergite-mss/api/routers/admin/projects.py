@@ -16,7 +16,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from api.rest.dependencies import CurrentSuperuserDep, DatabaseDep, ProjectQueryDep
+from api.dependencies import CurrentSuperuserDep, DatabaseDep, ProjectQueryDep
 from libs.storage import is_id
 from services import auth
 from services.auth import (

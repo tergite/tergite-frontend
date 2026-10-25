@@ -14,7 +14,7 @@
 
 from fastapi import APIRouter
 
-from api.rest.dependencies import CurrentUserDep
+from api.dependencies import CurrentUserDep
 from services.auth import UserRead
 
 router = APIRouter()

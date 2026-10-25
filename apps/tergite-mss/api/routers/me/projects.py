@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from api.rest.dependencies import (
+from api.dependencies import (
     CurrentUserDep,
     CurrentUserIdDep,
     DatabaseDep,

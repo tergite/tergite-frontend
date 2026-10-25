@@ -15,7 +15,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from api.rest.dependencies import AppTokenQueryDep, CurrentUserIdDep, DatabaseDep
+from api.dependencies import AppTokenQueryDep, CurrentUserIdDep, DatabaseDep
 from libs.storage import Id
 from services import auth
 from services.auth import (

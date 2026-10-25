@@ -78,7 +78,7 @@ _SCHEMAS_KEPT_ACROSS_TESTS = {"NoticeTemplate", "Role"}
 @pytest.fixture(scope="session")
 def api_database() -> Generator[SyncDatabase, Any, None]:
     """The database the app runs on: the one TEST_DATABASE_URL names, emptied first"""
-    from api.rest.database import SCHEMAS
+    from api.database import SCHEMAS
     from services.auth import ensure_roles
 
     asyncio.run(empty_database(TEST_DATABASE_URL))
@@ -93,7 +93,7 @@ def api_database() -> Generator[SyncDatabase, Any, None]:
 @pytest.fixture
 def db(api_database) -> Generator[SyncDatabase, Any, None]:
     """The app's database, emptied after the test"""
-    from api.rest.database import SCHEMAS
+    from api.database import SCHEMAS
 
     yield api_database
     # emptied, not dropped: the running app's tables and indexes stay, as do the roles
@@ -148,7 +148,7 @@ def client(
     A test that changes what the app starts with gets a client of its own, whose `with`
     block starts the app afresh.
     """
-    from api.rest import app
+    from api import app
 
     init_test_auth(db)
     if _FRESH_APP_FIXTURES & set(request.fixturenames):
@@ -378,7 +378,7 @@ class _AppRunner:
 
     def get_client(self) -> TestClient:
         if self._client is None:
-            from api.rest import app
+            from api import app
 
             self._client = TestClient(app, follow_redirects=True)
             self._client.__enter__()

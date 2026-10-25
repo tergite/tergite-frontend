@@ -21,7 +21,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from fastapi.requests import Request
 
-from api.rest.dependencies import (
+from api.dependencies import (
     CurrentLaxOwnerDep,
     CurrentStrictProjectUserIdsDep,
     CurrentUserDep,

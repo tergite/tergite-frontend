@@ -14,7 +14,7 @@ is the map that ties them together.
 
 MSS is organised by **service**, not by technical layer. Each service under `services/` is a
 self-contained slice of the domain: its DTOs, its persistence, its business rules, and —
-where it needs them — its own routers. `api/rest/` is a thin HTTP adapter on top: it wires
+where it needs them — its own routers. `api/` is a thin HTTP adapter on top: it wires
 routers together, injects dependencies, and translates domain exceptions to status codes.
 It should hold no business logic.
 
@@ -83,7 +83,7 @@ rules live in `services/`. Two consequences worth internalising:
   This is what makes them testable and what lets the lifespan own the connection.
 - `services/` may import `utils/` and other services (e.g. `devices` events call `jobs` and
   `calibration`). `services/` must not import from `api/`.
-- Only `api/rest` reads `settings`. A class gets its config in its constructor (`BccClient`,
+- Only `api` reads `settings`. A class gets its config in its constructor (`BccClient`,
   `Emailer`). A module whose functions are called from many places, or from `default_factory`
   fields, gets it once from the lifespan through its `on_startup` (`notices`, `jobs`, `auth`)
   or a setter (`date_time.set_datetime_precision`) and keeps it module-private.
@@ -92,7 +92,7 @@ rules live in `services/`. Two consequences worth internalising:
 
 ### Startup
 
-`main.py start`, the default command, migrates the database and then serves `api.rest:app`
+`main.py start`, the default command, migrates the database and then serves `api:app`
 with uvicorn on the config's `general.mss_port`; `migrate` and `serve` do one alone. The
 packages run it as `tergite-mss start`. From a checkout, `start_mss.sh` does the same, after
 SOPS-decrypting `MSS_CONFIG_FILE` (default `mss-config.toml`) into `MSS_CONFIG_JSON_STR` with
@@ -120,13 +120,13 @@ device websockets, marks every device disconnected, and closes both databases.
    request carries it, logs start/finish with duration, records the request id with
    `request_log.record_request`, and echoes `x-request-id` back on the response.
 3. **Dependencies** — everything injectable is a named `Annotated` alias in
-   `api/rest/dependencies.py` (`DatabaseDep`, `CurrentUserDep`, `BccClientDep`,
+   `api/dependencies.py` (`DatabaseDep`, `CurrentUserDep`, `BccClientDep`,
    `RequestIdDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
    parameters (`user: CurrentUserDep`), never the raw `Depends(...)` expression, and a route
    that only needs the check still names the parameter (`requester: CurrentSuperuserDep`).
    Add new injectables there.
 4. **Exception handlers** — domain exceptions from `utils/exc.py` are mapped to status codes
-   centrally in `api/rest/__init__.py`, with the handlers `api/rest/errors.py` makes:
+   centrally in `api/__init__.py`, with the handlers `api/errors.py` makes:
    `InvalidInputError` (and its `TooManyListQueryParams`) / `UnknownBccError` /
    `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,
    `ForbiddenError` → 403, `NotFoundError` → 404, `ConflictError` → 409,
@@ -159,9 +159,9 @@ Users sign in through `libs/authlib`, which began as a copy of
   (the dashboard's). Roles are `user`, `researcher`, `admin`, `partner`, `system`;
   `is_superuser` is derived from having `admin`.
 - Dependencies: `GET_CURRENT_USER`, `GET_CURRENT_USER_ID`, `GET_CURRENT_SUPERUSER`, from the
-  `authlib.Auth` that `api/rest/auth.py` builds from the auth config; routers use them
-  through `api/rest/dependencies.py`. authlib's errors are answered by the handler
-  `add_exception_handlers` registers in `api/rest/__init__.py`.
+  `authlib.Auth` that `api/auth.py` builds from the auth config; routers use them
+  through `api/dependencies.py`. authlib's errors are answered by the handler
+  `add_exception_handlers` registers in `api/__init__.py`.
 
 ### Projects and app tokens — what you may spend
 
@@ -170,7 +170,7 @@ Users sign in through `libs/authlib`, which began as a copy of
   components use.
 - A **project** carries `qpu_seconds`. Creating a job requires an active project with
   positive `qpu_seconds`. Job completion decrements it via `update_qpu_usage`.
-- Dependencies, also in `api/rest/auth.py`: `get_current_project_user_ids` (strict, enforces
+- Dependencies, also in `api/auth.py`: `get_current_project_user_ids` (strict, enforces
   QPU seconds) and `get_current_lax_owner` (lax, for reads). Each checks the token's project
   and user against an `AccessRule` from `services/auth/access.py`: a missing token or an
   inactive project is 401, too few QPU seconds or a missing role is 403.
@@ -332,7 +332,7 @@ import time; keep that ordering when adding fixtures.
   `fixtures/*.py` modules.
 - `tests/fixtures/` — JSON data and the RSA key pairs used to exercise the MSS↔BCC
   signature paths.
-- `tests/api/rest/test_*.py` — one file per router, driven through `TestClient`.
+- `tests/api/test_*.py` — one file per router, driven through `TestClient`.
 - `mock_backend.py` stands in for BCC; `respx` intercepts httpx calls.
 - The app starts once per session, as its startup is the slow part: the `client` fixture's
   `with` block neither starts nor stops it, and clears its cookies afterwards. A fixture that
@@ -389,9 +389,9 @@ On top of the shared rules in [../../DESIGN.md](../../DESIGN.md#style-guide):
 
 | Task | Path |
 | --- | --- |
-| New endpoint on an existing resource | the router in `api/rest/routers/`, plus a service function; add a `tests/api/rest/test_*.py` case |
-| New resource | new package under `services/` (`dtos.py` + `service.py`, `on_startup` if it needs indexes), new router module, include it in `api/rest/__init__.py` |
-| New injectable | an `Annotated` alias in `api/rest/dependencies.py` |
+| New endpoint on an existing resource | the router in `api/routers/`, plus a service function; add a `tests/api/test_*.py` case |
+| New resource | new package under `services/` (`dtos.py` + `service.py`, `on_startup` if it needs indexes), new router module, include it in `api/__init__.py` |
+| New injectable | an `Annotated` alias in `api/dependencies.py` |
 | New OAuth2 provider | a `[[auth.clients]]` block — no code; see [docs/auth.md](./docs/auth.md) |
 | New quantum backend | a `[[backends]]` block plus its public key — no code; see [docs/backends.md](./docs/backends.md) |
 | New device event | enum member in `services/devices/dtos.py`, handler and `EVENT_HANDLERS` entry in `services/devices/events.py` |

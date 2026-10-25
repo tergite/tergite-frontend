@@ -16,7 +16,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import (
+from api.dependencies import (
     CurrentSuperuserDep,
     CurrentUserDep,
     DatabaseDep,

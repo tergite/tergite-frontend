@@ -12,7 +12,7 @@
 
 import pytest
 
-from api.rest.database import get_database_url
+from api.database import get_database_url
 from libs.storage import Database
 from utils.config import DatabaseConfig
 

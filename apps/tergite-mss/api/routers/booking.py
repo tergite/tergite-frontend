@@ -19,7 +19,7 @@ from typing import Optional, Tuple
 
 from fastapi import APIRouter, Query
 
-from api.rest.dependencies import (
+from api.dependencies import (
     BccClientDep,
     CurrentUserDep,
     CurrentUserIdDep,

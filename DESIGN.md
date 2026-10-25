@@ -118,7 +118,7 @@ Two distinct trust directions, both asymmetric-key based:
   `x-signature`; MSS verifies against that backend's `public_key_path`, checks the source IP
   (unless `is_strict_ip = false`), rejects stale nonces (`bcc_nonce_ttl`) and replayed ones
   (the request log in Redis, where a nonce is the key). See `get_verified_device_name` in
-  [api/rest/utils.py](apps/tergite-mss/api/rest/utils.py).
+  [api/utils.py](apps/tergite-mss/api/utils.py).
 
 ## 4. Configuration
 
@@ -155,7 +155,7 @@ to `/usr/local/etc/tergite-mss/`. See the [README](README.md#deployment).
 
 The dashboard ships inside MSS's packages: the release builds it with the base `/ui/`, Nuitka
 includes it from `apps/tergite-mss/ui/`, and MSS serves it at `/ui`
-([api/rest/dashboard.py](apps/tergite-mss/api/rest/dashboard.py)), sending the paths no file
+([api/dashboard.py](apps/tergite-mss/api/dashboard.py)), sending the paths no file
 has to `index.html` and redirecting `/` to `/ui/`.
 
 MSS answers `GET /health` with 200 outside the request log, as `request_logging_middleware`
@@ -223,7 +223,7 @@ code changes need a signed CLA. See [CONTRIBUTING.md](CONTRIBUTING.md).
 `{year}.{month}.{patch}`, e.g. `2026.06.0`. A release bumps the version in **four** places
 and touches **three** changelogs:
 
-- `apps/tergite-mss/pyproject.toml` and `apps/tergite-mss/api/rest/app_kwargs.py`
+- `apps/tergite-mss/pyproject.toml` and `apps/tergite-mss/api/app_kwargs.py`
 - `apps/tergite-dashboard/package.json` and `package-lock.json`
 - `CHANGELOG.md`, `apps/tergite-mss/CHANGELOG.md`, `apps/tergite-dashboard/CHANGELOG.md`
 
