@@ -211,38 +211,13 @@ async def update_qpu_usage(
             raise NotFoundError(f"project '{project_id}' for job '{job_id}' not found")
         return project
 
-    # alert only on crossing the threshold or zero, or every later job would alert again
-    qpu_seconds_before = project.qpu_seconds + qpu_usage
-    was_above_threshold = qpu_seconds_before > _qpu_seconds_low_threshold
-    is_running_low = project.qpu_seconds < _qpu_seconds_low_threshold
-    is_depleted = project.qpu_seconds <= 0 < qpu_seconds_before
-
-    if is_depleted:
-        await notices.create_system_notice(
-            database,
-            user_ids=project.user_ids,
-            notice_type=NoticeTypeId.QPU_SECONDS_DEPLETED,
-            context=ProjectRequestContext(
-                project_id=str(project.id), project_name=project.name
-            ),
-            ref_type=RefType.PROJECT,
-            ref_id=project.id,
-        )
-
-    elif is_running_low and was_above_threshold:
-        await notices.create_system_notice(
-            database,
-            user_ids=[project.admin_id],
-            notice_type=NoticeTypeId.QPU_SECONDS_LOW,
-            context=ProjectRequestContext(
-                project_id=str(project.id),
-                project_name=project.name,
-                seconds=round(project.qpu_seconds),
-            ),
-            ref_type=RefType.PROJECT,
-            ref_id=project.id,
-        )
-
+    notice_type = _choose_qpu_notice(
+        before=project.qpu_seconds + qpu_usage,
+        after=project.qpu_seconds,
+        threshold=_qpu_seconds_low_threshold,
+    )
+    if notice_type is not None:
+        await _notify_project(database, project, notice_type)
     return project
 
 
@@ -385,6 +360,46 @@ async def on_startup(
     global _private_key, _qpu_seconds_low_threshold
     _private_key = private_key
     _qpu_seconds_low_threshold = qpu_seconds_low_threshold
+
+
+def _choose_qpu_notice(
+    before: float, after: float, threshold: float
+) -> Optional[NoticeTypeId]:
+    """Chooses the notice for a project's QPU seconds going from before to after
+
+    Only crossing zero or the threshold alerts, or every later job would alert again.
+    """
+    if after <= 0 < before:
+        return NoticeTypeId.QPU_SECONDS_DEPLETED
+    if after < threshold < before:
+        return NoticeTypeId.QPU_SECONDS_LOW
+    return None
+
+
+async def _notify_project(
+    database: Database, project: Project, notice_type: NoticeTypeId
+) -> None:
+    """Tells the members a project is out of QPU time, or its admin that it is running low"""
+    if notice_type == NoticeTypeId.QPU_SECONDS_DEPLETED:
+        user_ids = project.user_ids
+        context = ProjectRequestContext(
+            project_id=str(project.id), project_name=project.name
+        )
+    else:
+        user_ids = [project.admin_id]
+        context = ProjectRequestContext(
+            project_id=str(project.id),
+            project_name=project.name,
+            seconds=round(project.qpu_seconds),
+        )
+    await notices.create_system_notice(
+        database,
+        user_ids=user_ids,
+        notice_type=notice_type,
+        context=context,
+        ref_type=RefType.PROJECT,
+        ref_id=project.id,
+    )
 
 
 def _is_job_readable_by(job: Job, user: User) -> bool:
