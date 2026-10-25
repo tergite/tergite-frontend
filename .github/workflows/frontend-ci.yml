@@ -39,6 +39,8 @@ jobs:
         uses: docker/setup-buildx-action@v2
         with:
           version: "latest"
+      - name: Install the system libraries of Playwright's browser
+        run: npx -y playwright@1.64.0 install-deps chromium
       - name: Run end-to-end-tests
         env:
           DEBUG: ${{ vars.DEBUG || 'false' }}

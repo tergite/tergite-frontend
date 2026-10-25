@@ -18,6 +18,8 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 - `dev/e2e_test.sh` keeps the stack's images and build cache between runs, so a repeat run takes
   about 10 minutes instead of 13; `CLEAN=True` removes them as before.
+- `dev/e2e_test.sh` runs the dashboard's Playwright suite against the stack, so
+  `PLAYWRIGHT_IMAGE` replaces `CYPRESS_IMAGE`, and `VISUAL=True` opens Playwright's UI mode.
 
 ## [2026.06.0] - 2026-06-26
 

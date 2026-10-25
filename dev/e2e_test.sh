@@ -18,8 +18,8 @@
 #   BACKEND_BRANCH="main" \ # you can set a different backend branch; default is 'main'
 #   DEBUG="True" \ # Set 'True' to avoid cleaning up the containers, env, and repos after test, default: ''
 #   CLEAN="True" \ # Set 'True' to also remove the stack's images and the build cache, before and after, default: ''
-#   VISUAL="True" \ # Set 'True' to see the e2e in a graphical user interface, default: ''
-#   CYPRESS_IMAGE="cypress/base:20.17.0" \ # Set the docker image to run the tests. If not provided, it runs on the host machine
+#   VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
+#   PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.64.0-noble" \ # Set the docker image to run the tests. If not provided, it runs on the host machine
 #   OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration" \ # Set the url to get the openID config for mock OpenID connect, default: 'https://samples.auth0.com/.well-known/openid-configuration'
 #   OPENID_CLIENT_ID="kbyuFDidLLm280LIwVFiazOqjO3ty8KH" \ # Set the client id for mock OpenID connect, default: 'kbyuFDidLLm280LIwVFiazOqjO3ty8KH'
 #   OPENID_CLIENT_SECRET="60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa" \ # Set the client secret for mock OpenID connect, default: '60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa'
@@ -39,7 +39,9 @@ OPENID_AUTH_URL="${OPENID_AUTH_URL:-https://samples.auth0.com/authorize}"
 ROOT_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 TEMP_DIR_PATH="$ROOT_PATH/$TEMP_DIR"
 FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/cypress/fixtures"
-CYPRESS_IMAGE="$CYPRESS_IMAGE"
+PLAYWRIGHT_IMAGE="$PLAYWRIGHT_IMAGE"
+# the dashboard service of the stack, which tells Playwright to test it instead of a local build
+DASHBOARD_URL="http://127.0.0.1:3000"
 
 # Logging function for errors
 log_error() {
@@ -225,10 +227,6 @@ fi
 # Update the .env in tergite dashboard. This will update such things as VITE_REFETCH_INTERVAL_MS, etc.
 cp apps/tergite-dashboard/.env.test apps/tergite-dashboard/.env;
 
-# Update cypress.config.ts in tergite dashboard
-#  set the dashboard URL to the URL of the dashboard service
-replace_str apps/tergite-dashboard/cypress.config.ts "http://127.0.0.1:5173" "http://127.0.0.1:3000";
-
 # Update mss-config.toml
 replace_str mss-config.toml "OPENID_CLIENT_ID" "$OPENID_CLIENT_ID";
 replace_str mss-config.toml "OPENID_CLIENT_SECRET" "$OPENID_CLIENT_SECRET";
@@ -246,25 +244,26 @@ docker compose \
 echo "Waiting for the services to be healthy"
 wait_until_healthy
 
-# Run in python docker file if $CYPRESS_IMAGE is set
+# Run in the Playwright image if $PLAYWRIGHT_IMAGE is set
 # or else run on host machine
 
-if [[ -z "$CYPRESS_IMAGE" ]]; then
+if [[ -z "$PLAYWRIGHT_IMAGE" ]]; then
   # Starting the tests
   echo "Installing dependencies..."
   cd "$TEMP_DIR_PATH/tergite-frontend/apps/tergite-dashboard"
   npm ci
+  npx playwright install chromium
 
   echo "Running end-to-end test suite..."
   if [[ $(echo "${VISUAL}" | tr '[:lower:]' '[:upper:]') = "TRUE" ]]; then 
-    npm run visual-cypress-only;
+    DASHBOARD_URL="$DASHBOARD_URL" npx playwright test --ui;
   else 
-    npm run cypress-only;
+    DASHBOARD_URL="$DASHBOARD_URL" npx playwright test;
   fi
 
 else
   if [[ $(echo "${VISUAL}" | tr '[:lower:]' '[:upper:]') = "TRUE" ]]; then 
-    exit_with_err "Cannot run visually when a CYPRESS_IMAGE is set. Set VISUAL='' or remove CYPRESS_IMAGE";
+    exit_with_err "Cannot run visually when a PLAYWRIGHT_IMAGE is set. Set VISUAL='' or remove PLAYWRIGHT_IMAGE";
   fi 
 
   echo "Running e2e tests..."
@@ -272,8 +271,9 @@ else
   docker run \
     --name tergite-frontend-e2e-runner \
     --network=host \
+    -e DASHBOARD_URL="$DASHBOARD_URL" \
     -v "$PWD":/app -w /app \
-    "$CYPRESS_IMAGE" bash -c "set -e; npm ci; npm run cypress-only;";
+    "$PLAYWRIGHT_IMAGE" bash -c "set -e; npm ci; npx playwright test;";
 fi
 
 # Cleanup

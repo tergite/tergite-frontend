@@ -185,7 +185,7 @@ using `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID` ([config.alloy](config.alloy)).
 | MSS unit/integration | `apps/tergite-mss/tests` — pytest against real MongoDB + Redis | `pytest` |
 | Dashboard component | `apps/tergite-dashboard/src/**/__tests__` — vitest + happy-dom | `npm run test` |
 | Dashboard e2e | `apps/tergite-dashboard/cypress/e2e` — cypress against the **mock** API | `npm run e2e` |
-| Full-stack e2e | [dev/e2e_test.sh](dev/e2e_test.sh) — cypress against real MSS + real backend in docker | `./dev/e2e_test.sh` |
+| Full-stack e2e | [dev/e2e_test.sh](dev/e2e_test.sh) — the Playwright specs against real MSS + real backend in docker | `./dev/e2e_test.sh` |
 
 The dashboard's own e2e suite does not run MSS. It runs an Express mock API
 (`apps/tergite-dashboard/dev/mock-api/`) that serves the same JSON shapes from
@@ -195,7 +195,7 @@ when an MSS response changes.
 
 `dev/e2e_test.sh` is the one that catches contract drift: it clones `tergite-backend`, builds
 MSS, the dashboard and the backend, seeds Mongo from the same cypress fixtures, wires up a
-mock OpenID provider, and runs the cypress specs against the real stack. It is a manual /
+mock OpenID provider, and runs the Playwright specs against the real stack, on one worker. It is a manual /
 tag-triggered job in CI, not a per-commit one.
 
 Visual regression is via `cypress-image-diff-js`; baselines in
