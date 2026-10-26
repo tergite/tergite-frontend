@@ -16,7 +16,8 @@ import {
   type AdminProject,
 } from "../../../types";
 import { AdminProjectsTable } from "./components/projects-table";
-import { AdminProjectsSidebar } from "./components/projects-sidebar";
+import { AdminProjectSummary } from "./components/projects-sidebar";
+import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useLoaderData } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -94,13 +95,22 @@ export function AdminProjects() {
         </CardContent>
       </Card>
 
-      {mode === OperationMode.EDIT && (
-        <AdminProjectsSidebar
+      {mode === OperationMode.EDIT && selectedProject && (
+        <AdminProjectSummary
           project={selectedProject}
           className="order-first xl:order-none col-span-1"
           onDelete={handleProjectDelete}
           onEdit={handleProjectEdit}
           onClose={handleSidebarClose}
+        />
+      )}
+
+      {mode === OperationMode.EDIT && !selectedProject && (
+        <SidebarPlaceholder
+          mainTitle="Project title"
+          contentTitle="Project details"
+          contentDetail="Click any row to show details here or click 'New' to create a project"
+          className="order-first xl:order-none col-span-1"
         />
       )}
 

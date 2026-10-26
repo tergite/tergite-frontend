@@ -22,21 +22,9 @@ import { Button, IconButton } from "@/components/ui/button";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { MultiInput } from "@/components/ui/multi-input";
-import { UserEmailInput } from "./user-email-input";
+import { Form } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
+import { ProjectFields } from "./project-fields";
 import { X } from "lucide-react";
 
 const formSchema = z.object({
@@ -48,26 +36,13 @@ const formSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-export function AdminProjectsSidebar(props: SidebarProps) {
-  return props.project ? (
-    <AdminProjectSummary {...(props as ProjectSummaryProps)} />
-  ) : (
-    <SidebarPlaceholder
-      mainTitle="Project title"
-      contentTitle="Project details"
-      contentDetail="Click any row to show details here or click 'New' to create a project"
-      className={props.className}
-    />
-  );
-}
-
-function AdminProjectSummary({
+export function AdminProjectSummary({
   project,
   className = "",
   onDelete,
   onEdit,
   onClose,
-}: ProjectSummaryProps) {
+}: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const editForm = useForm<z.infer<typeof formSchema>>({
@@ -142,152 +117,11 @@ function AdminProjectSummary({
           <CardContent className="p-6 text-sm xl:max-h-[60vh] overflow-y-auto">
             <div className="grid gap-3">
               <ul className="grid gap-4">
-                <FormField
-                  control={editForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="text-muted-foreground"
-                            htmlFor="name"
-                          >
-                            Name
-                          </Label>
-                          <Input id="name" type="string" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <ProjectFields />
 
                 <DetailItem label="ID" className="flex-col">
                   {project.id}
                 </DetailItem>
-
-                <FormField
-                  control={editForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="mr-2 text-muted-foreground"
-                            htmlFor="description"
-                          >
-                            Description
-                          </Label>
-                          <Textarea id="description" {...field} rows={4} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={editForm.control}
-                  name="is_active"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="flex justify-between">
-                          <Label
-                            className="mr-2 text-muted-foreground"
-                            htmlFor="is_active"
-                          >
-                            Live
-                          </Label>
-                          <Switch
-                            id="is_active"
-                            onCheckedChange={field.onChange}
-                            checked={field.value}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={editForm.control}
-                  name="qpu_seconds"
-                  render={() => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="text-muted-foreground"
-                            htmlFor="qpu_seconds"
-                          >
-                            QPU seconds
-                          </Label>
-                          <Input
-                            id="qpu_seconds"
-                            type="number"
-                            {...editForm.register("qpu_seconds", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={editForm.control}
-                  name="admin_email"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="mr-2 text-muted-foreground"
-                            htmlFor="admin_email"
-                          >
-                            Admin
-                          </Label>
-                          <UserEmailInput id="admin_email" {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={editForm.control}
-                  name="user_emails"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="flex flex-col">
-                          <Label
-                            className="text-muted-foreground mb-1"
-                            htmlFor="user_emails"
-                          >
-                            Members
-                          </Label>
-                          <MultiInput
-                            id="user_emails"
-                            type="email"
-                            {...field}
-                            InputComponent={UserEmailInput}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <DetailItem label="Created" className="flex-col">
                   {createdAt}
                 </DetailItem>
@@ -328,14 +162,10 @@ function AdminProjectSummary({
   );
 }
 
-interface SidebarProps {
-  project?: AdminProject;
+interface Props {
+  project: AdminProject;
   className?: string;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onClose: () => void;
-}
-
-interface ProjectSummaryProps extends SidebarProps {
-  project: AdminProject;
 }

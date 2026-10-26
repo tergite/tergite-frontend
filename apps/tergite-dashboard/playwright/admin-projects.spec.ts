@@ -257,7 +257,7 @@ for (const user of users) {
             await innermost(summary, "div", /admin/i).locator("input").fill(updates.admin_email);
           }
           if (updates.user_emails != undefined) {
-            const members = innermost(summary, "div", /members/i);
+            const members = innermost(summary, "div", /member emails/i);
             for (let i = project.user_emails.length - 1; i >= 0; i--) {
               await members.locator(`#user_emails-${i}-del-btn[aria-label="X"]`).click();
             }
@@ -652,7 +652,7 @@ async function expectEditableFields(
   );
   await expect(innermost(form, "div", /admin/i).locator("input")).toHaveValue(project.admin_email);
 
-  const members = innermost(form, "div", /members/i);
+  const members = innermost(form, "div", /member emails/i);
   for (const [index, email] of project.user_emails.entries()) {
     const wrapper = members.locator(`#user_emails-${index}-wrapper`);
     await expect(wrapper.locator(`#user_emails-${index}`)).toHaveValue(email);

@@ -13,20 +13,9 @@ import { Button, IconButton } from "@/components/ui/button";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { MultiInput } from "@/components/ui/multi-input";
-import { UserEmailInput } from "./user-email-input";
+import { Form } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { ProjectFields } from "./project-fields";
 import {
   createAdminProject,
   refreshAllAdminQueries,
@@ -115,149 +104,7 @@ export function CreateProjectForm({
           <CardContent className="p-6 text-sm xl:max-h-[60vh] overflow-y-auto">
             <div className="grid gap-3">
               <ul className="grid gap-4">
-                <FormField
-                  control={createForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="text-muted-foreground"
-                            htmlFor="name"
-                          >
-                            Name
-                          </Label>
-                          <Input id="name" type="string" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={createForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="mr-2 text-muted-foreground"
-                            htmlFor="description"
-                          >
-                            Description
-                          </Label>
-                          <Textarea id="description" {...field} rows={4} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={createForm.control}
-                  name="is_active"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="flex justify-between">
-                          <Label
-                            className="mr-2 text-muted-foreground"
-                            htmlFor="is_active"
-                          >
-                            Live
-                          </Label>
-                          <Switch
-                            id="is_active"
-                            onCheckedChange={field.onChange}
-                            checked={field.value}
-                            disabled
-                            aria-disabled
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={createForm.control}
-                  name="qpu_seconds"
-                  render={() => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="text-muted-foreground"
-                            htmlFor="qpu_seconds"
-                          >
-                            QPU seconds
-                          </Label>
-                          <Input
-                            id="qpu_seconds"
-                            type="number"
-                            {...createForm.register("qpu_seconds", {
-                              valueAsNumber: true,
-                            })}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={createForm.control}
-                  name="admin_email"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="text-muted-foreground"
-                            htmlFor="admin_email"
-                          >
-                            Admin email
-                          </Label>
-                          <UserEmailInput id="admin_email" type="email" {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={createForm.control}
-                  name="user_emails"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="flex flex-col">
-                          <Label
-                            className="text-muted-foreground mb-1"
-                            htmlFor="user_emails"
-                          >
-                            Member emails
-                          </Label>
-                          <MultiInput
-                            id="user_emails"
-                            type="email"
-                            {...field}
-                            InputComponent={UserEmailInput}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <ProjectFields isActiveDisabled />
               </ul>
             </div>
           </CardContent>
