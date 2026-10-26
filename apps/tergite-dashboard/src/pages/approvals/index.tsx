@@ -17,7 +17,8 @@ import {
   type User,
   type UserRequest,
 } from "../../../types";
-import { ApprovalsSidebar } from "./components/approvals-sidebar";
+import { ApprovalSummary } from "./components/approvals-sidebar";
+import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { ApprovalsTable } from "./components/approvals-table";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
@@ -69,11 +70,20 @@ export function Approvals() {
         </CardContent>
       </Card>
 
-      <ApprovalsSidebar
-        request={selectedRequest}
-        className="order-first xl:order-none col-span-1"
-        onReaction={handleReaction}
-      />
+      {selectedRequest ? (
+        <ApprovalSummary
+          request={selectedRequest}
+          className="order-first xl:order-none col-span-1"
+          onReaction={handleReaction}
+        />
+      ) : (
+        <SidebarPlaceholder
+          mainTitle="Request"
+          contentTitle="Request details"
+          contentDetail="Click any row to show details here"
+          className="order-first xl:order-none col-span-1"
+        />
+      )}
     </main>
   );
 }

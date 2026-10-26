@@ -9,7 +9,6 @@ import {
 import { DetailItem } from "@/components/ui/detail-item";
 import { ProgressStatus } from "@/components/ui/progress-status";
 import { Separator } from "@/components/ui/separator";
-import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import {
   approveMyRequest,
   refreshDecisionQueries,
@@ -27,24 +26,11 @@ import {
   type UserRequest,
 } from "../../../../../types";
 
-export function ApprovalsSidebar(props: SidebarProps) {
-  return props.request ? (
-    <RequestSummary {...(props as RequestSummaryProps)} />
-  ) : (
-    <SidebarPlaceholder
-      mainTitle="Request"
-      contentTitle="Request details"
-      contentDetail="Click any row to show details here"
-      className={props.className}
-    />
-  );
-}
-
-function RequestSummary({
+export function ApprovalSummary({
   request,
   className = "",
   onReaction,
-}: RequestSummaryProps) {
+}: Props) {
   const queryClient = useQueryClient();
   const handleSuccess = async () => {
     // before the refresh, or it would clear a row picked meanwhile
@@ -127,12 +113,8 @@ function RequestSummary({
   );
 }
 
-interface SidebarProps {
-  request?: UserRequest;
+interface Props {
+  request: UserRequest;
   className?: string;
   onReaction: () => void;
-}
-
-interface RequestSummaryProps extends SidebarProps {
-  request: UserRequest;
 }
