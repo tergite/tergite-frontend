@@ -19,7 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Project, QpuTimeExtensionPostBody, User, UserRequest } from "types";
+import { Project, QpuTimeExtensionPostBody, UserRequest } from "types";
 import { z } from "zod";
 import { Duration } from "luxon";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,21 +44,9 @@ const DURATION_FIELDS = [
   { name: "seconds", id: "secs", label: "secs" },
 ] as const;
 
-export function QpuTimeDialog(props: Props) {
-  const { project, currentUser } = props;
-  const isUserEditable = project.admin_id === currentUser?.id;
-  const { className = "" } = props;
-  return isUserEditable ? (
-    <_QpuTimeDialog {...props} />
-  ) : (
-    <div className={className}>N/A</div>
-  );
-}
-
-function _QpuTimeDialog({
+export function QpuTimeRequestDialog({
   project,
   qpuTimeRequests,
-  onSubmit = async () => {},
   className = "",
 }: Props) {
   const queryClient = useQueryClient();
@@ -96,13 +84,11 @@ function _QpuTimeDialog({
           reason: reason,
           project_id: project.id,
         };
-        const response = await requestQpuTimeExtension(payload);
-        refreshMyRequests(queryClient);
-        return response;
+        return await requestQpuTimeExtension(payload);
       },
-      [project, queryClient]
+      [project]
     ),
-    onSuccess: onSubmit,
+    onSuccess: async () => await refreshMyRequests(queryClient),
     throwOnError: true,
   });
 
@@ -209,8 +195,6 @@ function _QpuTimeDialog({
 
 interface Props {
   project: Project;
-  currentUser: User;
   className?: string;
   qpuTimeRequests: UserRequest[];
-  onSubmit?: (data: UserRequest) => Promise<void>;
 }

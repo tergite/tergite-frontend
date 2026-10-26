@@ -14,27 +14,13 @@ import { Project } from "types";
 import { DeleteProjectDialog } from "./delete-dialog";
 import { useMemo } from "react";
 import { DateTime, Duration } from "luxon";
-import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 
-export function ProjectsSidebar(props: SidebarProps) {
-  return props.project ? (
-    <ProjectSummary {...(props as ProjectSummaryProps)} />
-  ) : (
-    <SidebarPlaceholder
-      mainTitle="Project title"
-      contentTitle="Project details"
-      contentDetail="Click any row to show details here"
-      className={props.className}
-    />
-  );
-}
-
-function ProjectSummary({
+export function ProjectSummary({
   project,
   className = "",
   onDelete,
-  canDelete,
-}: ProjectSummaryProps) {
+  isDeletable,
+}: Props) {
   const queryClient = useQueryClient();
   const projectDeletion = useMutation({
     mutationFn: deleteMyProject,
@@ -79,7 +65,7 @@ function ProjectSummary({
           </ul>
         </div>
       </CardContent>
-      {canDelete && (
+      {isDeletable && (
         <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3">
           <DeleteProjectDialog
             project={project}
@@ -92,13 +78,9 @@ function ProjectSummary({
   );
 }
 
-interface SidebarProps {
-  project?: Project;
-  canDelete: boolean;
+interface Props {
+  project: Project;
+  isDeletable: boolean;
   className?: string;
   onDelete: (id: string) => void;
-}
-
-interface ProjectSummaryProps extends SidebarProps {
-  project: Project;
 }

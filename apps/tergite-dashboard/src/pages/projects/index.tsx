@@ -16,7 +16,8 @@ import {
   type Project,
 } from "../../../types";
 import { ProjectsTable } from "./components/project-table";
-import { ProjectsSidebar } from "./components/projects-sidebar";
+import { ProjectSummary } from "./components/projects-sidebar";
+import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { Link, useLoaderData } from "react-router-dom";
 import { RequestAccessDialog } from "./components/request-access-dialog";
@@ -83,16 +84,25 @@ export function Projects() {
         </CardContent>
       </Card>
 
-      <ProjectsSidebar
-        project={selectedProject}
-        className="order-first xl:order-none col-span-1"
-        onDelete={handleProjectDelete}
-        canDelete={
-          selectedProject?.admin_id === currentUser.id &&
-          // the API refuses the owner deleting their own, superusers aside
-          !selectedProject?.is_personal
-        }
-      />
+      {selectedProject ? (
+        <ProjectSummary
+          project={selectedProject}
+          className="order-first xl:order-none col-span-1"
+          onDelete={handleProjectDelete}
+          isDeletable={
+            selectedProject.admin_id === currentUser.id &&
+            // the API refuses the owner deleting their own, superusers aside
+            !selectedProject.is_personal
+          }
+        />
+      ) : (
+        <SidebarPlaceholder
+          mainTitle="Project title"
+          contentTitle="Project details"
+          contentDetail="Click any row to show details here"
+          className="order-first xl:order-none col-span-1"
+        />
+      )}
     </main>
   );
 }

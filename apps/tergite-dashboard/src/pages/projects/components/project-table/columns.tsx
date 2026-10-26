@@ -2,7 +2,7 @@ import { SortHeader } from "@/components/ui/data-table";
 import { HealthStatus } from "@/components/ui/health-status";
 import { ColumnDef } from "@tanstack/table-core";
 import { UserRequest, User, type Project } from "types";
-import { QpuTimeDialog } from "./qpu-time-dialog";
+import { QpuTimeRequestDialog } from "./qpu-time-request-dialog";
 import { Duration } from "luxon";
 
 export function getColumns({
@@ -46,13 +46,15 @@ export function getColumns({
       id: "requests",
       accessorFn: (row) => row.id,
       header: "Requests",
-      cell: ({ row }) => (
-        <QpuTimeDialog
-          currentUser={currentUser}
-          qpuTimeRequests={qpuTimeRequests}
-          project={row.original}
-        />
-      ),
+      cell: ({ row }) =>
+        row.original.admin_id === currentUser.id ? (
+          <QpuTimeRequestDialog
+            qpuTimeRequests={qpuTimeRequests}
+            project={row.original}
+          />
+        ) : (
+          <div>N/A</div>
+        ),
     },
   ];
 }

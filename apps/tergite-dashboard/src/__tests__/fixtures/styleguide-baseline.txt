@@ -13,7 +13,6 @@ boolean: src/pages/admin-control/components/backend-control-card/toggle.tsx::che
 boolean: src/pages/admin-control/components/status-tile.tsx::truncate
 boolean: src/pages/device-detail/components/bookings-calendar/booking-form.tsx::open
 boolean: src/pages/device-detail/components/bookings-calendar/booking-form.tsx::value
-boolean: src/pages/projects/components/projects-sidebar/index.tsx::canDelete
 boolean: types.ts::characterized
 boolean: types.ts::open_pulse
 constant-position: dev/mock-api/routes/general.ts::APPROVED_NOTICE_TYPES
@@ -89,7 +88,6 @@ verb: src/pages/devices.tsx::loader
 verb: src/pages/home/components/devices-table/index.tsx::goToDevice
 verb: src/pages/home/index.tsx::combineMyBookingsQueries
 verb: src/pages/home/index.tsx::loader
-verb: src/pages/projects/components/project-table/qpu-time-dialog.tsx::_QpuTimeDialog
 verb: src/pages/projects/index.tsx::loader
 verb: src/pages/requests/components/request-sidebar/index.tsx::toString
 verb: src/pages/requests/components/request-sidebar/index.tsx::toUserFriendlyProp

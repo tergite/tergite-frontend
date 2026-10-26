@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { QpuTimeDialog } from "../qpu-time-dialog";
-import type { Project, User } from "../../../../../../types";
+import { QpuTimeRequestDialog } from "../qpu-time-request-dialog";
+import type { Project } from "../../../../../../types";
 
 const requestQpuTimeExtension = vi.fn();
 
@@ -14,7 +14,6 @@ vi.mock("@/lib/api/requests", () => ({
   refreshMyRequests: vi.fn(),
 }));
 
-const currentUser = { id: "user-1" } as User;
 const project = { id: "project-1", name: "test", admin_id: "user-1" } as Project;
 
 const box = (id: string) => screen.getByLabelText(id) as HTMLInputElement;
@@ -28,11 +27,7 @@ async function openDialog() {
   });
   render(
     <QueryClientProvider client={client}>
-      <QpuTimeDialog
-        project={project}
-        currentUser={currentUser}
-        qpuTimeRequests={[]}
-      />
+      <QpuTimeRequestDialog project={project} qpuTimeRequests={[]} />
     </QueryClientProvider>
   );
   await user.click(screen.getByRole("button", { name: /more qpu time/i }));
@@ -44,7 +39,7 @@ async function submit(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /submit/i }));
 }
 
-describe("qpu-time-dialog", () => {
+describe("QpuTimeRequestDialog", () => {
   beforeEach(() => {
     requestQpuTimeExtension.mockReset();
     requestQpuTimeExtension.mockResolvedValue({});
