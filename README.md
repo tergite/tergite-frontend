@@ -176,37 +176,7 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## TODO
 
-- [ ] Notifications marked as read still show up in the notification list.
-    - they should disappear after being marked read
-- [ ] Make the 'Project External ID' input an autocomplete
-    - Maybe add a read-only autocomplete GET endpoint for project IDs
-    - Make the input autocomplete with shadcn `Combobox`
-    - Decided: logged-in users may see the shared projects; they are not PII, and joining
-      one still needs its admin's approval.
-- [ ] Health check requests spam the logs of tergite-backend
-    - MSS and the dashboard now answer the container probe on an unlogged `/health`; the
-      backend lives in its own repo and needs the same treatment there.
-- Handle 503 unavailbale service on the dashboard
-- Handle the disconnection issues between MSS and the backends
-    - NEEDS A DECISION, not just a patch. `is_online` is set True on websocket connect and
-      False only in the `WebSocketDisconnect` handler
-      (`api/routers/devices/__init__.py`), so a backend that dies without closing
-      cleanly stays "online" until TCP notices. Two candidate fixes, neither safe to land
-      unreviewed:
-      - **Liveness TTL in MSS alone.** Stamp `last_seen` on every websocket frame and treat
-        a device whose stamp is older than N as offline when serving it. No backend change,
-        but it redefines `is_online` for every consumer — dashboard, fixtures, e2e — and a
-        quiet-but-healthy backend would read as offline unless it is made to send keepalives.
-      - **Websocket ping/pong with a deadline**, which is the real answer but needs a matching
-        change in tergite-backend and therefore an RFC spanning both repos.
-        <!-- FIXME: Choose this. Note however that the disconnection issues would not have been solved.
-        In the past, the backend abruptly became unreachable in production and sometimes even the 
-        frontend did the same. I was thinking of having a stream-persisted NATS in between them
-        at least as another medium of exchange between the two - being switchable say in one of 
-        our config files such that if one wants to use websockets, they go ahead. If NATS they go ahead.
-        It would also mean it is easy to check if the NATS gets rid of those sporadic disconnections.
-        But all this is for a future RFC or something-->
-- [ ] Clean up the requests and qpu_grants API
+- [ ] Fix failing GitHub/GitLab CI runs
 
 ## Acknowledgements
 
