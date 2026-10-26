@@ -121,7 +121,7 @@ npm run test
 ## How to Run End-to-end Tests
 
 - Ensure you have [nodejs](https://nodejs.org/en), [uv](https://docs.astral.sh/uv/), MongoDB's
-  `mongod` and `mongosh`, `redis-server` and `sqlite3` installed
+  `mongod` and `mongosh`, `redis-server` 7.4 or later and `sqlite3` installed
 - Ensure nothing is running on ports 3001, 8002, 8101, 27018 and 6380
 - Clone the repo, and tergite-backend beside it unless `BACKEND_REPO` is given
 

@@ -90,12 +90,15 @@ e2e:
     - if: $CI_COMMIT_TAG =~ /^v.*$/
   before_script:
     - apt-get update -qq
-    - apt-get install -y -qq curl gnupg git jq redis-server sqlite3
+    - apt-get install -y -qq curl gnupg git jq sqlite3
+    # Redis's own, as noble's 7.0 lacks the per-field expiry MSS needs
+    - curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+    - echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb noble main" > /etc/apt/sources.list.d/redis.list
     - curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |
       gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
     - echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" >
       /etc/apt/sources.list.d/mongodb-org-8.0.list
-    - apt-get update -qq && apt-get install -y -qq mongodb-org
+    - apt-get update -qq && apt-get install -y -qq mongodb-org redis
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
   script:

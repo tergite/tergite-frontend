@@ -16,7 +16,7 @@
 # dashboard's test build at /ui, and the backends from a tergite-backend checkout, one process
 # serving them all, each under its own path, all from fresh data in temp-native/. Its arguments
 # go to `playwright test`, e.g. a spec to run or --update-snapshots.
-# Needs mongod, mongosh, redis-server, sqlite3, uv, npm and curl.
+# Needs mongod, mongosh, redis-server 7.4 or later, sqlite3, uv, npm and curl.
 #
 # Usage
 # =====
