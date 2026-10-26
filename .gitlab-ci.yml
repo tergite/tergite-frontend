@@ -100,6 +100,11 @@ e2e:
     - export PATH="$HOME/.local/bin:$PATH"
   script:
     - ./dev/e2e_native_test.sh
+  artifacts:
+    when: on_failure
+    paths:
+      - temp-native/logs/
+    expire_in: 1 week
 
 lint mss:
   needs: []

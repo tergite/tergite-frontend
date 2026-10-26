@@ -125,13 +125,23 @@ start_service() {
 wait_for_url() {
   local deadline=$(( $(date +%s) + 60 ));
   until [[ "$(curl -s -o /dev/null -w '%{http_code}' "$2")" != "000" ]]; do
-    kill -0 "$3" 2>/dev/null || exit_with_err "$1 stopped; see temp-native/logs/$1.log";
-    [[ $(date +%s) -lt $deadline ]] || exit_with_err "$1 did not start; see temp-native/logs/$1.log";
+    kill -0 "$3" 2>/dev/null || exit_with_log "$1" "$1 stopped";
+    [[ $(date +%s) -lt $deadline ]] || exit_with_log "$1" "$1 did not start within 60 seconds";
     sleep 0.5;
   done
 }
 
-# stops the services, and removes temp-native/ but its environments, unless DEBUG is set
+# exits with the error after the end of the service's log in temp-native/logs/, as a CI job
+# shows its output and keeps the logs only as an artifact
+# usage:
+#   exit_with_log name "some string"
+exit_with_log() {
+  echo "The end of temp-native/logs/$1.log:"
+  tail -n 50 "$WORK_PATH/logs/$1.log" 2>/dev/null || true
+  exit_with_err "$2";
+}
+
+# stops the services, and removes temp-native/ but its environments and logs, unless DEBUG is set
 # usage:
 #   stop_stack
 stop_stack() {
@@ -144,7 +154,7 @@ stop_stack() {
     kill "$pid" 2>/dev/null || true;
   done
   wait 2>/dev/null || true;
-  find "$WORK_PATH" -mindepth 1 -maxdepth 1 ! -name venvs -exec rm -rf {} +;
+  find "$WORK_PATH" -mindepth 1 -maxdepth 1 ! -name venvs ! -name logs -exec rm -rf {} +;
 }
 
 for port in $MSS_PORT $RESET_PORT $MONGO_PORT $REDIS_PORT $BACKEND_PORT; do
@@ -205,7 +215,8 @@ for backend in "${BACKENDS[@]}"; do
   replace_str "$WORK_PATH/mss-config.toml" "http://$host:8000" "http://127.0.0.1:$BACKEND_PORT/$name"
 done
 export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
-(cd "$MSS_PATH" && "$WORK_PATH/venvs/mss/bin/python" -m dev.seed) > "$WORK_PATH/logs/seed.log" 2>&1
+(cd "$MSS_PATH" && "$WORK_PATH/venvs/mss/bin/python" -m dev.seed) > "$WORK_PATH/logs/seed.log" 2>&1 \
+  || exit_with_log seed "seeding MSS's database failed"
 mss_command="'$WORK_PATH/venvs/mss/bin/python' main.py"
 [[ -z "$MSS_BINARY" ]] || mss_command="'$MSS_BINARY'"
 start_service mss bash -c "cd '$MSS_PATH' && exec $mss_command start --host 127.0.0.1 --port $MSS_PORT"
