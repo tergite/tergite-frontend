@@ -32,6 +32,8 @@
 # nuitka-project: --include-package=asyncpg
 # nuitka-project: --include-package=pydantic
 # nuitka-project: --include-package=alembic
+# uvicorn imports the app by name, which Nuitka cannot follow
+# nuitka-project: --include-module=api
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/alembic.ini=alembic.ini
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/env.py=migrations/env.py
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/versions/*.py=migrations/versions/
@@ -47,7 +49,6 @@ from pathlib import Path
 import uvicorn
 
 import settings
-from api import app
 
 _ROOT = Path(__file__).parent
 
@@ -121,8 +122,9 @@ def _migrate() -> None:
 
 
 def _serve(host: str, port: int, forwarded_allow_ips: str | None, reload: bool) -> None:
+    # by import string, as uvicorn reloads only so
     uvicorn.run(
-        app,
+        "api:app",
         host=host,
         reload=reload,
         port=port,
