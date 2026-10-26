@@ -19,7 +19,8 @@ import {
   type UserRequest,
 } from "../../../types";
 import { AdminRequestsTable } from "./components/requests-table";
-import { RequestsSidebar } from "./components/requests-sidebar";
+import { RequestSummary } from "./components/requests-sidebar";
+import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
@@ -69,12 +70,21 @@ export function AdminRequests() {
         </CardContent>
       </Card>
 
-      <RequestsSidebar
-        request={selectedRequest}
-        className="order-first xl:order-none col-span-1"
-        onApproval={handleRequestReaction}
-        onRejection={handleRequestReaction}
-      />
+      {selectedRequest ? (
+        <RequestSummary
+          request={selectedRequest}
+          className="order-first xl:order-none col-span-1"
+          onApproval={handleRequestReaction}
+          onRejection={handleRequestReaction}
+        />
+      ) : (
+        <SidebarPlaceholder
+          mainTitle="User request title"
+          contentTitle="Request details"
+          contentDetail="Click any row to show details here"
+          className="order-first xl:order-none col-span-1"
+        />
+      )}
     </main>
   );
 }
