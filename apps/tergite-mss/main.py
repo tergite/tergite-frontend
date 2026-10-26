@@ -40,14 +40,12 @@
 # nuitka-project: --include-data-dir={MAIN_DIRECTORY}/ui=ui
 
 import argparse
+import multiprocessing
+import sys
 from pathlib import Path
 
 import uvicorn
-from alembic import command
-from alembic.config import Config
-from pymongo import MongoClient
 
-import migrations.mongodb
 import settings
 from api import app
 from api.database import get_database_url
@@ -85,15 +83,33 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.command in ("start", "migrate"):
+    if args.command == "start":
+        _migrate_in_child()
+    elif args.command == "migrate":
         _migrate()
     if args.command in ("start", "serve"):
         port = args.port or settings.CONFIG.general.mss_port
         _serve(args.host, port, args.forwarded_allow_ips, args.reload)
 
 
+def _migrate_in_child() -> None:
+    """Migrates in a process of its own, so the server never holds Alembic and SQLAlchemy"""
+    process = multiprocessing.Process(target=_migrate, name="migrate")
+    process.start()
+    process.join()
+    if process.exitcode != 0:
+        sys.exit(f"mss: migrating failed with exit code {process.exitcode}")
+
+
 def _migrate() -> None:
     """Brings the configured database to the latest schemas"""
+    # here, as importing them costs the server some 20 MiB
+    from alembic import command
+    from alembic.config import Config
+    from pymongo import MongoClient
+
+    import migrations.mongodb
+
     database_url = get_database_url(settings.CONFIG.database)
     if database_url.startswith("mongodb"):
         with MongoClient(database_url) as client:
