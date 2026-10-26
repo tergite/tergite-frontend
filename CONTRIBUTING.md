@@ -100,7 +100,7 @@ cd tergite-frontend
 - Create the conda environment, and install MSS's dependencies
 
 ```shell
-conda create -n mss python=3.12
+conda create -n mss python=3.13
 conda activate mss
 pip install ."[dev]"
 ```

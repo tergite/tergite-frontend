@@ -97,6 +97,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Changed
 
+- MSS needs Python 3.13 or later, and its deb and macOS installer are built with 3.13: built by Nuitka on 3.12, it
+  failed about half of many concurrent requests, as CPython 3.12 refuses the compiled functions anyio sorts exception groups with.
 - Moved the `api.rest` package into `api`, so the ASGI app is `api:app`.
 - `start_mss.sh` runs `main.py start`, after decrypting a SOPS config, instead of migrating and starting uvicorn
   itself, and no longer installs sops or yq; `main.py` serves on the config's `general.mss_port` by default.

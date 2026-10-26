@@ -29,7 +29,7 @@ maintainers = [
 version = "2026.06.0"
 description = "the public API for the WACQT quantum computer."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 keywords = ["quantum", "qiskit", "quantify"]
 license = {file = "LICENSE.txt"}
 classifiers = [

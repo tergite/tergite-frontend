@@ -93,14 +93,14 @@ LOKI_LOGGER_ID=<some-id>
 ## Development
 
 - Ensure you have [conda](https://docs.anaconda.com/free/miniconda/index.html) installed, or
-  Python 3.12 or later, [Nodejs +20.12](https://nodejs.org/) for the dashboard, and a
+  Python 3.13 or later, [Nodejs +20.12](https://nodejs.org/) for the dashboard, and a
   [tergite backend](https://github.com/tergite/tergite-backend) running.
 - Clone the repo, create the conda environment and install the dependencies
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
 cd tergite-frontend
-conda create -n mss -y python=3.12
+conda create -n mss -y python=3.13
 conda activate mss
 pip install -e .
 ```

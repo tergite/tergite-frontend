@@ -19,7 +19,7 @@ serves at `/ui`, and the two are released together under one version and one cha
 
 | Part | Path | Stack | Role |
 | --- | --- | --- | --- |
-| **MSS** (Main Service Server) | `.` | Python 3.12+, FastAPI, MongoDB or PostgreSQL, Redis | The public REST API. Owns all persistence, authn/authz, and all traffic to the quantum backends (BCC instances). |
+| **MSS** (Main Service Server) | `.` | Python 3.13+, FastAPI, MongoDB or PostgreSQL, Redis | The public REST API. Owns all persistence, authn/authz, and all traffic to the quantum backends (BCC instances). |
 | **Dashboard** | `ui/` | Node 20, Vite, React 18, TypeScript, Tailwind + shadcn/ui | The browser client for MSS. No backend of its own — a static bundle MSS serves at `/ui`. |
 
 Everything the dashboard shows comes from MSS, which knows the dashboard only as the files
@@ -540,8 +540,8 @@ Both GitHub Actions ([.github/workflows](.github/workflows)) and GitLab CI
 ([.gitlab-ci.yml](.gitlab-ci.yml)) are maintained; GitLab is the source of truth (GitHub is
 a mirror — see §14).
 
-- `mss-ci.yml` / `test mss` — `black --check .`, `pyflakes`, then `pytest` on Python 3.12 and
-  3.13 against `mongo` and `redis` services, on any change outside `ui/`.
+- `mss-ci.yml` / `test mss` — `black --check .`, `pyflakes`, then `pytest` on Python 3.13,
+  the oldest MSS supports, against `mongo` and `redis` services, on any change outside `ui/`.
 - `dashboard-ci.yml` / `lint dashboard`, `test dashboard` — eslint and `npm run check:api`,
   vitest, on changes to `ui/` and `dev/openapi/openapi.json`.
 - `frontend-ci.yml` / `e2e` — `dev/e2e_native_test.sh`, after installing MongoDB, Redis, SQLite

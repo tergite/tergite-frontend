@@ -17,7 +17,7 @@ on:
 env:
   # the Python the binary is built and tested with; uv would otherwise take the newest it can
   # download, whose wheels may not exist yet
-  UV_PYTHON: "3.14"
+  UV_PYTHON: "3.13"
 
 jobs:
   version:
