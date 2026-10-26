@@ -17,6 +17,8 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
   build, built and attached to the GitHub release of each tag; the deb asks where the database and Redis are and provisions them.
 - Added `mss start`, the default command, which runs the Alembic or MongoDB migrations and then
   serves, and `mss migrate` and `mss serve`, which do one alone, so a compiled MSS needs no Python checkout.
+- Added `--workers` to `mss start` and `mss serve`, defaulting as uvicorn does to `$WEB_CONCURRENCY` or 1. Several
+  processes, or MSS instances sharing a database, now start together and send each notice email once.
 - Added MongoDB migrations to the start script, as Alembic's for SQL: the pending ones in
   `migrations/mongodb/` apply before MSS starts, so its MongoDB user needs the
   `bypassDocumentValidation` privilege, e.g. the `dbAdmin` role. Each has mongosh scripts too.

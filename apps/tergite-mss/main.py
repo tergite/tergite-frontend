@@ -81,6 +81,12 @@ def main() -> None:
         action="store_true",
         help="Enable reload (not recommended for production binaries).",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        help="Number of worker processes; default: $WEB_CONCURRENCY, or 1. "
+        "Not valid with --reload.",
+    )
     args = parser.parse_args()
 
     if args.command == "start":
@@ -89,7 +95,7 @@ def main() -> None:
         _migrate()
     if args.command in ("start", "serve"):
         port = args.port or settings.CONFIG.general.mss_port
-        _serve(args.host, port, args.forwarded_allow_ips, args.reload)
+        _serve(args.host, port, args.forwarded_allow_ips, args.reload, args.workers)
 
 
 def _migrate_in_child() -> None:
@@ -121,14 +127,20 @@ def _migrate() -> None:
         command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
 
 
-def _serve(host: str, port: int, forwarded_allow_ips: str | None, reload: bool) -> None:
-    # by import string, as uvicorn reloads only so
+def _serve(
+    host: str,
+    port: int,
+    forwarded_allow_ips: str | None,
+    reload: bool,
+    workers: int | None,
+) -> None:
+    # by import string, as uvicorn reloads and runs workers only so
     uvicorn.run(
         "api:app",
         host=host,
         reload=reload,
         port=port,
-        workers=1,
+        workers=workers,
         proxy_headers=True,
         forwarded_allow_ips=forwarded_allow_ips,
     )

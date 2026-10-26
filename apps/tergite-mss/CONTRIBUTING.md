@@ -150,7 +150,7 @@ cp mss-config.example.toml mss-config.toml
 # create the mss private key
 openssl genpkey -algorithm RSA -out private-mss-key.pem -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc
 # migrate the database, MongoDB or SQL, and run the app, with any of `--port`, `--host`,
-# `--forwarded-allow-ips` and `--reload`; `main.dist/mss migrate` or `main.dist/mss serve` does one alone
+# `--forwarded-allow-ips`, `--workers` and `--reload`; `main.dist/mss migrate` or `main.dist/mss serve` does one alone
 MSS_CONFIG_FILE="$PWD/mss-config.toml" PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" main.dist/mss start --port 8002
 ```
 
