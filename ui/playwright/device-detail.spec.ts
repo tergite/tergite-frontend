@@ -492,7 +492,6 @@ users.slice(0, 2).forEach((user) => {
               await expect(
                 page.locator(eventElemSelector, { hasText: oldTimeRangeStr }),
               ).toHaveCount(0);
-              await newEvent.scrollIntoViewIfNeeded();
               await expect(newEvent).toBeVisible();
             });
 
@@ -573,7 +572,6 @@ users.slice(0, 2).forEach((user) => {
               await expect(
                 page.locator(eventElemSelector, { hasText: oldTimeRangeStr }),
               ).toHaveCount(0);
-              await newEvent.scrollIntoViewIfNeeded();
               await expect(newEvent).toBeVisible();
             });
 
@@ -640,7 +638,6 @@ users.slice(0, 2).forEach((user) => {
                 page.locator(`.fc-timegrid-slot-lane[data-time="${testISOTimeStr}"]`).first(),
                 page.locator(`.fc-timegrid-col[data-date="${testISODateStr}"]`).first(),
               );
-              await oldEvent.scrollIntoViewIfNeeded();
               await expect(oldEvent).toBeVisible();
               await expect(newEvent).toHaveCount(0);
             });
