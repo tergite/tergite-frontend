@@ -12,9 +12,10 @@ import {
   rejectMyRequest,
 } from "@/lib/api/requests";
 import { cn } from "@/lib/utils";
-import { getUserRequestDetails, getUserRequestTitle } from "@/lib/user-requests";
+import { getUserRequestTitle } from "@/lib/user-requests";
+import { RequestDetails } from "@/components/ui/request-details";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AnyValue, type UserRequest } from "types";
+import { type UserRequest } from "types";
 import { Separator } from "@/components/ui/separator";
 import { ProgressStatus } from "@/components/ui/progress-status";
 import { DateTime } from "luxon";
@@ -76,18 +77,7 @@ function RequestSummary({
         </div>
       </CardHeader>
       <CardContent className="p-6 text-sm">
-        <div data-cy-request-body className="grid gap-3">
-          <div className="font-semibold">Request</div>
-          <ul className="grid gap-3">
-            {Object.entries(getUserRequestDetails(request)).map(
-              ([key, value]) => (
-                <DetailItem label={toUserFriendlyProp(key)}>
-                  {toString(value)}
-                </DetailItem>
-              )
-            )}
-          </ul>
-        </div>
+        <RequestDetails request={request} />
         <Separator className="my-4" />
         <div data-cy-additional-information className="grid gap-3">
           <div className="font-semibold">Additional information</div>
@@ -161,28 +151,4 @@ interface SidebarProps {
 
 interface RequestSummaryProps extends SidebarProps {
   request: UserRequest;
-}
-
-/**
- * Converts a property name into something that is more user friendly
- *
- * @param propName - the property name
- * @returns the user friendly version of the property name
- */
-function toUserFriendlyProp(propName: string): string {
-  const result = propName.replace(/_|-/g, " ");
-  return result.charAt(0).toUpperCase().concat(result.slice(1));
-}
-
-/**
- * Converts a property value into something that is more user friendly
- *
- * @param value - the property value
- * @returns the user friendly version of the property value
- */
-function toString(value: AnyValue): string {
-  if (Array.isArray(value)) {
-    return value.join(", ");
-  }
-  return `${value}`;
 }

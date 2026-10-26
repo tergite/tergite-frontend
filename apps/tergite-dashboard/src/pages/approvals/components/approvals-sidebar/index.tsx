@@ -16,13 +16,13 @@ import {
   rejectMyRequest,
 } from "@/lib/api/requests";
 import { cn } from "@/lib/utils";
-import { getUserRequestDetails, getUserRequestTitle } from "@/lib/user-requests";
+import { getUserRequestTitle } from "@/lib/user-requests";
+import { RequestDetails } from "@/components/ui/request-details";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import {
-  AnyValue,
   UserRequestStatus,
   type UserRequest,
 } from "../../../../../types";
@@ -73,18 +73,7 @@ function RequestSummary({
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-6 text-sm">
-        <div data-cy-request-body className="grid gap-3">
-          <div className="font-semibold">Request</div>
-          <ul className="grid gap-3">
-            {Object.entries(getUserRequestDetails(request)).map(
-              ([key, value]) => (
-                <DetailItem key={key} label={toUserFriendlyProp(key)}>
-                  {toString(value)}
-                </DetailItem>
-              ),
-            )}
-          </ul>
-        </div>
+        <RequestDetails request={request} />
         <Separator className="my-4" />
         <ul className="grid gap-3">
           <DetailItem label="From">{request.requester_name}</DetailItem>
@@ -146,26 +135,4 @@ interface SidebarProps {
 
 interface RequestSummaryProps extends SidebarProps {
   request: UserRequest;
-}
-
-/**
- * Converts a property name into something more user friendly
- *
- * @param propName - the property name
- */
-function toUserFriendlyProp(propName: string): string {
-  const result = propName.replace(/_|-/g, " ");
-  return result.charAt(0).toUpperCase().concat(result.slice(1));
-}
-
-/**
- * Converts a property value into something more user friendly
- *
- * @param value - the property value
- */
-function toString(value: AnyValue): string {
-  if (Array.isArray(value)) {
-    return value.join(", ");
-  }
-  return `${value}`;
 }

@@ -77,11 +77,7 @@ verb: src/pages/admin-control/components/notices-card/banner.tsx::mutationFn
 verb: src/pages/admin-control/components/notices-card/form.tsx::mutationFn
 verb: src/pages/admin-control/index.tsx::loader
 verb: src/pages/admin-projects/index.tsx::loader
-verb: src/pages/admin-requests/components/requests-sidebar.tsx::toString
-verb: src/pages/admin-requests/components/requests-sidebar.tsx::toUserFriendlyProp
 verb: src/pages/admin-requests/index.tsx::loader
-verb: src/pages/approvals/components/approvals-sidebar/index.tsx::toString
-verb: src/pages/approvals/components/approvals-sidebar/index.tsx::toUserFriendlyProp
 verb: src/pages/approvals/index.tsx::loader
 verb: src/pages/device-detail/index.tsx::loader
 verb: src/pages/devices.tsx::loader
@@ -89,8 +85,6 @@ verb: src/pages/home/components/devices-table/index.tsx::goToDevice
 verb: src/pages/home/index.tsx::combineMyBookingsQueries
 verb: src/pages/home/index.tsx::loader
 verb: src/pages/projects/index.tsx::loader
-verb: src/pages/requests/components/request-sidebar/index.tsx::toString
-verb: src/pages/requests/components/request-sidebar/index.tsx::toUserFriendlyProp
 verb: src/pages/requests/index.tsx::loader
 verb: src/pages/settings/index.tsx::loader
 verb: src/pages/tokens/index.tsx::loader
