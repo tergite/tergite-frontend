@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 
 from utils.config import AppConfig
+from utils.logging import get_log_level
 
 _ROOT = Path(__file__).parent
 
@@ -37,13 +38,4 @@ elif _MSS_CONFIG_FILE.exists():
 else:
     raise ValueError("MSS config is empty")
 
-_is_production = CONFIG.environment == "production"
-
-if _is_production:
-    _logger_level = logging.INFO
-elif CONFIG.environment == "test":
-    _logger_level = logging.WARNING
-else:
-    _logger_level = logging.DEBUG
-
-logging.getLogger().setLevel(_logger_level)
+logging.getLogger().setLevel(get_log_level(CONFIG.environment))

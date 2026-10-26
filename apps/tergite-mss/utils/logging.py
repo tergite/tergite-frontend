@@ -17,9 +17,6 @@ import traceback
 
 from loguru import logger
 
-# error logger wrapper to preserve backward compatibility
-
-
 UNLOGGED_PATHS = frozenset({"/health"})
 """Paths polled by machines rather than requested by people.
 
@@ -102,50 +99,47 @@ def patch_record(record):
         record["extra"]["request_id_display"] = ""
 
 
-def setup_logging(environment: str):
+def setup_logging(environment: str) -> None:
     """Configure Loguru to handle all logging in the application."""
-    # Remove default Loguru handlers
+    log_level = get_log_level(environment)
     logger.remove()
+    _add_sink(environment, log_level=log_level)
+    _route_std_logging(log_level)
 
-    # Determine log level
-    log_level = "DEBUG"
+
+def get_log_level(environment: str) -> str:
+    """Gets the name of the lowest level the environment logs"""
     if environment == "production":
-        log_level = "INFO"
-    elif environment == "test":
-        log_level = "WARNING"
+        return "INFO"
+    if environment == "test":
+        return "WARNING"
+    return "DEBUG"
 
-    # Configure Loguru based on environment
+
+def _add_sink(environment: str, log_level: str) -> None:
+    """Logs single-line JSON to stdout in production, coloured text to stderr elsewhere"""
     if environment == "production":
-        # Production: structured JSON logging (single line per record)
-        logger.add(
-            sys.stdout,
-            level=log_level,
-            format=json_formatter,
-        )
-    else:
-        # Development / Test: colored, human-readable logging
-        log_format = (
-            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-            "<level>{level: <8}</level> | "
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
-            "{extra[request_id_display]}"
-            "<level>{message}</level>"
-        )
-        logger.configure(patcher=patch_record)
-        logger.add(sys.stderr, level=log_level, format=log_format)
+        logger.add(sys.stdout, level=log_level, format=json_formatter)
+        return
 
-    # Intercept standard library logging records
-    std_level = logging.getLevelName(log_level)
-    logging.basicConfig(handlers=[InterceptHandler()], level=std_level, force=True)
+    log_format = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+        "{extra[request_id_display]}"
+        "<level>{message}</level>"
+    )
+    logger.configure(patcher=patch_record)
+    logger.add(sys.stderr, level=log_level, format=log_format)
 
-    # Attach InterceptHandler to key loggers and disable their custom handlers to avoid duplicates
-    intercept_loggers = [
-        "uvicorn",
-        "uvicorn.error",
-        "uvicorn.access",
-        "fastapi",
-    ]
-    for logger_name in intercept_loggers:
+
+def _route_std_logging(log_level: str) -> None:
+    """Sends the standard library's records, uvicorn's and fastapi's among them, to Loguru"""
+    logging.basicConfig(
+        handlers=[InterceptHandler()], level=logging.getLevelName(log_level), force=True
+    )
+    # their own handlers would log each record a second time
+    for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
         std_logger = logging.getLogger(logger_name)
         std_logger.handlers = []
         std_logger.propagate = True

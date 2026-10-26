@@ -119,5 +119,4 @@ type-hints: utils/exc.py::BaseMssException.__repr__
 type-hints: utils/exc.py::BaseMssException.__str__
 type-hints: utils/logging.py::json_formatter
 type-hints: utils/logging.py::patch_record
-type-hints: utils/logging.py::setup_logging
 type-hints: utils/models.py::_as_optional
