@@ -36,7 +36,7 @@ A preview of the the dashboard
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
-cd apps/tergite-dashboard
+cd apps/tergite-mss/ui
 ```
 
 - Install the dependencies

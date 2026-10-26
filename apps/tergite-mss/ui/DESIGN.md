@@ -4,7 +4,7 @@ The web client of the Tergite stack: a React single-page app that shows the stat
 quantum computers and lets users manage projects, API tokens, bookings and (for admins)
 backends, QPU-time requests and notices.
 
-Read [../../DESIGN.md](../../DESIGN.md) first for the monorepo context, deployment and the
+Read [../../../DESIGN.md](../../../DESIGN.md) first for the monorepo context, deployment and the
 cross-app conventions.
 
 The dashboard has **no backend of its own**. In production it is a static bundle MSS serves
@@ -333,7 +333,7 @@ npm run visual-e2e   # same, in playwright's UI mode
 Each Playwright worker starts its own mock API on `PW_API_PORT_BASE` (8100) plus its index, and
 `playwright/fixtures.ts` redirects the page's requests for the build's API address to it, so
 workers never share data. Runs at the same time need different `PW_API_PORT_BASE`s. With
-`DASHBOARD_URL` set, as [dev/e2e_native_test.sh](../../dev/e2e_native_test.sh) sets it, the same specs test
+`DASHBOARD_URL` set, as [dev/e2e_native_test.sh](../../../dev/e2e_native_test.sh) sets it, the same specs test
 that dashboard on one worker against its stack's API instead.
 
 Each feature's happy path, and the spec that walks it:

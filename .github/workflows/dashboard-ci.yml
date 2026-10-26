@@ -7,11 +7,11 @@ on:
     tags:
       - "v*"
     paths:
-      - "apps/tergite-dashboard/**"
+      - "apps/tergite-mss/ui/**"
       - "apps/tergite-mss/dev/openapi/openapi.json"
   pull_request:
     paths:
-      - "apps/tergite-dashboard/**"
+      - "apps/tergite-mss/ui/**"
       - "apps/tergite-mss/dev/openapi/openapi.json"
 concurrency:
   # cancel any previous run on this branch or tag that is still in progress
@@ -32,16 +32,16 @@ jobs:
           node-version: 20
       - name: Lint
         run: |
-          cd apps/tergite-dashboard
+          cd apps/tergite-mss/ui
           npm ci
           npm run lint
           npm run check:api
       - name: Component tests
         run: |
-          cd apps/tergite-dashboard
+          cd apps/tergite-mss/ui
           npm run test
       - name: End-to-end tests
         run: |
-          cd apps/tergite-dashboard
+          cd apps/tergite-mss/ui
           npx playwright install --with-deps chromium
           npm run e2e

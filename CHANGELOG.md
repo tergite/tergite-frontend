@@ -9,7 +9,7 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 Please refer to the `CHANGELOG.md` file of the app in question.
 
-- [./apps/tergite-dashboard/CHANGELOG.md](./apps/tergite-dashboard/CHANGELOG.md)
+- [./apps/tergite-mss/ui/CHANGELOG.md](./apps/tergite-mss/ui/CHANGELOG.md)
 - [./apps/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md)
 
 ## [unreleased]
@@ -18,6 +18,10 @@ Please refer to the `CHANGELOG.md` file of the app in question.
 
 - `dev/e2e_native_test.sh` runs the full-stack e2e, with MongoDB, Redis, MSS and the backends
   running natively, in about 6 minutes; it needs mongod, mongosh, redis-server, sqlite3 and uv.
+
+### Changed
+
+- The dashboard moved from `apps/tergite-dashboard` to MSS's `apps/tergite-mss/ui`, and builds into its `dist`, which MSS serves.
 
 ### Removed
 
@@ -123,7 +127,7 @@ More changes in [apss/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md#
 
 - BREAKING: Removed v2 from MSS URL in env and docker configs
 
-More changes in [apss/tergite-dashboard/CHANGELOG.md](./apps/tergite-dashboard/CHANGELOG.md#2025060---2025-06-16)
+More changes in [apss/tergite-dashboard/CHANGELOG.md](./apps/tergite-mss/ui/CHANGELOG.md#2025060---2025-06-16)
 More changes in [apss/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md#2025060---2025-06-16)
 
 ## [2025.03.1] - 2025-03-18
@@ -132,12 +136,12 @@ More changes in [apss/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md#
 
 - Changed the backend configurations for the full e2e to run with the new backend configuration files
 
-More changes in [apss/tergite-dashboard/CHANGELOG.md](./apps/tergite-dashboard/CHANGELOG.md#2025031---2025-03-18)
+More changes in [apss/tergite-dashboard/CHANGELOG.md](./apps/tergite-mss/ui/CHANGELOG.md#2025031---2025-03-18)
 More changes in [apss/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md#2025031---2025-03-18)
 
 ## [2025.03.0] - 2025-03-14
 
-More changes in [apss/tergite-dashboard/CHANGELOG.md](./apps/tergite-dashboard/CHANGELOG.md#2025030---2025-03-14)
+More changes in [apss/tergite-dashboard/CHANGELOG.md](./apps/tergite-mss/ui/CHANGELOG.md#2025030---2025-03-14)
 More changes in [apss/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md#2025030---2025-03-14)
 
 ### Added
@@ -164,7 +168,7 @@ See [apss/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md#2024122---20
 
 ### Added
 
-- Added the admin pages for managing user access in the tergite-dashboard app. See more in [./apps/tergite-dashboard/CHANGELOG.md](./apps/tergite-dashboard/CHANGELOG.md#2024120---2024-12-11)
+- Added the admin pages for managing user access in the tergite-dashboard app. See more in [./apps/tergite-mss/ui/CHANGELOG.md](./apps/tergite-mss/ui/CHANGELOG.md#2024120---2024-12-11)
 - Added user access endpoints to the v2 API version of the tergite-mss app. See more in [./apps/tergite-mss/CHANGELOG.md](./apps/tergite-mss/CHANGELOG.md#2024120---2024-12-11)
 - Added the `MSS_PORT` environment variable to the `.env.example` to configure the port on which tergite-mss runs on in docker compose.
 - Added the `NETWORK_MODE` environment variable to the `.env.example` to configure the `network_mode` to use in docker compose file

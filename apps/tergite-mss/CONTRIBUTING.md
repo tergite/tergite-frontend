@@ -130,11 +130,10 @@ conda activate mss
 pip install ."[dev]"
 ```
 
-- Build the dashboard into `ui/`, which the build includes for MSS to serve at `/ui`
+- Build the dashboard in `ui/` into `ui/dist`, which the build includes for MSS to serve at `/ui`
 
 ```shell
-(cd ../tergite-dashboard && npm ci && npm run build)
-rm -rf ui && cp -R ../tergite-dashboard/dist ui
+(cd ui && npm ci && npm run build)
 ```
 
 - Build the main.py file

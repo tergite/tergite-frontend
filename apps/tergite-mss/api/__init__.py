@@ -53,8 +53,8 @@ from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
 
-# where the dashboard's build is copied before MSS is compiled; a checkout may lack it
-DASHBOARD_DIR = Path(__file__).parents[1] / "ui"
+# the dashboard's build, which a checkout lacks until `npm run build` in ui/
+DASHBOARD_DIR = Path(__file__).parents[1] / "ui" / "dist"
 
 setup_logging(settings.CONFIG.environment)
 

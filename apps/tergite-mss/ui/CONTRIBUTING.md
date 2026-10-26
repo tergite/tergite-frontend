@@ -85,7 +85,7 @@ All signed CLAs are emails to us at <contact.quantum@chalmersnextlabs.se>.
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
-cd tergite-frontend/apps/tergite-dashboard
+cd tergite-frontend/apps/tergite-mss/ui
 ```
 
 - Install the dependencies
@@ -130,7 +130,7 @@ BACKEND_PATH="../tergite-backend" \
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
-cd tergite-frontend/apps/tergite-dashboard
+cd tergite-frontend/apps/tergite-mss/ui
 ```
 
 - Install the dependencies
@@ -159,7 +159,7 @@ them in Playwright's own linux image, which has the browsers:
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
-cd apps/tergite-dashboard
+cd apps/tergite-mss/ui
 ```
 
 - Generate the image `tergite-dashboard-playwright`

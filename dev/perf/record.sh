@@ -38,7 +38,7 @@ SAMPLE_INTERVAL_SECONDS=2
 LIGHTHOUSE_USER_ID="4939a0b9a7742e2cc52289e0"
 OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration"
 ROOT_PATH="$(cd "$(dirname "$0")/../.." && pwd)"
-FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/fixtures"
+FIXTURES_PATH="$ROOT_PATH/apps/tergite-mss/ui/fixtures"
 MSS_PATH="$ROOT_PATH/apps/tergite-mss"
 MSS_PORT=8002
 MONGO_PORT=27019
@@ -57,7 +57,7 @@ main() {
 }
 
 record_dashboard() {
-  cd "$ROOT_PATH/apps/tergite-dashboard"
+  cd "$ROOT_PATH/apps/tergite-mss/ui"
   local cookie
   cookie="$(sign_mock_session)"
   rm -rf "$OUT_PATH/lighthouse"

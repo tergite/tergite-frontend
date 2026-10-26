@@ -36,8 +36,8 @@
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/env.py=migrations/env.py
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/versions/*.py=migrations/versions/
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/mongodb/*.json=migrations/mongodb/
-# the dashboard's build, copied to ui/ before the build, which MSS serves at /ui
-# nuitka-project: --include-data-dir={MAIN_DIRECTORY}/ui=ui
+# the dashboard's build, made in ui/ before this one, which MSS serves at /ui
+# nuitka-project: --include-data-dir={MAIN_DIRECTORY}/ui/dist=ui/dist
 
 import argparse
 import multiprocessing

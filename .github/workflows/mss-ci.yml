@@ -8,9 +8,11 @@ on:
       - "v*"
     paths:
       - "apps/tergite-mss/**"
+      - "!apps/tergite-mss/ui/**"
   pull_request:
     paths:
       - "apps/tergite-mss/**"
+      - "!apps/tergite-mss/ui/**"
 
 jobs:
   tests:

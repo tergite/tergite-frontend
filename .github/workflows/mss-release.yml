@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: apps/tergite-dashboard
+        working-directory: apps/tergite-mss/ui
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: dashboard
-          path: apps/tergite-dashboard/dist
+          path: apps/tergite-mss/ui/dist
 
   linux:
     needs: [version, dashboard]
@@ -67,7 +67,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: dashboard
-          path: apps/tergite-mss/ui
+          path: apps/tergite-mss/ui/dist
       - run: sudo apt-get install -y -qq ccache patchelf
       - uses: actions/cache/restore@v4
         with:
@@ -111,7 +111,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: dashboard
-          path: apps/tergite-mss/ui
+          path: apps/tergite-mss/ui/dist
       # Nuitka's own download of ccache is Intel-only, and its clang then fails under Rosetta
       - run: brew install ccache
       - uses: actions/cache/restore@v4

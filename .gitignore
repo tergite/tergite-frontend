@@ -8,7 +8,7 @@ bcc_certs/
 # e2e
 temp/
 temp-native/
-!apps/tergite-dashboard/fixtures/mss-config.toml
+!apps/tergite-mss/ui/fixtures/mss-config.toml
 
 .vscode/
 

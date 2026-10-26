@@ -7,13 +7,13 @@ The Frontend in the [Tergite software stack](https://tergite.github.io/) of the 
 **This project is developed by a core group of collaborators.**
 **Chalmers Next Labs AB (CNL) takes on the role of managing and maintaining this project.**
 
-![Login screen](./apps/tergite-dashboard/docs/assets/login-screen.png)
+![Login screen](./apps/tergite-mss/ui/docs/assets/login-screen.png)
 The login screen
 
-![Home screen](./apps/tergite-dashboard/docs/assets/home-screen.png)
+![Home screen](./apps/tergite-mss/ui/docs/assets/home-screen.png)
 The home screen
 
-![Tergite dashboard showcase](./apps/tergite-dashboard/docs/assets/dashboard-showcase.gif)
+![Tergite dashboard showcase](./apps/tergite-mss/ui/docs/assets/dashboard-showcase.gif)
 A preview of the the dashboard
 
 ## Version Control
@@ -23,7 +23,7 @@ If you are reading this on GitHub, then you are looking at a mirror.
 
 ## Services
 
-- [Tergite Dashboard](./apps/tergite-dashboard/) [![Dashboard CI](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml)  
+- [Tergite Dashboard](./apps/tergite-mss/ui/) [![Dashboard CI](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml)  
   The website that shows the state of the quantum computer
 - [Tergite Main Service Server or MSS](./apps/tergite-mss/) [![MSS CI](https://github.com/tergite/tergite-frontend/actions/workflows/mss-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/mss-ci.yml)  
   The server that controls all services on this frontend.  

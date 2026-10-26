@@ -85,13 +85,19 @@ Issues = "https://github.com/tergite/tergite-frontend/issues"
 Changelog = "https://github.com/tergite/tergite-frontend/blob/main/apps/tergite-mss/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-exclude = ["docs*", "tests*"]
+exclude = ["docs*", "tests*", "ui*"]
+
+[tool.black]
+# the dashboard
+extend-exclude = "^/ui/"
 
 [tool.isort]
 skip_gitignore = true
+extend_skip = ["ui"]
 # keeps isort from fighting the pinned black, which reformats its default style
 profile = "black"
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"

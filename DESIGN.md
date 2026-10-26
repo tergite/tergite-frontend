@@ -8,21 +8,21 @@ to follow.
 Per-app design documents:
 
 - [apps/tergite-mss/DESIGN.md](./apps/tergite-mss/DESIGN.md) — the REST API server (service-oriented layout)
-- [apps/tergite-dashboard/DESIGN.md](./apps/tergite-dashboard/DESIGN.md) — the web UI (co-located page hierarchy)
+- [apps/tergite-mss/ui/DESIGN.md](./apps/tergite-mss/ui/DESIGN.md) — the web UI (co-located page hierarchy)
 
 ## 1. What this repo is
 
 `tergite-frontend` is the user-facing half of the [Tergite stack](https://tergite.github.io/)
 for the WACQT quantum computers. It is a monorepo of two applications that were originally
-developed as separate repositories and later merged under `apps/`. They are still built and
-tested independently in CI, and released together: MSS's deb and macOS installer carry the
+developed as separate repositories and later merged under `apps/`; the dashboard now lives in
+MSS's `ui/` folder. They are still built and tested independently in CI, and released together: MSS's deb and macOS installer carry the
 dashboard's build, which MSS serves at `/ui`. They share this repo, the `mss-config.toml`
 configuration file, the end-to-end test harness, and the release tag.
 
 | App | Path | Stack | Role |
 | --- | --- | --- | --- |
 | **MSS** (Main Service Server) | `apps/tergite-mss` | Python 3.12+, FastAPI, MongoDB, Redis | The public REST API. Owns all persistence, authn/authz, and all traffic to the quantum backends. |
-| **Dashboard** | `apps/tergite-dashboard` | Node 20, Vite, React 18, TypeScript, Tailwind + shadcn/ui | The browser client for MSS. No backend of its own — it is a static bundle MSS serves at `/ui`. |
+| **Dashboard** | `apps/tergite-mss/ui` | Node 20, Vite, React 18, TypeScript, Tailwind + shadcn/ui | The browser client for MSS. No backend of its own — it is a static bundle MSS serves at `/ui`. |
 
 Everything the dashboard shows comes from MSS, which knows the dashboard only as the files
 it serves at `/ui`.
@@ -72,7 +72,7 @@ MongoDB, or PostgreSQL, and Redis are reached via `database.url` and `database.r
 The dashboard depends on MSS only through:
 
 1. **HTTP JSON endpoints** — every call goes through the openapi-fetch client in
-   [src/lib/api/client.ts](apps/tergite-dashboard/src/lib/api/client.ts), which always sends
+   [src/lib/api/client.ts](apps/tergite-mss/ui/src/lib/api/client.ts), which always sends
    `credentials: "include"`. The base URL is the build-time `VITE_API_BASE_URL`, empty in the
    production build, which calls MSS on the origin that served it.
 2. **The auth cookie** — MSS sets a JWT cookie whose name and domain come from
@@ -154,7 +154,7 @@ installer, Nuitka's standalone build running as the `tergite-mss` systemd servic
 to `/usr/local/etc/tergite-mss/`. See the [README](README.md#deployment).
 
 The dashboard ships inside MSS's packages: the release builds it with the base `/ui/`, Nuitka
-includes it from `apps/tergite-mss/ui/`, and MSS serves it at `/ui`
+includes it from `apps/tergite-mss/ui/dist`, and MSS serves it at `/ui`
 ([api/dashboard.py](apps/tergite-mss/api/dashboard.py)), sending the paths no file
 has to `index.html` and redirecting `/` to `/ui/`.
 
@@ -169,13 +169,13 @@ reads `tergite-mss.service`'s journal and pushes it with `GRAFANA_LOKI_URL` and 
 | Level | Where | Command |
 | --- | --- | --- |
 | MSS unit/integration | `apps/tergite-mss/tests` — pytest against real MongoDB + Redis | `pytest` |
-| Dashboard component | `apps/tergite-dashboard/src/**/__tests__` — vitest + happy-dom | `npm run test` |
-| Dashboard e2e | `apps/tergite-dashboard/playwright` — Playwright against the **mock** API, a mock API per worker | `npm run e2e` |
+| Dashboard component | `apps/tergite-mss/ui/src/**/__tests__` — vitest + happy-dom | `npm run test` |
+| Dashboard e2e | `apps/tergite-mss/ui/playwright` — Playwright against the **mock** API, a mock API per worker | `npm run e2e` |
 | Full-stack e2e | [dev/e2e_native_test.sh](dev/e2e_native_test.sh) — the same Playwright specs against real MSS + real backends, with MongoDB and Redis, all running natively | `BACKEND_PATH=../tergite-backend ./dev/e2e_native_test.sh` |
 
 The dashboard's own e2e suite does not run MSS. It runs an Express mock API
-(`apps/tergite-dashboard/dev/mock-api/`) that serves the same JSON shapes from
-`apps/tergite-dashboard/fixtures/*.json`, plus a
+(`apps/tergite-mss/ui/dev/mock-api/`) that serves the same JSON shapes from
+`apps/tergite-mss/ui/fixtures/*.json`, plus a
 `GET /refreshed-db` endpoint tests hit to reset state.
 This keeps the UI suite fast and deterministic, at the cost of a second place to update
 when an MSS response changes.
@@ -202,7 +202,7 @@ a mirror — see §8).
   3.13 against `mongo` and `redis` services. Path-filtered to `apps/tergite-mss/**`.
 - `dashboard-ci.yml` / `lint dashboard`, `test dashboard`, `e2e test dashboard` —
   eslint and `npm run check:api`, vitest, Playwright. Path-filtered to
-  `apps/tergite-dashboard/**` and MSS's `dev/openapi/openapi.json`.
+  `apps/tergite-mss/ui/**` and MSS's `dev/openapi/openapi.json`.
 - `frontend-ci.yml` / `full e2e` — the cross-app `dev/e2e_native_test.sh`, after installing
   MongoDB, Redis, SQLite and uv, on `main`, on `v*` tags, or manually.
 - On a `v*` tag, `mss-release.yml` / `build dashboard`, `package mss linux`, `package mss macos`
@@ -225,8 +225,8 @@ code changes need a signed CLA. See [CONTRIBUTING.md](CONTRIBUTING.md).
 and touches **three** changelogs:
 
 - `apps/tergite-mss/pyproject.toml` and `apps/tergite-mss/api/app_kwargs.py`
-- `apps/tergite-dashboard/package.json` and `package-lock.json`
-- `CHANGELOG.md`, `apps/tergite-mss/CHANGELOG.md`, `apps/tergite-dashboard/CHANGELOG.md`
+- `apps/tergite-mss/ui/package.json` and `package-lock.json`
+- `CHANGELOG.md`, `apps/tergite-mss/CHANGELOG.md`, `apps/tergite-mss/ui/CHANGELOG.md`
 
 ### Changelog entries
 

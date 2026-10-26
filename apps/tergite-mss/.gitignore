@@ -14,8 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -140,12 +140,13 @@ start_mss.py
 # config
 mss-config.toml
 **.pem
+# the dashboard's test fixtures, which are no secrets
+!ui/fixtures/*.pem
+!ui/fixtures/mss-config.toml
+!ui/.env
 
 # sequencial tests
 .semaphore.lock
-
-# the dashboard's build, which MSS serves and Nuitka includes
-ui/
 
 # nuitka builds
 main.dist/

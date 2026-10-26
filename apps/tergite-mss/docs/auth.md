@@ -91,7 +91,7 @@ The admin must therefore find a way of keeping the `MSS_TOKEN` active.
 
 #### - How do I log in?
 
-- You need to run both [MSS](../) and the [dashboard](../../tergite-dashboard/).
+- You need to run both [MSS](../) and the [dashboard](../ui/).
 - **Make sure that your `mss-config.toml` files have all variables filled appropriately** for example, both applications should have the same `jwt_secret`.
 - The dashboard, when running will redirect you to the login page if you are not already logged in.
 - However, you can also log in without running the dashboard first. See the next FAQ.

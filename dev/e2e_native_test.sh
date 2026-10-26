@@ -34,8 +34,8 @@ set -e # exit if any step fails
 
 ROOT_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 WORK_PATH="$ROOT_PATH/temp-native"
-FIXTURES_PATH="$ROOT_PATH/apps/tergite-dashboard/fixtures"
-DASHBOARD_PATH="$ROOT_PATH/apps/tergite-dashboard"
+FIXTURES_PATH="$ROOT_PATH/apps/tergite-mss/ui/fixtures"
+DASHBOARD_PATH="$ROOT_PATH/apps/tergite-mss/ui"
 MSS_PATH="$ROOT_PATH/apps/tergite-mss"
 BACKEND_REPO="$BACKEND_REPO"
 BACKEND_BRANCH="${BACKEND_BRANCH:-main}"
