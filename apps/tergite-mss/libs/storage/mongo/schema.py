@@ -133,15 +133,27 @@ def _convert_to_mongo_json_schema(value: Any, definitions: Dict[str, Any]) -> An
     """
     if isinstance(value, list):
         return [_convert_to_mongo_json_schema(item, definitions) for item in value]
-
     if not isinstance(value, dict):
         return value
 
-    schema = dict(value)
-    ref = schema.pop("$ref", None)
-    if ref is not None:
-        schema = {**definitions[ref.split("/")[-1]], **schema}
+    schema = _resolve_ref(value, definitions)
+    schema = _translate_keywords(schema)
+    schema = _map_to_bson_type(schema)
+    return _keep_mongo_keywords(schema, definitions)
 
+
+def _resolve_ref(schema: Dict[str, Any], definitions: Dict[str, Any]) -> Dict[str, Any]:
+    """Gets the schema with the definition it refers to, if any, merged in"""
+    schema = dict(schema)
+    ref = schema.pop("$ref", None)
+    if ref is None:
+        return schema
+    return {**definitions[ref.split("/")[-1]], **schema}
+
+
+def _translate_keywords(schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Gets the schema with the keywords MongoDB lacks written as ones it has"""
+    schema = dict(schema)
     if "const" in schema:
         schema["enum"] = [schema["const"]]
 
@@ -149,19 +161,30 @@ def _convert_to_mongo_json_schema(value: Any, definitions: Dict[str, Any]) -> An
         schema["items"] = schema["prefixItems"]
         schema["additionalItems"] = False
 
+    # MongoDB takes draft 4's boolean exclusive bounds beside the bound itself
     for bound in ("exclusiveMinimum", "exclusiveMaximum"):
         if not isinstance(schema.get(bound, True), bool):
             schema[bound.replace("exclusiveM", "m")] = schema[bound]
             schema[bound] = True
+    return schema
 
+
+def _map_to_bson_type(schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Gets the schema with the BSON type of its JSON type"""
     json_type = schema.get("type")
     if json_type == "string" and schema.get("format") == "date-time":
-        schema = {"bsonType": "date"}
-    elif json_type == "string" and schema.get("pattern") == _ID_PATTERN:
-        schema = {"bsonType": "objectId"}
-    elif json_type is not None:
-        schema["bsonType"] = _JSON_TO_BSON_TYPES[json_type]
+        return {"bsonType": "date"}
+    if json_type == "string" and schema.get("pattern") == _ID_PATTERN:
+        return {"bsonType": "objectId"}
+    if json_type is not None:
+        return {**schema, "bsonType": _JSON_TO_BSON_TYPES[json_type]}
+    return schema
 
+
+def _keep_mongo_keywords(
+    schema: Dict[str, Any], definitions: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Gets the schema with only the keywords MongoDB knows, each value converted"""
     result = {}
     for key, item in schema.items():
         if key not in _MONGO_JSON_SCHEMA_KEYWORDS:
@@ -174,5 +197,4 @@ def _convert_to_mongo_json_schema(value: Any, definitions: Dict[str, Any]) -> An
             }
         else:
             result[key] = _convert_to_mongo_json_schema(item, definitions)
-
     return result

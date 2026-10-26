@@ -84,7 +84,7 @@ async def update_request(database: Database, request_id: Id, approver: User, dec
 | `jobs.update_qpu_usage` | 65 | pure `_choose_qpu_notice(before, after, threshold)`, `_notify_project` |
 | `email._send_on_repeat` | 64 | `_send_batch(smtp, batch, sender, should_ignore_errors)` |
 | `notices.find_many` | 60 | a `NoticeQuery` model shared with `count_many` and `set_read_status_many` (named as `JobQuery` is; "filter" is the Mongo dict) |
-| `storage.mongo._to_mongo_json_schema`, renamed `_convert_to_mongo_json_schema` | 57 | `_resolve_ref`, `_map_to_bson_type`, `_keep_mongo_keywords` |
+| `storage.mongo._to_mongo_json_schema`, renamed `_convert_to_mongo_json_schema` | 57 | `_resolve_ref`, `_translate_keywords` (const, prefixItems, exclusive bounds), `_map_to_bson_type`, `_keep_mongo_keywords` |
 | `api/utils.get_verified_device_name` | 56 | `_read_signed_headers`, `_check_client_ip`, pure `_check_nonce_age(timestamp, now, ttl)`, `_check_nonce_unused` |
 | `logging.setup_logging` | 56 | `get_log_level(env)` (shared with `settings.py`), `_add_sink`, `_route_std_logging` |
 | `notices/emails.process_email_batch_results` | 54 | pure `_partition_results`, `_record_attempts(ids, status)` |
