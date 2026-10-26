@@ -10,7 +10,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 import asyncio
-from typing import Dict, List, Sequence
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Sequence
 
 from loguru import logger
 
@@ -88,50 +89,19 @@ async def process_email_batch_results(
     Args:
         results: the results of an email batch dispatch
     """
-    successful_ids: List[str] = []
-    failed_ids: List[str] = []
-    retry_ids: List[str] = []
+    ids = _partition_results(results)
+    if ids.failed:
+        logger.error(f"failed to email notice ids: {ids.failed}")
 
-    for result in results:
-        if result.is_success:
-            successful_ids.append(result.ref_id)
-        elif result.can_retry:
-            retry_ids.append(result.ref_id)
-        else:
-            failed_ids.append(result.ref_id)
-
-    now = get_current_timestamp()
-    attempt_count = {"$inc": {"email_attempts": 1}}
-    success_task = database.update_many(
-        Notice,
-        filter={"id": {"$in": successful_ids}},
-        update={
-            **attempt_count,
-            "$set": {"updated_at": now, "email_status": EmailStatus.SENT},
-        },
+    outcomes = await asyncio.gather(
+        _record_attempts(database, ids.sent, status=EmailStatus.SENT),
+        _record_attempts(database, ids.failed, status=EmailStatus.FAILED),
+        _record_attempts(database, ids.retried, status=None),
+        return_exceptions=True,
     )
-    failure_task = database.update_many(
-        Notice,
-        filter={"id": {"$in": failed_ids}},
-        update={
-            **attempt_count,
-            "$set": {"updated_at": now, "email_status": EmailStatus.FAILED},
-        },
-    )
-    retry_task = database.update_many(
-        Notice,
-        filter={"id": {"$in": retry_ids}},
-        update={**attempt_count, "$set": {"updated_at": now}},
-    )
-    if failed_ids:
-        logger.error(f"failed to email notice ids: {failed_ids}")
-
-    resp = await asyncio.gather(
-        success_task, failure_task, retry_task, return_exceptions=True
-    )
-    errs = [v for v in resp if isinstance(v, Exception)]
-    if errs:
-        logger.exception(f"errors updating notices: {errs}")
+    errors = [v for v in outcomes if isinstance(v, Exception)]
+    if errors:
+        logger.exception(f"errors updating notices: {errors}")
 
 
 async def _find_notices_pending_email(database: Database, limit: int) -> List[Notice]:
@@ -229,3 +199,35 @@ See it in the dashboard: {dashboard_url}
 --
 You are receiving this because of activity on your {app_name} account.
 """
+
+
+@dataclass(frozen=True)
+class _ResultIds:
+    sent: List[str]
+    failed: List[str]
+    retried: List[str]
+
+
+def _partition_results(results: Sequence[EmailResult]) -> _ResultIds:
+    """Gets the notice ids of the emails sent, failed for good, and to be retried"""
+    return _ResultIds(
+        sent=[v.ref_id for v in results if v.is_success],
+        failed=[v.ref_id for v in results if not v.is_success and not v.can_retry],
+        retried=[v.ref_id for v in results if not v.is_success and v.can_retry],
+    )
+
+
+async def _record_attempts(
+    database: Database, ids: List[str], status: Optional[EmailStatus]
+) -> None:
+    """Counts an attempt on each notice, setting its email status unless it is None"""
+    now = get_current_timestamp()
+    if status is None:
+        changes = {"updated_at": now}
+    else:
+        changes = {"updated_at": now, "email_status": status}
+    await database.update_many(
+        Notice,
+        filter={"id": {"$in": ids}},
+        update={"$inc": {"email_attempts": 1}, "$set": changes},
+    )
