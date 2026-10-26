@@ -114,22 +114,40 @@ class DeviceCalibrationCreate(BaseModel):
     last_calibrated: Optional[str] = Field(default_factory=get_current_timestamp)
 
 
-class DeviceCalibration(Schema, DeviceCalibrationCreate):
+class DeviceCalibration(Schema):
     """Schema for the calibration data of a given device"""
 
     __storage__ = StorageSpec(table="calibrations", key="name", unique=("name",))
     model_config = ConfigDict(from_attributes=True)
 
+    name: str
+    version: str
+    qubits: List[QubitCalibration]
+    resonators: Optional[List[ResonatorCalibration]] = None
+    couplers: Optional[List[CouplersCalibration]] = None
+    discriminators: Optional[Dict[str, Any]] = None
+    last_calibrated: Optional[str] = Field(default_factory=get_current_timestamp)
     id: Id = Field(default_factory=generate_id)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
 
-class DeviceCalibrationLog(DeviceCalibration):
+class DeviceCalibrationLog(Schema):
     """Schema for the historical calibration data of a given device"""
 
     __storage__ = StorageSpec(
         table="calibrations_logs", indexes=("name", "-last_calibrated")
     )
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    version: str
+    qubits: List[QubitCalibration]
+    resonators: Optional[List[ResonatorCalibration]] = None
+    couplers: Optional[List[CouplersCalibration]] = None
+    discriminators: Optional[Dict[str, Any]] = None
+    last_calibrated: Optional[str] = Field(default_factory=get_current_timestamp)
+    id: Id = Field(default_factory=generate_id)
+    updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
 
 DeviceCalibrationQuery = create_partial_model(

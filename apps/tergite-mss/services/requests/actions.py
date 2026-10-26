@@ -16,7 +16,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Sequence, cast
 
 from libs.storage import Database
 from services import auth
-from services.auth import Project, ProjectExists, User
+from services.auth import Project, ProjectCreate, ProjectExists, User
 from utils.exc import ConflictError, NotFoundError
 
 from .dtos import (
@@ -103,7 +103,8 @@ async def _create_project(database: Database, request: Request, approver: User) 
     """
     metadata = cast(CreateProjectMetadata, request.metadata)
     try:
-        await auth.create_project(database, metadata, actor=approver)
+        project = ProjectCreate(**metadata.model_dump(exclude={"resource"}))
+        await auth.create_project(database, project, actor=approver)
     except ProjectExists:
         raise ConflictError(f"a project named '{metadata.name}' already exists")
 

@@ -21,6 +21,7 @@ from utils.exc import ForbiddenError, NotFoundError
 
 from . import actions
 from .dtos import (
+    REQUEST_TARGETS,
     CreateProjectMetadata,
     ProjectQpuSecondsMetadata,
     Request,
@@ -301,7 +302,8 @@ async def _get_target_user_ids(
     Raises:
         NotFoundError: project {id} not found
     """
-    if request.target == RequestTarget.PROJECT:
+    target = REQUEST_TARGETS[request.type]
+    if target == RequestTarget.PROJECT:
         # personal projects answer as missing ones do, so they cannot be probed
         project = await database.find_one(
             Project, {"id": request.resource_id, "is_personal": {"$ne": True}}
@@ -311,7 +313,7 @@ async def _get_target_user_ids(
 
         return [project.admin_id]
 
-    elif request.target == RequestTarget.SYSTEM:
+    elif target == RequestTarget.SYSTEM:
         superusers = await database.find(User, filter={"roles": UserRole.ADMIN})
         return [user.id for user in superusers]
 

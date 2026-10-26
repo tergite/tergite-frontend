@@ -24,7 +24,6 @@ from pydantic import (
 )
 
 from libs.storage import Id, Schema, StorageSpec, generate_id
-from services.auth.projects.dtos import ProjectCreate
 from services.notices.dtos import RefType
 from utils.date_time import get_current_timestamp
 
@@ -79,7 +78,7 @@ class RequestType(str, enum.Enum):
     PROJECT_ACCESS = "project-access"
 
 
-_REQUEST_TARGETS: Dict[RequestType, RequestTarget] = {
+REQUEST_TARGETS: Dict[RequestType, RequestTarget] = {
     RequestType.CREATE_PROJECT: RequestTarget.SYSTEM,
     RequestType.CLOSE_PROJECT: RequestTarget.SYSTEM,
     RequestType.TRANSFER_PROJECT: RequestTarget.SYSTEM,
@@ -94,8 +93,14 @@ class RequestMetadata(BaseModel):
     resource: RefType = RefType.PROJECT
 
 
-class CreateProjectMetadata(RequestMetadata, ProjectCreate):
+class CreateProjectMetadata(RequestMetadata):
     """The metadata for a request to create a new project"""
+
+    name: str
+    qpu_seconds: float = 0
+    description: str = ""
+    admin_email: str
+    user_emails: List[str] = ()
 
 
 class CloseProjectMetadata(RequestMetadata):
@@ -127,6 +132,19 @@ _METADATA_CLASSES: Dict[RequestType, Type[RequestMetadata]] = {
 }
 
 
+def validate_request_metadata(value: Any, info: ValidationInfo) -> RequestMetadata:
+    """Validates a request's metadata as the class of the request's type"""
+    req_type = RequestType(info.data["type"])
+    try:
+        metadata_cls = _METADATA_CLASSES[req_type]
+    except KeyError:
+        raise ValueError(f"request type {req_type} not supported")
+
+    if isinstance(value, BaseModel):
+        value = value.model_dump()
+    return metadata_cls.model_validate({} if value is None else value)
+
+
 class RequestPostBody(BaseModel):
     """The POST body sent for a request"""
 
@@ -138,29 +156,12 @@ class RequestPostBody(BaseModel):
         default=None, validate_default=True
     )
 
-    @computed_field
-    @property
-    def target(self) -> RequestTarget:
-        """The target for this request"""
-        return _REQUEST_TARGETS[self.type]
-
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def has_right_metadata_type(
-        cls, value: Any, info: ValidationInfo
-    ) -> RequestMetadata:
-        req_type = RequestType(info.data["type"])
-        try:
-            metadata_cls = _METADATA_CLASSES[req_type]
-        except KeyError:
-            raise ValueError(f"request type {req_type} not supported")
-
-        if isinstance(value, BaseModel):
-            value = value.model_dump()
-        return metadata_cls.model_validate({} if value is None else value)
+    _check_metadata = field_validator("metadata", mode="before")(
+        validate_request_metadata
+    )
 
 
-class Request(Schema, RequestPostBody):
+class Request(Schema):
     """The schema for all user requests that have to be approved/rejected by an admin"""
 
     __storage__ = StorageSpec(
@@ -169,6 +170,13 @@ class Request(Schema, RequestPostBody):
         indexes=("type", ("resource_id", "status"), ("requester_id", "-created_at")),
     )
 
+    resource_id: Id
+    type: RequestType
+    reason: str
+    # SerializeAsAny, or the fields of the subclass are dropped when saving
+    metadata: Optional[SerializeAsAny[RequestMetadata]] = Field(
+        default=None, validate_default=True
+    )
     id: Id = Field(default_factory=generate_id)
     requester_id: Id
     requester_name: Optional[str] = None
@@ -179,6 +187,16 @@ class Request(Schema, RequestPostBody):
     rejection_reason: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
+
+    _check_metadata = field_validator("metadata", mode="before")(
+        validate_request_metadata
+    )
+
+    @computed_field
+    @property
+    def target(self) -> RequestTarget:
+        """The target for this request"""
+        return REQUEST_TARGETS[self.type]
 
 
 class RequestUpdate(BaseModel):
