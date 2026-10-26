@@ -714,8 +714,15 @@
             "title": "Created At"
           },
           "description": {
-            "title": "Description",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
           },
           "dt": {
             "anyOf": [
@@ -1172,18 +1179,6 @@
               }
             ],
             "title": "Failure Reason"
-          },
-          "id": {
-            "anyOf": [
-              {
-                "pattern": "^[0-9a-f]{24}$",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Id"
           },
           "job_id": {
             "title": "Job Id",

@@ -141,7 +141,9 @@ async def get_latest_many(
         limit: the most jobs to return; None returns all
         exclude: the fields to leave out of each job
     """
-    job_filter = query.model_dump()
+    job_filter = query.model_dump(
+        exclude_unset=True, exclude_defaults=True, exclude_none=True
+    )
     if user_id is not None:
         job_filter["user_id"] = str(user_id)
     if reader is not None and not reader.is_superuser:
@@ -172,7 +174,12 @@ async def update_job(database: Database, job_id: str, payload: JobUpdate) -> Job
         Job,
         filter={"job_id": job_id},
         update={
-            "$set": {**payload.model_dump(), "updated_at": get_current_timestamp()}
+            "$set": {
+                **payload.model_dump(
+                    exclude_unset=True, exclude_defaults=True, exclude_none=True
+                ),
+                "updated_at": get_current_timestamp(),
+            }
         },
         returning=Returning.BEFORE,
     )

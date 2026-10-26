@@ -301,10 +301,10 @@ Codified in [docs/api-design.md](./docs/api-design.md); the short version:
 - Property-only sub-resources (e.g. `GET /jobs/{id}/status`) are allowed only when that
   property is requested far more often than the whole object, and return `{"{property}": …}`.
 - Every route declares its response, so the OpenAPI schema describes every body. A route that
-  returns a model gets it as a return annotation. A route that returns a prebuilt dict, or a
-  model whose own `model_dump` shapes the body (`Job`, `Project`, `Device`, the paginated
-  list), declares `responses={200: {"model": …}}` instead: a `response_model` would
-  re-serialise the body and undo that shaping.
+  returns a model gets it as a return annotation. A route that returns a dict it dumped itself,
+  e.g. with `exclude_none=True` (`Job`, `Project`, `Device`, the paginated list), declares
+  `responses={200: {"model": …}}` instead: a `response_model` would re-serialise the body and
+  undo that shaping. No model overrides `model_dump`; a call site passes the flags it needs.
 - `dev/openapi/openapi.json` is the committed schema, written by `python -m dev.openapi.export`
   with the test config. `tests/test_openapi.py` fails when it no longer matches the app.
 

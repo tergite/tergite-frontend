@@ -42,7 +42,13 @@ async def find_devices(
         ValidationError: final results are not valid Device objects
     """
     return await database.find(
-        Device, filter=query.model_dump(), sort=sort, skip=skip, limit=limit
+        Device,
+        filter=query.model_dump(
+            exclude_unset=True, exclude_defaults=True, exclude_none=True
+        ),
+        sort=sort,
+        skip=skip,
+        limit=limit,
     )
 
 
@@ -78,7 +84,7 @@ async def upsert_device(database: Database, payload: DeviceUpsert) -> Device:
         Device,
         filter={"name": payload.name},
         update={
-            "$set": payload.model_dump(),
+            "$set": payload.model_dump(exclude_none=True),
             "$setOnInsert": {"created_at": timestamp},
         },
         should_upsert=True,

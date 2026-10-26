@@ -78,9 +78,10 @@ async def get_one(database: DatabaseDep, owner: CurrentLaxOwnerDep, job_id: UUID
         owner: the API token's project and user; the user must have submitted the job or be an admin
         job_id: the job_id of the job
     """
-    return await jobs_service.get_readable_job(
+    job = await jobs_service.get_readable_job(
         database, job_id=job_id, user=owner.user, should_decrypt_token=True
     )
+    return job.model_dump(mode="json", exclude_none=True)
 
 
 @router.get("/{job_id}/status")

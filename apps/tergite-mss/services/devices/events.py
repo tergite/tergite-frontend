@@ -61,7 +61,7 @@ async def on_job_updated_event(
     )
     return {
         "status": "success",
-        "data": updated_job.model_dump(mode="json"),
+        "data": updated_job.model_dump(mode="json", exclude_none=True),
     }
 
 
@@ -89,7 +89,7 @@ async def on_device_initialized_event(
     upserted_record = await upsert_device(database, payload=data)
     return {
         "status": "success",
-        "data": upserted_record.model_dump(mode="json"),
+        "data": upserted_record.model_dump(mode="json", exclude_none=True),
     }
 
 
@@ -115,7 +115,7 @@ async def on_device_switched_off_event(
     )
     return {
         "status": "success",
-        "data": patched_record.model_dump(mode="json"),
+        "data": patched_record.model_dump(mode="json", exclude_none=True),
     }
 
 
@@ -139,7 +139,7 @@ async def on_device_switched_on_event(
     patched_record = await mark_device_online(database, name=device)
     return {
         "status": "success",
-        "data": patched_record.model_dump(mode="json"),
+        "data": patched_record.model_dump(mode="json", exclude_none=True),
     }
 
 
@@ -167,10 +167,7 @@ async def on_device_recalibrated_event(
     upserted_record = await calibration_service.create_calibration(
         database, record=data
     )
-    return {
-        "status": "success",
-        "data": upserted_record.model_dump(mode="json"),
-    }
+    return {"status": "success", "data": upserted_record.model_dump(mode="json")}
 
 
 EVENT_HANDLERS: Dict[DeviceEventName, DeviceEventHandler] = {

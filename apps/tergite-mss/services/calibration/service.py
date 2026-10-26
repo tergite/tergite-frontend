@@ -76,7 +76,9 @@ async def find_latest_calibrations(
     """
     return await database.find(
         DeviceCalibration,
-        filter=query.model_dump(),
+        filter=query.model_dump(
+            exclude_unset=True, exclude_defaults=True, exclude_none=True
+        ),
         sort=sort,
         skip=skip,
         limit=limit,

@@ -71,7 +71,9 @@ async def get_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="the project does not exist.",
         )
-    return ProjectRead.model_validate(project).model_dump(mode="json")
+    return ProjectRead.model_validate(project).model_dump(
+        mode="json", exclude_none=True
+    )
 
 
 @router.delete(

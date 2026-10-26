@@ -72,13 +72,13 @@ async def read_many(
         limit=limit,
     )
 
-    return get_paginated_json(data, skip=skip, limit=limit, should_exclude_none=False)
+    return get_paginated_json(data, skip=skip, limit=limit)
 
 
 @router.get("/{name}", responses={200: {"model": Device}})
 async def read_one(database: DatabaseDep, name: str):
     record = await devices.get_device(database, name=name)
-    return record.model_dump(mode="json")
+    return record.model_dump(mode="json", exclude_none=True)
 
 
 @router.websocket("/ws/{name}")

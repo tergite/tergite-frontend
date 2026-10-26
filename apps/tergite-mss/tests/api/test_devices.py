@@ -317,5 +317,6 @@ def test_update_pre_existing_device(
 def _get_stored_devices(db) -> List[Dict[str, Any]]:
     """Gets the stored devices as the app shows them, without their ids"""
     return [
-        device.model_dump(mode="json", exclude={"id"}) for device in db.find(Device)
+        device.model_dump(mode="json", exclude={"id"}, exclude_none=True)
+        for device in db.find(Device)
     ]

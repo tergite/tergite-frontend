@@ -52,10 +52,6 @@ class ProjectRead(ProjectBase):
     created_at: str
     updated_at: str
 
-    def model_dump(self, *args, **kwargs):
-        # get rid of the default None's
-        return super().model_dump(*args, **{**kwargs, "exclude_none": True})
-
 
 class ProjectAdminView(ProjectRead):
     """The schema for viewing a project as an admin"""

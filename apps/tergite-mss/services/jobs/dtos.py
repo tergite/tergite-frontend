@@ -13,12 +13,8 @@
 import enum
 from datetime import datetime
 from typing import (
-    Any,
-    Callable,
     List,
-    Literal,
     Optional,
-    Set,
     Tuple,
     TypeAlias,
     TypedDict,
@@ -27,7 +23,6 @@ from typing import (
 
 from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer
-from pydantic.main import IncEx
 
 from libs.storage import Id, Schema, StorageSpec
 from utils.crypto import get_uuid4_str
@@ -128,7 +123,8 @@ class Job(Schema, JobCreate):
         extra="allow",
     )
 
-    id: Optional[Id] = None
+    # never stored nor sent: a job is known by its job_id
+    id: Optional[Id] = Field(default=None, exclude=True)
     job_id: str = Field(default_factory=get_uuid4_str)
     project_id: Optional[Id] = None
     user_id: Optional[Id] = None
@@ -153,41 +149,6 @@ class Job(Schema, JobCreate):
             return self.timestamps.resource_usage
         except AttributeError:
             return None
-
-    def model_dump(
-        self,
-        *,
-        mode: Literal["json", "python"] | str = "python",
-        include: IncEx | None = None,
-        exclude: Set[str] | None = None,
-        context: Any | None = None,
-        by_alias: bool | None = None,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_none: bool = False,
-        round_trip: bool = False,
-        warnings: bool | Literal["none", "warn", "error"] = True,
-        fallback: Callable[[Any], Any] | None = None,
-        serialize_as_any: bool = False,
-    ) -> dict[str, Any]:
-        effective_excluded = {"_id", "id"}
-        if isinstance(exclude, set):
-            effective_excluded.update(exclude)
-
-        return super().model_dump(
-            mode=mode,
-            include=include,
-            exclude=effective_excluded,
-            context=context,
-            by_alias=by_alias,
-            exclude_unset=exclude_unset,
-            exclude_defaults=exclude_defaults,
-            exclude_none=True,
-            round_trip=round_trip,
-            warnings=warnings,
-            fallback=fallback,
-            serialize_as_any=serialize_as_any,
-        )
 
 
 class JobStatusResponse(BaseModel):

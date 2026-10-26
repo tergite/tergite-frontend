@@ -46,7 +46,9 @@ def include_auth_router(root_router: Union[APIRouter, FastAPI]):
         sort: List[str] = Query(("name",)),
     ):
         """Returns the auth provider given an existing email domain"""
-        filters = query.model_dump()
+        filters = query.model_dump(
+            exclude_unset=True, exclude_defaults=True, exclude_none=True
+        )
         data = providers.get_many(filters=filters, skip=skip, limit=limit, sort=sort)
 
         return get_paginated_json(

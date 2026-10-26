@@ -105,8 +105,10 @@ def convert_to_document(schema: Type[Schema], record: Schema) -> Dict[str, Any]:
     computed = set(type(record).model_computed_fields)
     data = record.model_dump(mode="python", exclude=computed or None)
     document = _convert_to_document_values(schema, data)
-    if "id" in document:
-        document[KEY_FIELD] = document.pop("id")
+    # MongoDB makes the _id of a record without an id, as SQL storage does
+    record_id = document.pop("id", None)
+    if record_id is not None:
+        document[KEY_FIELD] = record_id
     return document
 
 
