@@ -24,7 +24,7 @@ from api.dependencies import (
 from libs.storage import Id
 from services import jobs as jobs_service
 from services import notices as notices_service
-from services.notices import NoticeTypeId
+from services.notices import NoticeQuery, NoticeTypeId
 from utils.api import CountsResponse
 
 router = APIRouter(prefix="/counts", tags=["counts"])
@@ -57,9 +57,7 @@ async def get_notice_count(
         types: the types to filter by; repeat the param for many
         is_read: filter on read state; default = None i.e. either
     """
-    count = await notices_service.count_many(
-        database,
-        requester=current_user,
+    query = NoticeQuery(
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
@@ -68,6 +66,9 @@ async def get_notice_count(
         should_include_dismissed=include_dismissed,
         types=types,
         is_read=is_read,
+    )
+    count = await notices_service.count_many(
+        database, requester=current_user, query=query
     )
     return {"count": count}
 

@@ -18,7 +18,7 @@ from fastapi import APIRouter, Query
 
 from libs.storage import Id
 from services import notices as notices_service
-from services.notices import CustomNoticeCreate, Notice, NoticeTypeId
+from services.notices import CustomNoticeCreate, Notice, NoticeQuery, NoticeTypeId
 from utils.api import PaginatedListResponse
 
 from ...dependencies import (
@@ -110,8 +110,7 @@ async def get_many_notices(
     Returns:
         a paginated list of notices
     """
-    data = await notices_service.find_many(
-        database,
+    query = NoticeQuery(
         user_id=user_id,
         min_start_utc=min_start_utc,
         max_start_utc=max_start_utc,
@@ -119,8 +118,8 @@ async def get_many_notices(
         max_expires_utc=max_expires_utc,
         should_include_dismissed=include_dismissed,
         types=types,
-        sort=sort,
-        skip=skip,
-        limit=limit,
+    )
+    data = await notices_service.find_many(
+        database, query=query, sort=sort, skip=skip, limit=limit
     )
     return PaginatedListResponse(skip=skip, limit=limit, data=data)

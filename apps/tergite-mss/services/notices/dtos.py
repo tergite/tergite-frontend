@@ -12,7 +12,7 @@
 """Data Transfer Objects for the notices service"""
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import Any, Dict, List, NamedTuple, Optional, Self
+from typing import Any, Dict, List, NamedTuple, Optional, Self, Sequence
 
 from pydantic import (
     BaseModel,
@@ -319,6 +319,25 @@ class Notice(Schema):
                 )
 
         return self
+
+
+class NoticeQuery(BaseModel):
+    """The constraints of a query of notices
+
+    A notice is read by a user when it holds their id in dismissed_by.
+    """
+
+    # the user whose notices, direct or broadcast, are wanted; None for anyone's
+    user_id: Optional[Id] = None
+    min_start_utc: Optional[datetime] = None
+    max_start_utc: Optional[datetime] = None
+    min_expires_utc: Optional[datetime] = None
+    max_expires_utc: Optional[datetime] = None
+    should_include_dismissed: bool = False
+    # None or empty for any
+    types: Optional[Sequence[NoticeTypeId]] = None
+    # None for either
+    is_read: Optional[bool] = None
 
 
 class NoticePreferences(Schema):

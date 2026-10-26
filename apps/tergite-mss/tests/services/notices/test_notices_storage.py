@@ -17,7 +17,7 @@ import pytest
 
 from libs.storage import Database, generate_id
 from services import notices
-from services.notices import Notice, NoticeTypeId
+from services.notices import Notice, NoticeQuery, NoticeTypeId
 from services.notices import service as notices_service
 from services.notices.dtos import ProjectRequestContext, RefType
 from services.notices.emails import process_email_batch_results
@@ -53,7 +53,7 @@ async def test_system_notices_are_written_per_user_from_their_template(database)
         ref_id=generate_id(),
     )
 
-    found = await notices.find_many(database, user_id=_USER_ID)
+    found = await notices.find_many(database, NoticeQuery(user_id=_USER_ID))
 
     assert len(created) == 2
     assert [notice.id for notice in found] == [created[0].id]
@@ -70,8 +70,10 @@ async def test_direct_and_broadcast_notices_are_read_and_unread(database):
     read_broadcast = await notices.set_read_status(
         database, broadcast.id, _USER_ID, True
     )
-    unread = await notices.find_many(database, user_id=_USER_ID, is_read=False)
-    still_shown = await notices.find_many(database, user_id=_OTHER_USER_ID)
+    unread = await notices.find_many(
+        database, NoticeQuery(user_id=_USER_ID, is_read=False)
+    )
+    still_shown = await notices.find_many(database, NoticeQuery(user_id=_OTHER_USER_ID))
 
     assert read_direct.read_at is not None and read_direct.dismissed_by == [_USER_ID]
     assert read_broadcast.read_at is None and read_broadcast.dismissed_by == [_USER_ID]
@@ -79,14 +81,18 @@ async def test_direct_and_broadcast_notices_are_read_and_unread(database):
     assert [notice.id for notice in still_shown] == [broadcast.id]
     assert (
         await notices.count_many(
-            database, _REQUESTER, is_read=True, should_include_dismissed=True
+            database,
+            _REQUESTER,
+            NoticeQuery(is_read=True, should_include_dismissed=True),
         )
         == 2
     )
 
     count = await notices.set_read_status_many(database, _USER_ID, False)
     assert count == 2
-    assert await notices.count_many(database, _REQUESTER, is_read=False) == 2
+    assert (
+        await notices.count_many(database, _REQUESTER, NoticeQuery(is_read=False)) == 2
+    )
 
 
 async def test_notices_are_filtered_by_type_time_and_expiry(database):
@@ -99,10 +105,10 @@ async def test_notices_are_filtered_by_type_time_and_expiry(database):
     )
 
     by_time = await notices.find_many(
-        database, user_id=_USER_ID, min_start_utc=now - timedelta(hours=2)
+        database, NoticeQuery(user_id=_USER_ID, min_start_utc=now - timedelta(hours=2))
     )
     by_type = await notices.find_many(
-        database, user_id=_USER_ID, types=[NoticeTypeId.CUSTOM]
+        database, NoticeQuery(user_id=_USER_ID, types=[NoticeTypeId.CUSTOM])
     )
 
     assert [notice.id for notice in by_time] == [current.id]
@@ -126,7 +132,7 @@ async def test_notices_of_a_reference_are_cleared(database):
     )
 
     assert count == 2
-    assert await notices.find_many(database, user_id=_USER_ID) == []
+    assert await notices.find_many(database, NoticeQuery(user_id=_USER_ID)) == []
 
 
 async def test_email_preferences_and_attempts_are_kept(database):

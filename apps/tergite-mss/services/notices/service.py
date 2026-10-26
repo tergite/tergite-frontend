@@ -24,6 +24,7 @@ from services.notices.dtos import (
     EmailStatus,
     Notice,
     NoticePreferences,
+    NoticeQuery,
     NoticeTemplate,
     NoticeTypeId,
     ProjectRequestContext,
@@ -95,41 +96,20 @@ async def set_read_status(
     return notice
 
 
-async def set_read_status_many(
-    database: Database,
-    user_id: str,
-    is_read: bool,
-    min_start_utc: Optional[datetime] = None,
-    max_start_utc: Optional[datetime] = None,
-    min_expires_utc: Optional[datetime] = None,
-    max_expires_utc: Optional[datetime] = None,
-    types: Optional[Sequence[NoticeTypeId]] = None,
-) -> int:
-    """Marks many of the user's notices read or unread
+async def set_read_status_many(database: Database, user_id: str, is_read: bool) -> int:
+    """Marks all the user's notices read or unread
 
     Args:
         database: the database where the notices are stored
         user_id: the recipient whose notices are to be updated
         is_read: True to mark read, False to mark unread
-        min_start_utc: the minimum UTC timestamp that the notice should start
-        max_start_utc: the maximum UTC timestamp that the notice should start
-        min_expires_utc: the minimum UTC timestamp that the notice should expire
-        max_expires_utc: the maximum UTC timestamp that the notice should expire
-        types: the notice types to filter by; default = None i.e. any
 
     Returns:
         the number of notices updated
     """
     user_id = str(user_id)
     notice_filter = _get_notice_filter(
-        user_id=user_id,
-        min_start_utc=min_start_utc,
-        max_start_utc=max_start_utc,
-        min_expires_utc=min_expires_utc,
-        max_expires_utc=max_expires_utc,
-        should_include_dismissed=True,
-        types=types,
-        is_read=not is_read,
+        NoticeQuery(user_id=user_id, should_include_dismissed=True, is_read=not is_read)
     )
     # broadcast notices are shared, so their read state lives in dismissed_by alone
     now = get_current_timestamp()
@@ -303,30 +283,16 @@ async def create_system_notice(
 
 async def find_many(
     database: Database,
-    user_id: Optional[str] = None,
-    min_start_utc: Optional[datetime] = None,
-    max_start_utc: Optional[datetime] = None,
-    min_expires_utc: Optional[datetime] = None,
-    max_expires_utc: Optional[datetime] = None,
-    should_include_dismissed: bool = False,
-    types: Optional[Sequence[NoticeTypeId]] = None,
-    is_read: Optional[bool] = None,
+    query: NoticeQuery,
     sort: Sequence[str] = (),
     skip: int = 0,
     limit: Optional[int] = None,
 ) -> List[Notice]:
-    """Gets the notices that fit the given constraints
+    """Gets the notices that fit the query
 
     Args:
         database: the database where the notices are stored
-        user_id: the user whose notices, direct or broadcast, are wanted; None for anyone's
-        min_start_utc: the minimum UTC timestamp that the notice should start
-        max_start_utc: the maximum UTC timestamp that the notice should start
-        min_expires_utc: the minimum UTC timestamp that the notice should expire
-        max_expires_utc: the maximum UTC timestamp that the notice should expire
-        should_include_dismissed: whether to include notices the user dismissed
-        types: the notice types to match; default = None i.e. any
-        is_read: whether the notices should be read by the user; default = None i.e. either
+        query: the constraints the notices fit
         sort: the fields to sort by; a leading '-' sorts descending
         skip: the number of matched notices to skip
         limit: the most notices to return; None returns all
@@ -334,60 +300,22 @@ async def find_many(
     Raises:
         ValidationError: final results are not valid Notice objects
     """
-    notice_filter = _get_notice_filter(
-        user_id=user_id,
-        min_start_utc=min_start_utc,
-        max_start_utc=max_start_utc,
-        min_expires_utc=min_expires_utc,
-        max_expires_utc=max_expires_utc,
-        should_include_dismissed=should_include_dismissed,
-        types=types,
-        is_read=is_read,
-    )
     return await database.find(
-        Notice, filter=notice_filter, sort=sort, skip=skip, limit=limit
+        Notice, filter=_get_notice_filter(query), sort=sort, skip=skip, limit=limit
     )
 
 
-async def count_many(
-    database: Database,
-    requester: "User",
-    user_id: Optional[str] = None,
-    min_start_utc: Optional[datetime] = None,
-    max_start_utc: Optional[datetime] = None,
-    min_expires_utc: Optional[datetime] = None,
-    max_expires_utc: Optional[datetime] = None,
-    should_include_dismissed: bool = False,
-    types: Optional[Sequence[NoticeTypeId]] = None,
-    is_read: Optional[bool] = None,
-) -> int:
-    """Gets the number of notices that fit the given constraints
+async def count_many(database: Database, requester: "User", query: NoticeQuery) -> int:
+    """Gets the number of notices that fit the query
 
     Args:
         database: the database where the notices are stored
         requester: the user asking; anyone but a superuser counts only their own notices
-        user_id: the ID of the user whose notices we might be interested in
-        min_start_utc: the minimum UTC timestamp that the notice should start
-        max_start_utc: the maximum UTC timestamp that the notice should start
-        min_expires_utc: the minimum UTC timestamp that the notice should expire
-        max_expires_utc: the maximum UTC timestamp that the notice should expire
-        should_include_dismissed: whether to include dismissed notices; defaults to False
-        types: the notice types to filter by; default = None i.e. any
-        is_read: whether to have notices that are read or not; defaults to None
+        query: the constraints the notices fit
     """
     if not requester.is_superuser:
-        user_id = requester.id
-    notice_filter = _get_notice_filter(
-        user_id=user_id,
-        min_start_utc=min_start_utc,
-        max_start_utc=max_start_utc,
-        min_expires_utc=min_expires_utc,
-        max_expires_utc=max_expires_utc,
-        should_include_dismissed=should_include_dismissed,
-        types=types,
-        is_read=is_read,
-    )
-    return await database.count(Notice, filter=notice_filter)
+        query = query.model_copy(update={"user_id": requester.id})
+    return await database.count(Notice, filter=_get_notice_filter(query))
 
 
 async def get_one(database: Database, pk: str) -> Notice:
@@ -574,51 +502,39 @@ async def _init_notice_templates_in_db(database: Database) -> None:
         logger.info(f"Initialized {len(new_records)} new notice template(s) in db.")
 
 
-def _get_notice_filter(
-    user_id: Optional[str] = None,
-    min_start_utc: Optional[datetime] = None,
-    max_start_utc: Optional[datetime] = None,
-    min_expires_utc: Optional[datetime] = None,
-    max_expires_utc: Optional[datetime] = None,
-    should_include_dismissed: bool = False,
-    types: Optional[Sequence[NoticeTypeId]] = None,
-    is_read: Optional[bool] = None,
-) -> Filter:
-    """Gets the filter of the notices that fit the given constraints, as find_many takes them
-
-    A notice is read by a user when it holds their id in dismissed_by.
-    """
-    user_id = None if user_id is None else str(user_id)
+def _get_notice_filter(query: NoticeQuery) -> Filter:
+    """Gets the filter of the notices that fit the query"""
+    user_id = None if query.user_id is None else str(query.user_id)
     notice_filter: Dict[str, Any] = {}
     if user_id:
         # either broadcast notices or those sent directly to the user
         notice_filter["user_id"] = {"$in": [user_id, None]}
 
     starts_at: Dict[str, datetime] = {}
-    if min_start_utc:
-        starts_at["$gte"] = min_start_utc
-    if max_start_utc:
-        starts_at["$lte"] = max_start_utc
+    if query.min_start_utc:
+        starts_at["$gte"] = query.min_start_utc
+    if query.max_start_utc:
+        starts_at["$lte"] = query.max_start_utc
     if starts_at:
         notice_filter["starts_at"] = starts_at
 
     expires_at: Dict[str, datetime] = {}
-    if min_expires_utc:
-        expires_at["$gte"] = min_expires_utc
-    if max_expires_utc:
-        expires_at["$lte"] = max_expires_utc
+    if query.min_expires_utc:
+        expires_at["$gte"] = query.min_expires_utc
+    if query.max_expires_utc:
+        expires_at["$lte"] = query.max_expires_utc
     if expires_at:
         notice_filter["expires_at"] = expires_at
 
-    if types:
-        notice_filter["type"] = {"$in": list(types)}
+    if query.types:
+        notice_filter["type"] = {"$in": list(query.types)}
 
     dismissal_conditions = []
-    if user_id and not should_include_dismissed:
+    if user_id and not query.should_include_dismissed:
         dismissal_conditions.append({"dismissed_by": {"$nin": [user_id]}})
-    if is_read is False:
+    if query.is_read is False:
         dismissal_conditions.append({"dismissed_by": {"$nin": [user_id]}})
-    if is_read:
+    if query.is_read:
         dismissal_conditions.append({"dismissed_by": user_id})
     if dismissal_conditions:
         notice_filter["$and"] = dismissal_conditions
