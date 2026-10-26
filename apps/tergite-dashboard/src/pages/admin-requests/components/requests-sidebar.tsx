@@ -6,10 +6,14 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
-import { approveMyRequest, rejectMyRequest } from "@/lib/api/requests";
+import {
+  approveMyRequest,
+  refreshDecisionQueries,
+  rejectMyRequest,
+} from "@/lib/api/requests";
 import { cn } from "@/lib/utils";
 import { getUserRequestDetails, getUserRequestTitle } from "@/lib/user-requests";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnyValue, type UserRequest } from "types";
 import { Separator } from "@/components/ui/separator";
 import { ProgressStatus } from "@/components/ui/progress-status";
@@ -38,10 +42,13 @@ function RequestSummary({
   onApproval,
   onRejection,
 }: RequestSummaryProps) {
+  const queryClient = useQueryClient();
   const requestApproval = useMutation({
     mutationFn: approveMyRequest,
     onSuccess: async () => {
-      await onApproval(request.id);
+      // before the refresh, or it would clear a row picked meanwhile
+      onApproval(request.id);
+      await refreshDecisionQueries(queryClient);
     },
     throwOnError: true,
   });
@@ -49,7 +56,8 @@ function RequestSummary({
   const requestRejection = useMutation({
     mutationFn: rejectMyRequest,
     onSuccess: async () => {
-      await onRejection(request.id);
+      onRejection(request.id);
+      await refreshDecisionQueries(queryClient);
     },
     throwOnError: true,
   });
@@ -147,8 +155,8 @@ function RequestSummary({
 interface SidebarProps {
   request?: UserRequest;
   className?: string;
-  onApproval: (id: string) => Promise<void>;
-  onRejection: (id: string) => Promise<void>;
+  onApproval: (id: string) => void;
+  onRejection: (id: string) => void;
 }
 
 interface RequestSummaryProps extends SidebarProps {

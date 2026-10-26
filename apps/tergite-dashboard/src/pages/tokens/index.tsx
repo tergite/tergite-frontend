@@ -8,14 +8,12 @@ import { myProjectsQuery } from "@/lib/api/projects";
 import {
   addProjectNames,
   getMyTokensQuery,
-  refreshMyTokensQueries,
 } from "@/lib/api/tokens";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { useAppStore } from "@/lib/app-state";
 import {
   QueryClient,
   useQuery,
-  useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
@@ -30,7 +28,6 @@ import { Row, RowSelectionState } from "@tanstack/react-table";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function Tokens() {
-  const queryClient = useQueryClient();
   const {
     currentProject,
     projects: defaultProjects,
@@ -62,11 +59,9 @@ export function Tokens() {
     [setRowSelection]
   );
 
-  const handleTokenDelete = useCallback(async () => {
-    // before the refresh, or it would clear a row picked meanwhile
+  const handleTokenDelete = useCallback(() => {
     setRowSelection({});
-    await refreshMyTokensQueries(queryClient);
-  }, [queryClient, setRowSelection]);
+  }, [setRowSelection]);
 
   useEffect(() => {
     // track the changes in current project and reset the current token when projects change

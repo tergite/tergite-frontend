@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { approveMyRequest, refreshMyRequests, rejectMyRequest } from "@/lib/api/requests";
-import { refreshMyProjectsQueries } from "@/lib/api/projects";
+import {
+  approveMyRequest,
+  refreshDecisionQueries,
+  rejectMyRequest,
+} from "@/lib/api/requests";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 import {
   UserRequestStatus,
   type UserRequest,
@@ -11,20 +13,16 @@ import {
 
 export function RowActions({ request }: Props) {
   const queryClient = useQueryClient();
-  const refreshAll = useCallback(async () => {
-    await refreshMyRequests(queryClient);
-    await refreshMyProjectsQueries(queryClient);
-  }, [queryClient]);
 
   const approval = useMutation({
     mutationFn: approveMyRequest,
-    onSuccess: refreshAll,
+    onSuccess: async () => await refreshDecisionQueries(queryClient),
     throwOnError: true,
   });
 
   const rejection = useMutation({
     mutationFn: rejectMyRequest,
-    onSuccess: refreshAll,
+    onSuccess: async () => await refreshDecisionQueries(queryClient),
     throwOnError: true,
   });
 

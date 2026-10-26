@@ -7,9 +7,9 @@ import {
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
 import { HealthStatus } from "@/components/ui/health-status";
-import { deleteMyProject } from "@/lib/api/projects";
+import { deleteMyProject, refreshMyProjectsQueries } from "@/lib/api/projects";
 import { cn } from "@/lib/utils";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Project } from "types";
 import { DeleteProjectDialog } from "./delete-dialog";
 import { useMemo } from "react";
@@ -35,10 +35,13 @@ function ProjectSummary({
   onDelete,
   canDelete,
 }: ProjectSummaryProps) {
+  const queryClient = useQueryClient();
   const projectDeletion = useMutation({
     mutationFn: deleteMyProject,
     onSuccess: async () => {
-      await onDelete(project.id);
+      // before the refresh, or it would clear a row picked meanwhile
+      onDelete(project.id);
+      await refreshMyProjectsQueries(queryClient);
     },
     throwOnError: true,
   });
@@ -93,7 +96,7 @@ interface SidebarProps {
   project?: Project;
   canDelete: boolean;
   className?: string;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string) => void;
 }
 
 interface ProjectSummaryProps extends SidebarProps {

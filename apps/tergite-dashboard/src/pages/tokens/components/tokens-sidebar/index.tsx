@@ -7,10 +7,10 @@ import {
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
 import { HealthStatus } from "@/components/ui/health-status";
-import { deleteMyToken } from "@/lib/api/tokens";
+import { deleteMyToken, refreshMyTokensQueries } from "@/lib/api/tokens";
 import { cn } from "@/lib/utils";
 import { formatRelative } from "@/lib/time";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ExtendedAppToken } from "types";
 import { TokenDeleteDialog } from "./delete-dialog";
 import { TokenLifespanDialog } from "./lifespan-dialog";
@@ -30,10 +30,13 @@ export function TokensSidebar(props: SidebarProps) {
 }
 
 function TokenSummary({ token, className = "", onDelete }: TokenSummaryProps) {
+  const queryClient = useQueryClient();
   const tokenDeletion = useMutation({
     mutationFn: deleteMyToken,
     onSuccess: async () => {
-      await onDelete(token.id);
+      // before the refresh, or it would clear a row picked meanwhile
+      onDelete(token.id);
+      await refreshMyTokensQueries(queryClient);
     },
     throwOnError: true,
   });
@@ -80,7 +83,7 @@ function TokenSummary({ token, className = "", onDelete }: TokenSummaryProps) {
 interface SidebarProps {
   token?: ExtendedAppToken;
   className?: string;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string) => void;
 }
 
 interface TokenSummaryProps extends SidebarProps {

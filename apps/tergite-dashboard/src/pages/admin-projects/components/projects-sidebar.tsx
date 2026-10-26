@@ -6,9 +6,14 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { DetailItem } from "@/components/ui/detail-item";
-import { deleteAdminProject, updateAdminProject } from "@/lib/api/projects";
+import {
+  deleteAdminProject,
+  refreshAllAdminQueries,
+  refreshMyProjectsQueries,
+  updateAdminProject,
+} from "@/lib/api/projects";
 import { cn } from "@/lib/utils";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminProject } from "types";
 import { useCallback, useMemo } from "react";
 import { DateTime } from "luxon";
@@ -64,6 +69,7 @@ function AdminProjectSummary({
   onClose,
 }: ProjectSummaryProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const editForm = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     // the remote REST API sometimes returns records that have undefined values for the
@@ -75,9 +81,12 @@ function AdminProjectSummary({
   const projectDeletion = useMutation({
     mutationFn: deleteAdminProject,
     onSuccess: useCallback(async () => {
-      await onDelete(project.id);
+      // before the refresh, or it would clear a row picked meanwhile
+      onDelete(project.id);
+      await refreshMyProjectsQueries(queryClient);
+      await refreshAllAdminQueries(queryClient);
       toast({ description: `Project ${project.name} deleted` });
-    }, [project, toast, onDelete]),
+    }, [project, toast, onDelete, queryClient]),
     throwOnError: true,
   });
 
@@ -89,9 +98,11 @@ function AdminProjectSummary({
       [project]
     ),
     onSuccess: useCallback(async () => {
-      await onEdit(project.id);
+      onEdit(project.id);
+      await refreshMyProjectsQueries(queryClient);
+      await refreshAllAdminQueries(queryClient);
       toast({ description: `Project ${project.name} updated` });
-    }, [project, onEdit, toast]),
+    }, [project, onEdit, toast, queryClient]),
     throwOnError: true,
   });
 
@@ -320,9 +331,9 @@ function AdminProjectSummary({
 interface SidebarProps {
   project?: AdminProject;
   className?: string;
-  onDelete: (id: string) => Promise<void>;
-  onEdit: (id: string) => Promise<void>;
-  onClose: () => Promise<void>;
+  onDelete: (id: string) => void;
+  onEdit: (id: string) => void;
+  onClose: () => void;
 }
 
 interface ProjectSummaryProps extends SidebarProps {

@@ -10,11 +10,15 @@ import { DetailItem } from "@/components/ui/detail-item";
 import { ProgressStatus } from "@/components/ui/progress-status";
 import { Separator } from "@/components/ui/separator";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
-import { approveMyRequest, rejectMyRequest } from "@/lib/api/requests";
+import {
+  approveMyRequest,
+  refreshDecisionQueries,
+  rejectMyRequest,
+} from "@/lib/api/requests";
 import { cn } from "@/lib/utils";
 import { getUserRequestDetails, getUserRequestTitle } from "@/lib/user-requests";
 import { ReloadIcon } from "@radix-ui/react-icons";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import {
@@ -41,15 +45,21 @@ function RequestSummary({
   className = "",
   onReaction,
 }: RequestSummaryProps) {
+  const queryClient = useQueryClient();
+  const handleSuccess = async () => {
+    // before the refresh, or it would clear a row picked meanwhile
+    onReaction();
+    await refreshDecisionQueries(queryClient);
+  };
   const approval = useMutation({
     mutationFn: approveMyRequest,
-    onSuccess: async () => await onReaction(),
+    onSuccess: handleSuccess,
     throwOnError: true,
   });
 
   const rejection = useMutation({
     mutationFn: rejectMyRequest,
-    onSuccess: async () => await onReaction(),
+    onSuccess: handleSuccess,
     throwOnError: true,
   });
 
@@ -131,7 +141,7 @@ function RequestSummary({
 interface SidebarProps {
   request?: UserRequest;
   className?: string;
-  onReaction: () => Promise<void>;
+  onReaction: () => void;
 }
 
 interface RequestSummaryProps extends SidebarProps {

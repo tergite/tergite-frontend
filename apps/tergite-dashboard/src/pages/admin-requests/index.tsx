@@ -4,11 +4,11 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { getAllAdminProjectsQuery, refreshMyProjectsQueries } from "@/lib/api/projects";
-import { getAllUserRequestsQuery, refreshMyRequests } from "@/lib/api/requests";
+import { getAllAdminProjectsQuery } from "@/lib/api/projects";
+import { getAllUserRequestsQuery } from "@/lib/api/requests";
 import { currentUserQuery } from "@/lib/api/auth";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
-import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useLoaderData } from "react-router-dom";
 import {
@@ -24,7 +24,6 @@ import { Row, RowSelectionState } from "@tanstack/react-table";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function AdminRequests() {
-  const queryClient = useQueryClient();
   const { currentUser } = useLoaderData() as AdminRequestsData;
   const { data: projects = [] } = useQuery(
     getAllAdminProjectsQuery({ currentUser })
@@ -50,12 +49,9 @@ export function AdminRequests() {
     [setRowSelection]
   );
 
-  const handleRequestReaction = useCallback(async () => {
-    // before the refresh, or it would clear a row picked meanwhile
+  const handleRequestReaction = useCallback(() => {
     setRowSelection({});
-    await refreshMyRequests(queryClient);
-    await refreshMyProjectsQueries(queryClient);
-  }, [queryClient, setRowSelection]);
+  }, [setRowSelection]);
 
   return (
     <main className="grid flex-1 items-start gap-4 grid-cols-1 p-4 sm:px-6 sm:py-0 xl:grid-cols-4">

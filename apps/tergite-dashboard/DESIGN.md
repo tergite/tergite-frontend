@@ -173,7 +173,9 @@ no separate `<RequireAuth>` component. Non-fatal per-item fetches use `tryQueryF
 which swallows the failure of one item rather than failing the page (used for per-backend
 bookings, where one offline backend must not blank the home page).
 
-**Mutations** are `useMutation({ mutationFn: <action from lib/api>, onSuccess: refresh… })`.
+**Mutations** are `useMutation({ mutationFn: <action from lib/api>, onSuccess: refresh… })`,
+invalidating in their own `onSuccess`; a callback a parent passes down only resets the
+parent's state, such as its row selection, and is called before the invalidation.
 
 **Every request goes through a react-query construct** — `useQuery` / `ensureQueryData` for
 reads, `useMutation` for writes. Never `await` an API action straight from an event

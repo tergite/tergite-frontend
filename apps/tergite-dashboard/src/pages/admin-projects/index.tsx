@@ -4,10 +4,10 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { getAllAdminProjectsQuery, refreshAllAdminQueries, refreshMyProjectsQueries } from "@/lib/api/projects";
+import { getAllAdminProjectsQuery } from "@/lib/api/projects";
 import { currentUserQuery } from "@/lib/api/auth";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
-import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {
   ErrorInfo,
@@ -24,7 +24,6 @@ import { CreateProjectForm } from "./components/create-project-form";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function AdminProjects() {
-  const queryClient = useQueryClient();
   const [mode, setMode] = useState<OperationMode>(OperationMode.EDIT);
   // const [isCreating, setIsCreating] = useState(false);
   // const [isEditing, setIsEditing] = useState(false);
@@ -48,28 +47,20 @@ export function AdminProjects() {
     [setRowSelection, setMode]
   );
 
-  const handleProjectDelete = useCallback(async () => {
-    // before the refresh, or it would clear a row picked meanwhile
+  const handleProjectDelete = useCallback(() => {
     setRowSelection({});
-    await refreshMyProjectsQueries(queryClient);
-    await refreshAllAdminQueries(queryClient);
-  }, [queryClient, setRowSelection]);
+  }, [setRowSelection]);
 
-  const handleProjectEdit = useCallback(async () => {
+  const handleProjectEdit = useCallback(() => {
     setMode(OperationMode.EDIT);
-    await refreshMyProjectsQueries(queryClient);
-    await refreshAllAdminQueries(queryClient);
-  }, [queryClient, setMode]);
+  }, [setMode]);
 
-  const handleProjectCreate = useCallback(async () => {
+  const handleProjectCreate = useCallback(() => {
     setMode(OperationMode.EDIT);
-    // before the refresh, or it would clear a row picked meanwhile
     setRowSelection({});
-    await refreshMyProjectsQueries(queryClient);
-    await refreshAllAdminQueries(queryClient);
-  }, [queryClient, setMode, setRowSelection]);
+  }, [setMode, setRowSelection]);
 
-  const handleSidebarClose = useCallback(async () => {
+  const handleSidebarClose = useCallback(() => {
     setMode(OperationMode.EDIT);
     setRowSelection({});
   }, [setMode, setRowSelection]);

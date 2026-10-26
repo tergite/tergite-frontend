@@ -6,7 +6,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminProject } from "types";
 import { useCallback } from "react";
 import { Button, IconButton } from "@/components/ui/button";
@@ -27,7 +27,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { MultiInput } from "@/components/ui/multi-input";
 import { UserEmailInput } from "./user-email-input";
 import { useToast } from "@/hooks/use-toast";
-import { createAdminProject } from "@/lib/api/projects";
+import {
+  createAdminProject,
+  refreshAllAdminQueries,
+  refreshMyProjectsQueries,
+} from "@/lib/api/projects";
 import { DateTime } from "luxon";
 import { X } from "lucide-react";
 
@@ -47,6 +51,7 @@ export function CreateProjectForm({
   onClose,
 }: Props) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const now = DateTime.now();
 
   const createForm = useForm<z.infer<typeof formSchema>>({
@@ -67,10 +72,13 @@ export function CreateProjectForm({
     },
     onSuccess: useCallback(
       async (project: AdminProject) => {
-        await onCreate(project);
+        // before the refresh, or it would clear a row picked meanwhile
+        onCreate(project);
+        await refreshMyProjectsQueries(queryClient);
+        await refreshAllAdminQueries(queryClient);
         toast({ description: `Project ${project.name} created` });
       },
-      [onCreate, toast]
+      [onCreate, toast, queryClient]
     ),
     throwOnError: true,
   });
@@ -279,7 +287,7 @@ export function CreateProjectForm({
 
 interface Props {
   className?: string;
-  onCreate: (project: AdminProject) => Promise<void>;
+  onCreate: (project: AdminProject) => void;
   onCancel?: () => void;
   onClose: () => void;
 }

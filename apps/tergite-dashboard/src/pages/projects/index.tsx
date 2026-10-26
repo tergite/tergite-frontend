@@ -6,9 +6,9 @@ import {
 } from "@/components/ui/card";
 import { currentUserQuery } from "@/lib/api/auth";
 import { getMyProjectsQpuTimeRequestsQuery, getMyRequestsQuery } from "@/lib/api/requests";
-import { myProjectsQuery, refreshMyProjectsQueries } from "@/lib/api/projects";
+import { myProjectsQuery } from "@/lib/api/projects";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
-import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {
   User,
@@ -23,7 +23,6 @@ import { RequestAccessDialog } from "./components/request-access-dialog";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function Projects() {
-  const queryClient = useQueryClient();
   const { currentUser } = useLoaderData() as ProjectsPageData;
   const { data: projects = [] } = useQuery(myProjectsQuery);
   const { data: qpuTimeRequests = [] } = useQuery(
@@ -48,11 +47,9 @@ export function Projects() {
     [setRowSelection]
   );
 
-  const handleProjectDelete = useCallback(async () => {
-    // before the refresh, or it would clear a row picked meanwhile
+  const handleProjectDelete = useCallback(() => {
     setRowSelection({});
-    await refreshMyProjectsQueries(queryClient);
-  }, [queryClient, setRowSelection]);
+  }, [setRowSelection]);
 
   return (
     <main className="grid flex-1 items-start gap-4 grid-cols-1 p-4 sm:px-6 sm:py-0 xl:grid-cols-4">

@@ -11,6 +11,8 @@ import {
   UserRole,
 } from "../../../types";
 import { client } from "./client";
+import { refreshMyNotices } from "./notices";
+import { refreshMyProjectsQueries } from "./projects";
 
 /**
  * The requests the current user made, or those awaiting their approval
@@ -139,6 +141,13 @@ export async function rejectMyRequest(args: {
 
 export function refreshMyRequests(queryClient: QueryClient) {
   return queryClient.invalidateQueries({ queryKey: ["me", "requests"] });
+}
+
+/** A decision changes the request, its project and the approvers' notices */
+export async function refreshDecisionQueries(queryClient: QueryClient) {
+  await refreshMyRequests(queryClient);
+  await refreshMyNotices(queryClient);
+  await refreshMyProjectsQueries(queryClient);
 }
 
 async function getMyRequests(options: {

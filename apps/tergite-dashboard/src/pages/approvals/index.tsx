@@ -4,12 +4,11 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import { getAllAdminProjectsQuery, myProjectsQuery, refreshMyProjectsQueries } from "@/lib/api/projects";
+import { getAllAdminProjectsQuery, myProjectsQuery } from "@/lib/api/projects";
 import { currentUserQuery } from "@/lib/api/auth";
-import { getMyRequestsQuery, refreshMyRequests } from "@/lib/api/requests";
-import { refreshMyNotices } from "@/lib/api/notices";
+import { getMyRequestsQuery } from "@/lib/api/requests";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
-import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
@@ -23,7 +22,6 @@ import { ApprovalsTable } from "./components/approvals-table";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function Approvals() {
-  const queryClient = useQueryClient();
   const { currentUser } = useLoaderData() as ApprovalsData;
   const { data: myProjects = [] } = useQuery(myProjectsQuery);
   // a superuser decides requests on projects they are not in, so sees them all
@@ -51,13 +49,9 @@ export function Approvals() {
     [setRowSelection],
   );
 
-  const handleReaction = useCallback(async () => {
-    // before the refresh, or it would clear a row picked meanwhile
+  const handleReaction = useCallback(() => {
     setRowSelection({});
-    await refreshMyRequests(queryClient);
-    await refreshMyNotices(queryClient);
-    await refreshMyProjectsQueries(queryClient);
-  }, [queryClient]);
+  }, []);
 
   return (
     <main className="grid flex-1 items-start gap-4 grid-cols-1 p-4 sm:px-6 sm:py-0 xl:grid-cols-4">

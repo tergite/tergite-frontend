@@ -5,9 +5,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useCallback } from "react";
 import { Notice } from "../../../../../../types";
-import { approveMyRequest, rejectMyRequest, refreshMyRequests } from "@/lib/api/requests";
+import {
+  approveMyRequest,
+  refreshDecisionQueries,
+  rejectMyRequest,
+} from "@/lib/api/requests";
 import { dismissNotice, refreshMyNotices } from "@/lib/api/notices";
-import { refreshMyProjectsQueries } from "@/lib/api/projects";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { getNotificationMeta } from "./meta";
 
@@ -21,9 +24,7 @@ export function NotificationItem({ notice }: Props) {
   const canAct = isActionable && !!requestId;
 
   const refreshAll = useCallback(async () => {
-    await refreshMyNotices(queryClient);
-    await refreshMyRequests(queryClient);
-    await refreshMyProjectsQueries(queryClient);
+    await refreshDecisionQueries(queryClient);
   }, [queryClient]);
 
   const approval = useMutation({
