@@ -1,5 +1,5 @@
 #!/bin/sh
-# Packages the standalone Nuitka build as a macOS installer: run from apps/tergite-mss with VERSION
+# Packages the standalone Nuitka build as a macOS installer: run from the repository root with VERSION
 # set, e.g. `VERSION=2026.10.0 pkg/macos/build.sh`. SIGN_IDENTITY, a "Developer ID
 # Installer" certificate's name, signs it; without one Gatekeeper blocks the installer.
 

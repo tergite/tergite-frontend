@@ -9,7 +9,7 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Migrates the MongoDB of the MSS config, from apps/tergite-mss:
+"""Migrates the MongoDB of the MSS config, from the repository root:
 `python -m migrations.mongodb upgrade`, or `python -m migrations.mongodb rollback <revision>`
 """
 import argparse

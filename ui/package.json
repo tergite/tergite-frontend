@@ -12,8 +12,8 @@
     "generate:api": "uv run --directory .. --extra dev python -m dev.openapi.export && openapi-typescript ../dev/openapi/openapi.json -o src/lib/api/schema.d.ts",
     "check:api": "openapi-typescript ../dev/openapi/openapi.json -o src/lib/api/schema.d.ts --check",
     "preview": "vite preview",
-    "e2e": "bash ../../../dev/e2e_native_test.sh",
-    "visual-e2e": "VISUAL=True bash ../../../dev/e2e_native_test.sh"
+    "e2e": "bash ../dev/e2e_native_test.sh",
+    "visual-e2e": "VISUAL=True bash ../dev/e2e_native_test.sh"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",

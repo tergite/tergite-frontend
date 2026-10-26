@@ -4,8 +4,8 @@ The web client of the Tergite stack: a React single-page app that shows the stat
 quantum computers and lets users manage projects, API tokens, bookings and (for admins)
 backends, QPU-time requests and notices.
 
-Read [../../../DESIGN.md](../../../DESIGN.md) first for the monorepo context, deployment and the
-cross-app conventions.
+Read [../DESIGN.md](../DESIGN.md) first for MSS, deployment and the conventions both halves
+share.
 
 The dashboard has **no backend of its own**. In production it is a static bundle MSS serves
 at `/ui`; every piece of data comes from MSS over HTTP with a cookie, in development and in
@@ -257,7 +257,7 @@ replaces the page rather than the whole app.
 ## 4. Types
 
 The API contract is generated: `npm run generate:api` runs MSS's `dev/openapi/export.py`,
-which writes `apps/tergite-mss/dev/openapi/openapi.json`, and `openapi-typescript` turns that
+which writes `dev/openapi/openapi.json`, and `openapi-typescript` turns that
 into `src/lib/api/schema.d.ts`. Never edit the generated file; rerun the command. CI runs
 `npm run check:api`, which fails when `schema.d.ts` is stale. The client's paths, parameters,
 bodies and responses come from it, so a change to an MSS route or DTO fails `tsc` here.
@@ -292,7 +292,7 @@ alike, validating each fixture against MSS's schemas; it refuses a production co
 
 - `npm run dev` seeds the database of MSS's config, serves MSS on 8002 and runs vite against
   it; give MSS a development config, as seeding clears those tables.
-- [dev/e2e_native_test.sh](../../../dev/e2e_native_test.sh) seeds before MSS starts, and its
+- [dev/e2e_native_test.sh](../dev/e2e_native_test.sh) seeds before MSS starts, and its
   reset service, `dev/e2e_reset_server.py`, reseeds on every `GET /refreshed-db`.
 - `dev/perf/record.sh` seeds the database its runs measure.
 
@@ -318,8 +318,8 @@ npm run e2e     # with BACKEND_PATH set: dev/e2e_native_test.sh starts the stack
 npm run visual-e2e   # same, in playwright's UI mode
 ```
 
-[dev/e2e_native_test.sh](../../../dev/e2e_native_test.sh) starts MongoDB, seeded from `fixtures/`,
-Redis, the backends, and MSS serving this dashboard's test build at `/ui`; it sets
+[dev/e2e_native_test.sh](../dev/e2e_native_test.sh) starts MongoDB, seeded from `fixtures/`
+by `dev/seed.py`, Redis, the backends, and MSS serving this dashboard's test build at `/ui`; it sets
 `DASHBOARD_URL`, which `playwright.config.ts` requires, and passes its arguments to
 `playwright test`. The specs run on one worker, as they share the stack's data.
 
@@ -359,7 +359,7 @@ only if an earlier test wrote, so read-only tests share a reset. The browser run
 
 Playwright names visual baselines after the platform, so CI needs the linux ones. Generate
 them with the stack in Playwright's linux image through `Dockerfile.playwright`; see the "How to Generate
-Snapshots for CI" section of [CONTRIBUTING.md](./CONTRIBUTING.md).
+Snapshots for CI" section of [CONTRIBUTING.md](../CONTRIBUTING.md#how-to-generate-snapshots-for-ci).
 
 ## 7. Build and serve
 

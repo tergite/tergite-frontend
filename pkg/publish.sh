@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Uploads packages into the project's generic package registry, as tergite-mss under the tag's
-# version, and lists them in published/ for the release job: from apps/tergite-mss in a tag's
+# version, and lists them in published/ for the release job: from the repository root in a tag's
 # pipeline, `pkg/publish.sh dist/*.deb`. Each job uploads what it built, as the build is
 # bigger than GitLab's default artifact limit of 100 MB. CI provides CI_API_V4_URL,
 # CI_PROJECT_ID, CI_JOB_TOKEN, CI_JOB_ID and CI_COMMIT_TAG.

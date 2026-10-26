@@ -42,7 +42,7 @@ openid_configuration_endpoint = "https://example.com/.well-known/openid-configur
 ```
 
 - Start the frontend.
-  Instructions are on the [tergite-frontend/README.md](../../../README.md)
+  Instructions are on the [tergite-frontend/README.md](../README.md)
 
 ## Authorization
 

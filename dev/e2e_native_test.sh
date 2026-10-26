@@ -36,9 +36,9 @@ set -e # exit if any step fails
 
 ROOT_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 WORK_PATH="$ROOT_PATH/temp-native"
-FIXTURES_PATH="$ROOT_PATH/apps/tergite-mss/ui/fixtures"
-DASHBOARD_PATH="$ROOT_PATH/apps/tergite-mss/ui"
-MSS_PATH="$ROOT_PATH/apps/tergite-mss"
+FIXTURES_PATH="$ROOT_PATH/ui/fixtures"
+DASHBOARD_PATH="$ROOT_PATH/ui"
+MSS_PATH="$ROOT_PATH"
 BACKEND_REPO="$BACKEND_REPO"
 BACKEND_BRANCH="${BACKEND_BRANCH:-main}"
 OPENID_CONFIG_URL="${OPENID_CONFIG_URL:-https://samples.auth0.com/.well-known/openid-configuration}"

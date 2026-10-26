@@ -1,5 +1,5 @@
 name: Frontend CI
-# the CI for the whole front end monorepo
+# the full-stack e2e, and the push to the upstream mirror
 
 on:
   push:

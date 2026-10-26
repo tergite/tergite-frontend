@@ -1,5 +1,5 @@
 # Packages the standalone Nuitka build, built natively for each target: run from
-# apps/tergite-mss with VERSION and ARCH set, e.g.
+# the repository root with VERSION and ARCH set, e.g.
 # `VERSION=2026.10.0 ARCH=amd64 nfpm package -f pkg/nfpm.yaml -p deb -t dist/`
 name: tergite-mss
 arch: ${ARCH}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Creates the GitLab Release of this tag, with a link to each package published/ lists: from
-# apps/tergite-mss in the release job. GITLAB_TOKEN, a token with the api scope on this project,
+# the repository root in the release job. GITLAB_TOKEN, a token with the api scope on this project,
 # creates it when set; otherwise the job token does, on a GitLab whose settings allow it.
 
 set -euo pipefail

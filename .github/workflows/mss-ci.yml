@@ -6,13 +6,11 @@ on:
       - main
     tags:
       - "v*"
-    paths:
-      - "apps/tergite-mss/**"
-      - "!apps/tergite-mss/ui/**"
+    paths-ignore:
+      - "ui/**"
   pull_request:
-    paths:
-      - "apps/tergite-mss/**"
-      - "!apps/tergite-mss/ui/**"
+    paths-ignore:
+      - "ui/**"
 
 jobs:
   tests:
@@ -65,7 +63,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Run tests
         run: |
-          cd apps/tergite-mss
           pip install --upgrade pip
           pip install ."[dev]"
           black --check .

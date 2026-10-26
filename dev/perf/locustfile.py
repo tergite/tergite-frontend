@@ -21,9 +21,7 @@ import pymongo
 from bson import ObjectId
 from locust import HttpUser, between, events, task
 
-FIXTURES_PATH = (
-    Path(__file__).parents[2] / "apps" / "tergite-mss" / "ui" / "fixtures"
-)
+FIXTURES_PATH = Path(__file__).parents[2] / "ui" / "fixtures"
 MSS_CONFIG = tomllib.loads((FIXTURES_PATH / "mss-config.toml").read_text())
 MONGODB_URL = "mongodb://127.0.0.1:27019"
 DASHBOARD_USER_ID = "4939a0b9a7742e2cc52289e0"

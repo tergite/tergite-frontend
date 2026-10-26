@@ -78,11 +78,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/tergite/tergite-frontend/tree/main/apps/tergite-mss"
+Homepage = "https://github.com/tergite/tergite-frontend/tree/main"
 Repository = "https://github.com/tergite/tergite-frontend"
-Documentation = "https://github.com/tergite/tergite-frontend/tree/main/apps/tergite-mss/docs"
+Documentation = "https://github.com/tergite/tergite-frontend/tree/main/docs"
 Issues = "https://github.com/tergite/tergite-frontend/issues"
-Changelog = "https://github.com/tergite/tergite-frontend/blob/main/apps/tergite-mss/CHANGELOG.md"
+Changelog = "https://github.com/tergite/tergite-frontend/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 exclude = ["docs*", "tests*", "ui*"]

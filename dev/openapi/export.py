@@ -12,7 +12,7 @@
 
 """Writes the REST API's OpenAPI schema to openapi.json beside this file, without a server
 
-Run from apps/tergite-mss: `python -m dev.openapi.export`. It works although production
+Run from the repository root: `python -m dev.openapi.export`. It works although production
 serves no docs, since app.openapi() needs no route. The schema is built with the test config,
 whose auth clients decide which /auth/{name} routes it lists.
 """

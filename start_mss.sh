@@ -12,7 +12,7 @@
 # that they have been altered from the originals.
 #
 # Starts MSS from this checkout with `main.py start`, which migrates the database and serves,
-# passing on its arguments: from apps/tergite-mss, `./start_mss.sh` or `./start_mss.sh --reload`.
+# passing on its arguments: from the repository root, `./start_mss.sh` or `./start_mss.sh --reload`.
 # It reads the config MSS_CONFIG_FILE names, mss-config.toml by default, which a SOPS file
 # encrypted with a Hashicorp Vault key may be: that needs sops, yq, VAULT_ADDR and VAULT_TOKEN.
 

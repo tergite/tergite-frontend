@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 """Alembic's environment: the tables SqlStore derives, at the configured database's URL
 
-Run from apps/tergite-mss with the MSS config in the environment, as main.py migrate does:
+Run from the repository root with the MSS config in the environment, as main.py migrate does:
 `alembic upgrade head`, or `alembic revision --autogenerate -m "..."` against an up-to-date
 database after a schema changes. Review a generated revision by hand before committing it.
 """

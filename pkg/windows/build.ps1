@@ -1,4 +1,4 @@
-# Packages Nuitka's standalone build as an MSI: run from apps/tergite-mss after the Nuitka build, with
+# Packages Nuitka's standalone build as an MSI: run from the repository root after the Nuitka build, with
 # $env:VERSION set and WiX 5 installed (`dotnet tool install --global wix --version 5.0.2`)
 
 $ErrorActionPreference = "Stop"

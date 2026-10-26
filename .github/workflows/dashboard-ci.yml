@@ -7,12 +7,12 @@ on:
     tags:
       - "v*"
     paths:
-      - "apps/tergite-mss/ui/**"
-      - "apps/tergite-mss/dev/openapi/openapi.json"
+      - "ui/**"
+      - "dev/openapi/openapi.json"
   pull_request:
     paths:
-      - "apps/tergite-mss/ui/**"
-      - "apps/tergite-mss/dev/openapi/openapi.json"
+      - "ui/**"
+      - "dev/openapi/openapi.json"
 concurrency:
   # cancel any previous run on this branch or tag that is still in progress
   group: ci-${{ github.ref }}
@@ -32,11 +32,11 @@ jobs:
           node-version: 20
       - name: Lint
         run: |
-          cd apps/tergite-mss/ui
+          cd ui
           npm ci
           npm run lint
           npm run check:api
       - name: Component tests
         run: |
-          cd apps/tergite-mss/ui
+          cd ui
           npm run test

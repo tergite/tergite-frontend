@@ -1,6 +1,6 @@
 #!/bin/sh
 # Migrates a fresh SQLite database with a built or installed binary, which needs its bundled
-# Alembic files: from apps/tergite-mss, `pkg/smoke-test.sh /usr/bin/tergite-mss`
+# Alembic files: from the repository root, `pkg/smoke-test.sh /usr/bin/tergite-mss`
 
 set -e
 

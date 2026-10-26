@@ -1,19 +1,24 @@
 # tergite-frontend
 
 [![Frontend CI](https://github.com/tergite/tergite-frontend/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/frontend-ci.yml)
+[![MSS CI](https://github.com/tergite/tergite-frontend/actions/workflows/mss-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/mss-ci.yml)
+[![Dashboard CI](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml)
 
-The Frontend in the [Tergite software stack](https://tergite.github.io/) of the WACQT quantum computer.
+The Frontend in the [Tergite software stack](https://tergite.github.io/) of the WACQT quantum computer:
+the Main Service Server (MSS), the public API through which clients like the
+[tergite SDK](https://github.com/tergite/tergite) reach the quantum computers, and the dashboard it
+serves, the website that shows their state.
 
 **This project is developed by a core group of collaborators.**
 **Chalmers Next Labs AB (CNL) takes on the role of managing and maintaining this project.**
 
-![Login screen](./apps/tergite-mss/ui/docs/assets/login-screen.png)
+![Login screen](./ui/docs/assets/login-screen.png)
 The login screen
 
-![Home screen](./apps/tergite-mss/ui/docs/assets/home-screen.png)
+![Home screen](./ui/docs/assets/home-screen.png)
 The home screen
 
-![Tergite dashboard showcase](./apps/tergite-mss/ui/docs/assets/dashboard-showcase.gif)
+![Tergite dashboard showcase](./ui/docs/assets/dashboard-showcase.gif)
 A preview of the the dashboard
 
 ## Version Control
@@ -21,13 +26,11 @@ A preview of the the dashboard
 The tergite stack is developed on a separate version control system and mirrored on Github.
 If you are reading this on GitHub, then you are looking at a mirror.
 
-## Services
+## Layout
 
-- [Tergite Dashboard](./apps/tergite-mss/ui/) [![Dashboard CI](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml)  
-  The website that shows the state of the quantum computer
-- [Tergite Main Service Server or MSS](./apps/tergite-mss/) [![MSS CI](https://github.com/tergite/tergite-frontend/actions/workflows/mss-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/mss-ci.yml)  
-  The server that controls all services on this frontend.  
-  It also exposes the REST API through which other clients like [tergite SDK](https://github.com/tergite/tergite) communicate with the quantum computers.
+This folder is MSS, a FastAPI app; the dashboard, a React app, is in [ui/](./ui), and MSS serves
+its build at `/ui`. [DESIGN.md](./DESIGN.md) describes how they are built, and [docs/](./docs)
+more of MSS's API.
 
 ## Deployment
 
@@ -87,6 +90,60 @@ GRAFANA_LOKI_URL=http://loki.example.com:3100/loki/api/v1/push
 LOKI_LOGGER_ID=<some-id>
 ```
 
+## Development
+
+- Ensure you have [conda](https://docs.anaconda.com/free/miniconda/index.html) installed, or
+  Python 3.12 or later, [Nodejs +20.12](https://nodejs.org/) for the dashboard, and a
+  [tergite backend](https://github.com/tergite/tergite-backend) running.
+- Clone the repo, create the conda environment and install the dependencies
+
+```shell
+git clone git@github.com:tergite/tergite-frontend.git
+cd tergite-frontend
+conda create -n mss -y python=3.12
+conda activate mss
+pip install -e .
+```
+
+- Copy the `mss-config.example.toml` file to `mss-config.toml` and update the variables there
+  appropriately.
+
+```shell
+cp mss-config.example.toml mss-config.toml
+```
+
+- If you don't have a key pair for MSS, generate one, and copy the public key to the backend
+  machine's tergite-backend folder. Take note of the password `PRIVATE_KEY_PASSWORD` you provide,
+  or skip `-pass` to be prompted for one. `PRIVATE_KEY_FILE` may name another path for the
+  private key.
+
+```shell
+openssl genpkey -algorithm RSA \
+  -out private-mss-key.pem \
+  -pkeyopt rsa_keygen_bits:4096 \
+  -aes-256-cbc
+openssl rsa -pubout -in private-mss-key.pem -out public-mss-key.pem
+# scp public-mss-key.pem backend-host:~/tergite-backend/
+```
+
+- Run the start script, then open [http://localhost:8002/docs](http://localhost:8002/docs) to
+  see the interactive API docs
+
+```shell
+./start_mss.sh
+```
+
+- To work on the dashboard, run it in development mode, against MSS: this seeds the database of
+  MSS's config (`mss-config.toml`, or the file `MSS_CONFIG_FILE` names) with
+  [ui/fixtures/](./ui/fixtures), clearing those tables, serves MSS on 8002 and runs vite against
+  it at [http://127.0.0.1:5173/ui/](http://127.0.0.1:5173/ui/)
+
+```shell
+cd ui
+npm i
+npm run dev
+```
+
 ## FAQ
 
 ### Why can't I access the service?
@@ -118,7 +175,7 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## License
 
-[Apache 2.0 License](./LICENSE)
+[Apache 2.0 License](./LICENSE.txt)
 
 ## TODO
 
@@ -152,6 +209,7 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
         our config files such that if one wants to use websockets, they go ahead. If NATS they go ahead.
         It would also mean it is easy to check if the NATS gets rid of those sporadic disconnections.
         But all this is for a future RFC or something-->
+- [ ] Clean up the requests and qpu_grants API
 
 ## Acknowledgements
 

@@ -20,8 +20,12 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, required=True)
-    parser.add_argument("--mss-path", required=True, help="the MSS checkout to seed with")
-    parser.add_argument("--sql", required=True, help="the SQL to load into each database")
+    parser.add_argument(
+        "--mss-path", required=True, help="the MSS checkout to seed with"
+    )
+    parser.add_argument(
+        "--sql", required=True, help="the SQL to load into each database"
+    )
     parser.add_argument("databases", nargs="*", help="the backends' SQLite files")
     args = parser.parse_args()
 
@@ -47,7 +51,10 @@ def main() -> None:
 
 def _reset(mss_path: str, sql: str, databases: list[str]) -> None:
     subprocess.run(
-        [sys.executable, "-m", "dev.seed"], cwd=mss_path, check=True, capture_output=True
+        [sys.executable, "-m", "dev.seed"],
+        cwd=mss_path,
+        check=True,
+        capture_output=True,
     )
     for database in databases:
         with open(sql, "rb") as sql_file:

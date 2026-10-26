@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 """Seeds the database of the MSS config with the dashboard's fixtures, clearing their tables first
 
-Run from apps/tergite-mss: `python -m dev.seed`. The e2e stack, its resets, the performance
+Run from the repository root: `python -m dev.seed`. The e2e stack, its resets, the performance
 checks and `npm run dev` all seed this way. It refuses a production config.
 """
 import asyncio
