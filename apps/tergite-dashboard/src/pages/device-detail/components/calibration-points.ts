@@ -1,4 +1,4 @@
-import { type CalibrationValue, type DeviceCalibration } from "@/lib/api/types";
+import type { CalibrationValue, DeviceCalibration } from "@/lib/api/types";
 
 /** Each qubit's value of the property, by qubit index, for the charts */
 export function getCalibrationPoints(

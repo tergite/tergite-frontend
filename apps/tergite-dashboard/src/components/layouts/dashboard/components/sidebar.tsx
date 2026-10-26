@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CollapsibleContent } from "@radix-ui/react-collapsible";
 import { NavItem } from "@/components/ui/nav-item";
 import { Badge } from "@/components/ui/badge";
-import { type Project } from "@/lib/api/types";
+import type { Project } from "@/lib/api/types";
 import { QpuMeter } from "./qpu-meter";
 import { NAV_GROUPS, type NavGroup } from "./nav-items";
 

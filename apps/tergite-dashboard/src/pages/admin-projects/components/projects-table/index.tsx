@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/ui/data-table";
 
-import { type AdminProject } from "@/lib/api/types";
+import type { AdminProject } from "@/lib/api/types";
 
 import { columns } from "./columns";
 import { filterFormProps } from "./filter-form";

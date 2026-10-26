@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import {
-  type DeviceCalibration,
-  type RecalibrationInfo,
-  type RqJobStatus,
+import type {
+  DeviceCalibration,
+  RecalibrationInfo,
+  RqJobStatus,
 } from "@/lib/api/types";
 
 const ACTIVE_STATUSES: RqJobStatus[] = [

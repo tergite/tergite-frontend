@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/ui/data-table";
 
-import { type ExtendedAppToken } from "@/lib/api/tokens";
+import type { ExtendedAppToken } from "@/lib/app-tokens";
 
 import { columns } from "./columns";
 import { filterFormProps } from "./filter-form";

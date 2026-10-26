@@ -1,5 +1,5 @@
-import {
-  type CalibrationDataPoint,
+import type {
+  CalibrationDataPoint,
 } from "@/pages/device-detail/components/calibration-points";
 import { Bar } from "@visx/shape";
 import { localPoint } from "@visx/event";

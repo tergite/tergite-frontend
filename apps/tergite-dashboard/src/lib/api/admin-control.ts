@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { type GeneralMessage } from "./types";
+import type { GeneralMessage } from "./types";
 import { client } from "./client";
 
 export function getRecalibrationInfoQuery(backend: string) {

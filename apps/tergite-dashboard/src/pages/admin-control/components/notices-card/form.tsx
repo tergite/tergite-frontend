@@ -21,7 +21,7 @@ import {
   refreshAllNoticeCounts,
   refreshAllNotices,
 } from "@/lib/api/notices";
-import { type NoticeSeverity } from "@/lib/api/types";
+import type { NoticeSeverity } from "@/lib/api/types";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,

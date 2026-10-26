@@ -8,7 +8,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getRecalibrationInfoQuery } from "@/lib/api/admin-control";
 import { getDeviceCalibrationQuery } from "@/lib/api/devices";
-import { type RqJobStatus } from "@/lib/api/types";
+import type { RqJobStatus } from "@/lib/api/types";
 import { CalibrationMetrics } from "./metrics";
 import { CalibrationActions } from "./actions";
 

@@ -1,4 +1,4 @@
-import { type Page, type Request } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import { type Device, type User, UserRole } from "../dev/mock-api/types";
 

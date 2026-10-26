@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { type Job } from "./types";
+import type { Job } from "./types";
 import { client } from "./client";
 
 export function getMyJobsQuery(options: { project_id?: string } = {}) {

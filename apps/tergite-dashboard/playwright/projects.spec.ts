@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { Duration } from "luxon";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import { checkFilters, type TableFilter } from "./utils/tables";

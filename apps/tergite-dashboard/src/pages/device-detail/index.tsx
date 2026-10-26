@@ -2,14 +2,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getBookingsConfigQuery } from "@/lib/api/bookings";
 import { currentUserQuery } from "@/lib/api/auth";
 import { getDeviceCalibrationQuery, getDeviceQuery } from "@/lib/api/devices";
-import {
-  type BookingsConfig,
-  type Device,
-  type DeviceCalibration,
-  type User,
+import type {
+  BookingsConfig,
+  Device,
+  DeviceCalibration,
+  User,
 } from "@/lib/api/types";
-import {
-  type QubitProp,
+import type {
+  QubitProp,
 } from "@/pages/device-detail/components/calibration-points";
 import { LoaderFunctionArgs, useLoaderData } from "react-router-dom";
 

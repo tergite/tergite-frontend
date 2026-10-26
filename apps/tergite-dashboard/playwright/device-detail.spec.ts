@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { DateTime } from "luxon";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import {
@@ -6,11 +6,11 @@ import {
   dragToGridCell,
   setCalendarViewportSize,
 } from "./utils/calendar";
-import {
-  type Booking,
-  type BookingsConfig,
-  type Device,
-  type User,
+import type {
+  Booking,
+  BookingsConfig,
+  Device,
+  User,
 } from "../dev/mock-api/types";
 
 // the browser's, from the config's timezoneId, so that these dates match the page's

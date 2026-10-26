@@ -24,7 +24,7 @@ export type {
   UserRequest,
 } from "../../src/lib/api/types";
 export type { ErrorInfo } from "../../src/lib/api/client";
-export type { ExtendedAppToken } from "../../src/lib/api/tokens";
+export type { ExtendedAppToken } from "../../src/lib/app-tokens";
 export type { AnyFlatRecord } from "../../src/lib/user-requests";
 
 export interface DbRecord extends Record<

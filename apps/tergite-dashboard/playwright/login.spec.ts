@@ -1,7 +1,7 @@
 import { decodeJwt } from "jose";
-import { type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { expect, readFixture, signSession, test, waitForApi } from "./fixtures";
-import { type AuthProvider, type User } from "../dev/mock-api/types";
+import type { AuthProvider, User } from "../dev/mock-api/types";
 
 const invalidFormatEmailAddresses = ["john", "1", "john.com", "http://example.com"];
 

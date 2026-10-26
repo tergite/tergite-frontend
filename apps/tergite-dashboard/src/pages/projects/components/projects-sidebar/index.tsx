@@ -10,7 +10,7 @@ import { HealthStatus } from "@/components/ui/health-status";
 import { deleteMyProject, refreshMyProjectsQueries } from "@/lib/api/projects";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type Project } from "@/lib/api/types";
+import type { Project } from "@/lib/api/types";
 import { DeleteProjectDialog } from "./delete-dialog";
 import { useMemo } from "react";
 import { DateTime, Duration } from "luxon";

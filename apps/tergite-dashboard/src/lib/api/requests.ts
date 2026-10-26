@@ -1,11 +1,11 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
-import {
-  type Project,
-  type User,
-  type UserRequest,
-  type UserRequestMetadata,
-  type UserRequestStatus,
-  type UserRequestType,
+import type {
+  Project,
+  User,
+  UserRequest,
+  UserRequestMetadata,
+  UserRequestStatus,
+  UserRequestType,
 } from "./types";
 import { client } from "./client";
 import { refreshMyNotices } from "./notices";

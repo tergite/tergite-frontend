@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { test as base, type Page } from "@playwright/test";
 import { SignJWT } from "jose";
-import { type User } from "../dev/mock-api/types";
+import type { User } from "../dev/mock-api/types";
 
 // the API address the test build was made with; each worker's requests to it go to its own API,
 // unless the tests run against the full stack, whose API it is

@@ -24,7 +24,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
-import { type ErrorInfo } from "@/lib/api/client";
+import type { ErrorInfo } from "@/lib/api/client";
 import { z } from "zod";
 import { toast } from "@/hooks/use-toast";
 

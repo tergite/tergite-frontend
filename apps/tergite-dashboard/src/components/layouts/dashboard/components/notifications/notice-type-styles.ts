@@ -15,7 +15,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import { type NoticeType } from "@/lib/api/types";
+import type { NoticeType } from "@/lib/api/types";
 
 interface NotificationMeta {
   Icon: LucideIcon;

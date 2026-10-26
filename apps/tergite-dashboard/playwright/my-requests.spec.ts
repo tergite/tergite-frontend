@@ -1,6 +1,6 @@
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import { getUserRequestDetails } from "./utils/records";
-import { type User, type UserRequest } from "../dev/mock-api/types";
+import { getUserRequestDetails } from "../src/lib/user-requests";
+import type { User, UserRequest } from "../dev/mock-api/types";
 
 const users = readFixture<User[]>("users");
 const requests = readFixture<UserRequest[]>("user-requests");

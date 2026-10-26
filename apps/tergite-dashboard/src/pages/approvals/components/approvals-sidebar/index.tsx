@@ -21,7 +21,7 @@ import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import { type UserRequest } from "@/lib/api/types";
+import type { UserRequest } from "@/lib/api/types";
 
 export function ApprovalSummary({
   request,

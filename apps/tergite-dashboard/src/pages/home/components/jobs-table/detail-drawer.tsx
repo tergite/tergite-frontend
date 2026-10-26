@@ -5,7 +5,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { ProgressStatus } from "@/components/ui/progress-status";
-import { type Job } from "@/lib/api/types";
+import type { Job } from "@/lib/api/types";
 import { DateTime, Duration } from "luxon";
 import { IconButton } from "@/components/ui/button";
 import { X } from "lucide-react";

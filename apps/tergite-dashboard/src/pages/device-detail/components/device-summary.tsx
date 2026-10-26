@@ -8,11 +8,11 @@ import {
 } from "@/components/ui/card";
 import { DeviceStatusDiv } from "@/components/ui/device-status-div";
 import { Separator } from "@/components/ui/separator";
-import {
-  type CalibrationValue,
-  type Device,
-  type DeviceCalibration,
-  type Qubit,
+import type {
+  CalibrationValue,
+  Device,
+  DeviceCalibration,
+  Qubit,
 } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import { DateTime } from "luxon";

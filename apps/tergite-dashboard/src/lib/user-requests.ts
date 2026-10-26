@@ -1,5 +1,5 @@
-import { type ExtendedUserRequest } from "@/lib/api/requests";
-import { type UserRequest } from "@/lib/api/types";
+import type { ExtendedUserRequest } from "@/lib/api/requests";
+import type { UserRequest } from "@/lib/api/types";
 
 /** A title for the request, naming its project where the viewer can see it */
 export function getUserRequestTitle(request: ExtendedUserRequest): string {

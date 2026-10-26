@@ -11,8 +11,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { type MouseEventHandler } from "react";
-import { type Project } from "@/lib/api/types";
+import type { MouseEventHandler } from "react";
+import type { Project } from "@/lib/api/types";
 
 export function DeleteProjectDialog({ project, onDelete, isDisabled }: Props) {
   return (

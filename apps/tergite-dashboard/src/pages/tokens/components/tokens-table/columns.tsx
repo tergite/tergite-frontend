@@ -1,7 +1,7 @@
 import { SortHeader } from "@/components/ui/data-table";
 import { HealthStatus } from "@/components/ui/health-status";
 import { ColumnDef } from "@tanstack/table-core";
-import { type ExtendedAppToken } from "@/lib/api/tokens";
+import type { ExtendedAppToken } from "@/lib/app-tokens";
 import { formatRelative } from "@/lib/time";
 
 export const columns: ColumnDef<ExtendedAppToken>[] = [

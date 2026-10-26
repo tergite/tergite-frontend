@@ -1,11 +1,11 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
 import { DateTime } from "luxon";
-import {
-  type Booking,
-  type GeneralMessage,
-  type NewBookingInfo,
+import type {
+  Booking,
+  GeneralMessage,
+  NewBookingInfo,
 } from "./types";
-import { type ErrorInfo } from "@/lib/api/client";
+import type { ErrorInfo } from "@/lib/api/client";
 import { client } from "./client";
 
 /** The backend's bookings from now on, by default the next five */

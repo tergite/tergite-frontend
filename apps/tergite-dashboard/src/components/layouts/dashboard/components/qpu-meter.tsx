@@ -6,7 +6,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Gauge } from "lucide-react";
 import { Link } from "react-router-dom";
-import { type Project } from "@/lib/api/types";
+import type { Project } from "@/lib/api/types";
 
 /**
  * Remaining QPU seconds on the user's personal project.

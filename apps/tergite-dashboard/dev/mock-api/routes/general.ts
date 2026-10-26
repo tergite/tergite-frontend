@@ -1,5 +1,5 @@
 import { Router, type Request as ExpressRequest } from "express";
-import { type ParsedQs } from "qs";
+import type { ParsedQs } from "qs";
 import cors from "cors";
 import {
   AppTokenInDb,

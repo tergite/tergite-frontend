@@ -1,6 +1,6 @@
-import { type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import { type User } from "../dev/mock-api/types";
+import type { User } from "../dev/mock-api/types";
 
 const API_URL = process.env.VITE_API_BASE_URL;
 

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type AdminProject } from "@/lib/api/types";
+import type { AdminProject } from "@/lib/api/types";
 import { useCallback } from "react";
 import { Button, IconButton } from "@/components/ui/button";
 import { z } from "zod";

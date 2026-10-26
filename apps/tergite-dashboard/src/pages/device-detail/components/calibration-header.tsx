@@ -1,7 +1,7 @@
 import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { type Device } from "@/lib/api/types";
-import {
-  type QubitProp,
+import type { Device } from "@/lib/api/types";
+import type {
+  QubitProp,
 } from "@/pages/device-detail/components/calibration-points";
 import { PropSelector } from "./prop-selector";
 

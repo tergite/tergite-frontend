@@ -11,8 +11,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { type MouseEventHandler } from "react";
-import { type ExtendedAppToken } from "@/lib/api/tokens";
+import type { MouseEventHandler } from "react";
+import type { ExtendedAppToken } from "@/lib/app-tokens";
 
 export function TokenDeleteDialog({ token, onDelete, isDisabled }: Props) {
   return (

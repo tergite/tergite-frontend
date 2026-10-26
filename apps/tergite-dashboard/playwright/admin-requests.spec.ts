@@ -1,7 +1,7 @@
-import { type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import { innermost } from "./utils/locators";
-import { getUserRequestDetails } from "./utils/records";
+import { getUserRequestDetails } from "../src/lib/user-requests";
 import {
   type Project,
   type User,

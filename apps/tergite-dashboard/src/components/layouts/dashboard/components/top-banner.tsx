@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NoticeBanner } from "@/components/ui/notice-banner";
 import { DateTime } from "luxon";
 import { CUSTOM_NOTICE_TYPES } from "@/lib/api/notices";
-import { type User } from "@/lib/api/types";
+import type { User } from "@/lib/api/types";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { NotificationsBell } from "./notifications";
 

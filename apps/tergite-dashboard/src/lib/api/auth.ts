@@ -1,5 +1,5 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
-import { type AuthProviderResponse } from "./types";
+import type { AuthProviderResponse } from "./types";
 import type { AppState } from "../app-state";
 import { client } from "./client";
 

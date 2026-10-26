@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { describe, expect, it } from "vitest";
-import {
-  type Device,
-  type DeviceCalibration,
-  type Qubit,
+import type {
+  Device,
+  DeviceCalibration,
+  Qubit,
 } from "@/lib/api/types";
 import { DeviceSummary } from "../device-summary";
 

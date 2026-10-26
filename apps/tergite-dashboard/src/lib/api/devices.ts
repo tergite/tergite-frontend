@@ -1,8 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
-import {
-  type CalibrationValue,
-  type Device,
-  type DeviceCalibration,
+import type {
+  CalibrationValue,
+  Device,
+  DeviceCalibration,
 } from "./types";
 import { client } from "./client";
 

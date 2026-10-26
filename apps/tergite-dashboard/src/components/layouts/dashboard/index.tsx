@@ -11,7 +11,7 @@ import {
 import { logout, currentUserQuery } from "@/lib/api/auth";
 import { myActiveProjectsQuery } from "@/lib/api/projects";
 import { getAllUserRequestsQuery } from "@/lib/api/requests";
-import { type User } from "@/lib/api/types";
+import type { User } from "@/lib/api/types";
 import { useCallback, useMemo, useState } from "react";
 import { useAppStore } from "@/lib/app-state";
 import { ErrorBoundary } from "react-error-boundary";

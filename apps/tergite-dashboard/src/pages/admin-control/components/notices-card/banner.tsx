@@ -10,7 +10,7 @@ import { Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
 import { SEVERITY_LABELS } from "@/components/ui/notice-banner";
-import { type NoticeSeverity, type Notice } from "@/lib/api/types";
+import type { NoticeSeverity, Notice } from "@/lib/api/types";
 
 const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {
   3:

@@ -10,13 +10,13 @@ import type {
 import { DateTime } from "luxon";
 import { useCallback, useMemo, useState } from "react";
 import { IconButton } from "@/components/ui/button";
-import {
-  type Booking,
-  type BookingsConfig,
-  type GeneralMessage,
-  type User,
+import type {
+  Booking,
+  BookingsConfig,
+  GeneralMessage,
+  User,
 } from "@/lib/api/types";
-import { type ErrorInfo } from "@/lib/api/client";
+import type { ErrorInfo } from "@/lib/api/client";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";

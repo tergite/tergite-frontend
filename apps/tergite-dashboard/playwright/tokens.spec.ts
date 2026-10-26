@@ -1,13 +1,13 @@
-import { type Locator, type Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { DateTime } from "luxon";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import { checkFilters, type TableFilter } from "./utils/tables";
-import { extendAppToken } from "./utils/records";
-import {
-  type AppToken,
-  type ExtendedAppToken,
-  type Project,
-  type User,
+import { extendAppToken } from "../src/lib/app-tokens";
+import type {
+  AppToken,
+  ExtendedAppToken,
+  Project,
+  User,
 } from "../dev/mock-api/types";
 
 const TABLE_HEADERS = ["Title", "Project", "Expires", "Status"];

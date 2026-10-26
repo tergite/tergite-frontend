@@ -3,12 +3,12 @@ import {
   QueryClient,
   queryOptions,
 } from "@tanstack/react-query";
-import {
-  type AdminCreateProjectBody,
-  type AdminProject,
-  type Project,
-  type UpdateProjectPutBody,
-  type User,
+import type {
+  AdminCreateProjectBody,
+  AdminProject,
+  Project,
+  UpdateProjectPutBody,
+  User,
 } from "./types";
 import { client } from "./client";
 

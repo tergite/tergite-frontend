@@ -1,5 +1,5 @@
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import { type Device, type User } from "../dev/mock-api/types";
+import type { Device, User } from "../dev/mock-api/types";
 
 const LAST_ONLINE_PATTERN =
   /\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?) ago/i;

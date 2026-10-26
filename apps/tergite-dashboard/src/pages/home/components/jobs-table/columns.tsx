@@ -1,6 +1,6 @@
 import { SortHeader } from "@/components/ui/data-table";
 import { ProgressStatus } from "@/components/ui/progress-status";
-import { type Job, type JobStatus } from "@/lib/api/types";
+import type { Job, JobStatus } from "@/lib/api/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { DateTime, Duration } from "luxon";
 

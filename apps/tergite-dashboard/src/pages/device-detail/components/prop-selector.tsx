@@ -5,8 +5,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  type QubitProp,
+import type {
+  QubitProp,
 } from "@/pages/device-detail/components/calibration-points";
 
 export function PropSelector({ value, onValueChange, fieldLabels }: Props) {

@@ -11,11 +11,11 @@ import bookingsFixture from "../../fixtures/bookings.json";
 import bookingsConfigList from "../../fixtures/bookings-configs.json";
 import userRequestList from "../../fixtures/user-requests.json";
 import rawNoticeList from "../../fixtures/notices.json";
-import { type ParsedQs } from "qs";
-import {
-  type NextFunction,
-  type Response as ExpressResponse,
-  type Request as ExpressRequest,
+import type { ParsedQs } from "qs";
+import type {
+  NextFunction,
+  Response as ExpressResponse,
+  Request as ExpressRequest,
 } from "express";
 import {
   AppToken,

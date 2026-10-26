@@ -8,7 +8,7 @@ import {
   stopRecalibration,
 } from "@/lib/api/admin-control";
 import { getDeviceCalibrationQuery } from "@/lib/api/devices";
-import { type RqJobStatus } from "@/lib/api/types";
+import type { RqJobStatus } from "@/lib/api/types";
 
 const ACTIVE_STATUSES: RqJobStatus[] = [
   "started",

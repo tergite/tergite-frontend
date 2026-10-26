@@ -29,6 +29,7 @@ src/
 │   │   ├── types.ts         # the dashboard's names for the schema's types
 │   │   └── devices.ts, …    # one module per resource: its queryOptions and mutations
 │   ├── app-state.ts         # useAppStore, the zustand store of app state
+│   ├── app-tokens.ts        # a token's expiry and project name, apart from the HTTP client
 │   ├── query-client.ts      # the one QueryClient, polling by default
 │   ├── loaders.ts           # loadOrRedirectIfAuthErr and tryQueryFetchMany, for route loaders
 │   ├── time.ts              # parsing and formatting times and durations beyond one luxon call
@@ -356,6 +357,10 @@ Each feature's happy path, and the spec that walks it:
 | Error page | `error-alert.spec.ts` |
 
 Job submission has no UI; its happy path is the MSS pytest flow in `tests/api/test_jobs.py`.
+
+The specs reuse the dashboard's own pure helpers (`extendAppToken`, `getUserRequestDetails`)
+rather than copies; a module they import must not build the HTTP client, whose base URL only
+vite defines.
 
 Component tests are the thin layer: `vite.config.ts` restricts them to `__tests__`
 directories, and only pure-ish primitives are covered there (`ui/__tests__/donut-chart.test.tsx`).

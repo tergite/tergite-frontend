@@ -1,9 +1,9 @@
 import { DataTable } from "@/components/ui/data-table";
 import { SortHeader } from "@/components/ui/data-table";
-import {
-  type CalibrationValue,
-  type DeviceCalibration,
-  type Qubit,
+import type {
+  CalibrationValue,
+  DeviceCalibration,
+  Qubit,
 } from "@/lib/api/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";

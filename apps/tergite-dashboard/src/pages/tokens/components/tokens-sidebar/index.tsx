@@ -11,7 +11,7 @@ import { deleteMyToken, refreshMyTokensQueries } from "@/lib/api/tokens";
 import { cn } from "@/lib/utils";
 import { formatRelative } from "@/lib/time";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type ExtendedAppToken } from "@/lib/api/tokens";
+import type { ExtendedAppToken } from "@/lib/app-tokens";
 import { TokenDeleteDialog } from "./delete-dialog";
 import { TokenLifespanDialog } from "./lifespan-dialog";
 

@@ -5,10 +5,8 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { myProjectsQuery } from "@/lib/api/projects";
-import {
-  addProjectNames,
-  getMyTokensQuery,
-} from "@/lib/api/tokens";
+import { getMyTokensQuery } from "@/lib/api/tokens";
+import { addProjectNames } from "@/lib/app-tokens";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { useAppStore } from "@/lib/app-state";
 import {
@@ -17,8 +15,8 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
-import { type AppToken, type Project } from "@/lib/api/types";
-import { type ExtendedAppToken } from "@/lib/api/tokens";
+import type { AppToken, Project } from "@/lib/api/types";
+import type { ExtendedAppToken } from "@/lib/app-tokens";
 import { TokensTable } from "./components/tokens-table";
 import { TokenSummary } from "./components/tokens-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";

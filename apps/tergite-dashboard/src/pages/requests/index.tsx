@@ -10,7 +10,7 @@ import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
-import { type UserRequest } from "@/lib/api/types";
+import type { UserRequest } from "@/lib/api/types";
 import { MyRequestSummary } from "./components/request-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { MyRequestsTable } from "./components/requests-table";

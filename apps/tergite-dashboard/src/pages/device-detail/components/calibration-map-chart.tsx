@@ -1,8 +1,8 @@
-import {
-  type CalibrationDataPoint,
-  type QubitProp,
+import type {
+  CalibrationDataPoint,
+  QubitProp,
 } from "@/pages/device-detail/components/calibration-points";
-import { type Device, type DeviceCalibration } from "@/lib/api/types";
+import type { Device, DeviceCalibration } from "@/lib/api/types";
 import { useParentSize } from "@visx/responsive";
 import { defaultStyles, useTooltip, useTooltipInPortal } from "@visx/tooltip";
 import { useMemo } from "react";

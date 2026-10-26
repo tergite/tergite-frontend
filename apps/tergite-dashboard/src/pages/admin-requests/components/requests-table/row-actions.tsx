@@ -6,7 +6,7 @@ import {
 } from "@/lib/api/requests";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type UserRequest } from "@/lib/api/types";
+import type { UserRequest } from "@/lib/api/types";
 
 export function RowActions({ request }: Props) {
   const queryClient = useQueryClient();

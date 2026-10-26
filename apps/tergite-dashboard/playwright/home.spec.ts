@@ -1,11 +1,11 @@
-import { type Locator, type Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import {
-  type Booking,
-  type Device,
-  type Job,
-  type Project,
-  type User,
+import type {
+  Booking,
+  Device,
+  Job,
+  Project,
+  User,
 } from "../dev/mock-api/types";
 
 const CURRENT_DATE = process.env.CURRENT_DATE!;

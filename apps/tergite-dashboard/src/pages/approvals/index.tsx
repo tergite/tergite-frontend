@@ -12,7 +12,7 @@ import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
-import { type User, type UserRequest } from "@/lib/api/types";
+import type { User, UserRequest } from "@/lib/api/types";
 import { ApprovalSummary } from "./components/approvals-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { ApprovalsTable } from "./components/approvals-table";

@@ -3,11 +3,11 @@ import {
   QueryClient,
   queryOptions,
 } from "@tanstack/react-query";
-import {
-  type GeneralMessage,
-  type Notice,
-  type NoticePostRequest,
-  type NoticePreferences,
+import type {
+  GeneralMessage,
+  Notice,
+  NoticePostRequest,
+  NoticePreferences,
 } from "./types";
 import { client } from "./client";
 import type { paths } from "./schema";

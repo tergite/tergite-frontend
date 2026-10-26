@@ -4,7 +4,7 @@ import { dismissNotice, refreshMyNotices } from "@/lib/api/notices";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useMemo } from "react";
-import { type NoticeSeverity, type Notice } from "@/lib/api/types";
+import type { NoticeSeverity, Notice } from "@/lib/api/types";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const SEVERITY_LABELS: Record<NoticeSeverity, string> = {

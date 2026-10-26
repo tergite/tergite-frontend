@@ -1,8 +1,8 @@
-import {
-  type CalibrationDataPoint,
-  type QubitProp,
+import type {
+  CalibrationDataPoint,
+  QubitProp,
 } from "@/pages/device-detail/components/calibration-points";
-import { type DeviceCalibration } from "@/lib/api/types";
+import type { DeviceCalibration } from "@/lib/api/types";
 import { useTooltip, useTooltipInPortal, defaultStyles } from "@visx/tooltip";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Group } from "@visx/group";

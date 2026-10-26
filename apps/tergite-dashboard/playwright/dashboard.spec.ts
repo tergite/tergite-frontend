@@ -1,4 +1,4 @@
-import { type Locator } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import {
   type Project,

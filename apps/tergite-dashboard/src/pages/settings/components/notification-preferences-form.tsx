@@ -6,7 +6,7 @@ import {
 } from "@/lib/api/notices";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { type NoticeType } from "@/lib/api/types";
+import type { NoticeType } from "@/lib/api/types";
 import {
   getNotificationMeta,
 } from "@/components/layouts/dashboard/components/notifications/notice-type-styles";

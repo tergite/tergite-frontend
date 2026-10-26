@@ -13,7 +13,7 @@ import { myProjectsQuery } from "@/lib/api/projects";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { type User, type Project } from "@/lib/api/types";
+import type { User, Project } from "@/lib/api/types";
 import { ProjectsTable } from "./components/project-table";
 import { ProjectSummary } from "./components/projects-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
