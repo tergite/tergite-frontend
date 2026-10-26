@@ -26,6 +26,8 @@
 #   BACKEND_BRANCH="main" \ # the branch of BACKEND_REPO to clone; default is 'main'
 #   DEBUG="True" \ # Set 'True' to keep the services running and temp-native/ after the tests, default: ''
 #   VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
+#   MSS_BINARY="main.dist/mss" \ # a built MSS to run instead of main.py, default: ''; it serves the
+#     dashboard it was built with, so build that first with `npm run build -- --mode test` in ui/
 #   OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration" \ # MSS's mock OpenID provider
 #   OPENID_CLIENT_ID="kbyuFDidLLm280LIwVFiazOqjO3ty8KH" \ # its client ID
 #   OPENID_CLIENT_SECRET="60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa" \ # its client secret
@@ -39,6 +41,7 @@ WORK_PATH="$ROOT_PATH/temp-native"
 FIXTURES_PATH="$ROOT_PATH/ui/fixtures"
 DASHBOARD_PATH="$ROOT_PATH/ui"
 MSS_PATH="$ROOT_PATH"
+MSS_BINARY="${MSS_BINARY:+$(realpath "$MSS_BINARY")}"
 BACKEND_REPO="$BACKEND_REPO"
 BACKEND_BRANCH="${BACKEND_BRANCH:-main}"
 OPENID_CONFIG_URL="${OPENID_CONFIG_URL:-https://samples.auth0.com/.well-known/openid-configuration}"
@@ -191,7 +194,9 @@ for backend in "${BACKENDS[@]}"; do
 done
 export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
 (cd "$MSS_PATH" && "$WORK_PATH/venvs/mss/bin/python" -m dev.seed) > "$WORK_PATH/logs/seed.log" 2>&1
-start_service mss bash -c "cd '$MSS_PATH' && exec '$WORK_PATH/venvs/mss/bin/python' main.py start --host 127.0.0.1 --port $MSS_PORT"
+mss_command="'$WORK_PATH/venvs/mss/bin/python' main.py"
+[[ -z "$MSS_BINARY" ]] || mss_command="'$MSS_BINARY'"
+start_service mss bash -c "cd '$MSS_PATH' && exec $mss_command start --host 127.0.0.1 --port $MSS_PORT"
 mss_pid=$SERVICE_PID
 wait_for_url mss "http://127.0.0.1:$MSS_PORT/" $mss_pid
 
