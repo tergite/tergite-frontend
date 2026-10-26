@@ -10,12 +10,13 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 #
+from contextlib import suppress
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 from loguru import logger
 
-from libs.storage import Database, Filter, is_id
+from libs.storage import Database, DuplicateKeyError, Filter, is_id
 from services.notices.dtos import (
     BaseNoticeContext,
     CustomNoticeCreate,
@@ -477,8 +478,11 @@ async def _init_notice_templates_in_db(database: Database) -> None:
         for type_id in NoticeTypeId
         if type_id not in existing_types
     ]
+    for record in new_records:
+        # another process starting may insert it first
+        with suppress(DuplicateKeyError):
+            await database.insert(NoticeTemplate, record)
     if new_records:
-        await database.insert_many(NoticeTemplate, new_records)
         logger.info(f"Initialized {len(new_records)} new notice template(s) in db.")
 
 

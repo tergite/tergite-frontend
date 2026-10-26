@@ -75,6 +75,7 @@ VERBS = frozenset(
         "generate",
         "get",
         "handle",
+        "ignore",
         "include",
         "increment",
         "index",

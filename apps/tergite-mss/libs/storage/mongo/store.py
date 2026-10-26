@@ -39,6 +39,8 @@ from .translate import (
 
 T = TypeVar("T", bound=Schema)
 _DUPLICATE_KEY_CODE = 11000
+_INDEX_NOT_FOUND_CODE = 27
+_NAMESPACE_EXISTS_CODE = 48
 _INDEX_OPTIONS = ("unique", "expireAfterSeconds", "sparse")
 
 
@@ -181,12 +183,12 @@ class MongoStore(DbStore):
 
     async def _set_up_collection(self, schema: Type[Schema]) -> None:
         name = schema.__storage__.table
-        # collMod fails on a collection that does not exist yet
-        if name not in await self._database.list_collection_names(
-            filter={"name": name}
+        # collMod fails on a collection that does not exist yet; another process may
+        # create it first
+        with suppress(pymongo.errors.CollectionInvalid), _ignore_code(
+            _NAMESPACE_EXISTS_CODE
         ):
-            with suppress(pymongo.errors.CollectionInvalid):
-                await self._database.create_collection(name)
+            await self._database.create_collection(name)
 
         await self._database.command(
             {
@@ -228,7 +230,9 @@ async def _sync_indexes(collection: AsyncCollection, indexes: List[IndexModel]) 
         wanted = index.document
         current = existing.get(wanted["name"])
         if current is not None and not _is_same_index(current, wanted):
-            await collection.drop_index(wanted["name"])
+            # another process setting up may drop it first
+            with _ignore_code(_INDEX_NOT_FOUND_CODE):
+                await collection.drop_index(wanted["name"])
     if indexes:
         await collection.create_indexes(indexes)
 
@@ -278,3 +282,13 @@ def _translate_duplicate_key_errors() -> Iterator[None]:
         ):
             raise DuplicateKeyError(str(exp)) from exp
         raise
+
+
+@contextmanager
+def _ignore_code(code: int) -> Iterator[None]:
+    """Ignores MongoDB's failures of the given code"""
+    try:
+        yield
+    except pymongo.errors.OperationFailure as exp:
+        if exp.code != code:
+            raise

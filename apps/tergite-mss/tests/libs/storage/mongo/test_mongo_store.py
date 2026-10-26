@@ -14,6 +14,7 @@
 
 What every store does alike is in tests/libs/storage/test_conformance.py.
 """
+import asyncio
 from datetime import datetime
 from typing import List, Optional
 
@@ -134,6 +135,17 @@ async def test_setup_replaces_an_index_whose_options_changed(database, raw):
     indexes = {info["name"]: info async for info in await raw["pets"].list_indexes()}
     assert indexes["name_1"]["unique"] is True
     assert "sparse" not in indexes["name_1"]
+
+
+async def test_processes_set_up_a_new_database_at_once(raw):
+    databases = [
+        Database(_DATABASE_URL, schemas=[_Owner, _Pet, _Job]) for _ in range(4)
+    ]
+    try:
+        await asyncio.gather(*(v.setup() for v in databases))
+    finally:
+        await asyncio.gather(*(v.close() for v in databases))
+        await raw.client.drop_database(_DATABASE_NAME)
 
 
 async def test_the_validator_rejects_documents_off_the_schema(database, raw):

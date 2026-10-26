@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The notices service on each database: dismissals, read states, expiry and emails"""
+import asyncio
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -17,7 +18,7 @@ import pytest
 
 from libs.storage import Database, generate_id
 from services import notices
-from services.notices import Notice, NoticeQuery, NoticeTypeId
+from services.notices import Notice, NoticeQuery, NoticeTemplate, NoticeTypeId
 from services.notices import service as notices_service
 from services.notices.dtos import ProjectRequestContext, RefType
 from services.notices.emails import process_email_batch_results
@@ -41,6 +42,31 @@ async def database(database_url, monkeypatch):
     )
     yield database
     await database.close()
+
+
+async def test_processes_starting_at_once_store_each_template_once(
+    database, database_url
+):
+    await database.delete_many(NoticeTemplate, {})
+    others = [Database(database_url, schemas=notices.SCHEMAS) for _ in range(2)]
+    for other in others:
+        await other.setup()
+
+    try:
+        await asyncio.gather(
+            *(
+                notices_service.on_startup(
+                    v, conf=NoticesConfig(), is_email_enabled=False
+                )
+                for v in (database, *others)
+            )
+        )
+    finally:
+        for other in others:
+            await other.close()
+
+    templates = await database.find(NoticeTemplate, {})
+    assert sorted(v.type for v in templates) == sorted(NoticeTypeId)
 
 
 async def test_system_notices_are_written_per_user_from_their_template(database):
