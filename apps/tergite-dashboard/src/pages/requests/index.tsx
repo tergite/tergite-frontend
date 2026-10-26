@@ -11,7 +11,8 @@ import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 import { type UserRequest } from "types";
-import { MyRequestSidebar } from "./components/request-sidebar";
+import { MyRequestSummary } from "./components/request-sidebar";
+import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { MyRequestsTable } from "./components/requests-table";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
@@ -50,10 +51,19 @@ export function MyRequests() {
         </CardContent>
       </Card>
 
-      <MyRequestSidebar
-        request={selectedRequest}
-        className="order-first xl:order-none col-span-1"
-      />
+      {selectedRequest ? (
+        <MyRequestSummary
+          request={selectedRequest}
+          className="order-first xl:order-none col-span-1"
+        />
+      ) : (
+        <SidebarPlaceholder
+          mainTitle="Request"
+          contentTitle="Request details"
+          contentDetail="Click any row to show details here"
+          className="order-first xl:order-none col-span-1"
+        />
+      )}
     </main>
   );
 }

@@ -7,7 +7,6 @@ import {
 import { DetailItem } from "@/components/ui/detail-item";
 import { ProgressStatus } from "@/components/ui/progress-status";
 import { Separator } from "@/components/ui/separator";
-import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { cn } from "@/lib/utils";
 import { getUserRequestTitle } from "@/lib/user-requests";
 import { RequestDetails } from "@/components/ui/request-details";
@@ -17,20 +16,7 @@ import {
   type UserRequest,
 } from "../../../../../types";
 
-export function MyRequestSidebar(props: SidebarProps) {
-  return props.request ? (
-    <RequestSummary {...(props as RequestSummaryProps)} />
-  ) : (
-    <SidebarPlaceholder
-      mainTitle="Request"
-      contentTitle="Request details"
-      contentDetail="Click any row to show details here"
-      className={props.className}
-    />
-  );
-}
-
-function RequestSummary({ request, className = "" }: RequestSummaryProps) {
+export function MyRequestSummary({ request, className = "" }: Props) {
   const title = useMemo(() => getUserRequestTitle(request), [request]);
 
   return (
@@ -65,11 +51,7 @@ function RequestSummary({ request, className = "" }: RequestSummaryProps) {
   );
 }
 
-interface SidebarProps {
-  request?: UserRequest;
-  className?: string;
-}
-
-interface RequestSummaryProps extends SidebarProps {
+interface Props {
   request: UserRequest;
+  className?: string;
 }

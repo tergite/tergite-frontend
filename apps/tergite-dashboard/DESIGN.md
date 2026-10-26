@@ -116,6 +116,8 @@ a variant.
 
 Pages with a master/detail split additionally have a `*-sidebar/` folder holding the detail
 panel and its dialogs (`tokens/components/tokens-sidebar/{index,delete-dialog,lifespan-dialog}.tsx`).
+The page renders that panel for the selected row, or a `SidebarPlaceholder` when no row is
+selected.
 
 ## 2. Data flow
 
