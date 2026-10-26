@@ -1,18 +1,8 @@
 import {
-  Home as HomeIcon,
-  Cpu,
   PanelLeftClose,
   PanelRightClose,
-  Settings2,
-  HardHat,
-  HelpingHand,
   ChevronDown,
   ChevronRight,
-  SlidersHorizontal,
-  KeyRound,
-  ClipboardList,
-  KeySquare,
-  FolderKanban,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button, IconButton } from "@/components/ui/button";
@@ -23,6 +13,7 @@ import { NavItem } from "@/components/ui/nav-item";
 import { Badge } from "@/components/ui/badge";
 import { Project } from "types";
 import { QpuMeter } from "./qpu-meter";
+import { NAV_GROUPS, type NavGroup } from "./nav-items";
 
 export function Sidebar({
   isExpanded,
@@ -32,9 +23,6 @@ export function Sidebar({
   personalProject,
 }: Props) {
   const widthClass = isExpanded ? "w-56" : "w-18";
-  const subNavClass = isExpanded ? "ml-4" : "";
-  const [isAdminOpen, setIsAdminOpen] = useState(true);
-  const [isAccessOpen, setIsAccessOpen] = useState(true);
 
   return (
     <aside
@@ -43,113 +31,15 @@ export function Sidebar({
     >
       <Logo isExpanded={isExpanded} />
       <nav className="flex flex-col gap-4 px-6 sm:py-4 overflow-y-auto max-h-[75vh]">
-        <NavItem
-          to="/"
-          Icon={HomeIcon}
-          isExpanded={isExpanded}
-          text="Dashboard"
-        />
-        <NavItem
-          to="/devices"
-          Icon={Cpu}
-          isExpanded={isExpanded}
-          text="Devices"
-        />
-        <Collapsible
-          open={isAccessOpen}
-          onOpenChange={setIsAccessOpen}
-          className="w-full"
-          data-testid="access-submenu"
-        >
-          <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              className={`flex text-sm gap-2 h-9 px-2 justify-start rounded-sm  transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
-            >
-              <KeyRound className="h-4 w-4" />
-              {isExpanded ? <span>Access</span> : null}
-              {isExpanded && !isAccessOpen && (
-                <ChevronRight className="ml-auto h-4 w-4" />
-              )}
-              {isExpanded && isAccessOpen && (
-                <ChevronDown className="ml-auto h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent
-            className={`flex flex-col gap-4 my-2 border-l ${subNavClass}`}
-          >
-            <NavItem
-              Icon={FolderKanban}
-              to="/projects"
+        {NAV_GROUPS.filter((group) => isUserAdmin || !group.isAdminOnly).map(
+          (group) => (
+            <SidebarGroup
+              key={group.name}
+              group={group}
               isExpanded={isExpanded}
-              text="Projects"
+              pendingRequestsCount={pendingRequestsCount}
             />
-            <NavItem
-              Icon={KeySquare}
-              to="/tokens"
-              isExpanded={isExpanded}
-              text="Tokens"
-            />
-            <NavItem
-              Icon={ClipboardList}
-              to="/requests"
-              isExpanded={isExpanded}
-              text="Requests"
-            />
-          </CollapsibleContent>
-        </Collapsible>
-
-        {isUserAdmin && (
-          <Collapsible
-            open={isAdminOpen}
-            onOpenChange={setIsAdminOpen}
-            className="w-full"
-            data-testid="admin-submenu"
-          >
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                className={`flex text-sm gap-2 h-9 px-2 justify-start rounded-sm  transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
-              >
-                <Settings2 className="h-4 w-4" />
-                {isExpanded ? <span>Admin</span> : null}
-                {isExpanded && !isAdminOpen && (
-                  <ChevronRight className="ml-auto h-4 w-4" />
-                )}
-                {isExpanded && isAdminOpen && (
-                  <ChevronDown className="ml-auto h-4 w-4" />
-                )}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent
-              className={`flex flex-col gap-4 my-2 border-l ${subNavClass}`}
-            >
-              <NavItem
-                Icon={HelpingHand}
-                to="/admin-requests"
-                isExpanded={isExpanded}
-                text="Requests"
-              >
-                {" "}
-                {!!pendingRequestsCount && isExpanded && (
-                  <Badge variant="default">{pendingRequestsCount}</Badge>
-                )}
-              </NavItem>
-              <NavItem
-                Icon={HardHat}
-                to="/admin-projects"
-                isExpanded={isExpanded}
-                text="Projects"
-              />
-              <NavItem
-                Icon={SlidersHorizontal}
-                to="/admin-control"
-                isExpanded={isExpanded}
-                text="Control"
-              />
-            </CollapsibleContent>
-          </Collapsible>
+          )
         )}
       </nav>
 
@@ -175,6 +65,51 @@ export function Sidebar({
       </div>
     </aside>
   );
+}
+
+function SidebarGroup({ group, isExpanded, pendingRequestsCount }: GroupProps) {
+  const [isOpen, setIsOpen] = useState(true);
+  const links = group.links.map(({ to, text, Icon, shouldShowPendingCount }) => (
+    <NavItem key={to} to={to} Icon={Icon} isExpanded={isExpanded} text={text}>
+      {shouldShowPendingCount && " "}
+      {shouldShowPendingCount && !!pendingRequestsCount && isExpanded && (
+        <Badge variant="default">{pendingRequestsCount}</Badge>
+      )}
+    </NavItem>
+  ));
+  if (!group.title || !group.Icon) return <>{links}</>;
+
+  return (
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="w-full"
+      data-testid={`${group.name}-submenu`}
+    >
+      <CollapsibleTrigger asChild>
+        <Button
+          variant="ghost"
+          className={`flex text-sm gap-2 h-9 px-2 justify-start rounded-sm  transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
+        >
+          <group.Icon className="h-4 w-4" />
+          {isExpanded ? <span>{group.title}</span> : null}
+          {isExpanded && !isOpen && <ChevronRight className="ml-auto h-4 w-4" />}
+          {isExpanded && isOpen && <ChevronDown className="ml-auto h-4 w-4" />}
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent
+        className={`flex flex-col gap-4 my-2 border-l ${isExpanded ? "ml-4" : ""}`}
+      >
+        {links}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+interface GroupProps {
+  group: NavGroup;
+  isExpanded: boolean;
+  pendingRequestsCount: number;
 }
 
 interface Props {

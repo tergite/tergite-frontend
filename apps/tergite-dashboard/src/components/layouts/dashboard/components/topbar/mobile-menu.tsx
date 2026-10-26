@@ -6,19 +6,7 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  PanelLeft,
-  HomeIcon,
-  Cpu,
-  HardHat,
-  HelpingHand,
-  Settings2,
-  KeyRound,
-  ClipboardList,
-  KeySquare,
-  FolderKanban,
-  SlidersHorizontal,
-} from "lucide-react";
+import { PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -27,10 +15,9 @@ import {
 } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { NAV_GROUPS, type NavGroup } from "../nav-items";
 
 export function MobileMenu({ pendingRequestsCount, isUserAdmin }: Props) {
-  const [isAdminOpen, setIsAdminOpen] = useState(true);
-  const [isAccessOpen, setIsAccessOpen] = useState(true);
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -49,91 +36,58 @@ export function MobileMenu({ pendingRequestsCount, isUserAdmin }: Props) {
         </SheetTitle>
 
         <nav className="grid gap-4 text-lg font-medium overflow-y-auto max-h-[75vh]">
-          <NavItem to="/" Icon={HomeIcon} text="Dashboard" isBig={true} />
-          <NavItem to="/devices" Icon={Cpu} text="Devices" isBig={true} />
-          <Collapsible
-            open={isAccessOpen}
-            onOpenChange={setIsAccessOpen}
-            className="w-full"
-            data-testid="access-submenu"
-          >
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                className={`flex text-lg font-medium gap-4 h-9 px-2 justify-start rounded-sm transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
-              >
-                <KeyRound className="h-5 w-5 font-medium" />
-                Access
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="flex flex-col gap-6 my-6 ml-4 -mr-4">
-              <NavItem
-                Icon={FolderKanban}
-                to="/projects"
-                isBig={true}
-                text="Projects"
-              />
-              <NavItem
-                Icon={KeySquare}
-                to="/tokens"
-                isBig={true}
-                text="Tokens"
-              />
-              <NavItem
-                Icon={ClipboardList}
-                to="/requests"
-                isBig={true}
-                text="Requests"
-              />
-            </CollapsibleContent>
-          </Collapsible>
-
-          {isUserAdmin && (
-            <Collapsible
-              open={isAdminOpen}
-              onOpenChange={setIsAdminOpen}
-              className="w-full"
-              data-testid="admin-submenu"
-            >
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className={`flex text-lg font-medium gap-4 h-9 px-2 justify-start rounded-sm transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
-                >
-                  <Settings2 className="h-5 w-5 font-medium" />
-                  Admin
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="flex flex-col gap-6 my-6 ml-4 -mr-4">
-                <NavItem
-                  Icon={HelpingHand}
-                  to="/admin-requests"
-                  isBig={true}
-                  text="Requests"
-                >
-                  {!!pendingRequestsCount && (
-                    <Badge variant="default">{pendingRequestsCount}</Badge>
-                  )}
-                </NavItem>
-                <NavItem
-                  Icon={HardHat}
-                  to="/admin-projects"
-                  isBig={true}
-                  text="Projects"
-                />
-                <NavItem
-                  Icon={SlidersHorizontal}
-                  to="/admin-control"
-                  isBig={true}
-                  text="Control"
-                />
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+          {NAV_GROUPS.filter(
+            (group) => isUserAdmin || !group.isAdminOnly
+          ).map((group) => (
+            <MobileMenuGroup
+              key={group.name}
+              group={group}
+              pendingRequestsCount={pendingRequestsCount}
+            />
+          ))}
         </nav>
       </SheetContent>
     </Sheet>
   );
+}
+
+function MobileMenuGroup({ group, pendingRequestsCount }: GroupProps) {
+  const [isOpen, setIsOpen] = useState(true);
+  const links = group.links.map(({ to, text, Icon, shouldShowPendingCount }) => (
+    <NavItem key={to} to={to} Icon={Icon} isBig={true} text={text}>
+      {shouldShowPendingCount && !!pendingRequestsCount && (
+        <Badge variant="default">{pendingRequestsCount}</Badge>
+      )}
+    </NavItem>
+  ));
+  if (!group.title || !group.Icon) return <>{links}</>;
+
+  return (
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="w-full"
+      data-testid={`${group.name}-submenu`}
+    >
+      <CollapsibleTrigger asChild>
+        <Button
+          variant="ghost"
+          className={`flex text-lg font-medium gap-4 h-9 px-2 justify-start rounded-sm transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
+        >
+          <group.Icon className="h-5 w-5 font-medium" />
+          {group.title}
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="flex flex-col gap-6 my-6 ml-4 -mr-4">
+        {links}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+interface GroupProps {
+  group: NavGroup;
+  pendingRequestsCount: number;
 }
 
 interface Props {

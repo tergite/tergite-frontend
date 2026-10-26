@@ -375,7 +375,7 @@ exported alongside a component.
 
 | Task | Path |
 | --- | --- |
-| New page | `src/pages/{name}/index.tsx` exporting the component **and** its `loader`; add the `<Route>` in `src/router.tsx`; add a nav item in `layouts/dashboard/components/sidebar.tsx` **and** `topbar/mobile-menu.tsx`, which mirror each other — unless it is only reached in context, as `/approvals` and `/settings` are |
+| New page | `src/pages/{name}/index.tsx` exporting the component **and** its `loader`; add the `<Route>` in `src/router.tsx`; add a link to `NAV_GROUPS` in `layouts/dashboard/components/nav-items.ts`, which the sidebar and the mobile menu both render — unless it is only reached in context, as `/approvals` and `/settings` are |
 | New component used by one page | `src/pages/{page}/components/` — a file if it is a leaf, a folder with `index.tsx` if it has children |
 | New component used by two+ pages | promote to `src/components/ui/` and strip any page knowledge |
 | New table | a `*-table/` folder with `index.tsx`, `columns.tsx`, `filter-form.tsx` (+ `detail-drawer.tsx`) |
