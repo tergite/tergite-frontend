@@ -17,9 +17,7 @@ from loguru import logger
 
 from libs.storage import Database, Filter, is_id
 from services.notices.dtos import (
-    NOTICE_TYPE_INFO,
     BaseNoticeContext,
-    CustomNoticeContext,
     CustomNoticeCreate,
     EmailStatus,
     Notice,
@@ -198,9 +196,7 @@ async def publish_custom_notice(
     Returns:
         the created notices
     """
-    notices = await _get_custom_notices(
-        database, payload, created_by=str(current_user_id)
-    )
+    notices = await payload.to_documents(database, created_by=str(current_user_id))
     return await database.insert_many(Notice, notices)
 
 
@@ -409,49 +405,6 @@ async def _mark_direct_notices_read(
     return count
 
 
-async def _get_custom_notices(
-    database: Database, payload: CustomNoticeCreate, created_by: str
-) -> List[Notice]:
-    """Gets a custom notice for each target user, or one broadcast if there are none"""
-    # imported here to avoid a circular import, as the auth service imports this one
-    from services.auth import User
-
-    context = CustomNoticeContext(title=payload.message, body=payload.message)
-    fields = dict(
-        severity=payload.severity,
-        expires_at=payload.expires_at,
-        starts_at=payload.starts_at,
-        created_by=created_by,
-    )
-    if payload.target_user_emails:
-        users = await database.find(
-            User, filter={"email": {"$in": payload.target_user_emails}}
-        )
-        template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM)
-        return [
-            _render_notice(template, context=context, user_id=user.id, **fields)
-            for user in users
-        ]
-
-    template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM_BROADCAST)
-    return [_render_notice(template, context=context, **fields)]
-
-
-def _render_notice(
-    template: NoticeTemplate, context: BaseNoticeContext, **fields: Any
-) -> Notice:
-    """Gets the notice of the template, with its title and body filled in from the context"""
-    values = context.model_dump()
-    return Notice.model_validate(
-        {
-            **template.model_dump(exclude={"id"}),
-            "title": template.title.format_map(values),
-            "body": template.body.format_map(values),
-            **fields,
-        }
-    )
-
-
 async def _with_project_name(
     database: Database,
     context: Optional[BaseNoticeContext],
@@ -503,7 +456,7 @@ def _render_notices(
 ) -> List[Notice]:
     """Gets the template's notice for each user of email_statuses"""
     return [
-        _render_notice(
+        Notice.from_template(
             template,
             context=context,
             user_id=user_id,
@@ -520,10 +473,8 @@ async def _init_notice_templates_in_db(database: Database) -> None:
     """Initializes the notice templates in the database with the default templates"""
     existing_types = set(await database.find_distinct(NoticeTemplate, "type"))
     new_records = [
-        NoticeTemplate(
-            type=type_id, title=info.title, body=info.body, severity=info.severity
-        )
-        for type_id, info in NOTICE_TYPE_INFO.items()
+        NoticeTemplate.from_notice_type(type_id)
+        for type_id in NoticeTypeId
         if type_id not in existing_types
     ]
     if new_records:

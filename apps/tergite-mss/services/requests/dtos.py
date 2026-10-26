@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 import enum
-from typing import Any, Dict, List, Literal, Optional, Type
+from typing import Any, Dict, List, Literal, Optional, Self, Tuple, Type
 
 from pydantic import (
     BaseModel,
@@ -24,6 +24,8 @@ from pydantic import (
 )
 
 from libs.storage import Id, Schema, StorageSpec, generate_id
+from services.auth import User
+from services.notices import NoticeTypeId, ProjectRequestContext
 from services.notices.dtos import RefType
 from utils.date_time import get_current_timestamp
 
@@ -132,6 +134,70 @@ _METADATA_CLASSES: Dict[RequestType, Type[RequestMetadata]] = {
 }
 
 
+_NOTICE_TYPES: Dict[Tuple[RequestType, RequestStatus], NoticeTypeId] = {
+    (
+        RequestType.CREATE_PROJECT,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PROJECT_CREATE_REQUESTED,
+    (
+        RequestType.CREATE_PROJECT,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PROJECT_CREATE_REJECTED,
+    (
+        RequestType.CREATE_PROJECT,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PROJECT_CREATE_APPROVED,
+    (
+        RequestType.CLOSE_PROJECT,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PROJECT_CLOSE_REQUESTED,
+    (
+        RequestType.CLOSE_PROJECT,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PROJECT_CLOSE_REJECTED,
+    (
+        RequestType.CLOSE_PROJECT,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PROJECT_CLOSE_APPROVED,
+    (
+        RequestType.TRANSFER_PROJECT,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PROJECT_TRANSFER_REQUESTED,
+    (
+        RequestType.TRANSFER_PROJECT,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PROJECT_TRANSFER_REJECTED,
+    (
+        RequestType.TRANSFER_PROJECT,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PROJECT_TRANSFER_APPROVED,
+    (
+        RequestType.PROJECT_QPU_SECONDS,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.QPU_SECONDS_REQUESTED,
+    (
+        RequestType.PROJECT_QPU_SECONDS,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.QPU_SECONDS_DENIED,
+    (
+        RequestType.PROJECT_QPU_SECONDS,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.QPU_SECONDS_GRANTED,
+    (
+        RequestType.PROJECT_ACCESS,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PROJECT_ACCESS_REQUESTED,
+    (
+        RequestType.PROJECT_ACCESS,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PROJECT_ACCESS_REJECTED,
+    (
+        RequestType.PROJECT_ACCESS,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PROJECT_ACCESS_APPROVED,
+}
+
+
 def validate_request_metadata(value: Any, info: ValidationInfo) -> RequestMetadata:
     """Validates a request's metadata as the class of the request's type"""
     req_type = RequestType(info.data["type"])
@@ -197,6 +263,48 @@ class Request(Schema):
     def target(self) -> RequestTarget:
         """The target for this request"""
         return REQUEST_TARGETS[self.type]
+
+    @property
+    def notice_type(self) -> NoticeTypeId:
+        """The notice type for this request given current status"""
+        return _NOTICE_TYPES[(self.type, self.status)]
+
+    @property
+    def notice_context(self) -> ProjectRequestContext:
+        """The context for the notice that tells of this request in its current status"""
+        metadata = self.metadata
+        project_name = ""
+        seconds = ""
+        admin_email = ""
+        if isinstance(metadata, CreateProjectMetadata):
+            project_name = metadata.name
+        elif isinstance(metadata, TransferProjectMetadata):
+            admin_email = metadata.admin_email
+        elif isinstance(metadata, ProjectQpuSecondsMetadata):
+            seconds = metadata.seconds
+
+        is_rejected = self.status == RequestStatus.REJECTED
+        return ProjectRequestContext(
+            requester_name=self.requester_name or "",
+            project_id=str(self.resource_id),
+            project_name=project_name,
+            reason=(self.rejection_reason or "") if is_rejected else self.reason,
+            approver_name=self.approver_name or "",
+            seconds=seconds,
+            admin_email=admin_email,
+        )
+
+    @classmethod
+    def from_post_body(
+        cls, body: RequestPostBody, requester: User, target_user_ids: List[str]
+    ) -> Self:
+        """Creates a request given its post body, its requester and its target users"""
+        return cls(
+            **body.model_dump(),
+            requester_id=str(requester.id),
+            requester_name=requester.username,
+            target_user_ids=[str(v) for v in target_user_ids],
+        )
 
 
 class RequestUpdate(BaseModel):

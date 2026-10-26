@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import (
     List,
     Optional,
+    Self,
     Tuple,
     TypeAlias,
     TypedDict,
@@ -155,6 +156,11 @@ class JobStatusResponse(BaseModel):
     """The response returned when getting the status of the job"""
 
     status: JobStatus
+
+    @classmethod
+    def from_job(cls, job: Job) -> Self:
+        """Extracts the job status response from the job"""
+        return cls(status=job.status)
 
 
 JobQuery = create_partial_model("JobQuery", original=Job, default=Query(None))

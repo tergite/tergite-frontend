@@ -12,7 +12,6 @@
 """The service for sending emails"""
 import asyncio
 from contextlib import aclosing
-from email.message import EmailMessage
 from typing import List, Optional, Sequence
 
 import aiosmtplib
@@ -99,7 +98,7 @@ async def _send_batch(
             async with smtp:
                 for idx, detail in enumerate(batch):
                     try:
-                        msg = _get_email_message(detail, from_value=from_value)
+                        msg = detail.to_email_message(from_value=from_value)
                         await smtp.send_message(msg)
                     except Exception as exp:
                         logger.exception("sending email on repeat failed")
@@ -113,12 +112,3 @@ async def _send_batch(
         EmailResult(error=error, ref_id=detail.ref_id, can_retry=detail.can_retry)
         for detail, error in zip(batch, errors)
     ]
-
-
-def _get_email_message(details: EmailDetails, from_value: str) -> EmailMessage:
-    message = EmailMessage()
-    message["From"] = from_value
-    message["To"] = details.to
-    message["Subject"] = details.subject
-    message.set_content(details.body)
-    return message

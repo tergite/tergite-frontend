@@ -22,7 +22,7 @@ from pydantic import (
     model_validator,
 )
 
-from libs.storage import Id, Schema, StorageSpec, generate_id
+from libs.storage import Database, Id, Schema, StorageSpec, generate_id
 from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
 
 NOTICE_DB_COLLECTION = "notices"
@@ -320,6 +320,27 @@ class Notice(Schema):
 
         return self
 
+    @classmethod
+    def from_template(
+        cls, template: "NoticeTemplate", context: BaseNoticeContext, **fields: Any
+    ) -> Self:
+        """Constructs a notice from a template, its title and body filled in from the context
+
+        Args:
+            template: The notice template
+            context: The values the template's title and body are formatted with
+            fields: Additional fields of the notice
+        """
+        values = context.model_dump()
+        return cls.model_validate(
+            {
+                **template.model_dump(exclude={"id"}),
+                "title": template.title.format_map(values),
+                "body": template.body.format_map(values),
+                **fields,
+            }
+        )
+
 
 class NoticeQuery(BaseModel):
     """The constraints of a query of notices
@@ -367,6 +388,14 @@ class NoticeTemplate(Schema):
     body: str
     severity: NoticeSeverity
 
+    @classmethod
+    def from_notice_type(cls, type_id: NoticeTypeId) -> Self:
+        """Converts a notice type's default template to a template document"""
+        info = NOTICE_TYPE_INFO[type_id]
+        return cls(
+            type=type_id, title=info.title, body=info.body, severity=info.severity
+        )
+
 
 class CustomNoticeCreate(BaseModel):
     """The schema for creating custom notices"""
@@ -376,3 +405,35 @@ class CustomNoticeCreate(BaseModel):
     expires_at: datetime = Field(default_factory=get_utc_now)
     starts_at: datetime = Field(default_factory=get_utc_now)
     target_user_emails: Optional[List[str]] = None
+
+    async def to_documents(self, database: Database, created_by: str) -> List[Notice]:
+        """Converts the creation request to a notice for each target user, or one broadcast
+
+        Args:
+            database: the database where the users and notice templates are stored
+            created_by: the id of the user publishing the notice
+        """
+        # imported here to avoid a circular import, as the auth service imports this one
+        from services.auth import User
+
+        context = CustomNoticeContext(title=self.message, body=self.message)
+        fields = dict(
+            severity=self.severity,
+            expires_at=self.expires_at,
+            starts_at=self.starts_at,
+            created_by=created_by,
+        )
+        if self.target_user_emails:
+            users = await database.find(
+                User, filter={"email": {"$in": self.target_user_emails}}
+            )
+            template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM)
+            return [
+                Notice.from_template(
+                    template, context=context, user_id=user.id, **fields
+                )
+                for user in users
+            ]
+
+        template = await database.get(NoticeTemplate, NoticeTypeId.CUSTOM_BROADCAST)
+        return [Notice.from_template(template, context=context, **fields)]

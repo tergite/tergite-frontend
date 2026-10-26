@@ -28,7 +28,7 @@ BASELINE_FILE = Path(__file__).parent / "fixtures" / "styleguide_baseline.txt"
 SOURCE_ROOTS = ("api", "services", "utils", "libs", "settings.py")
 ALL_ROOTS = SOURCE_ROOTS + ("tests",)
 
-# a new verb is added here in review, never to the baseline
+# a new verb is added here in review, never to the baseline; from_* and to_* convert a DTO
 VERBS = frozenset(
     {
         "accept",
@@ -71,6 +71,7 @@ VERBS = frozenset(
         "find",
         "forget",
         "format",
+        "from",
         "generate",
         "get",
         "handle",
@@ -138,6 +139,7 @@ VERBS = frozenset(
         "store",
         "switch",
         "sync",
+        "to",
         "toggle",
         "transfer",
         "translate",

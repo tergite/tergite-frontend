@@ -9,21 +9,18 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from libs.storage import Database
 from services import notices
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
-from services.notices import NoticeTypeId, ProjectRequestContext
 from utils.config import UserRole
 from utils.exc import ForbiddenError, NotFoundError
 
 from . import actions
 from .dtos import (
     REQUEST_TARGETS,
-    CreateProjectMetadata,
-    ProjectQpuSecondsMetadata,
     Request,
     RequestPostBody,
     RequestRole,
@@ -31,74 +28,11 @@ from .dtos import (
     RequestTarget,
     RequestType,
     RequestUpdate,
-    TransferProjectMetadata,
 )
 
 _DECIDED_STATUSES = (RequestStatus.APPROVED, RequestStatus.REJECTED)
 ALL_REQ_TYPES = tuple(RequestType)
 ALL_REQ_STATUSES = tuple(RequestStatus)
-_NOTICE_TYPES: Dict[Tuple[RequestType, RequestStatus], NoticeTypeId] = {
-    (
-        RequestType.CREATE_PROJECT,
-        RequestStatus.PENDING,
-    ): NoticeTypeId.PROJECT_CREATE_REQUESTED,
-    (
-        RequestType.CREATE_PROJECT,
-        RequestStatus.REJECTED,
-    ): NoticeTypeId.PROJECT_CREATE_REJECTED,
-    (
-        RequestType.CREATE_PROJECT,
-        RequestStatus.APPROVED,
-    ): NoticeTypeId.PROJECT_CREATE_APPROVED,
-    (
-        RequestType.CLOSE_PROJECT,
-        RequestStatus.PENDING,
-    ): NoticeTypeId.PROJECT_CLOSE_REQUESTED,
-    (
-        RequestType.CLOSE_PROJECT,
-        RequestStatus.REJECTED,
-    ): NoticeTypeId.PROJECT_CLOSE_REJECTED,
-    (
-        RequestType.CLOSE_PROJECT,
-        RequestStatus.APPROVED,
-    ): NoticeTypeId.PROJECT_CLOSE_APPROVED,
-    (
-        RequestType.TRANSFER_PROJECT,
-        RequestStatus.PENDING,
-    ): NoticeTypeId.PROJECT_TRANSFER_REQUESTED,
-    (
-        RequestType.TRANSFER_PROJECT,
-        RequestStatus.REJECTED,
-    ): NoticeTypeId.PROJECT_TRANSFER_REJECTED,
-    (
-        RequestType.TRANSFER_PROJECT,
-        RequestStatus.APPROVED,
-    ): NoticeTypeId.PROJECT_TRANSFER_APPROVED,
-    (
-        RequestType.PROJECT_QPU_SECONDS,
-        RequestStatus.PENDING,
-    ): NoticeTypeId.QPU_SECONDS_REQUESTED,
-    (
-        RequestType.PROJECT_QPU_SECONDS,
-        RequestStatus.REJECTED,
-    ): NoticeTypeId.QPU_SECONDS_DENIED,
-    (
-        RequestType.PROJECT_QPU_SECONDS,
-        RequestStatus.APPROVED,
-    ): NoticeTypeId.QPU_SECONDS_GRANTED,
-    (
-        RequestType.PROJECT_ACCESS,
-        RequestStatus.PENDING,
-    ): NoticeTypeId.PROJECT_ACCESS_REQUESTED,
-    (
-        RequestType.PROJECT_ACCESS,
-        RequestStatus.REJECTED,
-    ): NoticeTypeId.PROJECT_ACCESS_REJECTED,
-    (
-        RequestType.PROJECT_ACCESS,
-        RequestStatus.APPROVED,
-    ): NoticeTypeId.PROJECT_ACCESS_APPROVED,
-}
 
 
 async def create(
@@ -125,11 +59,8 @@ async def create(
         )
 
     target_user_ids = await _get_target_user_ids(database, request_body)
-    record = Request(
-        **request_body.model_dump(),
-        requester_id=str(requester.id),
-        requester_name=requester.username,
-        target_user_ids=[str(v) for v in target_user_ids],
+    record = Request.from_post_body(
+        request_body, requester=requester, target_user_ids=target_user_ids
     )
     await database.insert(Request, record)
     # NOTE: We explicitly notify here instead of in a storage hook because:
@@ -137,10 +68,10 @@ async def create(
     await notices.create_system_notice(
         database,
         user_ids=target_user_ids,
-        notice_type=_NOTICE_TYPES[(record.type, record.status)],
+        notice_type=record.notice_type,
         ref_id=record.id,
         ref_type=record.metadata.resource,
-        context=_get_notice_context(record),
+        context=record.notice_context,
     )
     return record
 
@@ -320,31 +251,6 @@ async def _get_target_user_ids(
     return []
 
 
-def _get_notice_context(request: Request) -> ProjectRequestContext:
-    """Gets the context of the notice that tells of the request in its current status"""
-    metadata = request.metadata
-    project_name = ""
-    seconds = ""
-    admin_email = ""
-    if isinstance(metadata, CreateProjectMetadata):
-        project_name = metadata.name
-    elif isinstance(metadata, TransferProjectMetadata):
-        admin_email = metadata.admin_email
-    elif isinstance(metadata, ProjectQpuSecondsMetadata):
-        seconds = metadata.seconds
-
-    is_rejected = request.status == RequestStatus.REJECTED
-    return ProjectRequestContext(
-        requester_name=request.requester_name or "",
-        project_id=str(request.resource_id),
-        project_name=project_name,
-        reason=(request.rejection_reason or "") if is_rejected else request.reason,
-        approver_name=request.approver_name or "",
-        seconds=seconds,
-        admin_email=admin_email,
-    )
-
-
 async def _find_pending_for_approver(
     database: Database, pk: str, approver: User
 ) -> Request:
@@ -395,8 +301,8 @@ async def _notify_requester(database: Database, request: Request) -> None:
     await notices.create_system_notice(
         database,
         user_ids=(request.requester_id,),
-        notice_type=_NOTICE_TYPES[(request.type, request.status)],
+        notice_type=request.notice_type,
         ref_id=request.id,
         ref_type=request.metadata.resource,
-        context=_get_notice_context(request),
+        context=request.notice_context,
     )

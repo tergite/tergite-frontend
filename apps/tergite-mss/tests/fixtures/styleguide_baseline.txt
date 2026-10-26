@@ -5,15 +5,11 @@ verb: api/__init__.py::health
 verb: api/app_kwargs.py::lifespan
 verb: api/routers/me/notices/notices.py::unread_all_my_notices
 verb: api/routers/me/notices/notices.py::unread_my_notice
-verb: services/auth/providers/__init__.py::_to_hash
 verb: services/auth/providers/dtos.py::AuthProvider.as_public_view
-verb: services/notices/emails.py::_to_email_body
-verb: services/notices/emails.py::_to_email_details
 verb: services/notices/service.py::_with_default_email_preferences
 verb: services/notices/service.py::_with_project_name
 verb: services/requests/service.py::_has_resource_access
 verb: utils/config.py::AppConfig.dashboard_url_required_for_email
-verb: utils/config.py::AppConfig.from_json_str
 verb: utils/date_time.py::datetime_to_zulu
 verb: utils/logging.py::json_formatter
 verb: utils/models.py::_as_optional
