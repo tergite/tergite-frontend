@@ -23,7 +23,8 @@ import {
   type Project,
 } from "types";
 import { TokensTable } from "./components/tokens-table";
-import { TokensSidebar } from "./components/tokens-sidebar";
+import { TokenSummary } from "./components/tokens-sidebar";
+import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
@@ -89,11 +90,20 @@ export function Tokens() {
         </CardContent>
       </Card>
 
-      <TokensSidebar
-        token={selectedToken}
-        className="order-first xl:order-none col-span-1"
-        onDelete={handleTokenDelete}
-      />
+      {selectedToken ? (
+        <TokenSummary
+          token={selectedToken}
+          className="order-first xl:order-none col-span-1"
+          onDelete={handleTokenDelete}
+        />
+      ) : (
+        <SidebarPlaceholder
+          mainTitle="Token title"
+          contentTitle="Token details"
+          contentDetail="Click any row to show details here"
+          className="order-first xl:order-none col-span-1"
+        />
+      )}
     </main>
   );
 }

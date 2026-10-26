@@ -14,22 +14,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ExtendedAppToken } from "types";
 import { TokenDeleteDialog } from "./delete-dialog";
 import { TokenLifespanDialog } from "./lifespan-dialog";
-import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 
-export function TokensSidebar(props: SidebarProps) {
-  return props.token ? (
-    <TokenSummary {...(props as TokenSummaryProps)} />
-  ) : (
-    <SidebarPlaceholder
-      mainTitle="Token title"
-      contentTitle="Token details"
-      contentDetail="Click any row to show details here"
-      className={props.className}
-    />
-  );
-}
-
-function TokenSummary({ token, className = "", onDelete }: TokenSummaryProps) {
+export function TokenSummary({ token, className = "", onDelete }: Props) {
   const queryClient = useQueryClient();
   const tokenDeletion = useMutation({
     mutationFn: deleteMyToken,
@@ -80,12 +66,8 @@ function TokenSummary({ token, className = "", onDelete }: TokenSummaryProps) {
   );
 }
 
-interface SidebarProps {
-  token?: ExtendedAppToken;
+interface Props {
+  token: ExtendedAppToken;
   className?: string;
   onDelete: (id: string) => void;
-}
-
-interface TokenSummaryProps extends SidebarProps {
-  token: ExtendedAppToken;
 }
