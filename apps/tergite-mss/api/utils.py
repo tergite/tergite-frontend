@@ -14,6 +14,7 @@
 """Miscellaneous utility functions for the routers"""
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 
 from cryptography.exceptions import InvalidSignature
@@ -26,7 +27,7 @@ from starlette.websockets import WebSocket
 import settings
 from libs.storage import Database
 from services import request_log
-from utils.config import get_ip_addr
+from utils.config import BccConfig, get_ip_addr
 from utils.crypto import verify_ws_signature
 from utils.exc import InvalidRequestIDError
 
@@ -80,46 +81,23 @@ async def get_verified_device_name(
         NotAuthenticatedError: user not authenticated
     """
     try:
-        name = websocket.headers["x-id"]
-        nonce = websocket.headers["x-request-id"]
-        timestamp = websocket.headers["x-timestamp"]
-        signature = websocket.headers["x-signature"]
-        backend_conf = settings.CONFIG.backends_dict[name]
-
-        client_ip = get_ip_addr(websocket.client.host)
-        if backend_conf.is_strict_ip and client_ip != get_ip_addr(
-            backend_conf.url.host
-        ):
-            raise ValueError(f"unexpected websocket client IP {client_ip}")
-
-        message = f"{name}-{nonce}-{timestamp}"
+        headers = _read_signed_headers(websocket)
+        backend_conf = settings.CONFIG.backends_dict[headers.name]
+        client_ip = _check_client_ip(websocket, backend_conf)
         verify_ws_signature(
-            signature=signature,
-            message=message,
+            signature=headers.signature,
+            message=f"{headers.name}-{headers.nonce}-{headers.timestamp}",
             key_path=backend_conf.public_key_path,
         )
-
-        current_timestamp = datetime.now().timestamp()
-        timestamp_float = float(timestamp)
-        time_difference = current_timestamp - timestamp_float
-        if time_difference > settings.CONFIG.bcc_nonce_ttl:
-            raise ValueError(
-                f"nonce of timestamp {timestamp} is {time_difference}s older than {settings.CONFIG.bcc_nonce_ttl} seconds"
-            )
-        elif time_difference < 0:
-            raise ValueError(f"timestamp {timestamp} is in the future")
-
-        is_new_nonce = await request_log.record_request(
-            database,
-            nonce,
-            ttl=settings.CONFIG.request_log_ttl,
-            client_name=name,
-            ip_address=client_ip,
+        _check_nonce_age(
+            float(headers.timestamp),
+            now=datetime.now().timestamp(),
+            ttl=settings.CONFIG.bcc_nonce_ttl,
         )
-        if not is_new_nonce:
-            raise ValueError(f"duplicate request nonce: '{nonce}'")
-
-        return name
+        await _check_nonce_unused(
+            database, headers, client_ip, ttl=settings.CONFIG.request_log_ttl
+        )
+        return headers.name
     except (KeyError, InvalidSignature, ValueError, AttributeError) as exp:
         logger.warning(f"WebSocket signature/nonce validation failed: {exp}")
         raise WebSocketException(code=WS_1008_POLICY_VIOLATION, reason="unauthorized")
@@ -139,3 +117,67 @@ def _is_valid_uuid4(value):
     except (ValueError, TypeError):
         return False
     return str(temp_uuid) == value
+
+
+@dataclass(frozen=True)
+class _SignedHeaders:
+    name: str
+    nonce: str
+    timestamp: str
+    signature: str
+
+
+def _read_signed_headers(websocket: WebSocket) -> _SignedHeaders:
+    """Reads the headers a BCC signs its websocket with
+
+    Raises:
+        KeyError: a header is missing
+    """
+    return _SignedHeaders(
+        name=websocket.headers["x-id"],
+        nonce=websocket.headers["x-request-id"],
+        timestamp=websocket.headers["x-timestamp"],
+        signature=websocket.headers["x-signature"],
+    )
+
+
+def _check_client_ip(websocket: WebSocket, backend_conf: BccConfig) -> str:
+    """Gets the client's IP, checking it is the backend's if the backend asks for that
+
+    Raises:
+        ValueError: unexpected websocket client IP {client_ip}
+    """
+    client_ip = get_ip_addr(websocket.client.host)
+    if backend_conf.is_strict_ip and client_ip != get_ip_addr(backend_conf.url.host):
+        raise ValueError(f"unexpected websocket client IP {client_ip}")
+    return client_ip
+
+
+def _check_nonce_age(timestamp: float, now: float, ttl: float) -> None:
+    """Checks the nonce's timestamp is neither older than ttl seconds nor in the future
+
+    Raises:
+        ValueError: the nonce is too old or from the future
+    """
+    age = now - timestamp
+    if age > ttl:
+        raise ValueError(
+            f"nonce of timestamp {timestamp} is {age}s older than {ttl} seconds"
+        )
+    if age < 0:
+        raise ValueError(f"timestamp {timestamp} is in the future")
+
+
+async def _check_nonce_unused(
+    database: Database, headers: _SignedHeaders, client_ip: str, ttl: float
+) -> None:
+    """Records the nonce, checking it was not used before
+
+    Raises:
+        ValueError: duplicate request nonce
+    """
+    is_new_nonce = await request_log.record_request(
+        database, headers.nonce, ttl=ttl, client_name=headers.name, ip_address=client_ip
+    )
+    if not is_new_nonce:
+        raise ValueError(f"duplicate request nonce: '{headers.nonce}'")
