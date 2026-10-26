@@ -69,5 +69,5 @@ jobs:
           pip install --upgrade pip
           pip install ."[dev]"
           black --check .
-          pyflakes api services utils libs migrations settings.py tests dev
+          pyflakes api services utils libs migrations settings.py main.py tests dev
           pytest

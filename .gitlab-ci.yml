@@ -110,6 +110,7 @@ lint mss:
   <<: *setup_mss
   script:
     - black --check .
+    - pyflakes api services utils libs migrations settings.py main.py tests dev
 
 test mss:
   needs: []
