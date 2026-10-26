@@ -17,7 +17,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { NAV_GROUPS, type NavGroup } from "../nav-items";
 
-export function MobileMenu({ pendingRequestsCount, isUserAdmin }: Props) {
+export function MobileMenu({ pendingRequestsCount, isAdmin }: Props) {
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -37,7 +37,7 @@ export function MobileMenu({ pendingRequestsCount, isUserAdmin }: Props) {
 
         <nav className="grid gap-4 text-lg font-medium overflow-y-auto max-h-[75vh]">
           {NAV_GROUPS.filter(
-            (group) => isUserAdmin || !group.isAdminOnly
+            (group) => isAdmin || !group.isAdminOnly
           ).map((group) => (
             <MobileMenuGroup
               key={group.name}
@@ -92,5 +92,5 @@ interface GroupProps {
 
 interface Props {
   pendingRequestsCount: number;
-  isUserAdmin: boolean;
+  isAdmin: boolean;
 }

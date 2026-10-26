@@ -15,7 +15,7 @@ import {
   hasAnyOfRoles,
   mockDb,
   respond401,
-  use,
+  forwardAsyncErrors,
   randomUUID,
   getUserNoticesFilter,
   getReadStatusUpdate,
@@ -90,7 +90,7 @@ router.options("*", (req, res, next) => {
 
 router.get(
   "/me/profile",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -104,7 +104,7 @@ router.get(
 
 router.get(
   "/me/projects/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -125,7 +125,7 @@ router.get(
 
 router.delete(
   "/me/projects/:id",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -163,7 +163,7 @@ router.delete(
 
 router.get(
   "/me/jobs/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -182,7 +182,7 @@ router.get(
 
 router.post(
   "/me/tokens/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const user_id = await getAuthenticatedUserId(req.cookies);
     if (!user_id) {
       return respond401(res);
@@ -213,7 +213,7 @@ router.post(
 
 router.get(
   "/me/tokens/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -232,7 +232,7 @@ router.get(
 
 router.delete(
   "/me/tokens/:id",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -256,7 +256,7 @@ router.delete(
 
 router.put(
   "/me/tokens/:id",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const user_id = await getAuthenticatedUserId(req.cookies);
     if (!user_id) {
       return respond401(res);
@@ -286,7 +286,7 @@ router.put(
 
 router.get(
   "/devices/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -300,7 +300,7 @@ router.get(
 
 router.get(
   "/devices/:name",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -320,7 +320,7 @@ router.get(
 
 router.get(
   "/calibrations/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -335,7 +335,7 @@ router.get(
 
 router.get(
   "/calibrations/:name",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const currentUserId = await getAuthenticatedUserId(req.cookies);
     if (!currentUserId) {
       return respond401(res);
@@ -357,7 +357,7 @@ router.get(
 
 router.get(
   "/auth/providers/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const { email_domain } = req.query;
     // FIXME: This should return multiple ways in case the same email domain can login in many ways
     const filteredData = mockDb.getMany<AuthProvider>(
@@ -383,7 +383,7 @@ router.get(
 
 router.get(
   "/auth/:provider/auto-authorize",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const queryString = getQueryString(req.query);
     return res.redirect(`${apiBaseUrl}/oauth/callback${queryString}`);
   }),
@@ -391,7 +391,7 @@ router.get(
 
 router.post(
   "/auth/logout",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     // FIXME: Add a next query param
     const userId = await getAuthenticatedUserId(req.cookies);
     const user = mockDb.getOne<User>("users", (v) => v.id === userId);
@@ -407,7 +407,7 @@ router.post(
 
 router.get(
   "/admin/projects/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -452,7 +452,7 @@ router.get(
 
 router.post(
   "/admin/projects/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -490,7 +490,7 @@ router.post(
 
 router.put(
   "/admin/projects/:id",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -538,7 +538,7 @@ router.put(
 
 router.delete(
   "/admin/projects/:id",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -574,7 +574,7 @@ router.delete(
 
 router.get(
   "/admin/bcc/users/:backend",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -609,7 +609,7 @@ router.get(
 
 router.post(
   "/admin/bcc/users/:backend",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -644,7 +644,7 @@ router.post(
 
 router.delete(
   "/admin/bcc/users/:backend/:id",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -674,7 +674,7 @@ router.delete(
 
 router.post(
   "/bookings/:backend",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const user_id = await getAuthenticatedUserId(req.cookies);
     if (!user_id) {
       return respond401(res);
@@ -726,7 +726,7 @@ router.post(
 
 router.post(
   "/bookings/:backend/:id/cancel",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -778,7 +778,7 @@ router.post(
 
 router.get(
   "/bookings/:backend/config",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     // TODO: Add filtering by date or something, also in backend and MSS
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
@@ -803,7 +803,7 @@ router.get(
 
 router.get(
   "/bookings/:backend",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const requesterId = await getAuthenticatedUserId(req.cookies);
     if (!requesterId) {
       return respond401(res);
@@ -847,7 +847,7 @@ router.get(
 
 router.post(
   "/admin/bcc/recalibration/:backend/init",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -884,7 +884,7 @@ router.post(
 
 router.get(
   "/admin/bcc/recalibration/:backend/info",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -909,7 +909,7 @@ router.get(
 
 router.post(
   "/admin/bcc/recalibration/:backend/cancel",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -932,7 +932,7 @@ router.post(
 
 router.post(
   "/admin/bcc/switch/:backend/on",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -961,7 +961,7 @@ router.post(
 
 router.post(
   "/admin/bcc/switch/:backend/off",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -991,7 +991,7 @@ router.post(
 
 router.post(
   "/admin/notices/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1044,7 +1044,7 @@ router.post(
 
 router.get(
   "/admin/notices",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1085,7 +1085,7 @@ router.get(
 
 router.delete(
   "/admin/notices/:id",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1112,7 +1112,7 @@ router.delete(
 
 router.get(
   "/counts/notices",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1134,7 +1134,7 @@ router.get(
 
 router.get(
   "/me/notices/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1164,7 +1164,7 @@ router.get(
 
 router.post(
   "/me/notices/dismiss",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1180,7 +1180,7 @@ router.post(
 
 router.post(
   "/me/notices/unread",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1196,7 +1196,7 @@ router.post(
 
 router.post(
   "/me/notices/:id/dismiss",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1214,7 +1214,7 @@ router.post(
 
 router.post(
   "/me/notices/:id/unread",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1232,7 +1232,7 @@ router.post(
 
 router.get(
   "/me/notices/preferences/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1244,7 +1244,7 @@ router.get(
 
 router.put(
   "/me/notices/preferences/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1265,7 +1265,7 @@ router.put(
 
 router.post(
   "/me/requests/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1338,7 +1338,7 @@ router.post(
 
 router.get(
   "/me/requests/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1383,7 +1383,7 @@ router.get(
 
 router.put(
   "/me/requests/:id",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1446,7 +1446,7 @@ router.put(
 
 router.delete(
   "/me/projects/:id/members/:memberId",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);
@@ -1780,7 +1780,7 @@ interface NoticePrefsInDb extends DbRecord {
 
 router.get(
   "/admin/users/emails/",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = await getAuthenticatedUserId(req.cookies);
     if (!userId) {
       return respond401(res);

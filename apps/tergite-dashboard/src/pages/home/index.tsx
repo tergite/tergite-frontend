@@ -160,7 +160,7 @@ export function loader(queryClient: QueryClient) {
       jobs,
       currentProject,
       currentUser,
-      bookings: sortBookings(bookingsPerBackend),
+      bookings: pickEarliestBookings(bookingsPerBackend),
     };
   });
 }
@@ -187,7 +187,7 @@ function combineMyBookingsQueries(results: UseQueryResult<Booking[], Error>[]) {
     .map((result) => result.data)
     .filter((v) => !!v) as Booking[][];
   return {
-    data: sortBookings(bookingLists),
+    data: pickEarliestBookings(bookingLists),
     pending: results.some((result) => result.isPending),
     error: results.some((result) => result.error),
   };
@@ -198,7 +198,7 @@ function combineMyBookingsQueries(results: UseQueryResult<Booking[], Error>[]) {
  * @param bookingLists - the list of bookings lists
  * @param limit - the maximum number of records to return
  */
-function sortBookings(bookingLists: Booking[][], limit: number = 5): Booking[] {
+function pickEarliestBookings(bookingLists: Booking[][], limit: number = 5): Booking[] {
   return bookingLists
     .flat(1)
     .sort((a, b) =>

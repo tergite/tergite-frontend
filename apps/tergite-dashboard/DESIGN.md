@@ -222,7 +222,7 @@ outside React entirely — `privacy.html` and `terms.html`, linked from the foot
 by their own Playwright specs. `index.html` is the vite entry that mounts `#root`.
 
 `/` is the `Dashboard` layout with `dashboardLoader` (fetches the current user, derives
-`isUserAdmin`); its children are `/` (home), `/devices`, `/devices/:deviceName`, `/tokens`,
+`isAdmin`); its children are `/` (home), `/devices`, `/devices/:deviceName`, `/tokens`,
 `/projects`, `/requests`, `/admin-projects`, `/admin-requests`, `/admin-control`. `/login` sits outside the
 layout. An `ErrorBoundary` around the layout's `<Outlet/>`, reset on navigation, and one around
 the login page catch render errors; the layout and the child group each have an

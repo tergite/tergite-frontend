@@ -18,7 +18,7 @@ import { NAV_GROUPS, type NavGroup } from "./nav-items";
 export function Sidebar({
   isExpanded,
   onIsExpandedChange,
-  isUserAdmin,
+  isAdmin,
   pendingRequestsCount,
   personalProject,
 }: Props) {
@@ -31,7 +31,7 @@ export function Sidebar({
     >
       <Logo isExpanded={isExpanded} />
       <nav className="flex flex-col gap-4 px-6 sm:py-4 overflow-y-auto max-h-[75vh]">
-        {NAV_GROUPS.filter((group) => isUserAdmin || !group.isAdminOnly).map(
+        {NAV_GROUPS.filter((group) => isAdmin || !group.isAdminOnly).map(
           (group) => (
             <SidebarGroup
               key={group.name}
@@ -116,6 +116,6 @@ interface Props {
   isExpanded: boolean;
   onIsExpandedChange: () => void;
   pendingRequestsCount: number;
-  isUserAdmin: boolean;
+  isAdmin: boolean;
   personalProject?: Project;
 }

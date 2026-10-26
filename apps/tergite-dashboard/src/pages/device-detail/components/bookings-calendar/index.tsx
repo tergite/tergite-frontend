@@ -181,7 +181,7 @@ export function BookingsCalendar({
   /**
    * Handler to handle drag and drop of events
    */
-  const handleEventDrop = useMutation({
+  const bookingMove = useMutation({
     mutationFn: useCallback(
       async (arg: EventDropArg) => {
         // clear error message
@@ -261,7 +261,7 @@ export function BookingsCalendar({
         events={calendarEvents}
         eventContent={renderEventContent}
         dateClick={handleDateClick}
-        eventDrop={handleEventDrop.mutate}
+        eventDrop={bookingMove.mutate}
       />
       <BookingForm
         dialogTitle="Create new booking"

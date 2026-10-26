@@ -6,7 +6,7 @@
 
 import express, { ErrorRequestHandler } from "express";
 import cookieParser from "cookie-parser";
-import { toHTTPError, NotFound } from "./utils";
+import { toHTTPError, createNotFoundError } from "./utils";
 import path from "path";
 import { fileURLToPath } from "url";
 import logger from "morgan";
@@ -35,7 +35,7 @@ app.use("/oauth", oauthRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
-  next(NotFound());
+  next(createNotFoundError());
 });
 
 // error handler

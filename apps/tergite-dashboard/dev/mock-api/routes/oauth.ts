@@ -1,6 +1,6 @@
 import { Router } from "express";
 import cors from "cors";
-import { createCookieHeader, mockDb, respond401, use } from "../utils";
+import { createCookieHeader, mockDb, respond401, forwardAsyncErrors } from "../utils";
 import { User } from "../types";
 
 const apiBaseUrl = process.env.VITE_API_BASE_URL;
@@ -24,7 +24,7 @@ router.options("*", (req, res, next) => {
 // Dummy third party authenticator GET page
 router.get(
   "/callback",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const userId = req.cookies[userIdCookieName];
     if (!userId) {
       return res.render("oauth", {});
@@ -44,7 +44,7 @@ router.get(
 // Dummy third party authenticator POST page
 router.post(
   "/callback",
-  use(async (req, res) => {
+  forwardAsyncErrors(async (req, res) => {
     const { email } = req.body;
 
     const user = mockDb.getOne<User>("users", (v) => v.email === email);

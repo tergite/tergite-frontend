@@ -9,7 +9,7 @@ import { useCallback } from "react";
 import { type NoticeType } from "@/lib/api/types";
 import {
   getNotificationMeta,
-} from "@/components/layouts/dashboard/components/notifications/meta";
+} from "@/components/layouts/dashboard/components/notifications/notice-type-styles";
 
 // in the order they matter to a user: things awaiting them, then outcomes
 const ORDERED_TYPES: NoticeType[] = [

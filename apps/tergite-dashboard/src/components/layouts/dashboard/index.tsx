@@ -23,7 +23,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Footer } from "./components/footer";
 
 export function Dashboard() {
-  const { currentUser, isUserAdmin } = useLoaderData() as DashboardData;
+  const { currentUser, isAdmin } = useLoaderData() as DashboardData;
 
   const { data: projects = [] } = useQuery(myActiveProjectsQuery);
   const personalProject = useMemo(
@@ -65,7 +65,7 @@ export function Dashboard() {
           isExpanded={isExpanded}
           onIsExpandedChange={toggleIsExpanded}
           pendingRequestsCount={pendingRequestsCount}
-          isUserAdmin={isUserAdmin}
+          isAdmin={isAdmin}
           personalProject={personalProject}
         />
         <div
@@ -78,7 +78,7 @@ export function Dashboard() {
             onLogout={handleLogout}
             currentUser={currentUser}
             pendingRequestsTotal={pendingRequestsCount}
-            isUserAdmin={isUserAdmin}
+            isAdmin={isAdmin}
           />
 
           <TopBanner
@@ -98,14 +98,14 @@ export function Dashboard() {
 
 interface DashboardData {
   currentUser: User;
-  isUserAdmin: boolean;
+  isAdmin: boolean;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<DashboardData> => {
     const currentUser = await queryClient.ensureQueryData(currentUserQuery);
-    const isUserAdmin = currentUser.roles.includes("admin");
-    return { currentUser, isUserAdmin };
+    const isAdmin = currentUser.roles.includes("admin");
+    return { currentUser, isAdmin };
   });
 }

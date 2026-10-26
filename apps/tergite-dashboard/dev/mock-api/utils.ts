@@ -122,6 +122,36 @@ export async function verifyJwtToken(
 }
 
 /**
+ * A wrapper around the request handler that handles common tasks on request handlers
+ *
+ * @param reqHandler - the async request handler for express
+ * @returns - a wrapped async request handler
+ */
+export function forwardAsyncErrors(reqHandler: AsyncRequestHandler): AsyncRequestHandler {
+  return async (req, res, next) => {
+    try {
+      await reqHandler(req, res, next);
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+/**
+ * Creates a NotFound ErrorInfo object
+ *
+ * @param message - the message in the not found error; default="not found"
+ * @returns - the NotFoundError
+ */
+export function createNotFoundError(message: string = "not found"): ErrorInfo {
+  return {
+    message,
+    status: 404,
+    name: "NotFound",
+  };
+}
+
+/**
  * A random integer capped to the given max value
  *
  * @param max - the maximum possible random number
@@ -421,22 +451,6 @@ export function hasAnyOfRoles(userId: string, roles: UserRole[]): boolean {
 }
 
 /**
- * A wrapper around the request handler that handles common tasks on request handlers
- *
- * @param reqHandler - the async request handler for express
- * @returns - a wrapped async request handler
- */
-export function use(reqHandler: AsyncRequestHandler): AsyncRequestHandler {
-  return async (req, res, next) => {
-    try {
-      await reqHandler(req, res, next);
-    } catch (error) {
-      next(error);
-    }
-  };
-}
-
-/**
  * Constructs a URL query string from the express request query object
  *
  * @param query - the query object from the express request object
@@ -477,20 +491,6 @@ export function toHTTPError(err: Error | HttpError): HttpError {
 
   console.error(err);
   return { ...err, status: 500, message: "unexpected server error" };
-}
-
-/**
- * Creates a NotFound ErrorInfo object
- *
- * @param message - the message in the not found error; default="not found"
- * @returns - the NotFoundError
- */
-export function NotFound(message: string = "not found"): ErrorInfo {
-  return {
-    message,
-    status: 404,
-    name: "NotFound",
-  };
 }
 
 /**

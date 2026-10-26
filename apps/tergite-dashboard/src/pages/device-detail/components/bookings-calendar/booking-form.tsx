@@ -182,8 +182,7 @@ export function BookingForm({
     onError,
   });
 
-  // // A hack: for some reason formObj.formState.isDirty was not always right especially
-  const isFormDirty = Object.keys(formObj.formState.dirtyFields).length;
+  const isFormDirty = Object.keys(formObj.formState.dirtyFields).length > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

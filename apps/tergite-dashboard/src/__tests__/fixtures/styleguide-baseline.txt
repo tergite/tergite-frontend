@@ -16,7 +16,6 @@ boolean: src/pages/device-detail/components/bookings-calendar/booking-form.tsx::
 constant-position: dev/mock-api/routes/general.ts::APPROVED_NOTICE_TYPES
 constant-position: dev/mock-api/routes/general.ts::REJECTED_NOTICE_TYPES
 constant-position: dev/mock-api/routes/general.ts::REQUESTED_NOTICE_TYPES
-private-helper-position: dev/mock-api/utils.ts::NotFound
 private-helper-position: dev/mock-api/utils.ts::bulkUpdate
 private-helper-position: dev/mock-api/utils.ts::conformsToFilter
 private-helper-position: dev/mock-api/utils.ts::createCookieHeader
@@ -30,7 +29,6 @@ private-helper-position: dev/mock-api/utils.ts::randomUUID
 private-helper-position: dev/mock-api/utils.ts::respond401
 private-helper-position: dev/mock-api/utils.ts::toBookingPayload
 private-helper-position: dev/mock-api/utils.ts::toHTTPError
-private-helper-position: dev/mock-api/utils.ts::use
 private-helper-position: src/hooks/use-toast.ts::reducer
 private-helper-position: src/pages/admin-control/components/calibration-card/metrics.tsx::CalibrationMetrics
 props-position: src/components/ui/duration-input.tsx::Props

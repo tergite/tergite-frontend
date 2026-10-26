@@ -30,7 +30,7 @@ export function Topbar({
   projects,
   onLogout,
   pendingRequestsTotal,
-  isUserAdmin,
+  isAdmin,
 }: TopbarProps) {
   const username = currentUser?.email?.split("@")[0];
   const [selectKey, setSelectKey] = useState(+new Date());
@@ -42,7 +42,7 @@ export function Topbar({
     >
       <MobileMenu
         pendingRequestsCount={pendingRequestsTotal}
-        isUserAdmin={isUserAdmin}
+        isAdmin={isAdmin}
       />
 
       <TopbarBreadcrumb />
@@ -112,5 +112,5 @@ interface TopbarProps {
   onProjectChange: (projectId?: string) => void;
   onLogout: () => void;
   pendingRequestsTotal: number;
-  isUserAdmin: boolean;
+  isAdmin: boolean;
 }

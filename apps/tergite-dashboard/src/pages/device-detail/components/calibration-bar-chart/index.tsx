@@ -42,7 +42,7 @@ export function CalibrationBarChart({
 
   const currentPropLabel = fieldLabels[currentProp];
 
-  const chatData = useMemo(
+  const chartData = useMemo(
     () => getCalibrationPoints(data, currentProp),
     [data, currentProp]
   );
@@ -50,12 +50,12 @@ export function CalibrationBarChart({
   const maxYValue = useMemo(
     () =>
       Math.max(
-        ...(chatData.map(getYValue).filter((v) => v != undefined) as number[])
+        ...(chartData.map(getYValue).filter((v) => v != undefined) as number[])
       ),
-    [chatData]
+    [chartData]
   );
-  const yAxisLabel = chatData[0]?.unit
-    ? `${currentPropLabel} (${chatData[0].unit})`
+  const yAxisLabel = chartData[0]?.unit
+    ? `${currentPropLabel} (${chartData[0].unit})`
     : currentPropLabel;
 
   const {
@@ -76,7 +76,7 @@ export function CalibrationBarChart({
 
   // scales
   const xScale = scaleBand<number>({
-    domain: chatData.map(getXValue),
+    domain: chartData.map(getXValue),
     padding: 0.2,
     range: [0, xMax],
     round: true,
@@ -110,7 +110,7 @@ export function CalibrationBarChart({
           xOffset={xScale.bandwidth() / 2}
         />
         <Group top={margin.top} left={margin.left}>
-          {chatData.map((record) => (
+          {chartData.map((record) => (
             <CalibrationBar
               key={record.index}
               record={record}

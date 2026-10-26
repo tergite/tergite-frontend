@@ -12,7 +12,7 @@ import {
 } from "@/lib/api/requests";
 import { dismissNotice, refreshMyNotices } from "@/lib/api/notices";
 import { ReloadIcon } from "@radix-ui/react-icons";
-import { getNotificationMeta } from "./meta";
+import { getNotificationMeta } from "./notice-type-styles";
 
 export function NotificationItem({ notice }: Props) {
   const queryClient = useQueryClient();

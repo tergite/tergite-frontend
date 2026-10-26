@@ -91,11 +91,8 @@ export function AdminProjectSummary({
     [project]
   );
 
-  // A hack: for some reason editForm.formState.isDirty was not always right especially
-  //   when one clicked on another project when they had just editted only the user_emails field but not submitted
-  //   if the new project had everything in common with the project, except say the user_emails, editForm.formState.isDirty
-  //   would still show that it is dirty yet it should reset whenever new values are passed to it during initialization
-  const isFormDirty = Object.keys(editForm.formState.dirtyFields).length;
+  // formState.isDirty stays set after the form is given another project's values
+  const isFormDirty = Object.keys(editForm.formState.dirtyFields).length > 0;
 
   return (
     <Form {...editForm}>
