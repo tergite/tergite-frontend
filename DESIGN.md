@@ -158,7 +158,7 @@ includes it from `apps/tergite-mss/ui/`, and MSS serves it at `/ui`
 ([api/dashboard.py](apps/tergite-mss/api/dashboard.py)), sending the paths no file
 has to `index.html` and redirecting `/` to `/ui/`.
 
-MSS answers `GET /health` with 200 outside the request log, as `request_logging_middleware`
+MSS answers `GET /health` with 200 outside the request log, as `RequestIDMiddleware`
 skips it, so that a frequent probe does not bury real traffic.
 
 Logs reach Loki through Grafana Alloy installed beside MSS, whose [config.alloy](config.alloy)

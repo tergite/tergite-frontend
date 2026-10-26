@@ -23,32 +23,34 @@ apps/tergite-mss/
 ├── settings.py              # loads + validates config at import time; fails fast
 ├── start_mss.sh             # from a checkout: decrypt a SOPS config → main.py start
 ├── api/                     # HTTP adapter layer
-│   └── rest/
-│       ├── __init__.py      # the FastAPI app: middleware, exception handlers, routers
-│       ├── app_kwargs.py    # app metadata + lifespan (startup/shutdown)
-│       ├── auth.py          # the auth backends, and the current user and project dependencies
-│       ├── database.py      # opens the one Database in the lifespan; get_database
-│       ├── dependencies.py  # every injectable, as an Annotated alias
-│       ├── errors.py        # the exception handlers
-│       ├── middleware.py    # RequestIDMiddleware
-│       ├── users.py         # the user manager, which gives each user a personal project
-│       ├── utils.py         # router-level helpers (request id, BCC ws verification)
-│       └── routers/         # one module per URL prefix
-│           ├── admin/           /admin (projects in admin/projects.py)
-│           ├── auth.py          /auth
-│           ├── booking.py       /bookings
-│           ├── calibrations.py  /calibrations
-│           ├── counts.py        /counts
-│           ├── jobs.py          /jobs
-│           ├── me/              /me (projects.py, tokens.py)
-│           └── devices/         /devices  (+ the websocket; its event handlers are in services/devices)
+│   ├── __init__.py          # the FastAPI app: middleware, exception handlers, routers
+│   ├── app_kwargs.py        # app metadata + lifespan (startup/shutdown)
+│   ├── auth.py              # the auth backends, and the current user and project dependencies
+│   ├── dashboard.py         # serves the dashboard's build at /ui, and redirects / to it
+│   ├── database.py          # opens the one Database in the lifespan; get_database
+│   ├── dependencies.py      # every injectable, as an Annotated alias
+│   ├── errors.py            # the exception handlers
+│   ├── middleware.py        # RequestIDMiddleware
+│   ├── utils.py             # router-level helpers (request id, BCC ws verification)
+│   └── routers/             # one module per URL prefix
+│       ├── admin/               /admin (bcc/, notices.py, projects.py, users.py)
+│       ├── auth.py              /auth
+│       ├── booking.py           /bookings
+│       ├── calibrations.py      /calibrations
+│       ├── counts.py            /counts
+│       ├── jobs.py              /jobs
+│       ├── me/                  /me (jobs, notices/, profile, projects, requests, tokens)
+│       └── devices/             /devices (+ the websocket and its connections.py; the
+│                                event handlers are in services/devices)
 ├── services/                # the domain
-│   ├── auth/                # users, projects, app tokens, providers, user requests
+│   ├── auth/                # users, projects, app tokens, providers, access rules
 │   ├── calibration/
 │   ├── devices/
 │   ├── jobs/
-│   ├── notices/
-│   └── external/bcc/        # outbound client to the quantum backends
+│   ├── notices/             # notices, their templates and their emails
+│   ├── requests/            # user requests and the actions their approval runs
+│   ├── request_log/         # request ids and nonces, on Redis
+│   └── external/            # outbound clients: bcc/ to the quantum backends, email/ to SMTP
 ├── libs/storage/            # Database, Schema and the stores behind them; imports no app code
 ├── libs/authlib/            # users and sessions, from fastapi-users 14.0.2 (MIT); imports no app code
 ├── utils/                   # cross-cutting, domain-agnostic helpers
@@ -104,9 +106,10 @@ exists. Any config error is a startup crash, not a runtime surprise.
 The FastAPI `lifespan` in `app_kwargs.py` creates the BCC httpx clients, opens the
 `Database` (whose `setup` creates every schema's collection, validator and indexes) and the
 request log's, then runs the `on_startup` of `auth` (which stores the roles users may hold),
-`jobs` and `notices`, and, when `[email]` is configured, starts the only background loop in the
-app: the `Emailer` sending the notices' pending emails. On shutdown it stops the emailer, closes the BCC clients, closes all
-device websockets, marks every device disconnected, and closes both databases.
+`jobs` and `notices`, and, when `[email]` is configured, starts the only background loop in
+the app: the `Emailer` sending the notices' pending emails. On shutdown it stops the emailer,
+closes the BCC clients, closes all device websockets, marks every device disconnected, and
+closes both databases.
 
 `docs_url` / `redoc_url` / `openapi_url` are set to `None` unless
 `general.environment == "development"` — there are no interactive docs in production.
@@ -115,10 +118,9 @@ device websockets, marks every device disconnected, and closes both databases.
 
 1. **`CORSMiddleware`** — Starlette's, with `allow_origin_regex=".*"`, so that it mirrors the
    request `Origin` back instead of `*`, because the auth cookie requires credentialed CORS.
-2. **`request_logging_middleware`** — resolves or generates a request ID (reusing an
-   incoming `x-request-id`), binds it into the loguru context so every log line in the
-   request carries it, logs start/finish with duration, records the request id with
-   `request_log.record_request`, and echoes `x-request-id` back on the response.
+2. **`RequestIDMiddleware`** — resolves or generates a request ID (reusing an incoming
+   `x-request-id`), records it with `request_log.record_request`, and echoes `x-request-id`
+   back on the response; `UNLOGGED_PATHS` such as `/health` skip it.
 3. **Dependencies** — everything injectable is a named `Annotated` alias in
    `api/dependencies.py` (`DatabaseDep`, `CurrentUserDep`, `BccClientDep`,
    `RequestIdDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
@@ -211,8 +213,8 @@ devices, calibrations, notices and the auth entities live in MongoDB.
 
 `WS /devices/ws/{name}` is how a backend pushes state. The handshake is verified by
 `get_verified_device_name` (signature, source IP, nonce freshness, nonce replay) and the
-socket is registered with the router's `WebsocketConnectionManager` (`connections.py` beside it). Each JSON frame is a
-`DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
+socket is registered with the router's `WebsocketConnectionManager` (`connections.py` beside
+it). Each JSON frame is a `DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
 handler for its name:
 
 | Event | Handler effect |
@@ -329,7 +331,8 @@ import time; keep that ordering when adding fixtures.
 
 - `tests/_utils/` — shared helpers, grouped by what they do: `auth.py`, `bcc.py`,
   `storage.py`, `fixtures.py`, `records.py`, `env.py`, `json.py`, `date_time.py`,
-  `mock_backend.py`, `modules.py`, `numbers.py`, `types.py`. Put new helpers here, in the
+  `mock_backend.py`, `modules.py`, `notices.py`, `numbers.py`, `oauth.py`, `projects.py`,
+  `types.py`. Put new helpers here, in the
   file that matches their job — not in a single `utils.py` and not in scattered
   `fixtures/*.py` modules.
 - `tests/fixtures/` — JSON data and the RSA key pairs used to exercise the MSS↔BCC
