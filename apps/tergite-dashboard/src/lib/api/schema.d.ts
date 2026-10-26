@@ -1697,7 +1697,7 @@ export interface components {
             /** Created At */
             created_at?: string | null;
             /** Description */
-            description?: string;
+            description?: string | null;
             /** Dt */
             dt?: number | null;
             /** Dtm */
@@ -1845,8 +1845,6 @@ export interface components {
             estimated_duration?: number | null;
             /** Failure Reason */
             failure_reason?: string | null;
-            /** Id */
-            id?: string | null;
             /** Job Id */
             job_id?: string;
             /** Project Id */
@@ -1997,7 +1995,11 @@ export interface components {
          * @enum {integer}
          */
         NoticeSeverity: 1 | 2 | 3;
-        /** @enum {string} */
+        /**
+         * NoticeTypeId
+         * @description The kinds of notices
+         * @enum {string}
+         */
         NoticeTypeId: "project-access-requested" | "project-access-approved" | "project-access-rejected" | "project-create-requested" | "project-create-approved" | "project-create-rejected" | "project-close-requested" | "project-close-approved" | "project-close-rejected" | "project-transfer-requested" | "project-transfer-approved" | "project-transfer-rejected" | "qpu-seconds-requested" | "qpu-seconds-granted" | "qpu-seconds-denied" | "qpu-seconds-low" | "qpu-seconds-depleted" | "project-membership-granted" | "project-membership-revoked" | "project-admin-assigned" | "custom" | "custom-broadcast";
         /** OAuth2AuthorizeResponse */
         OAuth2AuthorizeResponse: {
