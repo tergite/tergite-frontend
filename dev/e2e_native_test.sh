@@ -39,6 +39,9 @@
 set -e # exit if any step fails
 
 ROOT_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+# the Python MSS and the backend are released with; uv would otherwise take the newest it can
+# find or download, whose wheels may not exist yet
+export UV_PYTHON="${UV_PYTHON:-3.13}"
 WORK_PATH="$ROOT_PATH/temp-native"
 FIXTURES_PATH="$ROOT_PATH/ui/fixtures"
 DASHBOARD_PATH="$ROOT_PATH/ui"

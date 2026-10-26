@@ -39,6 +39,9 @@ SAMPLE_INTERVAL_SECONDS=2
 LIGHTHOUSE_USER_ID="4939a0b9a7742e2cc52289e0"
 OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration"
 ROOT_PATH="$(cd "$(dirname "$0")/../.." && pwd)"
+# the Python MSS and the backend are released with; uv would otherwise take the newest it can
+# find or download, whose wheels may not exist yet
+export UV_PYTHON="${UV_PYTHON:-3.13}"
 FIXTURES_PATH="$ROOT_PATH/ui/fixtures"
 MSS_PATH="$ROOT_PATH"
 DASHBOARD_PATH="$MSS_PATH/ui"
