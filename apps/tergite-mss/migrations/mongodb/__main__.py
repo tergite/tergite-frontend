@@ -17,7 +17,6 @@ import argparse
 from pymongo import MongoClient
 
 import settings
-from api.database import get_database_url
 from migrations.mongodb import rollback, upgrade
 
 parser = argparse.ArgumentParser(prog="python -m migrations.mongodb")
@@ -27,7 +26,7 @@ rollback_parser = commands.add_parser("rollback", help="undo one migration")
 rollback_parser.add_argument("revision")
 args = parser.parse_args()
 
-with MongoClient(get_database_url(settings.CONFIG.database)) as client:
+with MongoClient(settings.CONFIG.database.full_url) as client:
     database = client.get_default_database()
     if args.command == "upgrade":
         print(f"MongoDB migrations applied: {upgrade(database) or 'none pending'}")

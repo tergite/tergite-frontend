@@ -23,8 +23,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import settings
-from api.database import SCHEMAS, get_database_url
 from libs.storage.sql import get_metadata
+from services.schemas import SCHEMAS
 
 if context.config.config_file_name is not None:
     # run in-process too, as by the tests, where it must not silence the app's loggers
@@ -32,8 +32,9 @@ if context.config.config_file_name is not None:
 
 target_metadata = get_metadata(SCHEMAS)
 # a URL set in Alembic's config, as tests set one, stands in for the MSS config's
-database_url = context.config.get_main_option("sqlalchemy.url") or get_database_url(
-    settings.CONFIG.database
+database_url = (
+    context.config.get_main_option("sqlalchemy.url")
+    or settings.CONFIG.database.full_url
 )
 
 

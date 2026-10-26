@@ -48,7 +48,6 @@ import uvicorn
 
 import settings
 from api import app
-from api.database import get_database_url
 
 _ROOT = Path(__file__).parent
 
@@ -110,7 +109,7 @@ def _migrate() -> None:
 
     import migrations.mongodb
 
-    database_url = get_database_url(settings.CONFIG.database)
+    database_url = settings.CONFIG.database.full_url
     if database_url.startswith("mongodb"):
         with MongoClient(database_url) as client:
             applied = migrations.mongodb.upgrade(client.get_default_database())

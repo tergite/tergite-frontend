@@ -18,6 +18,7 @@ import tomllib
 from os import PathLike
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlsplit, urlunsplit
 
 import aiosmtplib
 from pydantic import (
@@ -55,6 +56,14 @@ class DatabaseConfig(BaseModel):
     # the database of the request log, read and written on every request, so a cache
     # suits it; default=redis://tergite-redis:6379/0
     redis_url: AnyUrl = "redis://tergite-redis:6379/0"
+
+    @property
+    def full_url(self) -> str:
+        """The url, with the name as its path if it has none"""
+        parts = urlsplit(str(self.url))
+        if parts.path in ("", "/"):
+            parts = parts._replace(path=f"/{self.name}")
+        return urlunsplit(parts)
 
 
 class BccConfig(BaseModel):

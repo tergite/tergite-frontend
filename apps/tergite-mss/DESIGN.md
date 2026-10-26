@@ -234,7 +234,7 @@ enum member in `services/devices/dtos.py`, and a handler and its entry in `EVENT
 ## 5. Data
 
 MSS reaches its data through `libs/storage`: one `Database`, opened in the lifespan with
-every service's `SCHEMAS` and handed to routes as `DatabaseDep`, beside the request log's
+every service's `SCHEMAS`, which `services/schemas.py` gathers, and handed to routes as `DatabaseDep`, beside the request log's
 own on Redis (below). The `Database` picks its store from the URL's scheme: `MongoStore`
 for `mongodb://`, `SqlStore` for a SQLAlchemy URL with an async driver
 (`postgresql+asyncpg://`, `sqlite+aiosqlite://`), `RedisStore` for `redis://`. Nothing

@@ -78,8 +78,8 @@ _SCHEMAS_KEPT_ACROSS_TESTS = {"NoticeTemplate", "Role"}
 @pytest.fixture(scope="session")
 def api_database() -> Generator[SyncDatabase, Any, None]:
     """The database the app runs on: the one TEST_DATABASE_URL names, emptied first"""
-    from api.database import SCHEMAS
     from services.auth import ensure_roles
+    from services.schemas import SCHEMAS
 
     asyncio.run(empty_database(TEST_DATABASE_URL))
     settings.CONFIG.database.url = AnyUrl(TEST_DATABASE_URL)
@@ -93,7 +93,7 @@ def api_database() -> Generator[SyncDatabase, Any, None]:
 @pytest.fixture
 def db(api_database) -> Generator[SyncDatabase, Any, None]:
     """The app's database, emptied after the test"""
-    from api.database import SCHEMAS
+    from services.schemas import SCHEMAS
 
     yield api_database
     # emptied, not dropped: the running app's tables and indexes stay, as do the roles
