@@ -11,7 +11,7 @@ import type {
   BookingsConfig,
   Device,
   User,
-} from "../dev/mock-api/types";
+} from "./types";
 
 // the browser's, from the config's timezoneId, so that these dates match the page's
 const TIME_ZONE = "Europe/Stockholm";

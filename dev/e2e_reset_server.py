@@ -9,18 +9,18 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""Serves GET /refreshed-db, which resets the e2e stack's MongoDB and backend databases to
-the fixtures: see dev/e2e_native_test.sh"""
+"""Serves GET /refreshed-db, which reseeds the e2e stack's MSS and backend databases from
+the fixtures: see dev/e2e_native_test.sh, which runs it in MSS's environment and config"""
 import argparse
 import subprocess
+import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, required=True)
-    parser.add_argument("--mongo-port", required=True)
-    parser.add_argument("--mongo-init-script", required=True)
+    parser.add_argument("--mss-path", required=True, help="the MSS checkout to seed with")
     parser.add_argument("--sql", required=True, help="the SQL to load into each database")
     parser.add_argument("databases", nargs="*", help="the backends' SQLite files")
     args = parser.parse_args()
@@ -31,7 +31,7 @@ def main() -> None:
                 self.send_error(404)
                 return
 
-            _reset(args.mongo_port, args.mongo_init_script, args.sql, args.databases)
+            _reset(args.mss_path, args.sql, args.databases)
             body = b"success\n"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
@@ -45,11 +45,9 @@ def main() -> None:
     HTTPServer(("127.0.0.1", args.port), ResetHandler).serve_forever()
 
 
-def _reset(mongo_port: str, init_script: str, sql: str, databases: list[str]) -> None:
+def _reset(mss_path: str, sql: str, databases: list[str]) -> None:
     subprocess.run(
-        ["mongosh", "--quiet", "--port", mongo_port, init_script],
-        check=True,
-        capture_output=True,
+        [sys.executable, "-m", "dev.seed"], cwd=mss_path, check=True, capture_output=True
     )
     for database in databases:
         with open(sql, "rb") as sql_file:

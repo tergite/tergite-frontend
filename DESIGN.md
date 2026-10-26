@@ -81,7 +81,8 @@ The dashboard depends on MSS only through:
 3. **The OpenAPI schema** — MSS commits it as `apps/tergite-mss/dev/openapi/openapi.json`,
    and the dashboard's `npm run generate:api` regenerates both it and the TypeScript types
    in `src/lib/api/schema.d.ts` that type the client, so a change to an MSS route or DTO
-   fails the dashboard's `tsc`. The mock API fixtures still follow by hand.
+   fails the dashboard's `tsc`. The fixtures MSS is seeded with follow by hand, and a stale one
+   fails the seeding.
 
 The classic misconfiguration is `localhost` vs `127.0.0.1`: the cookie domain and the host
 you type in the browser must match, or login appears to succeed and then bounces back to
@@ -142,8 +143,8 @@ decrypts it into `MSS_CONFIG_JSON_STR` using `VAULT_ADDR` / `VAULT_TOKEN` from t
 
 Vite conventions. `VITE_`-prefixed variables are baked into the bundle at build time —
 they are not runtime configuration. `.env.production` empties `VITE_API_BASE_URL`, so the
-build MSS serves calls its own origin. `.env.development` / `.env.test` also carry
-`JWT_SECRET` and `AUTH_AUDIENCE` used only by the mock API server.
+build MSS serves calls its own origin. `.env.test` also carries the `JWT_SECRET` and
+`AUTH_AUDIENCE` of the e2e stack's MSS, with which the specs sign their session cookies.
 
 ## 5. Deployment
 
@@ -292,7 +293,7 @@ rules, and code a change touches is brought in line with them.
 8. **One home per kind of thing.** Routes live in `api/routers/`. `HTTPException` is raised
    only in `api/`. Domain errors subclass `utils/exc.py` and are mapped to status codes once. A
    service's `__init__.py` only re-exports, with `__all__` as strings. Development and test
-   tooling (scripts, generators, performance checks, the mock API) lives in a `dev/` folder:
+   tooling (scripts, generators, performance checks, the seeding) lives in a `dev/` folder:
    the repository's for tooling that spans both apps, an app's own for tooling only it uses. An
    app's other folders hold the app and its tests, so the tree shows the architecture and
    nothing else.

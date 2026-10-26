@@ -6,7 +6,7 @@ import {
   type Project,
   type User,
   UserRole,
-} from "../dev/mock-api/types";
+} from "./types";
 
 // Pick, not Omit: AdminProject's index signature would leave Omit with unknown values
 type ProjectFormData = Pick<

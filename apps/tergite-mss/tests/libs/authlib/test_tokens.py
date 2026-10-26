@@ -47,7 +47,7 @@ def test_an_unreadable_session_token_names_no_user(user, secret, lifetime_second
 
 
 def test_the_state_is_for_fastapi_users_oauth_state():
-    # live cookies and the dashboard's mock API carry fastapi-users' audiences
+    # live cookies carry fastapi-users' audiences
     state = write_state_token(None, SECRET)
 
     claims = jwt.decode(

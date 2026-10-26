@@ -2,10 +2,10 @@
   "ci": {
     "collect": {
       "url": [
-        "http://127.0.0.1:5173/ui/",
-        "http://127.0.0.1:5173/ui/devices",
-        "http://127.0.0.1:5173/ui/devices/Loke",
-        "http://127.0.0.1:5173/ui/projects"
+        "http://127.0.0.1:8002/ui/",
+        "http://127.0.0.1:8002/ui/devices",
+        "http://127.0.0.1:8002/ui/devices/Loke",
+        "http://127.0.0.1:8002/ui/projects"
       ],
       "numberOfRuns": 3,
       "settings": {

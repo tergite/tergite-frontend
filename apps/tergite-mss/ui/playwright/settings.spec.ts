@@ -1,5 +1,5 @@
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import { NoticeType, type User } from "../dev/mock-api/types";
+import { NoticeType, type User } from "./types";
 
 // preferences behave identically for everyone, so one representative user is enough
 const [user] = readFixture<User[]>("users");

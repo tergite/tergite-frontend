@@ -1,6 +1,6 @@
-import type { UserRequestMetadata } from "../../src/lib/api/types";
+import type { UserRequestMetadata } from "../src/lib/api/types";
 
-// the mock API's own shapes and enums; the API's shapes are the dashboard's, from MSS's schema
+// the API's shapes, as the dashboard names them, and the enums and shapes the specs build data of
 export type {
   AdminCreateProjectBody,
   AdminProject,
@@ -22,10 +22,10 @@ export type {
   UpdateProjectPutBody,
   User,
   UserRequest,
-} from "../../src/lib/api/types";
-export type { ErrorInfo } from "../../src/lib/api/client";
-export type { ExtendedAppToken } from "../../src/lib/app-tokens";
-export type { AnyFlatRecord } from "../../src/lib/user-requests";
+} from "../src/lib/api/types";
+export type { ErrorInfo } from "../src/lib/api/client";
+export type { ExtendedAppToken } from "../src/lib/app-tokens";
+export type { AnyFlatRecord } from "../src/lib/user-requests";
 
 export interface DbRecord extends Record<
   string,

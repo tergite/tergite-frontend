@@ -9,7 +9,7 @@ import {
   UserRequestStatus,
   UserRequestType,
   UserRole,
-} from "../dev/mock-api/types";
+} from "./types";
 
 const projects = readFixture<Project[]>("projects");
 const projectsIndex = Object.fromEntries(projects.map((v, i) => [v.id, i]));

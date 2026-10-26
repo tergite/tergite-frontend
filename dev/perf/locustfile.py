@@ -28,7 +28,7 @@ MSS_CONFIG = tomllib.loads((FIXTURES_PATH / "mss-config.toml").read_text())
 MONGODB_URL = "mongodb://127.0.0.1:27019"
 DASHBOARD_USER_ID = "4939a0b9a7742e2cc52289e0"
 DASHBOARD_PROJECT_ID = "653a8f19e736d76276597a6c"
-# the system user's token, which mongo-init.js inserts
+# the system user's token, which dev.seed inserts
 SDK_APP_TOKEN = "W0imS_n_J5ZwP8wFYvbBCiDkJVhQcEROEfyTPvFko1E"
 SDK_USER_ID = ObjectId("5ddc8d9fb69602723cd3c38f")
 SDK_PROJECT_ID = ObjectId("653a81b2e736d76276597a6b")

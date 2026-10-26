@@ -1,38 +1,38 @@
 [
   {
-    "url": "http://127.0.0.1:5173/",
+    "url": "http://127.0.0.1:8002/ui/",
     "isRepresentativeRun": true,
     "htmlPath": null,
-    "jsonPath": "127_0_0_1--2026_10_23_07_57_29.report.json",
+    "jsonPath": "127_0_0_1-ui_-2026_10_26_11_07_37.report.json",
     "summary": {
-      "performance": 0.99
+      "performance": 0.89
     }
   },
   {
-    "url": "http://127.0.0.1:5173/devices",
+    "url": "http://127.0.0.1:8002/ui/devices",
     "isRepresentativeRun": true,
     "htmlPath": null,
-    "jsonPath": "127_0_0_1-devices-2026_10_23_07_58_13.report.json",
+    "jsonPath": "127_0_0_1-ui_devices-2026_10_26_11_08_31.report.json",
     "summary": {
-      "performance": 1
+      "performance": 0.91
     }
   },
   {
-    "url": "http://127.0.0.1:5173/devices/Loke",
+    "url": "http://127.0.0.1:8002/ui/devices/Loke",
     "isRepresentativeRun": true,
     "htmlPath": null,
-    "jsonPath": "127_0_0_1-devices_Loke-2026_10_23_07_58_34.report.json",
+    "jsonPath": "127_0_0_1-ui_devices_Loke-2026_10_26_11_09_13.report.json",
     "summary": {
-      "performance": 0.99
+      "performance": 0.91
     }
   },
   {
-    "url": "http://127.0.0.1:5173/projects",
+    "url": "http://127.0.0.1:8002/ui/projects",
     "isRepresentativeRun": true,
     "htmlPath": null,
-    "jsonPath": "127_0_0_1-projects-2026_10_23_07_59_09.report.json",
+    "jsonPath": "127_0_0_1-ui_projects-2026_10_26_11_09_46.report.json",
     "summary": {
-      "performance": 0.98
+      "performance": 0.9
     }
   }
 ]

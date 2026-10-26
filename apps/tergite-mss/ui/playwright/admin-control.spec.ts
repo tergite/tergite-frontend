@@ -1,6 +1,6 @@
 import type { Page, Request } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import { type Device, type User, UserRole } from "../dev/mock-api/types";
+import { type Device, type User, UserRole } from "./types";
 
 // the stored shape, with offsets in hours from now for the timestamps
 interface NoticeFixture {

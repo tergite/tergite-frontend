@@ -8,7 +8,7 @@ import type {
   ExtendedAppToken,
   Project,
   User,
-} from "../dev/mock-api/types";
+} from "./types";
 
 const TABLE_HEADERS = ["Title", "Project", "Expires", "Status"];
 // 'in 1 day' or '2 days ago' or '+273,000 years'

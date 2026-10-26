@@ -1,7 +1,7 @@
 import { decodeJwt } from "jose";
 import type { Page } from "@playwright/test";
 import { expect, readFixture, signSession, test, waitForApi } from "./fixtures";
-import type { AuthProvider, User } from "../dev/mock-api/types";
+import type { AuthProvider, User } from "./types";
 
 const invalidFormatEmailAddresses = ["john", "1", "john.com", "http://example.com"];
 
@@ -182,5 +182,3 @@ for (const email of invalidFormatEmailAddresses) {
 function nextButton(page: Page) {
   return page.locator("button[type=submit]", { hasText: /next/i });
 }
-
-/** Signs a session JWT as the mock API's generateJwt does; importing that would load its JSON */

@@ -8,8 +8,8 @@ Read [../../../DESIGN.md](../../../DESIGN.md) first for the monorepo context, de
 cross-app conventions.
 
 The dashboard has **no backend of its own**. In production it is a static bundle MSS serves
-at `/ui`; every piece of data comes from MSS over HTTP with a cookie. The Express server in
-`dev/mock-api/` is a development and testing mock only — it is never deployed.
+at `/ui`; every piece of data comes from MSS over HTTP with a cookie, in development and in
+the e2e as in production.
 
 ## 1. Architecture: co-located hierarchy
 
@@ -283,38 +283,26 @@ Loader payload types follow the same placement as `interface XData`.
 intentionally unused binding must be `_`-prefixed (the eslint rule matches). `@/*` resolves
 to `src/*` in both tsconfig and vite.
 
-## 5. The mock API server (`dev/mock-api/`)
+## 5. Data for development and tests
 
-An Express app that impersonates MSS well enough to develop and test the UI without running
-the real stack.
+`fixtures/*.json` are the data MSS is seeded with. MSS's `python -m dev.seed`
+([dev/seed.py](../dev/seed.py)) clears the fixtures' tables in the database of the MSS config
+and fills them from the fixtures through the storage layer, so it seeds MongoDB and SQLite
+alike, validating each fixture against MSS's schemas; it refuses a production config.
 
-```
-dev/mock-api/
-├── server.ts        # express setup, mounts routers, JSON error handler ({ detail })
-├── routes/
-│   ├── general.ts   # every MSS resource endpoint, plus GET /refreshed-db
-│   └── oauth.ts     # the mock OAuth2 authorize/callback pair
-├── views/oauth.hbs  # the fake provider's consent page
-├── types.ts         # the API types re-exported, the mock's own rows and enums
-└── utils.ts         # MockDb over the fixtures in fixtures + JWT signing/verification
-```
+- `npm run dev` seeds the database of MSS's config, serves MSS on 8002 and runs vite against
+  it; give MSS a development config, as seeding clears those tables.
+- [dev/e2e_native_test.sh](../../../dev/e2e_native_test.sh) seeds before MSS starts, and its
+  reset service, `dev/e2e_reset_server.py`, reseeds on every `GET /refreshed-db`.
+- `dev/perf/record.sh` seeds the database its runs measure.
 
-- `utils.ts` builds an in-memory `MockDb` from `fixtures/*.json` and issues real
-  HS256 JWTs with `jose`, using `JWT_SECRET` / `AUTH_AUDIENCE` from the `.env` file — so the
-  cookie handling under test is the real thing, not a stub.
-- `GET /refreshed-db` resets the mock database; the Playwright fixtures call it between tests.
-- `CURRENT_DATE` in `.env.test` pins "now" so date-sensitive fixtures and visual snapshots
-  are stable.
+`CURRENT_DATE` in `.env.test`, which the backends of the e2e stack take as theirs, pins "now"
+so that date-sensitive fixtures and visual snapshots are stable.
 
-Run it with `npm run dev-api` (watch mode) or `npm run test-api`. `npm run dev` starts it and
-vite together via `start-server-and-test`.
-
-**When an MSS response shape changes**, rerun `npm run generate:api`, then update the mock
-route in `dev/mock-api/routes/general.ts` and the fixture in `fixtures/`. The mock's
-`dev/mock-api/types.ts` re-exports the dashboard's API types and keeps the mock's own row
-shapes and the enums it and the Playwright specs use at runtime. Missing one shows
-up as a passing UI suite against a stale contract — which is what the repo-level
-`dev/e2e_native_test.sh` exists to catch.
+**When an MSS response shape changes**, rerun `npm run generate:api`, and update the fixture
+in `fixtures/` if its shape changed: a fixture that no longer fits fails the seeding.
+`playwright/types.ts` gives the specs the dashboard's API types and the enums they build data
+of at runtime.
 
 ## 6. Testing
 
@@ -396,6 +384,6 @@ exported alongside a component.
 | New table | a `*-table/` folder with `index.tsx`, `columns.tsx`, `filter-form.tsx` (+ `detail-drawer.tsx`) |
 | New API call | a `queryOptions` (reads) or an action function (writes) in its resource's `src/lib/api/{resource}.ts`, calling `client` from `src/lib/api/client.ts` — nowhere else talks HTTP — then consume it from a `useQuery` or a `useMutation`, never from a bare handler; if MSS gained the route, `npm run generate:api` first |
 | New destination | a `<Route>` in `src/router.tsx` with its loader; reach it with `<Link>` or `useNavigate`, never `window.location` |
-| New response shape | `npm run generate:api`, a name for it in `src/lib/api/types.ts` if the dashboard uses it, the mock route in `dev/mock-api/routes/general.ts`, and the `fixtures/` JSON |
+| New response shape | `npm run generate:api`, a name for it in `src/lib/api/types.ts` if the dashboard uses it, and the `fixtures/` JSON MSS is seeded with |
 | New shadcn primitive | the shadcn CLI, then edit the generated file in `src/components/ui/` |
 | New env variable | `VITE_`-prefix it if the browser needs it, and add it to `.env.development` / `.env.test`, and to `.env.production` if the build MSS serves needs a value |

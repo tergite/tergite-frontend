@@ -12,8 +12,7 @@
 # that they have been altered from the originals.
 """The JWTs authlib writes: session tokens, and the state passed through a provider
 
-Their audiences are fastapi-users' own, which live cookies and the dashboard's mock API
-depend on.
+Their audiences are fastapi-users' own, which live cookies depend on.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union

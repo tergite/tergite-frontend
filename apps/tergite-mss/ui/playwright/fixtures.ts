@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { test as base, type Page } from "@playwright/test";
 import { SignJWT } from "jose";
-import type { User } from "../dev/mock-api/types";
+import type { User } from "./types";
 
 // the MSS the test build calls, which dev/e2e_native_test.sh starts, seeded from fixtures/
 const API_URL = process.env.VITE_API_BASE_URL!;

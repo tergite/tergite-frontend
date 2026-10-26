@@ -16,7 +16,7 @@
 # dashboard's test build at /ui, and the backends from a tergite-backend checkout, one process
 # serving them all, each under its own path, all from fresh data in temp-native/. Its arguments
 # go to `playwright test`, e.g. a spec to run or --update-snapshots.
-# Needs mongod, mongosh, redis-server, sqlite3, uv, npm, jq and curl.
+# Needs mongod, mongosh, redis-server, sqlite3, uv, npm and curl.
 #
 # Usage
 # =====
@@ -81,7 +81,7 @@ exit_with_err() {
   exit 1;
 }
 
-for tool in mongod mongosh redis-server sqlite3 uv npm jq curl; do
+for tool in mongod mongosh redis-server sqlite3 uv npm curl; do
   command -v "$tool" &> /dev/null || exit_with_err "$tool is not available"
 done
 
@@ -94,13 +94,6 @@ replace_str() {
   else
     sed -i "s|$2|$3|" "$1";
   fi
-}
-
-# reads the JSON file and returns it as an escaped string
-# usage:
-#   read_json file
-read_json() {
-  echo "$(jq -c . $1 | jq -Rr @sh)"
 }
 
 # starts a command in the background, logging to temp-native/logs/<name>.log, and sets
@@ -178,17 +171,6 @@ start_service mongod mongod --dbpath "$WORK_PATH/mongo" --port $MONGO_PORT --bin
 start_service redis redis-server --port $REDIS_PORT --bind 127.0.0.1 --save "" --appendonly no
 until mongosh --quiet --port $MONGO_PORT --eval "db.runCommand('ping').ok" &> /dev/null; do sleep 0.5; done
 
-cp "$FIXTURES_PATH/mongo-init.js" "$WORK_PATH/mongo-init.js"
-replace_str "$WORK_PATH/mongo-init.js" "rawCalibrations = \"\[\]\"" "rawCalibrations = $(read_json $FIXTURES_PATH/calibrations.json)"
-replace_str "$WORK_PATH/mongo-init.js" "rawDevices = \"\[\]\"" "rawDevices = $(read_json $FIXTURES_PATH/device-list.json)"
-replace_str "$WORK_PATH/mongo-init.js" "rawJobs = \"\[\]\"" "rawJobs = $(read_json $FIXTURES_PATH/jobs.json)"
-replace_str "$WORK_PATH/mongo-init.js" "rawNotices = \"\[\]\"" "rawNotices = $(read_json $FIXTURES_PATH/notices.json)"
-replace_str "$WORK_PATH/mongo-init.js" "rawProjects = \"\[\]\"" "rawProjects = $(read_json $FIXTURES_PATH/projects.json)"
-replace_str "$WORK_PATH/mongo-init.js" "rawTokens = \"\[\]\"" "rawTokens = $(read_json $FIXTURES_PATH/tokens.json)"
-replace_str "$WORK_PATH/mongo-init.js" "rawUserRequests = \"\[\]\"" "rawUserRequests = $(read_json $FIXTURES_PATH/user-requests.json)"
-replace_str "$WORK_PATH/mongo-init.js" "rawUsers = \"\[\]\"" "rawUsers = $(read_json $FIXTURES_PATH/users.json)"
-mongosh --quiet --port $MONGO_PORT "$WORK_PATH/mongo-init.js" > /dev/null
-
 echo "Building the dashboard, which MSS serves"
 (cd "$DASHBOARD_PATH" && { [[ -d node_modules ]] || npm ci; } \
   && npm run build -- --mode test > "$WORK_PATH/logs/dashboard-build.log")
@@ -208,9 +190,9 @@ for backend in "${BACKENDS[@]}"; do
   replace_str "$WORK_PATH/mss-config.toml" "http://$host:8000" "http://127.0.0.1:$BACKEND_PORT/$name"
 done
 export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
+(cd "$MSS_PATH" && "$WORK_PATH/venvs/mss/bin/python" -m dev.seed) > "$WORK_PATH/logs/seed.log" 2>&1
 start_service mss bash -c "cd '$MSS_PATH' && exec '$WORK_PATH/venvs/mss/bin/python' main.py start --host 127.0.0.1 --port $MSS_PORT"
 mss_pid=$SERVICE_PID
-unset MSS_CONFIG_FILE PRIVATE_KEY_FILE
 wait_for_url mss "http://127.0.0.1:$MSS_PORT/" $mss_pid
 
 echo "Starting the backends"
@@ -251,9 +233,9 @@ wait_for_url backends "http://127.0.0.1:$BACKEND_PORT/docs" $SERVICE_PID
 
 echo "Starting the reset service"
 start_service reset "$WORK_PATH/venvs/mss/bin/python" "$ROOT_PATH/dev/e2e_reset_server.py" \
-  --port $RESET_PORT --mongo-port $MONGO_PORT --mongo-init-script "$WORK_PATH/mongo-init.js" \
-  --sql "$FIXTURES_PATH/backend_db.sql" "${reset_databases[@]}"
+  --port $RESET_PORT --mss-path "$MSS_PATH" --sql "$FIXTURES_PATH/backend_db.sql" "${reset_databases[@]}"
 reset_pid=$SERVICE_PID
+unset MSS_CONFIG_FILE PRIVATE_KEY_FILE
 wait_for_url reset "http://127.0.0.1:$RESET_PORT/" $reset_pid
 
 echo "Running end-to-end test suite..."

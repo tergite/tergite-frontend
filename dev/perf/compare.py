@@ -16,6 +16,7 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ALLOWED_WORSENING = 0.10
 # a rise this small is noise however large it is relative to the baseline, which may be 0
@@ -93,8 +94,7 @@ def read_page_measures(manifest_path: Path) -> dict[str, float]:
         # the manifest holds absolute paths of the machine that recorded it
         report_path = manifest_path.parent / Path(entry["jsonPath"]).name
         audits = json.loads(report_path.read_text())["audits"]
-        # the baselines were recorded before the dashboard moved under /ui
-        page = entry["url"].split("5173", 1)[-1].removeprefix("/ui")
+        page = urlsplit(entry["url"]).path
         scripts = audits["resource-summary"]["details"]["items"]
         measures[f"LCP ms: {page}"] = audits["largest-contentful-paint"]["numericValue"]
         measures[f"TBT ms: {page}"] = audits["total-blocking-time"]["numericValue"]

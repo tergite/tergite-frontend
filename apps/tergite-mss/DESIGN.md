@@ -54,7 +54,8 @@ apps/tergite-mss/
 ├── libs/storage/            # Database, Schema and the stores behind them; imports no app code
 ├── libs/authlib/            # users and sessions, from fastapi-users 14.0.2 (MIT); imports no app code
 ├── utils/                   # cross-cutting, domain-agnostic helpers
-├── dev/openapi/             # export.py and the openapi.json it writes: the API contract
+├── dev/                     # openapi/ export.py and the openapi.json it writes, the API contract;
+│                            # seed.py, which seeds the database from ui/fixtures
 └── tests/
 ```
 

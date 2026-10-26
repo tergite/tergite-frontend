@@ -45,13 +45,15 @@ cd apps/tergite-mss/ui
 npm i
 ```
 
-- Run the app in development mode
+- Run the app in development mode, against MSS: this seeds the database of MSS's config
+  (`../mss-config.toml`, or the file `MSS_CONFIG_FILE` names) with [fixtures/](./fixtures),
+  clearing those tables, serves MSS on 8002 and runs vite against it
 
 ```shell
 npm run dev
 ```
 
-- Open your browser at [http://127.0.0.1:5173](http://127.0.0.1:5173)
+- Open your browser at [http://127.0.0.1:5173/ui/](http://127.0.0.1:5173/ui/)
 
 ## Contribution Guidelines
 

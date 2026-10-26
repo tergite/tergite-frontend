@@ -1,5 +1,5 @@
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import type { User } from "../dev/mock-api/types";
+import type { User } from "./types";
 
 // the fixture carries the stored shape, with relative offsets for the timestamps
 interface StoredNotice {

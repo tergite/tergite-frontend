@@ -6,7 +6,7 @@ import type {
   Job,
   Project,
   User,
-} from "../dev/mock-api/types";
+} from "./types";
 
 const CURRENT_DATE = process.env.CURRENT_DATE!;
 const REFETCH_INTERVAL_MS = parseFloat(process.env.VITE_REFETCH_INTERVAL_MS!);

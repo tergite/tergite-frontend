@@ -12,7 +12,7 @@
 # that they have been altered from the originals.
 #
 # Records the performance measures into <out-dir>: Lighthouse on the
-# dashboard against the mock API, then Locust on MSS from this working tree, with a MongoDB and
+# dashboard as MSS serves it, then Locust on MSS from this working tree, with a MongoDB and
 # a Redis of its own, all running natively, both over the e2e fixtures. It samples the CPU and
 # memory of the MSS, mongod and redis-server processes, and each database's connections.
 #
@@ -20,12 +20,13 @@
 # =====
 #
 #   ./dev/perf/record.sh dev/perf/baselines           # the baseline
-#   ./dev/perf/record.sh /tmp/perf-step-3             # a sign-off run
-#   ./dev/perf/record.sh /tmp/perf-step-3 mss         # MSS alone, or dashboard alone
-#   python3 dev/perf/compare.py dev/perf/baselines /tmp/perf-step-3
+#   ./dev/perf/record.sh /tmp/perf                    # a run to compare with it
+#   ./dev/perf/record.sh /tmp/perf mss                # MSS alone, or dashboard alone
+#   python3 dev/perf/compare.py dev/perf/baselines /tmp/perf
 #
 # Needs node, uv, mongod, mongosh, redis-server and redis-cli, and ports 8002, 27019 and 6381
-# free: the mock API, then MSS, take 8002 in turn; the locustfile reaches MongoDB at 27019.
+# free: MSS takes 8002, where the dashboard's test build calls it; the locustfile reaches
+# MongoDB at 27019.
 # Compare only runs made on the same machine: the numbers are this machine's.
 
 set -e
@@ -40,6 +41,7 @@ OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration"
 ROOT_PATH="$(cd "$(dirname "$0")/../.." && pwd)"
 FIXTURES_PATH="$ROOT_PATH/apps/tergite-mss/ui/fixtures"
 MSS_PATH="$ROOT_PATH/apps/tergite-mss"
+DASHBOARD_PATH="$MSS_PATH/ui"
 MSS_PORT=8002
 MONGO_PORT=27019
 REDIS_PORT=6381
@@ -57,20 +59,37 @@ main() {
 }
 
 record_dashboard() {
-  cd "$ROOT_PATH/apps/tergite-mss/ui"
+  # MSS serves the dashboard's build, so it is made before MSS starts
+  (cd "$DASHBOARD_PATH" && npm run build -- --mode test > /dev/null)
+  start_stack
   local cookie
-  cookie="$(sign_mock_session)"
+  cookie="$(sign_session)"
   rm -rf "$OUT_PATH/lighthouse"
-  npm run start-e2e-server -- "npx --yes @lhci/cli@$LHCI_VERSION collect \
-    --config=$ROOT_PATH/dev/perf/lighthouserc.json \
-    --settings.extraHeaders='{\"Cookie\":\"$cookie\"}' \
-    && npx --yes @lhci/cli@$LHCI_VERSION upload --target=filesystem --outputDir=$OUT_PATH/lighthouse"
+  (cd "$DASHBOARD_PATH" \
+    && npx --yes "@lhci/cli@$LHCI_VERSION" collect --config="$ROOT_PATH/dev/perf/lighthouserc.json" \
+      --settings.extraHeaders="{\"Cookie\":\"$cookie\"}" \
+    && npx --yes "@lhci/cli@$LHCI_VERSION" upload --target=filesystem --outputDir="$OUT_PATH/lighthouse")
   keep_representative_reports
+  stop_stack
 }
 
 record_mss() {
+  start_stack
+  sample_processes &
+  sampler_pid=$!
+  sample_connections &
+  connections_pid=$!
+  uvx --from "locust==$LOCUST_VERSION" --with pymongo --with pyjwt \
+    locust -f "$ROOT_PATH/dev/perf/locustfile.py" --headless --only-summary \
+    --host "http://127.0.0.1:$MSS_PORT" -u "$LOAD_USERS" -r "$LOAD_USERS" -t "$LOAD_DURATION" \
+    --csv "$OUT_PATH/locust"
+  stop_stack
+}
+
+# Starts MongoDB, Redis and MSS, each of its own, in WORK_PATH, seeding MSS's database from the fixtures
+start_stack() {
   WORK_PATH="$(mktemp -d)"
-  trap stop_mss EXIT
+  trap stop_stack EXIT
   sed -e "s|mongodb://tergite-mongo:27017|mongodb://127.0.0.1:$MONGO_PORT|" \
     -e "s|redis://tergite-redis:6379|redis://127.0.0.1:$REDIS_PORT|" -e "s|bcc_certs/|$FIXTURES_PATH/|" \
     -e "s|OPENID_CONFIG_URL|$OPENID_CONFIG_URL|" -e "s|OPENID_CLIENT_ID|perf|" \
@@ -82,59 +101,31 @@ record_mss() {
   redis-server --port "$REDIS_PORT" --bind 127.0.0.1 --save "" --appendonly no > "$WORK_PATH/redis.log" 2>&1 &
   redis_pid=$!
   until mongosh --quiet --port "$MONGO_PORT" --eval "db.runCommand('ping').ok" &> /dev/null; do sleep 0.5; done
-  seed_database
 
   UV_PROJECT_ENVIRONMENT="$WORK_PATH/venv" uv sync -q --frozen --no-dev --project "$MSS_PATH"
+  export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
+  (cd "$MSS_PATH" && "$WORK_PATH/venv/bin/python" -m dev.seed) > "$WORK_PATH/seed.log" 2>&1
   start_mss
   until curl -sf "http://127.0.0.1:$MSS_PORT/health" > /dev/null; do
     kill -0 "$mss_pid" 2> /dev/null || exit_with_err "MSS stopped; see $WORK_PATH/mss.log"
     sleep 0.5
   done
-
-  sample_processes &
-  sampler_pid=$!
-  sample_connections &
-  connections_pid=$!
-  uvx --from "locust==$LOCUST_VERSION" --with pymongo --with pyjwt \
-    locust -f "$ROOT_PATH/dev/perf/locustfile.py" --headless --only-summary \
-    --host "http://127.0.0.1:$MSS_PORT" -u "$LOAD_USERS" -r "$LOAD_USERS" -t "$LOAD_DURATION" \
-    --csv "$OUT_PATH/locust"
 }
 
 # Migrates the database and serves MSS from MSS_PATH, setting mss_pid
 start_mss() {
-  export MSS_CONFIG_FILE="$WORK_PATH/mss-config.toml" PRIVATE_KEY_FILE="$FIXTURES_PATH/private-mss-key.pem"
   (cd "$MSS_PATH" && exec "$WORK_PATH/venv/bin/python" main.py start --host 127.0.0.1 --port "$MSS_PORT") \
     > "$WORK_PATH/mss.log" 2>&1 &
   mss_pid=$!
 }
 
-stop_mss() {
-  kill "$sampler_pid" "$connections_pid" "$mss_pid" "$redis_pid" "$mongo_pid" 2> /dev/null
+stop_stack() {
+  kill $sampler_pid $connections_pid "$mss_pid" "$redis_pid" "$mongo_pid" 2> /dev/null
   wait 2> /dev/null
   rm -rf "$WORK_PATH"
+  sampler_pid="" connections_pid=""
+  trap - EXIT
 }
-
-# Runs the e2e mongo-init.js with the fixtures spliced in where it holds "[]"
-seed_database() {
-  local script="$WORK_PATH/init.js"
-  node -e '
-    const fs = require("fs");
-    const dir = process.argv[1];
-    const files = {
-      Calibrations: "calibrations", Devices: "device-list", Jobs: "jobs", Notices: "notices",
-      Projects: "projects", Tokens: "tokens", UserRequests: "user-requests", Users: "users",
-    };
-    let script = fs.readFileSync(`${dir}/mongo-init.js`, "utf8");
-    for (const [name, file] of Object.entries(files)) {
-      const json = fs.readFileSync(`${dir}/${file}.json`, "utf8");
-      script = script.replace(`const raw${name} = "[]";`, () => `const raw${name} = ${JSON.stringify(json)};`);
-    }
-    process.stdout.write(script);
-  ' "$FIXTURES_PATH" > "$script"
-  mongosh --quiet --port "$MONGO_PORT" "$script" > /dev/null
-}
-
 # Writes a row of each process's CPU and resident memory to process-stats.csv every
 # SAMPLE_INTERVAL_SECONDS, the CPU being its share of a core over that interval
 sample_processes() {
@@ -204,14 +195,20 @@ for path in folder.iterdir():
 PYTHON
 }
 
-sign_mock_session() {
-  npx tsx --env-file=.env.test -e "
-    import users from './fixtures/users.json';
-    import { generateJwt } from './dev/mock-api/utils';
-    const user = users.find((v) => v.id === '$LIGHTHOUSE_USER_ID');
-    generateJwt(user, Math.round(Date.now() / 1000) + 3600)
-      .then((jwt) => console.log(\`\${process.env.VITE_COOKIE_NAME}=\${jwt}\`));
-  "
+# Prints the session cookie of LIGHTHOUSE_USER_ID, signed with the secret of MSS's config
+sign_session() {
+  uv run -q --no-project --with pyjwt python - "$WORK_PATH/mss-config.toml" "$FIXTURES_PATH/users.json" \
+    "$LIGHTHOUSE_USER_ID" <<'PYTHON'
+import json, sys, time, tomllib
+
+import jwt
+
+config_path, users_path, user_id = sys.argv[1:]
+auth = tomllib.load(open(config_path, "rb"))["auth"]
+user = next(v for v in json.load(open(users_path)) if v["id"] == user_id)
+claims = {"sub": user_id, "roles": user["roles"], "aud": ["fastapi-users:auth"], "exp": int(time.time()) + 3600}
+print(f"{auth['cookie_name']}={jwt.encode(claims, auth['jwt_secret'], algorithm='HS256')}")
+PYTHON
 }
 
 exit_with_err() {
