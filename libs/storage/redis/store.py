@@ -41,6 +41,8 @@ from ..base.update import Returning, Update
 T = TypeVar("T", bound=Schema)
 _IDX_SEPARATOR = "::"
 _UPDATE_OPERATORS = frozenset({"$set", "$setOnInsert"})
+# the first Redis with the per-field expiry records expire with
+_MINIMUM_VERSION = (7, 4)
 
 
 class RedisStore(DbStore):
@@ -64,9 +66,13 @@ class RedisStore(DbStore):
 
     async def setup(self) -> None:
         try:
-            await self._connection.ping()
+            version = (await self._connection.info("server"))["redis_version"]
         except redis.RedisError as exp:
             raise StorageError(f"Redis is unreachable: {exp}") from exp
+        if tuple(int(v) for v in version.split(".")[:2]) < _MINIMUM_VERSION:
+            raise StorageError(
+                f"Redis {version} lacks per-field expiry; MSS needs Redis 7.4 or later"
+            )
 
     async def get(self, schema: Type[T], key: Any) -> Optional[T]:
         data = await self._connection.hget(

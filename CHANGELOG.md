@@ -184,6 +184,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - Fixed approving a project access request failing with "Cannot apply $addToSet to non-array
   field" on any project whose member lists were stored as null rather than empty.
 - Fixed error OAUTH_USER_ALREADY_EXISTS when a user signs in with a different Oauth provider but same email.
+- MSS now refuses to start on a Redis older than 7.4, which lacks per-field expiry; every request
+  failed with a 500 (`unknown command 'HPEXPIREAT'`) instead.
 - Dashboard: Logging out now forgets the selected project and API token; they survived the logout, so
   the next user in the same tab started out on the previous user's project.
 - Dashboard: Switching project or theme no longer rebuilds the router and remounts every page, which

@@ -31,6 +31,7 @@ from libs.storage import (
     QueryError,
     Returning,
     Schema,
+    StorageError,
     StorageSpec,
 )
 from libs.storage.redis import RedisStore
@@ -129,6 +130,19 @@ async def auth_logs(make_database):
     database = make_database()
     yield database
     await database.close()
+
+
+async def test_setup_refuses_a_redis_without_per_field_expiry(mocker):
+    mocker.patch(
+        "redis.asyncio.Redis.info",
+        new_callable=mocker.AsyncMock,
+        return_value={"redis_version": "7.0.15"},
+    )
+    store = RedisStore(_DATABASE_URL, schemas=[AuthLog])
+
+    with pytest.raises(StorageError, match="7.0.15"):
+        await store.setup()
+    await store.close()
 
 
 @pytest.mark.parametrize("payload", _SAMPLE_AUTH_LOGS)

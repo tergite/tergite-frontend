@@ -33,8 +33,8 @@ more of MSS's API.
 ## Deployment
 
 MSS runs from its package, as a system service, and serves the dashboard. MongoDB, or
-PostgreSQL, and Redis are expected to be installed already, or are installed alongside MSS on
-Debian and Ubuntu.
+PostgreSQL, and Redis 7.4 or later are expected to be installed already, or are installed
+alongside MSS on Debian and Ubuntu.
 
 ### MSS
 
