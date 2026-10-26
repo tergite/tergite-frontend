@@ -39,6 +39,7 @@ VERBS = frozenset(
         "cancel",
         "check",
         "choose",
+        "claim",
         "cleanup",
         "clear",
         "close",

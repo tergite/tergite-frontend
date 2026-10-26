@@ -11,15 +11,20 @@
 # that they have been altered from the originals.
 import asyncio
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence
+from datetime import timedelta
+from typing import Dict, List, Sequence
 
 from loguru import logger
 
 from libs.storage import Database
 from services.external.email import BatchEmailGenerator, EmailDetails, EmailResult
-from utils.date_time import get_current_timestamp, get_utc_now
+from utils.date_time import datetime_to_zulu, get_current_timestamp, get_utc_now
 
 from .dtos import EmailStatus, Notice, NoticePreferences, NoticeTypeId
+
+# how long a claim on an email stands before another process takes it over, as the
+# claiming process must have stopped
+_CLAIM_LIFESPAN = timedelta(minutes=10)
 
 
 async def get_email_preferences_map(
@@ -64,7 +69,7 @@ async def get_pending_email_batches(
     """
     while True:
         try:
-            notices = await _find_notices_pending_email(database, batch_size)
+            notices = await claim_pending_emails(database, limit=batch_size)
             batch = await _to_email_details(
                 database,
                 notices,
@@ -81,6 +86,27 @@ async def get_pending_email_batches(
         await asyncio.sleep(1)
 
 
+async def claim_pending_emails(database: Database, limit: int) -> List[Notice]:
+    """Claims up to limit pending emails for this process, leaving any another claims first
+
+    Each claim counts an attempt, so a process that stops while sending loses it.
+    """
+    notices = await _find_notices_pending_email(database, limit)
+    now = get_current_timestamp()
+    claimed = [
+        await database.update_one(
+            Notice,
+            filter={"id": v.id, "email_attempts": v.email_attempts},
+            update={
+                "$inc": {"email_attempts": 1},
+                "$set": {"email_status": EmailStatus.SENDING, "updated_at": now},
+            },
+        )
+        for v in notices
+    ]
+    return [v for v in claimed if v is not None]
+
+
 async def process_email_batch_results(
     database: Database, results: Sequence[EmailResult]
 ) -> None:
@@ -94,9 +120,9 @@ async def process_email_batch_results(
         logger.error(f"failed to email notice ids: {ids.failed}")
 
     outcomes = await asyncio.gather(
-        _record_attempts(database, ids.sent, status=EmailStatus.SENT),
-        _record_attempts(database, ids.failed, status=EmailStatus.FAILED),
-        _record_attempts(database, ids.retried, status=None),
+        _set_email_status(database, ids.sent, status=EmailStatus.SENT),
+        _set_email_status(database, ids.failed, status=EmailStatus.FAILED),
+        _set_email_status(database, ids.retried, status=EmailStatus.PENDING),
         return_exceptions=True,
     )
     errors = [v for v in outcomes if isinstance(v, Exception)]
@@ -105,7 +131,7 @@ async def process_email_batch_results(
 
 
 async def _find_notices_pending_email(database: Database, limit: int) -> List[Notice]:
-    """Gets the notices that are yet to be sent as emails
+    """Gets the notices whose emails are pending, or claimed by a process that stopped
 
     Args:
         limit: the maximum number of notices to return
@@ -114,12 +140,18 @@ async def _find_notices_pending_email(database: Database, limit: int) -> List[No
         the list of notices that are yet to be sent as emails
     """
     now = get_utc_now()
+    stale_claim = {
+        "email_status": EmailStatus.SENDING,
+        "updated_at": {"$lt": datetime_to_zulu(now - _CLAIM_LIFESPAN)},
+    }
     return await database.find(
         Notice,
         filter={
-            "email_status": EmailStatus.PENDING,
             "user_id": {"$ne": None},
-            "$or": [{"expires_at": None}, {"expires_at": {"$gt": now}}],
+            "$and": [
+                {"$or": [{"email_status": EmailStatus.PENDING}, stale_claim]},
+                {"$or": [{"expires_at": None}, {"expires_at": {"$gt": now}}]},
+            ],
         },
         sort=["updated_at"],
         limit=limit,
@@ -170,8 +202,8 @@ async def _to_email_details(
             subject=v.title,
             body=_to_email_body(v, dashboard_url, app_name),
             ref_id=v.id,
-            # this attempt counts towards the maximum
-            can_retry=v.email_attempts + 1 < max_attempts,
+            # its claim counted this attempt
+            can_retry=v.email_attempts < max_attempts,
         )
         for v in notices
         if v.user_id in user_emails_map
@@ -217,17 +249,13 @@ def _partition_results(results: Sequence[EmailResult]) -> _ResultIds:
     )
 
 
-async def _record_attempts(
-    database: Database, ids: List[str], status: Optional[EmailStatus]
+async def _set_email_status(
+    database: Database, ids: List[str], status: EmailStatus
 ) -> None:
-    """Counts an attempt on each notice, setting its email status unless it is None"""
-    now = get_current_timestamp()
-    if status is None:
-        changes = {"updated_at": now}
-    else:
-        changes = {"updated_at": now, "email_status": status}
     await database.update_many(
         Notice,
         filter={"id": {"$in": ids}},
-        update={"$inc": {"email_attempts": 1}, "$set": changes},
+        update={
+            "$set": {"email_status": status, "updated_at": get_current_timestamp()}
+        },
     )

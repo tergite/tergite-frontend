@@ -1794,7 +1794,7 @@ export interface components {
          *     The notice row doubles as the email outbox, so this is what the sweeper reads.
          * @enum {string}
          */
-        EmailStatus: "not-applicable" | "pending" | "sent" | "failed";
+        EmailStatus: "not-applicable" | "pending" | "sending" | "sent" | "failed";
         /**
          * GeneralMessage
          * @description A general message object sent on the API

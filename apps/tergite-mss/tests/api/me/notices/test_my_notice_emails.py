@@ -99,17 +99,14 @@ def test_sweeper_sends_a_queued_email(client, outsider_jwt_cookie, db, smtp):
     assert get_user_notices(db, TEST_USER_ID)[0].email_attempts == 1
 
 
-def test_failed_email_stays_pending(client, outsider_jwt_cookie, db, smtp):
+def test_refused_email_stays_pending_for_a_retry(client, outsider_jwt_cookie, db, smtp):
     """A mail server refusing an email must not lose it"""
     smtp.side_effect = aiosmtplib.SMTPRecipientsRefused([])
 
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
-        _wait_for(lambda: get_user_notices(db, TEST_USER_ID)[0].email_attempts > 0)
-
-        assert get_user_notices(db, TEST_USER_ID)[0].email_status == (
-            EmailStatus.PENDING
-        )
+        # a second attempt claims only a pending email; the first is counted while sending
+        _wait_for(lambda: get_user_notices(db, TEST_USER_ID)[0].email_attempts > 1)
 
 
 def test_email_is_retried_when_the_server_is_unreachable(
@@ -125,11 +122,7 @@ def test_email_is_retried_when_the_server_is_unreachable(
 
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
-        _wait_for(lambda: get_user_notices(db, TEST_USER_ID)[0].email_attempts > 0)
-
-        assert get_user_notices(db, TEST_USER_ID)[0].email_status == (
-            EmailStatus.PENDING
-        )
+        _wait_for(lambda: get_user_notices(db, TEST_USER_ID)[0].email_attempts > 1)
         smtp.assert_not_awaited()
 
 

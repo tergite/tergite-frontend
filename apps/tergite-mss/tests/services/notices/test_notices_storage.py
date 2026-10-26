@@ -20,9 +20,10 @@ from libs.storage import Database, generate_id
 from services import notices
 from services.notices import Notice, NoticeQuery, NoticeTemplate, NoticeTypeId
 from services.notices import service as notices_service
-from services.notices.dtos import ProjectRequestContext, RefType
-from services.notices.emails import process_email_batch_results
+from services.notices.dtos import EmailStatus, ProjectRequestContext, RefType
+from services.notices.emails import claim_pending_emails, process_email_batch_results
 from utils.config import NoticesConfig
+from utils.date_time import datetime_to_zulu
 
 _USER_ID = generate_id()
 _OTHER_USER_ID = generate_id()
@@ -163,18 +164,57 @@ async def test_notices_of_a_reference_are_cleared(database):
 
 async def test_email_preferences_and_attempts_are_kept(database):
     custom = NoticeTypeId.CUSTOM
-    notice = await database.insert(Notice, _get_notice(user_id=_USER_ID))
+    notice = await database.insert(
+        Notice, _get_notice(user_id=_USER_ID, email_status=EmailStatus.PENDING)
+    )
 
     await notices.set_email_preferences(database, _USER_ID, {custom: False})
     prefs = await notices.get_email_preferences(database, _USER_ID)
+    await claim_pending_emails(database, limit=10)
     await process_email_batch_results(
         database, [SimpleNamespace(ref_id=notice.id, is_success=True, can_retry=False)]
     )
 
     assert prefs[custom] is False
-    assert (await notices.get_one(database, notice.id)).email_attempts == 1
+    sent = await notices.get_one(database, notice.id)
+    assert (sent.email_status, sent.email_attempts) == (EmailStatus.SENT, 1)
     deleted = await notices.delete_notice(database, notice.id)
     assert deleted.id == notice.id
+
+
+async def test_processes_sweeping_at_once_claim_each_email_once(database, database_url):
+    pending = [
+        await database.insert(
+            Notice, _get_notice(user_id=_USER_ID, email_status=EmailStatus.PENDING)
+        )
+        for _ in range(5)
+    ]
+    other = Database(database_url, schemas=notices.SCHEMAS)
+    await other.setup()
+
+    try:
+        claims = await asyncio.gather(
+            claim_pending_emails(database, limit=10),
+            claim_pending_emails(other, limit=10),
+        )
+    finally:
+        await other.close()
+
+    claimed_ids = [v.id for claim in claims for v in claim]
+    assert sorted(claimed_ids) == sorted(v.id for v in pending)
+
+
+async def test_a_claim_left_by_a_stopped_process_is_taken_over(database):
+    long_ago = datetime_to_zulu(datetime.now(timezone.utc) - timedelta(days=1))
+    sending = {"user_id": _USER_ID, "email_status": EmailStatus.SENDING}
+    stale = await database.insert(
+        Notice, _get_notice(**sending, email_attempts=1, updated_at=long_ago)
+    )
+    await database.insert(Notice, _get_notice(**sending, email_attempts=1))
+
+    claimed = await claim_pending_emails(database, limit=10)
+
+    assert [(v.id, v.email_attempts) for v in claimed] == [(stale.id, 2)]
 
 
 def _get_notice(**fields) -> Notice:

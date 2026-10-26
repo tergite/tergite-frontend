@@ -45,6 +45,8 @@ class EmailStatus(str, Enum):
 
     NOT_APPLICABLE = "not-applicable"
     PENDING = "pending"
+    # claimed by the process sending it
+    SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"
 
