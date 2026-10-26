@@ -3,14 +3,18 @@ import {
   QueryClient,
   queryOptions,
 } from "@tanstack/react-query";
-import type {
-  GeneralMessage,
-  Notice,
-  NoticePostRequest,
-  NoticePreferences,
-} from "../../../types";
+import {
+  type GeneralMessage,
+  type Notice,
+  type NoticePostRequest,
+  type NoticePreferences,
+} from "./types";
 import { client } from "./client";
 import type { paths } from "./schema";
+import type { NoticeType } from "./types";
+
+// the admin-authored notices, as opposed to those the system emits on events
+export const CUSTOM_NOTICE_TYPES: NoticeType[] = ["custom", "custom-broadcast"];
 
 type AdminNoticesQuery = NonNullable<
   paths["/admin/notices"]["get"]["parameters"]["query"]

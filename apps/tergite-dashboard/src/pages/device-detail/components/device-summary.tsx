@@ -9,12 +9,11 @@ import {
 import { DeviceStatusDiv } from "@/components/ui/device-status-div";
 import { Separator } from "@/components/ui/separator";
 import {
-  AggregateValue,
-  CalibrationValue,
-  DeviceCalibrationMedians,
-  Device,
-  DeviceCalibration,
-} from "../../../../types";
+  type CalibrationValue,
+  type Device,
+  type DeviceCalibration,
+  type Qubit,
+} from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
@@ -91,8 +90,9 @@ export function DeviceSummary({
       <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3">
         <div className="text-xs text-muted-foreground">
           Last calibrated{" "}
-          <time dateTime={calibrationData.last_calibrated}>
-            {DateTime.fromISO(calibrationData.last_calibrated).toRelative()}
+          <time dateTime={calibrationData.last_calibrated ?? undefined}>
+            {calibrationData.last_calibrated &&
+              DateTime.fromISO(calibrationData.last_calibrated).toRelative()}
           </time>
         </div>
       </CardFooter>
@@ -108,16 +108,16 @@ interface Props {
 
 /** The median of each field, over the values present, in the unit of the first */
 function getCalibrationMedians(
-  values: { [k: string]: CalibrationValue | null | undefined }[],
-  fields: string[],
+  values: Qubit[],
+  fields: (keyof Qubit)[],
 ): { [k: string]: AggregateValue } {
   const constituentLists: { [k: string]: number[] } = Object.fromEntries(
     fields.map((field) => [
       field,
       values
-        .map((v) => v[field]?.value)
-        .filter((v) => v != undefined)
-        .sort((a, b) => (a as number) - (b as number)) as number[],
+        .map((v) => (v[field] as CalibrationValue | null | undefined)?.value)
+        .filter((v): v is number => typeof v === "number")
+        .sort((a, b) => a - b),
     ]),
   );
 
@@ -127,7 +127,7 @@ function getCalibrationMedians(
       .map((field) => [
         field,
         {
-          unit: values[0][field]?.unit ?? "",
+          unit: (values[0][field] as CalibrationValue | null)?.unit ?? "",
           value: computeMedian(constituentLists[field]),
         },
       ]),
@@ -140,3 +140,11 @@ function computeMedian(sorted: number[]): number {
     ? (sorted[middle - 1] + sorted[middle]) / 2
     : sorted[middle];
 }
+
+type AggregateValue = { unit: string; value: number };
+
+type DeviceCalibrationMedians = {
+  t1_decoherence?: AggregateValue;
+  t2_decoherence?: AggregateValue;
+  readout_assignment_error?: AggregateValue;
+};

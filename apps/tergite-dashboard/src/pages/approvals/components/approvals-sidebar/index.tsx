@@ -21,10 +21,7 @@ import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import {
-  UserRequestStatus,
-  type UserRequest,
-} from "../../../../../types";
+import { type UserRequest } from "@/lib/api/types";
 
 export function ApprovalSummary({
   request,
@@ -51,7 +48,7 @@ export function ApprovalSummary({
 
   const title = useMemo(() => getUserRequestTitle(request), [request]);
   const isPending = approval.isPending || rejection.isPending;
-  const isDecided = request.status !== UserRequestStatus.PENDING;
+  const isDecided = request.status !== "pending";
 
   return (
     <Card id="approval-summary" className={cn("overflow-hidden", className)}>

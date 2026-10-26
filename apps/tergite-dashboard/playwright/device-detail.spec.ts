@@ -1,8 +1,17 @@
 import { type Page } from "@playwright/test";
 import { DateTime } from "luxon";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import { clickCalendarCell, dragToGridCell, setCalendarViewportSize } from "./utils/calendar";
-import { type Booking, type BookingsConfig, type Device, type User } from "../types";
+import {
+  clickCalendarCell,
+  dragToGridCell,
+  setCalendarViewportSize,
+} from "./utils/calendar";
+import {
+  type Booking,
+  type BookingsConfig,
+  type Device,
+  type User,
+} from "../dev/mock-api/types";
 
 // the browser's, from the config's timezoneId, so that these dates match the page's
 const TIME_ZONE = "Europe/Stockholm";

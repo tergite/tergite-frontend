@@ -2,15 +2,19 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { getRecalibrationInfoQuery, startRecalibration, stopRecalibration } from "@/lib/api/admin-control";
+import {
+  getRecalibrationInfoQuery,
+  startRecalibration,
+  stopRecalibration,
+} from "@/lib/api/admin-control";
 import { getDeviceCalibrationQuery } from "@/lib/api/devices";
-import { RqJobStatus } from "../../../../../types";
+import { type RqJobStatus } from "@/lib/api/types";
 
 const ACTIVE_STATUSES: RqJobStatus[] = [
-  RqJobStatus.STARTED,
-  RqJobStatus.QUEUED,
-  RqJobStatus.SCHEDULED,
-  RqJobStatus.DEFERRED,
+  "started",
+  "queued",
+  "scheduled",
+  "deferred",
 ];
 
 interface Props {

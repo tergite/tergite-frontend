@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { QpuTimeRequestDialog } from "../qpu-time-request-dialog";
-import type { Project } from "../../../../../../types";
+import { type Project } from "@/lib/api/types";
 
 const requestQpuTimeExtension = vi.fn();
 

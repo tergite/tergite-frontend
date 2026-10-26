@@ -1,13 +1,11 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
 import { DateTime } from "luxon";
-import type {
-  Booking,
-  BookingsConfig,
-  ErrorInfo,
-  GeneralMessage,
-  NewBookingInfo,
-  RawBooking,
-} from "../../../types";
+import {
+  type Booking,
+  type GeneralMessage,
+  type NewBookingInfo,
+} from "./types";
+import { type ErrorInfo } from "@/lib/api/client";
 import { client } from "./client";
 
 /** The backend's bookings from now on, by default the next five */
@@ -77,7 +75,7 @@ export function getBookingsConfigQuery(backend: string) {
       const { data } = await client.GET("/bookings/{backend}/config", {
         params: { path: { backend } },
       });
-      return data! as BookingsConfig;
+      return data!;
     },
     throwOnError: true,
   });
@@ -91,7 +89,7 @@ export async function createNewBooking(
     params: { path: { backend } },
     body: payload,
   });
-  return { ...(data! as RawBooking), backend };
+  return data!;
 }
 
 export async function updateBooking(
@@ -138,5 +136,5 @@ async function getBookings(
   const { data } = await client.GET("/bookings/{backend}", {
     params: { path: { backend }, query },
   });
-  return data!.data.map((v) => ({ ...(v as RawBooking), backend }));
+  return data!.data;
 }

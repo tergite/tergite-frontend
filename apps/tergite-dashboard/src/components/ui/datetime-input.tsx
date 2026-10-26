@@ -6,7 +6,7 @@ import { FormControl } from "./form";
 import { PopoverContentNoPortal, Popover, PopoverTrigger } from "./popover";
 import { TimeInput } from "./time-input";
 import { Button } from "./button";
-import { Time } from "types";
+import { type Time } from "@/lib/time";
 import { Calendar } from "./calendar";
 
 export function DateTimeInput({ disabled, onChange, value, minDate }: Props) {

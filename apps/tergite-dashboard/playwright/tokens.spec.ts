@@ -3,7 +3,12 @@ import { DateTime } from "luxon";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import { checkFilters, type TableFilter } from "./utils/tables";
 import { extendAppToken } from "./utils/records";
-import { type AppToken, type ExtendedAppToken, type Project, type User } from "../types";
+import {
+  type AppToken,
+  type ExtendedAppToken,
+  type Project,
+  type User,
+} from "../dev/mock-api/types";
 
 const TABLE_HEADERS = ["Title", "Project", "Expires", "Status"];
 // 'in 1 day' or '2 days ago' or '+273,000 years'

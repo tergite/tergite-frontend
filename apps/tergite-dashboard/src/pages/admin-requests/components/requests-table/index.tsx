@@ -1,6 +1,6 @@
 import { DataTable } from "@/components/ui/data-table";
 
-import { type UserRequest } from "types";
+import { type UserRequest } from "@/lib/api/types";
 
 import { columns } from "./columns";
 import { filterFormProps } from "./filter-form";

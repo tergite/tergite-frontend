@@ -1,5 +1,8 @@
 import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Device, QubitProp } from "../../../../types";
+import { type Device } from "@/lib/api/types";
+import {
+  type QubitProp,
+} from "@/pages/device-detail/components/calibration-points";
 import { PropSelector } from "./prop-selector";
 
 export function CalibrationHeader({

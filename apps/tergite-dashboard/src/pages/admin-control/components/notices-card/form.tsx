@@ -16,8 +16,12 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime, Duration } from "luxon";
-import { createNotice, refreshAllNoticeCounts, refreshAllNotices } from "@/lib/api/notices";
-import { NoticeSeverity } from "../../../../../types";
+import {
+  createNotice,
+  refreshAllNoticeCounts,
+  refreshAllNotices,
+} from "@/lib/api/notices";
+import { type NoticeSeverity } from "@/lib/api/types";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -34,15 +38,12 @@ import { ButtonGroup } from "@/components/ui/button-group";
 const MAX_CHARS = 280;
 const MIN_DURATION = Duration.fromObject({ minutes: 1 });
 const MAX_DURATION = Duration.fromObject({ months: 3 });
-const SEVERITY_OPTIONS = [
-  NoticeSeverity.INFO,
-  NoticeSeverity.WARNING,
-  NoticeSeverity.CRITICAL,
-];
+// the least urgent first
+const SEVERITY_OPTIONS: NoticeSeverity[] = [3, 2, 1];
 
 const formSchema = z.object({
   message: z.string().min(1).max(MAX_CHARS),
-  severity: z.nativeEnum(NoticeSeverity),
+  severity: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   target_user_emails: z.string().email().min(1).array().optional(),
   starts_at: z
     .object({
@@ -82,7 +83,7 @@ export default function NoticeForm({ onPost }: Props) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       message: "",
-      severity: NoticeSeverity.INFO,
+      severity: 3,
       starts_at: {
         date: now.toJSDate(),
         time: now,

@@ -6,7 +6,7 @@ import {
   type UserRequest,
   UserRequestStatus,
   UserRole,
-} from "../types";
+} from "../dev/mock-api/types";
 
 // an admin with projects, a member of several, and a user of none
 const users = readFixture<User[]>("users").filter((v) =>

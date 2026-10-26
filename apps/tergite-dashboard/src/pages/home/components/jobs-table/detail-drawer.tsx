@@ -5,7 +5,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { ProgressStatus } from "@/components/ui/progress-status";
-import { Job, JobStatus } from "../../../../../types";
+import { type Job } from "@/lib/api/types";
 import { DateTime, Duration } from "luxon";
 import { IconButton } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -30,9 +30,9 @@ export function JobDetailDrawerContent({ job }: Props) {
             <div className="mr-2 text-muted-foreground">Status: </div>
             <ProgressStatus
               status={job.status}
-              pendingValue={JobStatus.PENDING}
-              successValue={JobStatus.SUCCESSFUL}
-              failureValue={JobStatus.FAILED}
+              pendingValue={"pending"}
+              successValue={"successful"}
+              failureValue={"failed"}
             />
           </div>
 

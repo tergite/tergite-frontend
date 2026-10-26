@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/projects";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminProject } from "types";
+import { type AdminProject } from "@/lib/api/types";
 import { useCallback, useMemo } from "react";
 import { DateTime } from "luxon";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";

@@ -12,7 +12,7 @@ import { getAuthProviders } from "@/lib/api/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
-import { AuthProviderResponse } from "types";
+import { type AuthProviderResponse } from "@/lib/api/types";
 import { z } from "zod";
 
 const formSchema = z.object({

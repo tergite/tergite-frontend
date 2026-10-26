@@ -1,15 +1,16 @@
 import { queryOptions } from "@tanstack/react-query";
-import type {
-  CalibrationValue,
-  Device,
-  DeviceCalibration,
-} from "../../../types";
+import {
+  type CalibrationValue,
+  type Device,
+  type DeviceCalibration,
+} from "./types";
 import { client } from "./client";
 
 export const devicesQuery = queryOptions({
   queryKey: ["devices"],
   queryFn: async () => {
     const { data } = await client.GET("/devices/");
+    // openapi-fetch's response type loses the schema's coordinate pairs to number[][]
     return data!.data as Device[];
   },
   throwOnError: true,
@@ -35,7 +36,7 @@ export function getDeviceCalibrationQuery(name: string) {
       const { data } = await client.GET("/calibrations/{name}", {
         params: { path: { name } },
       });
-      return normalizeCalibrationData(data! as DeviceCalibration);
+      return normalizeCalibrationData(data!);
     },
     throwOnError: true,
   });
@@ -53,16 +54,18 @@ function normalizeCalibrationData(item: DeviceCalibration): DeviceCalibration {
   return { ...item, qubits };
 }
 
-function convertHzToGHz(value?: CalibrationValue): CalibrationValue | undefined {
-  return value?.unit === "Hz"
+function convertHzToGHz(
+  value?: CalibrationValue | null,
+): CalibrationValue | null | undefined {
+  return value?.unit === "Hz" && typeof value.value === "number"
     ? { ...value, unit: "GHz", value: value.value / 1000_000_000 }
     : value;
 }
 
 function convertSecToMicrosec(
-  value?: CalibrationValue,
-): CalibrationValue | undefined {
-  return value?.unit === "s"
+  value?: CalibrationValue | null,
+): CalibrationValue | null | undefined {
+  return value?.unit === "s" && typeof value.value === "number"
     ? { ...value, unit: "us", value: value.value * 1000_000 }
     : value;
 }

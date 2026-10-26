@@ -4,21 +4,21 @@ import { dismissNotice, refreshMyNotices } from "@/lib/api/notices";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useMemo } from "react";
-import { NoticeSeverity, Notice } from "../../../types";
+import { type NoticeSeverity, type Notice } from "@/lib/api/types";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const SEVERITY_LABELS: Record<NoticeSeverity, string> = {
-  [NoticeSeverity.INFO]: "Info",
-  [NoticeSeverity.WARNING]: "Warning",
-  [NoticeSeverity.CRITICAL]: "Critical",
+  3: "Info",
+  2: "Warning",
+  1: "Critical",
 };
 
 const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {
-  [NoticeSeverity.INFO]:
+  3:
     "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  [NoticeSeverity.WARNING]:
+  2:
     "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-  [NoticeSeverity.CRITICAL]:
+  1:
     "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 };
 

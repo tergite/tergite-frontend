@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { GeneralMessage, RecalibrationInfo } from "../../../types";
+import { type GeneralMessage } from "./types";
 import { client } from "./client";
 
 export function getRecalibrationInfoQuery(backend: string) {
@@ -10,7 +10,7 @@ export function getRecalibrationInfoQuery(backend: string) {
         "/admin/bcc/recalibration/{backend}/info",
         { params: { path: { backend } } },
       );
-      return data! as RecalibrationInfo;
+      return data!;
     },
     throwOnError: true,
   });

@@ -11,13 +11,8 @@ import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useLoaderData } from "react-router-dom";
-import {
-  ErrorInfo,
-  User,
-  UserRequestStatus,
-  UserRole,
-  type UserRequest,
-} from "../../../types";
+import { type ErrorInfo } from "@/lib/api/client";
+import { type User, type UserRequest } from "@/lib/api/types";
 import { AdminRequestsTable } from "./components/requests-table";
 import { RequestSummary } from "./components/requests-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
@@ -31,7 +26,7 @@ export function AdminRequests() {
   );
   const { data: requests = [] } = useQuery(
     getAllUserRequestsQuery({
-      status: UserRequestStatus.PENDING,
+      status: "pending",
       currentUser,
       projectList: projects,
     })
@@ -94,7 +89,7 @@ export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<AdminRequestsData> => {
     const currentUser = await queryClient.ensureQueryData(currentUserQuery);
 
-    if (!currentUser.roles.includes(UserRole.ADMIN)) {
+    if (!currentUser.roles.includes("admin")) {
       const error = new Error("user should be an admin") as ErrorInfo;
       error.status = 403;
       throw error;

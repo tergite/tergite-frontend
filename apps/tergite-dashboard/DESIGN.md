@@ -26,6 +26,7 @@ src/
 │   ├── api/
 │   │   ├── client.ts        # the typed openapi-fetch client: the only file that talks HTTP
 │   │   ├── schema.d.ts      # generated from MSS's OpenAPI schema by `npm run generate:api`
+│   │   ├── types.ts         # the dashboard's names for the schema's types
 │   │   └── devices.ts, …    # one module per resource: its queryOptions and mutations
 │   ├── app-state.ts         # useAppStore, the zustand store of app state
 │   ├── query-client.ts      # the one QueryClient, polling by default
@@ -67,7 +68,6 @@ src/
     │           ├── index.tsx
     │           └── calibration-bar.tsx
     ├── projects/, tokens/, requests/, admin-control/, admin-projects/, admin-requests/
-types.ts                     # all shared TypeScript types (repo root of the app)
 ```
 
 ### The rule
@@ -261,10 +261,18 @@ into `src/lib/api/schema.d.ts`. Never edit the generated file; rerun the command
 `npm run check:api`, which fails when `schema.d.ts` is stale. The client's paths, parameters,
 bodies and responses come from it, so a change to an MSS route or DTO fails `tsc` here.
 
-The components still use the hand-written types in the top-level [types.ts](./types.ts),
-which the mock API server and the Playwright specs import too (`Device`, `Job`, `Project`,
-`AppToken`, `UserRequest`, `Booking`, `Notice`, `User`, the `JobStatus` / `UserRole` /
-`NoticeSeverity` enums, …); the `lib/api` modules cast the client's data to them.
+Every response and request type comes from it. `src/lib/api/types.ts` gives the schema's
+types the dashboard's names (`Device`, `Job`, `Project` for `ProjectRead`, `UserRequest` for
+`Request`, `NoticeType` for `NoticeTypeId`, …), so a schema renamed in MSS is renamed there
+alone. It refines a type only where MSS's responses are tighter than its schema says, each
+with a comment: a stored record always has its `id` and `created_at`, a request's metadata
+depends on its type, and notice preferences are keyed by every notice type. The schema's
+enums are string or number unions, so the code writes their values (`"admin"`, `"pending"`)
+and `tsc` checks them.
+
+The shapes only the client has live beside their users: `ErrorInfo` in `lib/api/client.ts`,
+`ExtendedAppToken` in `lib/api/tokens.ts`, `Time` and `InputDuration` in `lib/time.ts`,
+`QubitProp` and `CalibrationDataPoint` in `pages/device-detail/components/calibration-points.ts`.
 
 Component-local prop types stay in the component file, conventionally as
 `interface Props { … }` **below** the component that uses them, matching the existing files.
@@ -272,7 +280,7 @@ Loader payload types follow the same placement as `interface XData`.
 
 `tsconfig.json` is `strict` with `noUnusedLocals` and `noUnusedParameters`, so an
 intentionally unused binding must be `_`-prefixed (the eslint rule matches). `@/*` resolves
-to `src/*` in both tsconfig and vite; imports of `types.ts` from within `src` are relative.
+to `src/*` in both tsconfig and vite.
 
 ## 5. The mock API server (`dev/mock-api/`)
 
@@ -286,6 +294,7 @@ dev/mock-api/
 │   ├── general.ts   # every MSS resource endpoint, plus GET /refreshed-db
 │   └── oauth.ts     # the mock OAuth2 authorize/callback pair
 ├── views/oauth.hbs  # the fake provider's consent page
+├── types.ts         # the API types re-exported, the mock's own rows and enums
 └── utils.ts         # MockDb over the fixtures in fixtures + JWT signing/verification
 ```
 
@@ -299,8 +308,10 @@ dev/mock-api/
 Run it with `npm run dev-api` (watch mode) or `npm run test-api`. `npm run dev` starts it and
 vite together via `start-server-and-test`.
 
-**When an MSS response shape changes**, rerun `npm run generate:api`, then update
-`types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the fixture in `fixtures/`. Missing one shows
+**When an MSS response shape changes**, rerun `npm run generate:api`, then update the mock
+route in `dev/mock-api/routes/general.ts` and the fixture in `fixtures/`. The mock's
+`dev/mock-api/types.ts` re-exports the dashboard's API types and keeps the mock's own row
+shapes and the enums it and the Playwright specs use at runtime. Missing one shows
 up as a passing UI suite against a stale contract — which is what the repo-level
 `dev/e2e_native_test.sh` exists to catch.
 
@@ -381,6 +392,6 @@ exported alongside a component.
 | New table | a `*-table/` folder with `index.tsx`, `columns.tsx`, `filter-form.tsx` (+ `detail-drawer.tsx`) |
 | New API call | a `queryOptions` (reads) or an action function (writes) in its resource's `src/lib/api/{resource}.ts`, calling `client` from `src/lib/api/client.ts` — nowhere else talks HTTP — then consume it from a `useQuery` or a `useMutation`, never from a bare handler; if MSS gained the route, `npm run generate:api` first |
 | New destination | a `<Route>` in `src/router.tsx` with its loader; reach it with `<Link>` or `useNavigate`, never `window.location` |
-| New response shape | `npm run generate:api`, then `types.ts`, the mock route in `dev/mock-api/routes/general.ts`, and the `fixtures/` JSON |
+| New response shape | `npm run generate:api`, a name for it in `src/lib/api/types.ts` if the dashboard uses it, the mock route in `dev/mock-api/routes/general.ts`, and the `fixtures/` JSON |
 | New shadcn primitive | the shadcn CLI, then edit the generated file in `src/components/ui/` |
 | New env variable | `VITE_`-prefix it if the browser needs it, and add it to `.env.development` / `.env.test`, and to `.env.production` if the build MSS serves needs a value |

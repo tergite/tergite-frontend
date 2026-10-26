@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ErrorInfo } from "../../types";
+import { type ErrorInfo } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { useNavigate, useRevalidator, useRouteError } from "react-router-dom";
 import { useContext } from "react";

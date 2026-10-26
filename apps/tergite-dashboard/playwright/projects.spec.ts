@@ -7,7 +7,7 @@ import {
   type User,
   type UserRequest,
   UserRequestType,
-} from "../types";
+} from "../dev/mock-api/types";
 
 const TABLE_HEADERS = ["Name", "ID", "Status", "Available QPU time", "Requests"];
 // '1 day' or '2 days 2 hours'

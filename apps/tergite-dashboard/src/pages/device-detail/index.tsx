@@ -3,13 +3,14 @@ import { getBookingsConfigQuery } from "@/lib/api/bookings";
 import { currentUserQuery } from "@/lib/api/auth";
 import { getDeviceCalibrationQuery, getDeviceQuery } from "@/lib/api/devices";
 import {
-  BookingsConfig,
-  Device,
-  DeviceCalibration,
-  QubitProp,
-  User,
-  UserRole,
-} from "../../../types";
+  type BookingsConfig,
+  type Device,
+  type DeviceCalibration,
+  type User,
+} from "@/lib/api/types";
+import {
+  type QubitProp,
+} from "@/pages/device-detail/components/calibration-points";
 import { LoaderFunctionArgs, useLoaderData } from "react-router-dom";
 
 import { DeviceSummary } from "./components/device-summary";
@@ -50,7 +51,7 @@ export function DeviceDetail() {
     getDeviceCalibrationQuery(defaultDevice.name)
   );
   const [currentData, setCurrentData] = useState<QubitProp>(
-    QubitProp.T1_DECOHERENCE
+    "t1_decoherence"
   );
 
   return (
@@ -157,7 +158,7 @@ export function loader(queryClient: QueryClient) {
         min_start_utc: searchParams.get("min_start_utc") ?? undefined,
         max_start_utc: searchParams.get("max_start_utc") ?? undefined,
       };
-      const isAdmin = currentUser.roles.includes(UserRole.ADMIN);
+      const isAdmin = currentUser.roles.includes("admin");
 
       return {
         device,

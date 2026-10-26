@@ -1,6 +1,12 @@
 import { type Locator, type Page } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
-import { type Booking, type Device, type Job, type Project, type User } from "../types";
+import {
+  type Booking,
+  type Device,
+  type Job,
+  type Project,
+  type User,
+} from "../dev/mock-api/types";
 
 const CURRENT_DATE = process.env.CURRENT_DATE!;
 const REFETCH_INTERVAL_MS = parseFloat(process.env.VITE_REFETCH_INTERVAL_MS!);

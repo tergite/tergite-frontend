@@ -9,12 +9,8 @@ import { currentUserQuery } from "@/lib/api/auth";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import {
-  ErrorInfo,
-  User,
-  UserRole,
-  type AdminProject,
-} from "../../../types";
+import { type ErrorInfo } from "@/lib/api/client";
+import { type User, type AdminProject } from "@/lib/api/types";
 import { AdminProjectsTable } from "./components/projects-table";
 import { AdminProjectSummary } from "./components/projects-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
@@ -131,7 +127,7 @@ export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<AdminProjectsData> => {
     const currentUser = await queryClient.ensureQueryData(currentUserQuery);
 
-    if (!currentUser.roles.includes(UserRole.ADMIN)) {
+    if (!currentUser.roles.includes("admin")) {
       const error = new Error("user should be an admin") as ErrorInfo;
       error.status = 403;
       throw error;

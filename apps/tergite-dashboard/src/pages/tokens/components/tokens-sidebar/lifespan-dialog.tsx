@@ -28,11 +28,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import {
-  type AppToken,
-  type AppTokenUpdateRequest,
-  type ExtendedAppToken,
-} from "types";
+import { type AppToken, type AppTokenUpdateRequest } from "@/lib/api/types";
+import { type ExtendedAppToken } from "@/lib/api/tokens";
 import { z } from "zod";
 import { CalendarIcon } from "@radix-ui/react-icons";
 import { TimeInput } from "@/components/ui/time-input";

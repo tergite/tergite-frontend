@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Booking } from "types";
+import { type Booking } from "@/lib/api/types";
 
 /** A booking on the calendar, with its details and actions in a popover */
 export function BookingEventContent({

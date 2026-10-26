@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 import { mergeDatetime, convertToInputDuration } from "@/lib/time";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { BookingsConfig, ErrorInfo, NewBookingInfo } from "types";
+import { type BookingsConfig, type NewBookingInfo } from "@/lib/api/types";
+import { type ErrorInfo } from "@/lib/api/client";
 import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
@@ -20,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { refreshBookingsQueries } from "@/lib/api/bookings";
 import { DateTime, Duration } from "luxon";
 
-import { Booking } from "types";
+import { type Booking } from "@/lib/api/types";
 import { DurationInput } from "@/components/ui/duration-input";
 import {
   Dialog,

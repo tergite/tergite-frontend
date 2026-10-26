@@ -11,7 +11,7 @@ import {
 import { logout, currentUserQuery } from "@/lib/api/auth";
 import { myActiveProjectsQuery } from "@/lib/api/projects";
 import { getAllUserRequestsQuery } from "@/lib/api/requests";
-import { User, UserRequestStatus, UserRole } from "../../../../types";
+import { type User } from "@/lib/api/types";
 import { useCallback, useMemo, useState } from "react";
 import { useAppStore } from "@/lib/app-state";
 import { ErrorBoundary } from "react-error-boundary";
@@ -46,7 +46,7 @@ export function Dashboard() {
   }, [setIsExpanded, isExpanded]);
   const { data: userRequests = [] } = useQuery(
     getAllUserRequestsQuery({
-      status: UserRequestStatus.PENDING,
+      status: "pending",
       currentUser,
     })
   );
@@ -105,7 +105,7 @@ interface DashboardData {
 export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<DashboardData> => {
     const currentUser = await queryClient.ensureQueryData(currentUserQuery);
-    const isUserAdmin = currentUser.roles.includes(UserRole.ADMIN);
+    const isUserAdmin = currentUser.roles.includes("admin");
     return { currentUser, isUserAdmin };
   });
 }

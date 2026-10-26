@@ -12,9 +12,7 @@ import { getUserRequestTitle } from "@/lib/user-requests";
 import { RequestDetails } from "@/components/ui/request-details";
 import { DateTime } from "luxon";
 import { useMemo } from "react";
-import {
-  type UserRequest,
-} from "../../../../../types";
+import { type UserRequest } from "@/lib/api/types";
 
 export function MyRequestSummary({ request, className = "" }: Props) {
   const title = useMemo(() => getUserRequestTitle(request), [request]);

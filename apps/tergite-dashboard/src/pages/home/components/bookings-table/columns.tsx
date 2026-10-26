@@ -1,5 +1,5 @@
 import { SortHeader } from "@/components/ui/data-table";
-import { Booking } from "../../../../../types";
+import { type Booking } from "@/lib/api/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { DateTime, Duration } from "luxon";
 import { formatRelative } from "@/lib/time";

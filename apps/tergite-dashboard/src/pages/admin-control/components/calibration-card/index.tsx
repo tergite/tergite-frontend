@@ -8,15 +8,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getRecalibrationInfoQuery } from "@/lib/api/admin-control";
 import { getDeviceCalibrationQuery } from "@/lib/api/devices";
-import { RqJobStatus } from "../../../../../types";
+import { type RqJobStatus } from "@/lib/api/types";
 import { CalibrationMetrics } from "./metrics";
 import { CalibrationActions } from "./actions";
 
 const ACTIVE_STATUSES: RqJobStatus[] = [
-  RqJobStatus.STARTED,
-  RqJobStatus.QUEUED,
-  RqJobStatus.SCHEDULED,
-  RqJobStatus.DEFERRED,
+  "started",
+  "queued",
+  "scheduled",
+  "deferred",
 ];
 
 interface Props {
@@ -30,7 +30,7 @@ export function CalibrationCard({ deviceName }: Props) {
 
   const { data: recalibInfo } = useQuery(getRecalibrationInfoQuery(deviceName));
 
-  const currentJobStatus = recalibInfo?.current_job_status;
+  const currentJobStatus = recalibInfo?.current_job_status ?? undefined;
   const isRunning =
     currentJobStatus !== undefined && ACTIVE_STATUSES.includes(currentJobStatus);
 

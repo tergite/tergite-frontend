@@ -15,7 +15,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import { NoticeType } from "../../../../../../types";
+import { type NoticeType } from "@/lib/api/types";
 
 interface NotificationMeta {
   Icon: LucideIcon;
@@ -33,133 +33,133 @@ interface NotificationMeta {
  * than each re-deriving the look from the type.
  */
 export const NOTIFICATION_TYPE_META: Record<NoticeType, NotificationMeta> = {
-  [NoticeType.PROJECT_ACCESS_REQUESTED]: {
+  "project-access-requested": {
     Icon: HelpingHand,
     label: "Access request",
     iconClassName: "text-primary",
     isActionable: true,
   },
-  [NoticeType.PROJECT_ACCESS_APPROVED]: {
+  "project-access-approved": {
     Icon: CheckCircle2,
     label: "Access granted",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NoticeType.PROJECT_ACCESS_REJECTED]: {
+  "project-access-rejected": {
     Icon: XCircle,
     label: "Access declined",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NoticeType.PROJECT_CREATE_REQUESTED]: {
+  "project-create-requested": {
     Icon: FolderPlus,
     label: "Project request",
     iconClassName: "text-primary",
     isActionable: true,
   },
-  [NoticeType.PROJECT_CREATE_APPROVED]: {
+  "project-create-approved": {
     Icon: CheckCircle2,
     label: "Project created",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NoticeType.PROJECT_CREATE_REJECTED]: {
+  "project-create-rejected": {
     Icon: XCircle,
     label: "Project declined",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NoticeType.PROJECT_CLOSE_REQUESTED]: {
+  "project-close-requested": {
     Icon: FolderX,
     label: "Closure request",
     iconClassName: "text-primary",
     isActionable: true,
   },
-  [NoticeType.PROJECT_CLOSE_APPROVED]: {
+  "project-close-approved": {
     Icon: CheckCircle2,
     label: "Project closed",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NoticeType.PROJECT_CLOSE_REJECTED]: {
+  "project-close-rejected": {
     Icon: XCircle,
     label: "Closure declined",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NoticeType.PROJECT_TRANSFER_REQUESTED]: {
+  "project-transfer-requested": {
     Icon: ArrowRightLeft,
     label: "Transfer request",
     iconClassName: "text-primary",
     isActionable: true,
   },
-  [NoticeType.PROJECT_TRANSFER_APPROVED]: {
+  "project-transfer-approved": {
     Icon: CheckCircle2,
     label: "Project transferred",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NoticeType.PROJECT_TRANSFER_REJECTED]: {
+  "project-transfer-rejected": {
     Icon: XCircle,
     label: "Transfer declined",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NoticeType.QPU_SECONDS_REQUESTED]: {
+  "qpu-seconds-requested": {
     Icon: Clock,
     label: "QPU time request",
     iconClassName: "text-primary",
     isActionable: true,
   },
-  [NoticeType.QPU_SECONDS_GRANTED]: {
+  "qpu-seconds-granted": {
     Icon: CheckCircle2,
     label: "QPU time granted",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NoticeType.QPU_SECONDS_DENIED]: {
+  "qpu-seconds-denied": {
     Icon: XCircle,
     label: "QPU time declined",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NoticeType.QPU_SECONDS_LOW]: {
+  "qpu-seconds-low": {
     Icon: BatteryLow,
     label: "QPU time low",
     iconClassName: "text-amber-600",
     isActionable: false,
   },
-  [NoticeType.QPU_SECONDS_DEPLETED]: {
+  "qpu-seconds-depleted": {
     Icon: BatteryWarning,
     label: "QPU time exhausted",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NoticeType.PROJECT_MEMBERSHIP_GRANTED]: {
+  "project-membership-granted": {
     Icon: UserPlus,
     label: "Added to project",
     iconClassName: "text-green-600",
     isActionable: false,
   },
-  [NoticeType.PROJECT_MEMBERSHIP_REVOKED]: {
+  "project-membership-revoked": {
     Icon: UserMinus,
     label: "Removed from project",
     iconClassName: "text-destructive",
     isActionable: false,
   },
-  [NoticeType.PROJECT_ADMIN_ASSIGNED]: {
+  "project-admin-assigned": {
     Icon: UserCog,
     label: "Made project admin",
     iconClassName: "text-primary",
     isActionable: false,
   },
-  [NoticeType.CUSTOM]: {
+  "custom": {
     Icon: Megaphone,
     label: "Announcement",
     iconClassName: "text-primary",
     isActionable: false,
   },
-  [NoticeType.CUSTOM_BROADCAST]: {
+  "custom-broadcast": {
     Icon: Megaphone,
     label: "Announcement to all",
     iconClassName: "text-primary",

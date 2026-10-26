@@ -11,17 +11,23 @@ import { DateTime } from "luxon";
 import { useCallback, useMemo, useState } from "react";
 import { IconButton } from "@/components/ui/button";
 import {
-  Booking,
-  BookingsConfig,
-  ErrorInfo,
-  GeneralMessage,
-  User,
-} from "types";
+  type Booking,
+  type BookingsConfig,
+  type GeneralMessage,
+  type User,
+} from "@/lib/api/types";
+import { type ErrorInfo } from "@/lib/api/client";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getBookingsOfBackendQuery, cancelBooking, createNewBooking, refreshBookingsQueries, updateBooking } from "@/lib/api/bookings";
+import {
+  getBookingsOfBackendQuery,
+  cancelBooking,
+  createNewBooking,
+  refreshBookingsQueries,
+  updateBooking,
+} from "@/lib/api/bookings";
 import { BookingForm } from "./booking-form";
 import { BookingEventContent } from "./event-content";
 import { useToast } from "@/hooks/use-toast";
@@ -77,7 +83,7 @@ export function BookingsCalendar({
   const calendarEvents = useMemo(
     (): EventSourceInput =>
       bookings.map((v) => ({
-        title: v.username,
+        title: v.username ?? undefined,
         start: v.start_utc,
         end: v.end_utc,
         extendedProps: {

@@ -1,7 +1,12 @@
 import { type Locator, type Page } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import { innermost } from "./utils/locators";
-import { type AdminProject, type Project, type User, UserRole } from "../types";
+import {
+  type AdminProject,
+  type Project,
+  type User,
+  UserRole,
+} from "../dev/mock-api/types";
 
 // Pick, not Omit: AdminProject's index signature would leave Omit with unknown values
 type ProjectFormData = Pick<

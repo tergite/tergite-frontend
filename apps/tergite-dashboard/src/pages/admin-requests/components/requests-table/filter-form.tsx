@@ -11,7 +11,6 @@ import {
   DataTableFilterField,
   DataTableFormConfig,
 } from "@/components/ui/data-table";
-import { UserRequestStatus, UserRequestType } from "../../../../../types";
 
 export const filterFormProps: DataTableFormConfig = {
   title: {
@@ -31,7 +30,14 @@ export const filterFormProps: DataTableFormConfig = {
     ),
   },
   type: {
-    validation: z.nativeEnum(UserRequestType).or(z.literal("")),
+    validation: z.enum([
+      "close-project",
+      "create-project",
+      "project-access",
+      "project-qpu-seconds",
+      "transfer-project",
+      "",
+    ]),
     defaultValue: "",
     label: "Type",
     getFormElement: ({ ref, value, ...props }: DataTableFilterField) => (
@@ -44,27 +50,27 @@ export const filterFormProps: DataTableFormConfig = {
           <SelectValue placeholder="Select type" />
         </SelectTrigger>
         <SelectContent data-cy-user-request-type-select>
-          <SelectItem value={UserRequestType.CLOSE_PROJECT}>
-            {UserRequestType.CLOSE_PROJECT}
+          <SelectItem value="close-project">
+            close-project
           </SelectItem>
-          <SelectItem value={UserRequestType.CREATE_PROJECT}>
-            {UserRequestType.CREATE_PROJECT}
+          <SelectItem value="create-project">
+            create-project
           </SelectItem>
-          <SelectItem value={UserRequestType.PROJECT_ACCESS}>
-            {UserRequestType.PROJECT_ACCESS}
+          <SelectItem value="project-access">
+            project-access
           </SelectItem>
-          <SelectItem value={UserRequestType.PROJECT_QPU_SECONDS}>
-            {UserRequestType.PROJECT_QPU_SECONDS}
+          <SelectItem value="project-qpu-seconds">
+            project-qpu-seconds
           </SelectItem>
-          <SelectItem value={UserRequestType.TRANSFER_PROJECT}>
-            {UserRequestType.TRANSFER_PROJECT}
+          <SelectItem value="transfer-project">
+            transfer-project
           </SelectItem>
         </SelectContent>
       </Select>
     ),
   },
   status: {
-    validation: z.nativeEnum(UserRequestStatus).or(z.literal("")),
+    validation: z.enum(["rejected", "approved", "pending", ""]),
     defaultValue: "",
     label: "Status",
     getFormElement: ({ ref, value, ...props }: DataTableFilterField) => (
@@ -77,9 +83,9 @@ export const filterFormProps: DataTableFormConfig = {
           <SelectValue placeholder="Select status" />
         </SelectTrigger>
         <SelectContent data-cy-user-request-status-select>
-          <SelectItem value={UserRequestStatus.REJECTED}>Rejected</SelectItem>
-          <SelectItem value={UserRequestStatus.APPROVED}>Approved</SelectItem>
-          <SelectItem value={UserRequestStatus.PENDING}>Pending</SelectItem>
+          <SelectItem value="rejected">Rejected</SelectItem>
+          <SelectItem value="approved">Approved</SelectItem>
+          <SelectItem value="pending">Pending</SelectItem>
         </SelectContent>
       </Select>
     ),

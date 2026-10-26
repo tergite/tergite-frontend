@@ -12,11 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { currentUserQuery } from "@/lib/api/auth";
 import { devicesQuery } from "@/lib/api/devices";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
-import {
-  type Device,
-  type ErrorInfo,
-  UserRole,
-} from "../../../types";
+import { type Device } from "@/lib/api/types";
+import { type ErrorInfo } from "@/lib/api/client";
 import { BackendControlCard } from "./components/backend-control-card";
 import { CalibrationCard } from "./components/calibration-card";
 import { NoticesCard } from "./components/notices-card";
@@ -132,7 +129,7 @@ export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<AdminControlData> => {
     const currentUser = await queryClient.ensureQueryData(currentUserQuery);
 
-    if (!currentUser.roles.includes(UserRole.ADMIN)) {
+    if (!currentUser.roles.includes("admin")) {
       const error = new Error("user should be an admin") as ErrorInfo;
       error.status = 403;
       throw error;

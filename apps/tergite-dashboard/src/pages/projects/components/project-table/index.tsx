@@ -1,10 +1,6 @@
 import { DataTable } from "@/components/ui/data-table";
 
-import {
-  type UserRequest,
-  type User,
-  type Project,
-} from "types";
+import { type UserRequest, type User, type Project } from "@/lib/api/types";
 
 import { getColumns } from "./columns";
 import { filterFormProps } from "./filter-form";

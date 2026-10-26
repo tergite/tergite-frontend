@@ -1,6 +1,7 @@
 import { DetailItem } from "@/components/ui/detail-item";
 import { getUserRequestDetails } from "@/lib/user-requests";
-import { AnyValue, type UserRequest } from "../../../types";
+import { type AnyValue } from "@/lib/user-requests";
+import { type UserRequest } from "@/lib/api/types";
 
 /** What the request asks for, as each of its parties sees it */
 export function RequestDetails({ request }: Props) {

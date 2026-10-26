@@ -8,7 +8,9 @@ import {
 import { noticePreferencesQuery } from "@/lib/api/notices";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient } from "@tanstack/react-query";
-import { NotificationPreferencesForm } from "./components/notification-preferences-form";
+import {
+  NotificationPreferencesForm,
+} from "./components/notification-preferences-form";
 
 export function Settings() {
   return (

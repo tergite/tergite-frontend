@@ -1,7 +1,7 @@
 import { Router } from "express";
 import cors from "cors";
 import { createCookieHeader, mockDb, respond401, use } from "../utils";
-import { User } from "../../../types";
+import { User } from "../types";
 
 const apiBaseUrl = process.env.VITE_API_BASE_URL;
 const appHostname = new URL(apiBaseUrl as string).hostname;

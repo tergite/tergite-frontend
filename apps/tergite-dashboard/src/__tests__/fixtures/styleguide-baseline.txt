@@ -13,8 +13,6 @@ boolean: src/pages/admin-control/components/backend-control-card/toggle.tsx::che
 boolean: src/pages/admin-control/components/status-tile.tsx::truncate
 boolean: src/pages/device-detail/components/bookings-calendar/booking-form.tsx::open
 boolean: src/pages/device-detail/components/bookings-calendar/booking-form.tsx::value
-boolean: types.ts::characterized
-boolean: types.ts::open_pulse
 constant-position: dev/mock-api/routes/general.ts::APPROVED_NOTICE_TYPES
 constant-position: dev/mock-api/routes/general.ts::REJECTED_NOTICE_TYPES
 constant-position: dev/mock-api/routes/general.ts::REQUESTED_NOTICE_TYPES

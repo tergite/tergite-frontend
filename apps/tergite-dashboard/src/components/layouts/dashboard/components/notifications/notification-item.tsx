@@ -4,7 +4,7 @@ import { formatRelative } from "@/lib/time";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useCallback } from "react";
-import { Notice } from "../../../../../../types";
+import { type Notice } from "@/lib/api/types";
 import {
   approveMyRequest,
   refreshDecisionQueries,

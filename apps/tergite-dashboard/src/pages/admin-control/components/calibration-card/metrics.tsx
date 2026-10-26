@@ -2,22 +2,22 @@ import { Badge } from "@/components/ui/badge";
 import {
   type DeviceCalibration,
   type RecalibrationInfo,
-  RqJobStatus,
-} from "../../../../../types";
+  type RqJobStatus,
+} from "@/lib/api/types";
 
 const ACTIVE_STATUSES: RqJobStatus[] = [
-  RqJobStatus.STARTED,
-  RqJobStatus.QUEUED,
-  RqJobStatus.SCHEDULED,
-  RqJobStatus.DEFERRED,
+  "started",
+  "queued",
+  "scheduled",
+  "deferred",
 ];
 
 function statusBadgeVariant(
   status: RqJobStatus | undefined,
 ): "default" | "destructive" | "outline" | "secondary" {
   if (!status) return "outline";
-  if (status === RqJobStatus.FINISHED) return "default";
-  if (status === RqJobStatus.FAILED) return "destructive";
+  if (status === "finished") return "default";
+  if (status === "failed") return "destructive";
   if (ACTIVE_STATUSES.includes(status)) return "secondary";
   return "outline";
 }

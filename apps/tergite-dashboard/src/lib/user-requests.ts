@@ -1,8 +1,5 @@
-import type {
-  AnyFlatRecord,
-  ExtendedUserRequest,
-  UserRequest,
-} from "../../types";
+import { type ExtendedUserRequest } from "@/lib/api/requests";
+import { type UserRequest } from "@/lib/api/types";
 
 /** A title for the request, naming its project where the viewer can see it */
 export function getUserRequestTitle(request: ExtendedUserRequest): string {
@@ -11,7 +8,7 @@ export function getUserRequestTitle(request: ExtendedUserRequest): string {
     case "close-project":
       return `Close project '${projectName}'`;
     case "create-project":
-      return `Create new project '${request.metadata.name}'`;
+      return `Create new project '${request.metadata?.name}'`;
     case "project-qpu-seconds":
       return `Add QPU time on project: '${projectName}'`;
     case "project-access":
@@ -26,9 +23,13 @@ export function getUserRequestTitle(request: ExtendedUserRequest): string {
 /** The request's reason and the non-empty details peculiar to its type */
 export function getUserRequestDetails(request: UserRequest): AnyFlatRecord {
   // every request concerns a project for now, so the resource says nothing
-  const { resource: _resource, ...metadata } = request.metadata;
+  const { resource: _resource, ...metadata } = request.metadata ?? {};
   const details = { reason: request.reason, ...metadata };
   return Object.fromEntries(
     Object.entries(details).filter(([_k, v]) => v != null),
   );
 }
+
+export type AnyValue = number | string | null | undefined | number[] | string[];
+
+export type AnyFlatRecord = Record<string, AnyValue>;

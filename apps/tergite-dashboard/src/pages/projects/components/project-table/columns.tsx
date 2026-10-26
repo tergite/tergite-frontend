@@ -1,7 +1,7 @@
 import { SortHeader } from "@/components/ui/data-table";
 import { HealthStatus } from "@/components/ui/health-status";
 import { ColumnDef } from "@tanstack/table-core";
-import { UserRequest, User, type Project } from "types";
+import { type UserRequest, type User, type Project } from "@/lib/api/types";
 import { QpuTimeRequestDialog } from "./qpu-time-request-dialog";
 import { Duration } from "luxon";
 

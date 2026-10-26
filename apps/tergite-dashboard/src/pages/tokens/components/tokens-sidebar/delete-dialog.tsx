@@ -12,7 +12,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { type MouseEventHandler } from "react";
-import { type ExtendedAppToken } from "types";
+import { type ExtendedAppToken } from "@/lib/api/tokens";
 
 export function TokenDeleteDialog({ token, onDelete, isDisabled }: Props) {
   return (

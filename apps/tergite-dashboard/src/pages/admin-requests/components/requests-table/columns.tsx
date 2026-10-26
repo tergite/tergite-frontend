@@ -3,7 +3,7 @@ import { ProgressStatus } from "@/components/ui/progress-status";
 import { getUserRequestTitle } from "@/lib/user-requests";
 import { ColumnDef } from "@tanstack/table-core";
 import { DateTime } from "luxon";
-import type { UserRequest } from "types";
+import { type UserRequest } from "@/lib/api/types";
 import { RowActions } from "./row-actions";
 
 export const columns: ColumnDef<UserRequest>[] = [

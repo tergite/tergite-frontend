@@ -1,15 +1,12 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
 import {
-  type ExtendedUserRequest,
   type Project,
-  type QpuTimeExtensionPostBody,
   type User,
   type UserRequest,
   type UserRequestMetadata,
-  UserRequestStatus,
-  UserRequestType,
-  UserRole,
-} from "../../../types";
+  type UserRequestStatus,
+  type UserRequestType,
+} from "./types";
 import { client } from "./client";
 import { refreshMyNotices } from "./notices";
 import { refreshMyProjectsQueries } from "./projects";
@@ -64,7 +61,7 @@ export function getAllUserRequestsQuery(options: {
       });
       return extendUserRequests(requests, projectList);
     },
-    enabled: currentUser.roles.includes(UserRole.ADMIN),
+    enabled: currentUser.roles.includes("admin"),
     throwOnError: true,
   });
 }
@@ -76,7 +73,7 @@ export function getMyProjectsQpuTimeRequestsQuery(options: {
 }) {
   const { status, projects } = options;
   const projectIds = projects.map((v) => v.id).sort();
-  const types = [UserRequestType.PROJECT_QPU_SECONDS];
+  const types: UserRequestType[] = ["project-qpu-seconds"];
   return queryOptions({
     queryKey: ["me", "requests", "requester", status, types, projectIds],
     queryFn: async () => {
@@ -91,10 +88,10 @@ export async function requestQpuTimeExtension(
   payload: QpuTimeExtensionPostBody,
 ): Promise<UserRequest> {
   const { project_id, seconds, reason } = payload;
-  const metadata = { resource: "project", seconds } as UserRequestMetadata;
+  const metadata: UserRequestMetadata = { resource: "project", seconds };
   const { data } = await client.POST("/me/requests/", {
     body: {
-      type: UserRequestType.PROJECT_QPU_SECONDS,
+      type: "project-qpu-seconds",
       resource_id: project_id,
       reason,
       metadata,
@@ -109,7 +106,7 @@ export async function requestProjectAccess(payload: {
 }): Promise<UserRequest> {
   const { data } = await client.POST("/me/requests/", {
     body: {
-      type: UserRequestType.PROJECT_ACCESS,
+      type: "project-access",
       resource_id: payload.project_id,
       reason: payload.reason,
     },
@@ -120,7 +117,7 @@ export async function requestProjectAccess(payload: {
 export async function approveMyRequest(id: string): Promise<UserRequest> {
   const { data } = await client.PUT("/me/requests/{_id}", {
     params: { path: { _id: id } },
-    body: { status: UserRequestStatus.APPROVED },
+    body: { status: "approved" },
   });
   return data! as UserRequest;
 }
@@ -132,7 +129,7 @@ export async function rejectMyRequest(args: {
   const { data } = await client.PUT("/me/requests/{_id}", {
     params: { path: { _id: args.id } },
     body: {
-      status: UserRequestStatus.REJECTED,
+      status: "rejected",
       rejection_reason: args.reason,
     },
   });
@@ -174,3 +171,12 @@ function extendUserRequests(
     project_name: projectMap[v.resource_id]?.name,
   }));
 }
+
+// a request with the name of its project, where the viewer can see that project
+export type ExtendedUserRequest = UserRequest & { project_name?: string };
+
+export type QpuTimeExtensionPostBody = {
+  project_id: string;
+  seconds: number;
+  reason: string;
+};

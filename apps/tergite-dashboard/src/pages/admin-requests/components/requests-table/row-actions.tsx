@@ -6,10 +6,7 @@ import {
 } from "@/lib/api/requests";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  UserRequestStatus,
-  type UserRequest,
-} from "../../../../../types";
+import { type UserRequest } from "@/lib/api/types";
 
 export function RowActions({ request }: Props) {
   const queryClient = useQueryClient();
@@ -26,7 +23,7 @@ export function RowActions({ request }: Props) {
     throwOnError: true,
   });
 
-  if (request.status !== UserRequestStatus.PENDING) {
+  if (request.status !== "pending") {
     return null;
   }
 

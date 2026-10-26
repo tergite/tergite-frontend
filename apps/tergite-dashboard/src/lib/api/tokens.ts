@@ -1,12 +1,11 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
-import type {
-  AppToken,
-  AppTokenCreationRequest,
-  AppTokenCreationResponse,
-  AppTokenUpdateRequest,
-  ExtendedAppToken,
-  Project,
-} from "../../../types";
+import {
+  type AppToken,
+  type AppTokenCreationRequest,
+  type AppTokenCreationResponse,
+  type AppTokenUpdateRequest,
+  type Project,
+} from "./types";
 import { DateTime } from "luxon";
 import { client } from "./client";
 
@@ -71,3 +70,9 @@ export function extendAppToken(
   const is_expired = DateTime.now() > expires_at;
   return { ...token, expires_at, is_expired, project_name: project.name };
 }
+
+export type ExtendedAppToken = AppToken & {
+  expires_at: DateTime;
+  is_expired: boolean;
+  project_name: string;
+};

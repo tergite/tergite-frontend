@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/select";
 import { z } from "zod";
 
-import { JobStatus } from "../../../../../types";
 import {
   DataTableFilterField,
   DataTableFormConfig,
@@ -32,7 +31,7 @@ export const jobFilterFormProps: DataTableFormConfig = {
     ),
   },
   status: {
-    validation: z.nativeEnum(JobStatus).or(z.literal("")),
+    validation: z.enum(["failed", "successful", "pending", ""]),
     defaultValue: "",
     label: "Status",
     getFormElement: ({ ref, value, ...props }: DataTableFilterField) => (
@@ -45,9 +44,9 @@ export const jobFilterFormProps: DataTableFormConfig = {
           <SelectValue placeholder="Select status" />
         </SelectTrigger>
         <SelectContent data-cy-job-status-select>
-          <SelectItem value={JobStatus.FAILED}>Failed</SelectItem>
-          <SelectItem value={JobStatus.SUCCESSFUL}>Successful</SelectItem>
-          <SelectItem value={JobStatus.PENDING}>Pending</SelectItem>
+          <SelectItem value="failed">Failed</SelectItem>
+          <SelectItem value="successful">Successful</SelectItem>
+          <SelectItem value="pending">Pending</SelectItem>
         </SelectContent>
       </Select>
     ),

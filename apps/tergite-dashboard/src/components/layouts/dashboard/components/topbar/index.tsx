@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Project, type User } from "../../../../../../types";
+import { type Project, type User } from "@/lib/api/types";
 import { Link } from "react-router-dom";
 
 import { MobileMenu } from "./mobile-menu";

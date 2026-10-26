@@ -37,7 +37,7 @@ import {
   NoticeRefType,
   NoticeSeverity,
   NoticeType,
-} from "../../types";
+} from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { DateTime } from "luxon";
 

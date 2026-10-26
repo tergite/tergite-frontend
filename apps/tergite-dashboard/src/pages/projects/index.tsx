@@ -5,16 +5,15 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { currentUserQuery } from "@/lib/api/auth";
-import { getMyProjectsQpuTimeRequestsQuery, getMyRequestsQuery } from "@/lib/api/requests";
+import {
+  getMyProjectsQpuTimeRequestsQuery,
+  getMyRequestsQuery,
+} from "@/lib/api/requests";
 import { myProjectsQuery } from "@/lib/api/projects";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import {
-  User,
-  UserRequestStatus,
-  type Project,
-} from "../../../types";
+import { type User, type Project } from "@/lib/api/types";
 import { ProjectsTable } from "./components/project-table";
 import { ProjectSummary } from "./components/projects-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
@@ -28,12 +27,12 @@ export function Projects() {
   const { data: projects = [] } = useQuery(myProjectsQuery);
   const { data: qpuTimeRequests = [] } = useQuery(
     getMyProjectsQpuTimeRequestsQuery({
-      status: UserRequestStatus.PENDING,
+      status: "pending",
       projects,
     })
   );
   const { data: pendingApprovals = [] } = useQuery(
-    getMyRequestsQuery({ role: "approver", status: UserRequestStatus.PENDING }),
+    getMyRequestsQuery({ role: "approver", status: "pending" }),
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const selectedProject = findSelectedRow(projects ?? [], rowSelection);

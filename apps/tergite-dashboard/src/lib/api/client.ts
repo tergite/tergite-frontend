@@ -1,5 +1,4 @@
 import createClient from "openapi-fetch";
-import type { ErrorInfo } from "../../../types";
 import type { paths } from "./schema";
 
 // every non-2xx response throws in the middleware below, so a call that returns has its data
@@ -29,3 +28,8 @@ function parseDetail(text: string): string {
     return text;
   }
 }
+
+export type ErrorInfo = Error & {
+  status?: number;
+  statusText?: string;
+};

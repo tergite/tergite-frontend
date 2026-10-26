@@ -1,6 +1,6 @@
 import { SortHeader } from "@/components/ui/data-table";
 import { ProgressStatus } from "@/components/ui/progress-status";
-import { Job, JobStatus } from "../../../../../types";
+import { type Job, type JobStatus } from "@/lib/api/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { DateTime, Duration } from "luxon";
 
@@ -58,9 +58,9 @@ export const jobTableColumns: ColumnDef<Job>[] = [
         <ProgressStatus
           className="ml-auto"
           status={status}
-          pendingValue={JobStatus.PENDING}
-          successValue={JobStatus.SUCCESSFUL}
-          failureValue={JobStatus.FAILED}
+          pendingValue={"pending"}
+          successValue={"successful"}
+          failureValue={"failed"}
         />
       );
     },

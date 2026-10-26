@@ -19,7 +19,7 @@ import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getNoticeCountQuery, getNoticesQuery } from "@/lib/api/notices";
 import { AdminNoticeBanner } from "./banner";
-import { CUSTOM_NOTICE_TYPES } from "../../../../../types";
+import { CUSTOM_NOTICE_TYPES } from "@/lib/api/notices";
 
 export function NoticesCard() {
   const [page, setPage] = useState(1);

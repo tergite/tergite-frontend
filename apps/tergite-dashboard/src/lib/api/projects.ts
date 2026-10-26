@@ -9,8 +9,7 @@ import {
   type Project,
   type UpdateProjectPutBody,
   type User,
-  UserRole,
-} from "../../../types";
+} from "./types";
 import { client } from "./client";
 
 export const myProjectsQuery = queryOptions({
@@ -49,7 +48,7 @@ export function getAllAdminProjectsQuery(options: {
       });
       return data!.data as AdminProject[];
     },
-    enabled: currentUser.roles.includes(UserRole.ADMIN),
+    enabled: currentUser.roles.includes("admin"),
     throwOnError: true,
   });
 }
@@ -81,7 +80,7 @@ export async function createAdminProject(
   payload: AdminCreateProjectBody,
 ): Promise<AdminProject> {
   const { data } = await client.POST("/admin/projects/", {
-    body: { description: "", ...payload },
+    body: payload,
   });
   return data!;
 }

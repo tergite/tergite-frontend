@@ -1,4 +1,4 @@
-import { Booking } from "../../../../../types";
+import { type Booking } from "@/lib/api/types";
 import { bookingFilterFormProps } from "./filter-form";
 import { bookingsTableColumns } from "./columns";
 import { DataTable } from "@/components/ui/data-table";

@@ -1,6 +1,10 @@
 import { DataTable } from "@/components/ui/data-table";
 import { SortHeader } from "@/components/ui/data-table";
-import { DeviceCalibration, Qubit } from "../../../../types";
+import {
+  type CalibrationValue,
+  type DeviceCalibration,
+  type Qubit,
+} from "@/lib/api/types";
 import { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -45,28 +49,28 @@ function getColumns(firstQubit: Qubit | undefined): ColumnDef<Qubit>[] {
     },
     {
       id: "t1_decoherence",
-      accessorFn: (row) => row.t1_decoherence?.value.toFixed(2) ?? "",
+      accessorFn: (row) => formatValue(row.t1_decoherence),
       header: ({ column }) => (
         <SortHeader label={`T1${units.t1_decoherence}`} column={column} />
       ),
     },
     {
       id: "t2_decoherence",
-      accessorFn: (row) => row.t2_decoherence?.value.toFixed(2) ?? "",
+      accessorFn: (row) => formatValue(row.t2_decoherence),
       header: ({ column }) => (
         <SortHeader label={`T2${units.t2_decoherence}`} column={column} />
       ),
     },
     {
       id: "frequency",
-      accessorFn: (row) => row.frequency?.value.toFixed(2) ?? "",
+      accessorFn: (row) => formatValue(row.frequency),
       header: ({ column }) => (
         <SortHeader label={`frequency${units.frequency}`} column={column} />
       ),
     },
     {
       id: "anharmonicity",
-      accessorFn: (row) => row.anharmonicity?.value.toFixed(2) ?? "",
+      accessorFn: (row) => formatValue(row.anharmonicity),
       header: ({ column }) => (
         <SortHeader
           label={`anharmonicity${units.anharmonicity}`}
@@ -76,7 +80,7 @@ function getColumns(firstQubit: Qubit | undefined): ColumnDef<Qubit>[] {
     },
     {
       id: "readout_assignment_error",
-      accessorFn: (row) => row.readout_assignment_error?.value.toFixed(2) ?? "",
+      accessorFn: (row) => formatValue(row.readout_assignment_error),
       header: ({ column }) => (
         <SortHeader
           label={`readout error${units.readout_assignment_error}`}
@@ -85,4 +89,9 @@ function getColumns(firstQubit: Qubit | undefined): ColumnDef<Qubit>[] {
       ),
     },
   ];
+}
+
+function formatValue(item?: CalibrationValue | null): string {
+  if (typeof item?.value === "number") return item.value.toFixed(2);
+  return `${item?.value ?? ""}`;
 }

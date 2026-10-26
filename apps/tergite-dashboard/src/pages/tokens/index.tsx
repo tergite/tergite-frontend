@@ -17,11 +17,8 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
-import {
-  type AppToken,
-  type ExtendedAppToken,
-  type Project,
-} from "types";
+import { type AppToken, type Project } from "@/lib/api/types";
+import { type ExtendedAppToken } from "@/lib/api/tokens";
 import { TokensTable } from "./components/tokens-table";
 import { TokenSummary } from "./components/tokens-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";

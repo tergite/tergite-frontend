@@ -5,7 +5,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { dismissAllMyNotices, getMyNoticesQuery, getNoticeCountQuery, refreshMyNotices } from "@/lib/api/notices";
+import {
+  dismissAllMyNotices,
+  getMyNoticesQuery,
+  getNoticeCountQuery,
+  refreshMyNotices,
+} from "@/lib/api/notices";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellIcon } from "lucide-react";
 import { NotificationItem } from "./notification-item";

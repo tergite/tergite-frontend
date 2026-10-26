@@ -17,7 +17,7 @@ const BASELINE_FILE = join(
   APP_ROOT,
   "src/__tests__/fixtures/styleguide-baseline.txt",
 );
-const CODE_ROOTS = ["src", "dev/mock-api", "types.ts"];
+const CODE_ROOTS = ["src", "dev/mock-api"];
 const SKIPPED_DIRS = new Set(["__tests__", "node_modules"]);
 // a new verb is added here in review, never to the baseline
 const VERBS = new Set([

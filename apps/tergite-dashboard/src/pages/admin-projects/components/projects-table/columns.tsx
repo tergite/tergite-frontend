@@ -1,7 +1,7 @@
 import { SortHeader } from "@/components/ui/data-table";
 import { HealthStatus } from "@/components/ui/health-status";
 import { ColumnDef } from "@tanstack/table-core";
-import type { AdminProject } from "types";
+import { type AdminProject } from "@/lib/api/types";
 
 export const columns: ColumnDef<AdminProject>[] = [
   {

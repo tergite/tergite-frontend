@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserRequestStatus } from "../../../../../types";
 import { z } from "zod";
 
 export const filterFormProps: DataTableFormConfig = {
@@ -27,7 +26,7 @@ export const filterFormProps: DataTableFormConfig = {
     getFormElement: (field: DataTableFilterField) => <Input {...field} />,
   },
   status: {
-    validation: z.nativeEnum(UserRequestStatus).or(z.literal("")),
+    validation: z.enum(["pending", "approved", "rejected", ""]),
     defaultValue: "",
     label: "Status",
     getFormElement: ({ ref, value, ...props }: DataTableFilterField) => (
@@ -40,9 +39,9 @@ export const filterFormProps: DataTableFormConfig = {
           <SelectValue placeholder="Select status" />
         </SelectTrigger>
         <SelectContent data-cy-approval-status-select>
-          <SelectItem value={UserRequestStatus.PENDING}>Pending</SelectItem>
-          <SelectItem value={UserRequestStatus.APPROVED}>Approved</SelectItem>
-          <SelectItem value={UserRequestStatus.REJECTED}>Rejected</SelectItem>
+          <SelectItem value="pending">Pending</SelectItem>
+          <SelectItem value="approved">Approved</SelectItem>
+          <SelectItem value="rejected">Rejected</SelectItem>
         </SelectContent>
       </Select>
     ),

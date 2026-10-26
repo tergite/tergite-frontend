@@ -1,35 +1,40 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { noticePreferencesQuery, updateNoticePreferences } from "@/lib/api/notices";
+import {
+  noticePreferencesQuery,
+  updateNoticePreferences,
+} from "@/lib/api/notices";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { NoticeType } from "../../../../types";
-import { getNotificationMeta } from "@/components/layouts/dashboard/components/notifications/meta";
+import { type NoticeType } from "@/lib/api/types";
+import {
+  getNotificationMeta,
+} from "@/components/layouts/dashboard/components/notifications/meta";
 
 // in the order they matter to a user: things awaiting them, then outcomes
 const ORDERED_TYPES: NoticeType[] = [
-  NoticeType.PROJECT_ACCESS_REQUESTED,
-  NoticeType.QPU_SECONDS_REQUESTED,
-  NoticeType.PROJECT_CREATE_REQUESTED,
-  NoticeType.PROJECT_CLOSE_REQUESTED,
-  NoticeType.PROJECT_TRANSFER_REQUESTED,
-  NoticeType.PROJECT_ACCESS_APPROVED,
-  NoticeType.PROJECT_ACCESS_REJECTED,
-  NoticeType.QPU_SECONDS_GRANTED,
-  NoticeType.QPU_SECONDS_DENIED,
-  NoticeType.PROJECT_CREATE_APPROVED,
-  NoticeType.PROJECT_CREATE_REJECTED,
-  NoticeType.PROJECT_CLOSE_APPROVED,
-  NoticeType.PROJECT_CLOSE_REJECTED,
-  NoticeType.PROJECT_TRANSFER_APPROVED,
-  NoticeType.PROJECT_TRANSFER_REJECTED,
-  NoticeType.QPU_SECONDS_LOW,
-  NoticeType.QPU_SECONDS_DEPLETED,
-  NoticeType.PROJECT_MEMBERSHIP_GRANTED,
-  NoticeType.PROJECT_MEMBERSHIP_REVOKED,
-  NoticeType.PROJECT_ADMIN_ASSIGNED,
-  NoticeType.CUSTOM,
-  NoticeType.CUSTOM_BROADCAST,
+  "project-access-requested",
+  "qpu-seconds-requested",
+  "project-create-requested",
+  "project-close-requested",
+  "project-transfer-requested",
+  "project-access-approved",
+  "project-access-rejected",
+  "qpu-seconds-granted",
+  "qpu-seconds-denied",
+  "project-create-approved",
+  "project-create-rejected",
+  "project-close-approved",
+  "project-close-rejected",
+  "project-transfer-approved",
+  "project-transfer-rejected",
+  "qpu-seconds-low",
+  "qpu-seconds-depleted",
+  "project-membership-granted",
+  "project-membership-revoked",
+  "project-admin-assigned",
+  "custom",
+  "custom-broadcast",
 ];
 
 export function NotificationPreferencesForm() {

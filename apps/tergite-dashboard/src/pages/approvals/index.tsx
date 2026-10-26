@@ -12,11 +12,7 @@ import { QueryClient, useQuery } from "@tanstack/react-query";
 import { Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
-import {
-  UserRole,
-  type User,
-  type UserRequest,
-} from "../../../types";
+import { type User, type UserRequest } from "@/lib/api/types";
 import { ApprovalSummary } from "./components/approvals-sidebar";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { ApprovalsTable } from "./components/approvals-table";
@@ -95,7 +91,7 @@ export function loader(queryClient: QueryClient) {
     // empty list for most people
     const currentUser = await queryClient.ensureQueryData(currentUserQuery);
     const myProjects = await queryClient.ensureQueryData(myProjectsQuery);
-    const adminProjects = currentUser.roles.includes(UserRole.ADMIN)
+    const adminProjects = currentUser.roles.includes("admin")
       ? await queryClient.ensureQueryData(getAllAdminProjectsQuery({ currentUser }))
       : [];
     await queryClient.ensureQueryData(

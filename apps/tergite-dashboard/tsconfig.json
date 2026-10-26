@@ -30,6 +30,6 @@
     /* vitest */
     "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src", "types.ts"],
+  "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

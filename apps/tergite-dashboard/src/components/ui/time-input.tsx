@@ -1,6 +1,6 @@
 import { extractTime, formatTime } from "@/lib/time";
 import { ChangeEvent, useCallback, useMemo } from "react";
-import { Time } from "types";
+import { type Time } from "@/lib/time";
 import { Input } from "./input";
 
 export function TimeInput({

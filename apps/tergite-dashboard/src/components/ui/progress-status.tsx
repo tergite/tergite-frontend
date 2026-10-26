@@ -41,11 +41,11 @@ interface Props<T> {
 }
 
 // const statusIconMap: { [key: string]: React.ReactElement } = {
-//   [JobStatus.FAILED]: <CircleX className="stroke-destructive w-4 h-4 mr-1" />,
-//   [JobStatus.PENDING]: (
+//   "failed": <CircleX className="stroke-destructive w-4 h-4 mr-1" />,
+//   "pending": (
 //     <CircleDashed className="stroke-muted-foreground w-4 h-4 mr-1" />
 //   ),
-//   [JobStatus.SUCCESSFUL]: (
+//   "successful": (
 //     <CircleCheck className="stroke-green-600 w-4 h-4 mr-1" />
 //   ),
 // };

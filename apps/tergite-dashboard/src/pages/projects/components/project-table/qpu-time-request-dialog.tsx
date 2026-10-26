@@ -19,7 +19,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Project, QpuTimeExtensionPostBody, UserRequest } from "types";
+import { type Project, type UserRequest } from "@/lib/api/types";
+import { type QpuTimeExtensionPostBody } from "@/lib/api/requests";
 import { z } from "zod";
 import { Duration } from "luxon";
 import { Textarea } from "@/components/ui/textarea";
@@ -106,7 +107,7 @@ export function QpuTimeRequestDialog({
               Request Pending
               <Badge variant="outline" className="ml-2">
                 {Duration.fromObject({
-                  seconds: pendingRequest.metadata.seconds,
+                  seconds: pendingRequest.metadata?.seconds,
                 }).toHuman()}
               </Badge>
             </>

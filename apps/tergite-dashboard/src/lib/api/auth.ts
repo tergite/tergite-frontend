@@ -1,5 +1,5 @@
 import { QueryClient, queryOptions } from "@tanstack/react-query";
-import type { AuthProviderResponse, User } from "../../../types";
+import { type AuthProviderResponse } from "./types";
 import type { AppState } from "../app-state";
 import { client } from "./client";
 
@@ -7,7 +7,7 @@ export const currentUserQuery = queryOptions({
   queryKey: ["me"],
   queryFn: async () => {
     const { data } = await client.GET("/me/profile");
-    return data! as User;
+    return data!;
   },
   refetchInterval: false,
   throwOnError: true,

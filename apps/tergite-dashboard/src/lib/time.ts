@@ -5,7 +5,6 @@ import {
   DurationLikeObject,
   DurationUnit,
 } from "luxon";
-import type { InputDuration, Time } from "../../types";
 
 // luxon's relative format gives up past about 273,000 years
 const MAX_YEARS = 273_000;
@@ -100,3 +99,18 @@ export function convertToInputDuration(
 
   return Duration.fromObject(durationLikeObj);
 }
+
+export type Time = {
+  hour?: number;
+  minute?: number;
+  second?: number;
+  millisecond?: number;
+};
+
+export type InputDuration = {
+  days?: number;
+  hours?: number;
+  minutes?: number;
+  seconds?: number;
+  milliseconds?: number;
+};

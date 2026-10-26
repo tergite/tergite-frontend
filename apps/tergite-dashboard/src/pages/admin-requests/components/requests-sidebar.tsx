@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { getUserRequestTitle } from "@/lib/user-requests";
 import { RequestDetails } from "@/components/ui/request-details";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type UserRequest } from "types";
+import { type UserRequest } from "@/lib/api/types";
 import { Separator } from "@/components/ui/separator";
 import { ProgressStatus } from "@/components/ui/progress-status";
 import { DateTime } from "luxon";

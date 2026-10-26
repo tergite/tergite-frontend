@@ -16,7 +16,13 @@ import { devicesQuery } from "@/lib/api/devices";
 import { getMyJobsQuery } from "@/lib/api/jobs";
 import { myProjectsQuery } from "@/lib/api/projects";
 import { getUpcomingBookingsQuery } from "@/lib/api/bookings";
-import { Job, Device, Project, Booking, User } from "types";
+import {
+  type Job,
+  type Device,
+  type Project,
+  type Booking,
+  type User,
+} from "@/lib/api/types";
 import { JobsTable } from "./components/jobs-table";
 import { DevicesTable } from "./components/devices-table";
 import {

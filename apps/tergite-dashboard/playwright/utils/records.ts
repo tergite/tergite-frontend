@@ -5,7 +5,7 @@ import {
   ExtendedAppToken,
   Project,
   UserRequest,
-} from "../../types";
+} from "../../dev/mock-api/types";
 
 /**
  * Converts an AppToken instance to an ExtendedAppToken instance
