@@ -92,17 +92,16 @@ LOKI_LOGGER_ID=<some-id>
 
 ## Development
 
-- Ensure you have [conda](https://docs.anaconda.com/free/miniconda/index.html) installed, or
-  Python 3.13 or later, [Nodejs +20.12](https://nodejs.org/) for the dashboard, and a
+- Ensure you have [uv](https://docs.astral.sh/uv/getting-started/installation/) installed,
+  [Nodejs +20.12](https://nodejs.org/) for the dashboard, and a
   [tergite backend](https://github.com/tergite/tergite-backend) running.
-- Clone the repo, create the conda environment and install the dependencies
+- Clone the repo and install the dependencies, which uv puts in `.venv`, with Python 3.13 or
+  later, as `uv.lock` pins them
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
 cd tergite-frontend
-conda create -n mss -y python=3.13
-conda activate mss
-pip install -e .
+uv sync --extra dev
 ```
 
 - Copy the `mss-config.example.toml` file to `mss-config.toml` and update the variables there
@@ -130,7 +129,7 @@ openssl rsa -pubout -in private-mss-key.pem -out public-mss-key.pem
   see the interactive API docs
 
 ```shell
-./start_mss.sh
+uv run ./start_mss.sh
 ```
 
 - To work on the dashboard, run it in development mode, against MSS: this seeds the database of

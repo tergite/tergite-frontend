@@ -19,5 +19,5 @@ if command -v apk >/dev/null 2>&1; then
 	uv tool install patchelf==0.17.2.4
 fi
 
-uv sync --extra dev
+uv sync --frozen --extra dev
 uv run nuitka --assume-yes-for-downloads main.py

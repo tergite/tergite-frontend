@@ -6,7 +6,7 @@ stages:
   - release
 
 variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
   # pinned with its checksum, so that what packages a release is checked against this file
   NFPM_VERSION: "2.48.0"
   NFPM_SHA256: 6d7f9a28b2f397934403950fcbba83f598b08d02edbe79a0815b3b4897341750
@@ -15,7 +15,6 @@ variables:
   image: mcr.microsoft.com/playwright:v1.64.0-noble
   variables:
     FF_NETWORK_PER_BUILD: 1
-    REDIS_PORT: 6380
   cache:
     key:
       files:
@@ -35,6 +34,7 @@ variables:
       alias: postgres
   variables:
     FF_NETWORK_PER_BUILD: 1
+    UV_PYTHON: $VERSION
     POSTGRES_USER: tergite
     POSTGRES_PASSWORD: tergite
     POSTGRES_DB: tergite_test
@@ -42,23 +42,20 @@ variables:
   cache:
     key:
       files:
-        - requirements.txt
+        - uv.lock
     paths:
-      - .cache/pip
+      - .cache/uv
   before_script:
-    # Install redis
-    - apt-get update
-    - apt-get install redis -y
-    # Run the redis server
-    - redis-server --daemonize yes --port "$REDIS_PORT"
-
-    - pip install --upgrade pip
-    - pip install ."[dev]"
+    # on the port the test config names
+    - apt-get update -qq && apt-get install -y -qq redis-server
+    - redis-server --daemonize yes
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - uv sync --frozen --extra dev
     # This checks the ulimit of the job container
     - ulimit -n
     # Update test fixtures to point to the mongo service
     - sed -i 's/mongodb:\/\/localhost:27017/mongodb:\/\/mongo:27017/g' tests/fixtures/*
-    - sed -i "s/redis:\/\/localhost:6379/redis:\/\/localhost:$REDIS_PORT/g" tests/fixtures/*
   parallel:
     matrix:
       - VERSION: ["3.13"]
@@ -108,8 +105,9 @@ lint mss:
   stage: lint
   <<: *setup_mss
   script:
-    - black --check .
-    - pyflakes api services utils libs migrations settings.py main.py tests dev
+    - uv run black --check .
+    - uv run isort --check-only .
+    - uv run pyflakes api services utils libs migrations settings.py main.py tests dev
 
 test mss:
   needs: []
@@ -117,7 +115,7 @@ test mss:
   <<: *setup_mss
   script:
     - echo "PYTEST_ARGS='${PYTEST_ARGS:-}'"
-    - pytest ${PYTEST_ARGS:-}
+    - uv run pytest ${PYTEST_ARGS:-}
 
 # On a v* tag, as .github/workflows/mss-release.yml does on GitHub: MSS's deb and macOS
 # installer, with the dashboard it serves at /ui, each built on its platform as Nuitka cannot
@@ -148,6 +146,8 @@ build dashboard:
   variables:
     # the Python the binary is built with; uv would otherwise take the newest it can download
     UV_PYTHON: "3.13"
+    # uv's own build of it, as Nuitka refuses e.g. Homebrew's on a Mac
+    UV_MANAGED_PYTHON: "1"
     NUITKA_CACHE_DIR: "$CI_PROJECT_DIR/.cache/Nuitka"
   cache:
     key: nuitka-$CI_JOB_NAME_SLUG
@@ -186,7 +186,7 @@ package mss macos:
     - if: $CI_COMMIT_TAG =~ /^v/ && $PUBLISH_MACOS_ARM64 == "true"
   script:
     - export VERSION=${CI_COMMIT_TAG#v}
-    - uv sync --extra dev
+    - uv sync --frozen --extra dev
     - uv run nuitka --assume-yes-for-downloads main.py
     # the folder the installer installs, as installing it needs the root a shell runner lacks
     - pkg/smoke-test.sh main.dist/mss

@@ -88,7 +88,7 @@ All signed CLAs are emails to us at <contact.quantum@chalmersnextlabs.se>.
 
 ## How to Test
 
-- Make sure you have [conda](https://docs.anaconda.com/free/miniconda/index.html) installed, and
+- Make sure you have [uv](https://docs.astral.sh/uv/getting-started/installation/) installed, and
   [nodejs +20.12](https://nodejs.org/) for the dashboard in `ui/`.
 - Clone the repo and enter its root folder
 
@@ -97,19 +97,17 @@ git clone git@github.com:tergite/tergite-frontend.git
 cd tergite-frontend
 ```
 
-- Create the conda environment, and install MSS's dependencies
+- Install MSS's dependencies, which uv puts in `.venv` as `uv.lock` pins them
 
 ```shell
-conda create -n mss python=3.13
-conda activate mss
-pip install ."[dev]"
+uv sync --extra dev
 ```
 
 - Run MSS's tests, which need the MongoDB and Redis that `tests/fixtures/config.test.toml` names,
   and the PostgreSQL that `TEST_POSTGRES_URL` does
 
 ```shell
-pytest
+uv run pytest
 ```
 
 - Install the dashboard's dependencies, and run its tests
@@ -159,10 +157,12 @@ BACKEND_PATH="../tergite-backend" ./dev/e2e_native_test.sh playwright/home.spec.
 (cd ui && npm ci && npm run build)
 ```
 
-- Build the main.py file with [Nuitka](https://nuitka.net/)
+- Build the main.py file with [Nuitka](https://nuitka.net/), on uv's own Python, as Nuitka
+  refuses some others, e.g. Homebrew's
 
 ```shell
-python -m nuitka main.py
+UV_MANAGED_PYTHON=1 uv sync --extra dev
+uv run nuitka main.py
 ```
 
 - After the build, the app will be at `main.dist/mss`, a folder that must stay whole. You can run it.

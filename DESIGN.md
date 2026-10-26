@@ -487,7 +487,7 @@ reads `tergite-mss.service`'s journal and pushes it with `GRAFANA_LOKI_URL` and 
 
 | Level | Where | Command |
 | --- | --- | --- |
-| MSS unit/integration | `tests` — pytest against real MongoDB, PostgreSQL, SQLite and Redis | `pytest` |
+| MSS unit/integration | `tests` — pytest against real MongoDB, PostgreSQL, SQLite and Redis | `uv run pytest` |
 | Dashboard component | `ui/src/**/__tests__` — vitest + happy-dom | `npm run test` |
 | e2e | `ui/playwright` — the Playwright specs, through [dev/e2e_native_test.sh](dev/e2e_native_test.sh), against real MSS + real backends, with MongoDB and Redis, all running natively | `BACKEND_PATH=../tergite-backend ./dev/e2e_native_test.sh` |
 
