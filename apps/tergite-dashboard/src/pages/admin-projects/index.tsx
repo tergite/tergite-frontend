@@ -128,11 +128,7 @@ export function AdminProjects() {
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<AdminProjectsData> => {
-    const cachedCurrentUser = queryClient.getQueryData(
-      currentUserQuery.queryKey
-    );
-    const currentUser =
-      cachedCurrentUser ?? (await queryClient.fetchQuery(currentUserQuery));
+    const currentUser = await queryClient.ensureQueryData(currentUserQuery);
 
     if (!currentUser.roles.includes(UserRole.ADMIN)) {
       const error = new Error("user should be an admin") as ErrorInfo;

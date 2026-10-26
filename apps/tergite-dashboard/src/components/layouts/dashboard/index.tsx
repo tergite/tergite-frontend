@@ -103,16 +103,9 @@ interface DashboardData {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(queryClient: QueryClient) {
-  return loadOrRedirectIfAuthErr(async () => {
-    // current user
-    const cachedCurrentUser = queryClient.getQueryData(
-      currentUserQuery.queryKey
-    );
-    const currentUser =
-      cachedCurrentUser ?? (await queryClient.fetchQuery(currentUserQuery));
-
+  return loadOrRedirectIfAuthErr(async (): Promise<DashboardData> => {
+    const currentUser = await queryClient.ensureQueryData(currentUserQuery);
     const isUserAdmin = currentUser.roles.includes(UserRole.ADMIN);
-
-    return { currentUser, isUserAdmin } as DashboardData;
+    return { currentUser, isUserAdmin };
   });
 }

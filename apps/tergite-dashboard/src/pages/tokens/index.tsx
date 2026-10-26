@@ -16,7 +16,6 @@ import {
   QueryClient,
   useQuery,
   useQueryClient,
-  UseQueryOptions,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData } from "react-router-dom";
@@ -28,7 +27,6 @@ import {
 import { TokensTable } from "./components/tokens-table";
 import { TokensSidebar } from "./components/tokens-sidebar";
 import { Row, RowSelectionState } from "@tanstack/react-table";
-import { Progress } from "@/components/ui/progress";
 import { findSelectedRow } from "@/components/ui/data-table/selection";
 
 export function Tokens() {
@@ -36,13 +34,15 @@ export function Tokens() {
   const {
     currentProject,
     projects: defaultProjects,
-    tokensQuery,
+    tokens: defaultTokens,
   } = useLoaderData() as TokensPageData;
   const [previousProject, setPreviousProject] = useState<Project>();
   const { data: projects = defaultProjects } = useQuery(myProjectsQuery);
-  const { data: rawTokens, isPending } = useQuery(tokensQuery);
+  const { data: rawTokens = defaultTokens } = useQuery(
+    getMyTokensQuery({ project_id: currentProject?.id })
+  );
   const tokens = useMemo(
-    () => rawTokens && addProjectNames(rawTokens, projects),
+    () => addProjectNames(rawTokens, projects),
     [rawTokens, projects]
   );
   const projectName = useMemo(
@@ -50,7 +50,7 @@ export function Tokens() {
     [currentProject]
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const selectedToken = findSelectedRow(tokens ?? [], rowSelection);
+  const selectedToken = findSelectedRow(tokens, rowSelection);
 
   const handleRowClick = useCallback(
     (row: Row<ExtendedAppToken>) => {
@@ -85,57 +85,39 @@ export function Tokens() {
           <CardDescription>API tokens for {projectName}</CardDescription>
         </CardHeader>
         <CardContent>
-          {isPending && <Progress className="my-auto mx-auto" value={50} />}
-          {!isPending && (
-            <TokensTable
-              data={tokens || []}
-              onRowSelectionChange={setRowSelection}
-              rowSelection={rowSelection}
-              onRowClick={handleRowClick}
-            />
-          )}
+          <TokensTable
+            data={tokens}
+            onRowSelectionChange={setRowSelection}
+            rowSelection={rowSelection}
+            onRowClick={handleRowClick}
+          />
         </CardContent>
       </Card>
 
-      {tokens && (
-        <TokensSidebar
-          token={selectedToken}
-          className="order-first xl:order-none col-span-1"
-          onDelete={handleTokenDelete}
-        />
-      )}
+      <TokensSidebar
+        token={selectedToken}
+        className="order-first xl:order-none col-span-1"
+        onDelete={handleTokenDelete}
+      />
     </main>
   );
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(queryClient: QueryClient) {
-  return loadOrRedirectIfAuthErr(async () => {
+  return loadOrRedirectIfAuthErr(async (): Promise<TokensPageData> => {
     const { currentProjectId } = useAppStore.getState();
-    // project object
-    const cachedProjects: Project[] | undefined = queryClient.getQueryData(
-      myProjectsQuery.queryKey
+    const projects = await queryClient.ensureQueryData(myProjectsQuery);
+    const currentProject = projects.find((v) => v.id === currentProjectId);
+    const tokens = await queryClient.ensureQueryData(
+      getMyTokensQuery({ project_id: currentProject?.id })
     );
-    const projectList =
-      cachedProjects ?? (await queryClient.fetchQuery(myProjectsQuery));
-
-    const currentProject = projectList.filter(
-      (v) => v.id === currentProjectId
-    )[0];
-
-    // tokens
-    const tokensQuery = getMyTokensQuery({ project_id: currentProject?.id });
-
-    return {
-      currentProject,
-      projects: projectList,
-      tokensQuery,
-    } as TokensPageData;
+    return { currentProject, projects, tokens };
   });
 }
 
 interface TokensPageData {
   currentProject?: Project;
   projects: Project[];
-  tokensQuery: UseQueryOptions<AppToken[]>;
+  tokens: AppToken[];
 }

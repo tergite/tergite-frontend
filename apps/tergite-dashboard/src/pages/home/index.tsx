@@ -16,16 +16,13 @@ import { devicesQuery } from "@/lib/api/devices";
 import { getMyJobsQuery } from "@/lib/api/jobs";
 import { myProjectsQuery } from "@/lib/api/projects";
 import { getUpcomingBookingsQuery } from "@/lib/api/bookings";
-import { Job, Device, Project, Booking } from "types";
+import { Job, Device, Project, Booking, User } from "types";
 import { JobsTable } from "./components/jobs-table";
 import { DevicesTable } from "./components/devices-table";
 import {
-  DataTag,
-  InitialDataFunction,
   QueryClient,
   useQueries,
   useQuery,
-  UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 import { loadOrRedirectIfAuthErr, tryQueryFetchMany } from "@/lib/loaders";
@@ -39,7 +36,7 @@ export function Home() {
     devices: defaultDevices,
     jobs: defaultJobs,
     bookings: defaultBookings,
-    bookingsQueries,
+    currentUser,
   } = useLoaderData() as HomeData;
   const { data: devices = defaultDevices } = useQuery(devicesQuery);
   const { data: jobs = defaultJobs } = useQuery(
@@ -47,7 +44,7 @@ export function Home() {
   );
 
   const { data: bookings = defaultBookings } = useQueries({
-    queries: bookingsQueries,
+    queries: getBookingsQueries(devices, currentUser),
     combine: combineMyBookingsQueries,
   });
   const devicesOnlineRatio = React.useMemo(
@@ -128,63 +125,49 @@ interface HomeData {
   jobs: Job[];
   bookings: Booking[];
   currentProject?: Project;
-  bookingsQueries: (UseQueryOptions<
-    Booking[],
-    Error,
-    Booking[],
-    (string | undefined)[]
-  > & {
-    initialData?: InitialDataFunction<Booking[]> | undefined;
-  } & {
-    queryKey: DataTag<(string | undefined)[], Booking[]>;
-  })[];
+  currentUser: User;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(queryClient: QueryClient) {
-  return loadOrRedirectIfAuthErr(async () => {
+  return loadOrRedirectIfAuthErr(async (): Promise<HomeData> => {
     const { currentProjectId } = useAppStore.getState();
-    // devices
-    const devices = await queryClient.ensureQueryData(devicesQuery);
-
-    // project object
-    const projects = await queryClient.ensureQueryData(myProjectsQuery);
-
-    const currentProject = projects.filter(
-      (v) => v.id === currentProjectId
-    )[0];
-
-    // jobs
-    const jobs = await queryClient.ensureQueryData(
-      getMyJobsQuery({ project_id: currentProject?.id })
-    );
-
-    // current user
-    const currentUser = await queryClient.ensureQueryData(currentUserQuery);
-
-    // Bookings
-    const bookingsQueries = devices.map(({ name: backend }) =>
-      getUpcomingBookingsQuery({
-        backend,
-        user_id: currentUser.id,
-        shouldThrowOnError: false,
-      }),
-    );
-
-    const bookingsPerBackend = await Promise.all(
-      bookingsQueries.map((v) => tryQueryFetchMany(queryClient, v)),
-    );
-
-    const bookings = sortBookings(bookingsPerBackend);
+    const [devices, projects, currentUser] = await Promise.all([
+      queryClient.ensureQueryData(devicesQuery),
+      queryClient.ensureQueryData(myProjectsQuery),
+      queryClient.ensureQueryData(currentUserQuery),
+    ]);
+    const currentProject = projects.find((v) => v.id === currentProjectId);
+    const [jobs, bookingsPerBackend] = await Promise.all([
+      queryClient.ensureQueryData(
+        getMyJobsQuery({ project_id: currentProject?.id })
+      ),
+      Promise.all(
+        getBookingsQueries(devices, currentUser).map((v) =>
+          tryQueryFetchMany(queryClient, v)
+        )
+      ),
+    ]);
 
     return {
       devices,
       jobs,
       currentProject,
-      bookings,
-      bookingsQueries,
-    } as HomeData;
+      currentUser,
+      bookings: sortBookings(bookingsPerBackend),
+    };
   });
+}
+
+/** The current user's upcoming bookings on each device, where one offline device fails alone */
+function getBookingsQueries(devices: Device[], currentUser: User) {
+  return devices.map(({ name: backend }) =>
+    getUpcomingBookingsQuery({
+      backend,
+      user_id: currentUser.id,
+      shouldThrowOnError: false,
+    })
+  );
 }
 
 /**

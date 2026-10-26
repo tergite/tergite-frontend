@@ -103,11 +103,7 @@ export function Projects() {
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async (): Promise<ProjectsPageData> => {
-    const cachedCurrentUser = queryClient.getQueryData(
-      currentUserQuery.queryKey
-    );
-    const currentUser =
-      cachedCurrentUser ?? (await queryClient.fetchQuery(currentUserQuery));
+    const currentUser = await queryClient.ensureQueryData(currentUserQuery);
     return { currentUser };
   });
 }

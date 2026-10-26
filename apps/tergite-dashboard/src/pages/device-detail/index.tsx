@@ -19,7 +19,7 @@ import { CalibrationBarChart } from "./components/calibration-bar-chart";
 import { CalibrationHeader } from "./components/calibration-header";
 import { CalibrationMapChart } from "./components/calibration-map-chart";
 import { useState } from "react";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, useQuery } from "@tanstack/react-query";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import {
   BookingsCalendar,
@@ -36,13 +36,19 @@ const fieldLabels: { [k: string]: string } = {
 
 export function DeviceDetail() {
   const {
-    device,
-    calibrationData,
+    device: defaultDevice,
+    calibrationData: defaultCalibrationData,
     bookingsMetadata,
     bookingsConfig,
     currentUser,
     isAdmin,
   } = useLoaderData() as DeviceDetailData;
+  const { data: device = defaultDevice } = useQuery(
+    getDeviceQuery(defaultDevice.name)
+  );
+  const { data: calibrationData = defaultCalibrationData } = useQuery(
+    getDeviceCalibrationQuery(defaultDevice.name)
+  );
   const [currentData, setCurrentData] = useState<QubitProp>(
     QubitProp.T1_DECOHERENCE
   );
@@ -129,29 +135,21 @@ export function DeviceDetail() {
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(
-    async ({ params, request }: LoaderFunctionArgs) => {
+    async ({ params, request }: LoaderFunctionArgs): Promise<DeviceDetailData> => {
       const { deviceName = "" } = params;
-
-      // device
-      const deviceQuery = getDeviceQuery(deviceName);
-      const cachedDevice = queryClient.getQueryData(deviceQuery.queryKey);
-      const device =
-        cachedDevice ?? (await queryClient.fetchQuery(deviceQuery));
-
-      // calibration
-      const calibrationQuery = getDeviceCalibrationQuery(deviceName);
-      const cachedCalibrationData = queryClient.getQueryData(
-        calibrationQuery.queryKey
-      );
-      const calibrationData =
-        cachedCalibrationData ??
-        (await queryClient.fetchQuery(calibrationQuery));
-
-      // bookings
+      const [device, calibrationData, bookingsConfig, currentUser] =
+        await Promise.all([
+          queryClient.ensureQueryData(getDeviceQuery(deviceName)),
+          queryClient.ensureQueryData(getDeviceCalibrationQuery(deviceName)),
+          queryClient.ensureQueryData(getBookingsConfigQuery(deviceName)),
+          queryClient.ensureQueryData(currentUserQuery),
+        ]);
       const searchParams = new URL(request.url).searchParams;
       const bookingsMetadata: BookingsMetadata = {
         backend: deviceName,
-        skip: searchParams.has("skip") ? Number(searchParams.get("skip")) : undefined,
+        skip: searchParams.has("skip")
+          ? Number(searchParams.get("skip"))
+          : undefined,
         limit: searchParams.has("limit")
           ? Number(searchParams.get("limit"))
           : undefined,
@@ -159,23 +157,6 @@ export function loader(queryClient: QueryClient) {
         min_start_utc: searchParams.get("min_start_utc") ?? undefined,
         max_start_utc: searchParams.get("max_start_utc") ?? undefined,
       };
-
-      // bookings config
-      const currentBookingsConfigQuery = getBookingsConfigQuery(deviceName);
-      const cachedBookingsConfig = queryClient.getQueryData(
-        currentBookingsConfigQuery.queryKey
-      );
-      const bookingsConfig =
-        cachedBookingsConfig ??
-        (await queryClient.fetchQuery(currentBookingsConfigQuery));
-
-      // current user
-      const cachedCurrentUser = queryClient.getQueryData(
-        currentUserQuery.queryKey
-      );
-      const currentUser =
-        cachedCurrentUser ?? (await queryClient.fetchQuery(currentUserQuery));
-
       const isAdmin = currentUser.roles.includes(UserRole.ADMIN);
 
       return {

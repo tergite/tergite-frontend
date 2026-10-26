@@ -161,7 +161,8 @@ which is why the e2e config drops it to 1 s; a query that must not poll says
 that needs app state reads `useAppStore.getState()`.
 The loader is exported from the page module next to the component (with an
 `// eslint-disable-next-line react-refresh/only-export-components`), pre-fetches through
-`queryClient.ensureQueryData(...)`, and returns a single typed `XData` object. The page reads
+`queryClient.ensureQueryData(...)` — independent fetches together in one `Promise.all` — and
+returns a single typed `XData` object of data, never of query options. The page reads
 it with `useLoaderData() as XData` and uses those values as the `default` for its `useQuery`
 calls — so the first paint has real data and no loading state, and react-query takes over
 afterwards for polling and invalidation.
