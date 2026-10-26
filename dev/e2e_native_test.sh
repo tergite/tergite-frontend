@@ -28,6 +28,8 @@
 #   VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
 #   MSS_BINARY="main.dist/mss" \ # a built MSS to run instead of main.py, default: ''; it serves the
 #     dashboard it was built with, so build that first with `npm run build -- --mode test` in ui/
+#   BACKEND_BINARY="../tergite-backend/main.dist/bcc" \ # a built bcc to run instead of the backend's
+#     main.py, default: ''
 #   OPENID_CONFIG_URL="https://samples.auth0.com/.well-known/openid-configuration" \ # MSS's mock OpenID provider
 #   OPENID_CLIENT_ID="kbyuFDidLLm280LIwVFiazOqjO3ty8KH" \ # its client ID
 #   OPENID_CLIENT_SECRET="60Op4HFM0I8ajz0WdiStAbziZ-VFQttXuxixHHs2R7r7-CW8GR79l-mmLqMhc-Sa" \ # its client secret
@@ -42,6 +44,7 @@ FIXTURES_PATH="$ROOT_PATH/ui/fixtures"
 DASHBOARD_PATH="$ROOT_PATH/ui"
 MSS_PATH="$ROOT_PATH"
 MSS_BINARY="${MSS_BINARY:+$(realpath "$MSS_BINARY")}"
+BACKEND_BINARY="${BACKEND_BINARY:+$(realpath "$BACKEND_BINARY")}"
 BACKEND_REPO="$BACKEND_REPO"
 BACKEND_BRANCH="${BACKEND_BRANCH:-main}"
 OPENID_CONFIG_URL="${OPENID_CONFIG_URL:-https://samples.auth0.com/.well-known/openid-configuration}"
@@ -224,6 +227,10 @@ for backend in "${BACKENDS[@]}"; do
     echo "BCC_CALIBRATION_SEED=$FIXTURES_PATH/$stem.seed.toml"
     echo "BCC_PRIVATE_KEY_FILE=$FIXTURES_PATH/private-$(echo "$stem" | tr '_' '-')-key.pem"
     echo "BCC_MSS_PUBLIC_KEY_PATH=$FIXTURES_PATH/public-mss-key.pem"
+    # a bcc built with quantify checks that these exist, though its API never reads them
+    echo "BCC_CALIBRATION_NODE_CONFIG_FILE=$BACKEND_PATH/node_config.example.toml"
+    echo "BCC_CALIBRATION_DEVICE_CONFIG_FILE=$BACKEND_PATH/calib_device_config.example.toml"
+    echo "BCC_CALIBRATION_SPI_CONFIG_FILE=$BACKEND_PATH/spi_config.example.toml"
     [[ -z "$max_slot" ]] || echo "BCC_MAX_TIME_SLOT_LENGTH=$max_slot"
     [[ -z "$min_slot" ]] || echo "BCC_MIN_TIME_SLOT_LENGTH=$min_slot"
     [[ -z "$slots_a_day" ]] || echo "BCC_MAX_SLOTS_PER_DAY=$slots_a_day"
@@ -233,7 +240,9 @@ for backend in "${BACKENDS[@]}"; do
   env_file_args+=(--env-file "$dir/backend.env")
   [[ ! " ${RESET_BACKENDS[*]} " =~ " $name " ]] || reset_databases+=("$dir/booking_db.db")
 done
-start_service backends bash -c "cd '$WORK_PATH/backends' && exec '$WORK_PATH/venvs/backend/bin/python' '$BACKEND_PATH/main.py' serve --host 127.0.0.1 --port $BACKEND_PORT ${env_file_args[*]}"
+backend_command="'$WORK_PATH/venvs/backend/bin/python' '$BACKEND_PATH/main.py'"
+[[ -z "$BACKEND_BINARY" ]] || backend_command="'$BACKEND_BINARY'"
+start_service backends bash -c "cd '$WORK_PATH/backends' && exec $backend_command serve --host 127.0.0.1 --port $BACKEND_PORT ${env_file_args[*]}"
 wait_for_url backends "http://127.0.0.1:$BACKEND_PORT/docs" $SERVICE_PID
 
 echo "Starting the reset service"
