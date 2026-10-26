@@ -1,8 +1,6 @@
 # tergite-frontend
 
-[![Frontend CI](https://github.com/tergite/tergite-frontend/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/frontend-ci.yml)
-[![MSS CI](https://github.com/tergite/tergite-frontend/actions/workflows/mss-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/mss-ci.yml)
-[![Dashboard CI](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/dashboard-ci.yml)
+[![CI](https://github.com/tergite/tergite-frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/tergite/tergite-frontend/actions/workflows/ci.yml)
 
 The Frontend in the [Tergite software stack](https://tergite.github.io/) of the WACQT quantum computer:
 the Main Service Server (MSS), the public API through which clients like the

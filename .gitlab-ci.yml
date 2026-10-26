@@ -117,7 +117,7 @@ test mss:
     - echo "PYTEST_ARGS='${PYTEST_ARGS:-}'"
     - uv run pytest ${PYTEST_ARGS:-}
 
-# On a v* tag, as .github/workflows/mss-release.yml does on GitHub: MSS's deb and macOS
+# On a v* tag, as .github/workflows/release.yml does on GitHub: MSS's deb and macOS
 # installer, with the dashboard it serves at /ui, each built on its platform as Nuitka cannot
 # cross-compile, uploaded to this project's package registry and linked from the release.
 .release: &release

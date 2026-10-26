@@ -1,4 +1,4 @@
-name: MSS Release
+name: Release
 # Builds MSS's deb for amd64 and pkg for macOS arm64, with the dashboard it serves at /ui, each on that platform since Nuitka
 # cannot cross-compile, smoke-tests them, and attaches them to the GitHub release of a v* tag.
 # Run by hand, it leaves them as the run's artifacts instead. The rpm, apk and Windows

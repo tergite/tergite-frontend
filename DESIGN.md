@@ -540,17 +540,19 @@ Both GitHub Actions ([.github/workflows](.github/workflows)) and GitLab CI
 ([.gitlab-ci.yml](.gitlab-ci.yml)) are maintained; GitLab is the source of truth (GitHub is
 a mirror — see §14).
 
-- `mss-ci.yml` / `test mss` — `black --check .`, `pyflakes`, then `pytest` on Python 3.13,
-  the oldest MSS supports, against `mongo` and `redis` services, on any change outside `ui/`.
-- `dashboard-ci.yml` / `lint dashboard`, `test dashboard` — eslint and `npm run check:api`,
-  vitest, on changes to `ui/` and `dev/openapi/openapi.json`.
-- `frontend-ci.yml` / `e2e` — `dev/e2e_native_test.sh`, after installing MongoDB, Redis, SQLite
-  and uv, on every pull or merge request, on `main`, on `v*` tags, or manually.
-- On a `v*` tag, `mss-release.yml` / `build dashboard`, `package mss linux`, `package mss macos`
-  and `release` build the dashboard, then MSS's deb and macOS installer with it, and attach
-  them to the release. GitLab's jobs upload them to the project's package registry and link
-  them from its release; its macOS job runs only where `PUBLISH_MACOS_ARM64` is `true`, on a
-  runner tagged `macos`.
+On every pull or merge request, on `main` and on `v*` tags, GitHub's `ci.yml` and GitLab run:
+
+- `mss` / `lint mss`, `test mss` — with uv, from `uv.lock`: `black --check .`, `isort`,
+  `pyflakes`, then `pytest` on Python 3.13, the oldest MSS supports, against MongoDB,
+  PostgreSQL and Redis.
+- `dashboard` / `lint dashboard`, `test dashboard` — eslint and `npm run check:api`, vitest.
+- `e2e` — `dev/e2e_native_test.sh`, after installing MongoDB, Redis, SQLite and uv.
+
+On a `v*` tag, `release.yml` / `build dashboard`, `package mss linux`, `package mss macos`
+and `release` build the dashboard, then MSS's deb and macOS installer with it, and attach
+them to the release. GitLab's jobs upload them to the project's package registry and link
+them from its release; its macOS job runs only where `PUBLISH_MACOS_ARM64` is `true`, on a
+runner tagged `macos`.
 
 ## 14. Working on this repo
 
