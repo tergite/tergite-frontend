@@ -23,7 +23,8 @@
 #
 # BACKEND_PATH="../tergite-backend" \ # a tergite-backend checkout to run; or else BACKEND_REPO is cloned
 #   BACKEND_REPO="https://github.com/tergite/tergite-backend.git" \
-#   BACKEND_BRANCH="main" \ # the branch of BACKEND_REPO to clone; default is 'main'
+#   BACKEND_BRANCH="main" \ # the branch or tag of BACKEND_REPO to clone, or main where it has none;
+#     default is 'main'
 #   DEBUG="True" \ # Set 'True' to keep the services running and temp-native/ after the tests, default: ''
 #   VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
 #   MSS_BINARY="main.dist/mss" \ # a built MSS to run instead of main.py, default: ''; it serves the
@@ -161,7 +162,12 @@ if [[ -n "$BACKEND_PATH" ]]; then
 elif [[ -z "$BACKEND_REPO" ]]; then
   exit_with_err "set BACKEND_PATH or BACKEND_REPO"
 else
-  echo "Cloning the backend..."
+  # CI names this repository's branch, whose changes may need the backend's of the same name
+  if ! git ls-remote --exit-code -q "$BACKEND_REPO" "refs/heads/$BACKEND_BRANCH" "refs/tags/$BACKEND_BRANCH" > /dev/null; then
+    echo "The backend has no branch or tag $BACKEND_BRANCH; cloning main"
+    BACKEND_BRANCH=main
+  fi
+  echo "Cloning the backend's $BACKEND_BRANCH..."
   git clone -q --single-branch --branch "$BACKEND_BRANCH" "$BACKEND_REPO" "$WORK_PATH/tergite-backend"
   BACKEND_PATH="$WORK_PATH/tergite-backend"
 fi

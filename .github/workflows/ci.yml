@@ -119,7 +119,8 @@ jobs:
         env:
           DEBUG: ${{ vars.DEBUG || 'false' }}
           BACKEND_REPO: https://github.com/${{ github.repository_owner }}/tergite-backend.git
-          BACKEND_BRANCH: ${{ github.ref_name }}
+          # a pull request's source branch, as its ref_name is N/merge
+          BACKEND_BRANCH: ${{ github.head_ref || github.ref_name }}
           OPENID_CONFIG_URL: "${{ secrets.OPENID_CONFIG_URL }}"
           OPENID_CLIENT_ID: "${{ secrets.OPENID_CLIENT_ID }}"
           OPENID_CLIENT_SECRET: "${{ secrets.OPENID_CLIENT_SECRET }}"
