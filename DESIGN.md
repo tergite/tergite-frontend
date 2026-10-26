@@ -262,6 +262,73 @@ conventions, the dashboard's co-located page hierarchy and React/TypeScript conv
 are in each app's design document (§1). **Read the relevant one before adding files**; the
 two apps deliberately organise code in different ways and the difference is load-bearing.
 
+### Code structure
+
+Code reads like an article: the overview first, the detail below it. New code follows these
+rules, and code a change touches is brought in line with them.
+
+1. **A function is a composition of functions.** A public function's body is a short sequence
+   of calls, each to a function that does one thing and is named for it. A reader gets the
+   whole flow from that body and drills into a step only when they need its detail. Each step
+   is built the same way until it is a single operation.
+2. **Two exceptions.** Do not extract a step that would be a one-line function. Do not split a
+   performance-critical path where the extra calls cost something measurable.
+3. **Callees sit below their callers.** A file runs: constants, public functions in the order a
+   caller uses them, then private helpers in the order they are first called. Reading top-down
+   follows the drill-down.
+4. **A comment that labels a phase is a missing function.** `# Authenticate` or `# route to
+   generate tokens` becomes the name of the function that does it.
+5. **Data is a struct; state gets a class.** Data is a Pydantic model, a frozen `@dataclass`,
+   an `Enum` or an `Exception` (a `type` in TypeScript); its only methods are derived views of
+   its own fields, such as `Project.members`, and conversions to or from another shape, named
+   `from_*` or `to_*` (`Notice.from_template`, `CustomNoticeCreate.to_documents`,
+   `AppConfig.from_json_str`), even when a conversion reads the database to fill itself in. A
+   component that owns state across calls (a connection pool, live sockets, background tasks)
+   is a class with behaviour. Which is which is a judgement made by asking what the object
+   holds between calls.
+6. **Stateless behaviour is a module-level function.** It takes explicit arguments and returns
+   data, with the `Database` first when it does I/O. Avoid the indirection that imitates state
+   without holding any: objects built per request only to carry other objects, a `Protocol` or
+   ABC with one implementation, inheritance used to share behaviour.
+7. **Dependencies arrive as arguments.** A function or class never reads a global, in its body
+   or as a default argument: config values, clients and keys are passed in, and the call site
+   says what it passes. Only the composition root (`api`: the lifespan and the dependencies)
+   reads `settings`, and it turns config into instances before handing them on: code that needs
+   storage is given the `Database` instance, never a URL or a config section to build one from.
+   The one exception is a module caching its own private global, such as a loaded key.
+8. **One home per kind of thing.** Routes live in `api/routers/`. `HTTPException` is raised
+   only in `api/`. Domain errors subclass `utils/exc.py` and are mapped to status codes once. A
+   service's `__init__.py` only re-exports, with `__all__` as strings. Development and test
+   tooling (scripts, generators, performance checks, the mock API) lives in a `dev/` folder:
+   the repository's for tooling that spans both apps, an app's own for tooling only it uses. An
+   app's other folders hold the app and its tests, so the tree shows the architecture and
+   nothing else.
+9. **A reputable library beats our own code.** Every line we write is a line to maintain and a
+   line a newcomer reads. Use a well-maintained library wherever it does the job, and write our
+   own only where none does, or where getting the behaviour we need would mean fighting the
+   library. The commit that adds our own code says which of the two it was.
+10. **A name says what the thing is.** Variables are nouns that name their content:
+    `notice_filter`, never `where`, `kind` or `changes` for a filter. No function is named
+    `build_*`: a thing that is constructed is a class's constructor, and anything else is got,
+    so the function is a `get_*`. `tests/test_styleguide.py` does not count `build` as a verb.
+11. **Obvious beats clever.** Write code a reader takes in at a glance: an `if`/`else` that
+    returns each whole literal, one explicit `if` per optional field. Do not make the reader
+    assemble the result in their head from a loop over tuples of fields, a comprehension that
+    builds operators, merged dicts, or one helper that returns two things to be pulled apart. A
+    helper that two callers share is fine when it reads the same way.
+12. **Storage is queried in MongoDB's own dialect**: `filter={"user_id": {"$in": [user_id,
+    None]}}`, `update={"$set": {...}}`, `sort=["-created_at"]`, `skip`, `limit`, never structs
+    that wrap each operator. A service function takes its query's arguments or its query model
+    and gets its filter privately; a route never makes one.
+13. **What every request reads or writes lives in a cache.** The request log is in Redis,
+    behind a `Database` of its own; records stay in the records' database. Putting per-request
+    data in MongoDB doubled p95 latency.
+14. **A value that is only defined stays where it is used.** A function that does no more than
+    return a literal (a dict, a filter, an update, a range) makes the reader jump to it and
+    back for nothing; write the literal at its use, in an `if`/`else` where it varies.
+    Functions of their own are for real actions, such as I/O, a check that raises, or a
+    computation with steps; the one-liner exception above covers the rest.
+
 ### Slow commands
 
 Redirect test suites, builds and e2e runs to one temp file per kind of run, then grep and

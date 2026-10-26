@@ -11,7 +11,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 #
-# Records the performance measures of REFACTOR.md step 1.7 into <out-dir>: Lighthouse on the
+# Records the performance measures into <out-dir>: Lighthouse on the
 # dashboard against the mock API, then Locust on MSS from this working tree, with a MongoDB and
 # a Redis of its own, all running natively, both over the e2e fixtures. It samples the CPU and
 # memory of the MSS, mongod and redis-server processes, and each database's connections.
