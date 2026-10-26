@@ -88,7 +88,7 @@ async def update_request(database: Database, request_id: Id, approver: User, dec
 | `api/utils.get_verified_device_name` | 56 | `_read_signed_headers`, `_check_client_ip`, pure `_check_nonce_age(timestamp, now, ttl)`, `_check_nonce_unused` |
 | `logging.setup_logging` | 56 | `get_log_level(env)` (shared with `settings.py`), `_add_sink`, `_route_std_logging` |
 | `notices/emails.process_email_batch_results` | 54 | pure `_partition_results`, `_record_attempts(ids, status)` |
-| `notices.clear_notices_by_reference` | 53 | pure `_get_ref_filter(refs, now)`, `_get_cleared_update(timestamp, now)` |
+| `notices.clear_notices_by_reference` | 53 | pure `_get_unread_ref_filter(refs, now)`, `_expire_broadcasts`, `_mark_direct_notices_read`; each update is a literal at its use (rule 15) |
 
 8. **Flatten DTO inheritance** by spelling fields out, JSON unchanged: `DeviceCalibrationLog` (three levels), `Request(RequestPostBody, Document)`, `CreateProjectMetadata(RequestMetadata, ProjectCreate)`.
 9. **Last:** remove the four remaining `model_dump` overrides (`utils/api.py:62`, `utils/models.py:43`, `jobs/dtos.py:159`, `devices/dtos.py:94`) and pass the flags at the call sites. The response body tests catch a missed call site.

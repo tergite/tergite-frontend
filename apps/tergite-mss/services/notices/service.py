@@ -165,35 +165,11 @@ async def clear_notices_by_reference(
 
     now = get_utc_now()
     timestamp = get_current_timestamp()
-    unread_filter = {
-        "read_at": None,
-        "$and": [
-            {
-                "$or": [
-                    {"ref_type": ref_type, "ref_id": {"$in": [str(v) for v in ref_ids]}}
-                    for ref_type, ref_ids in ref_type_ids_map.items()
-                ]
-            },
-            {"$or": [{"expires_at": None}, {"expires_at": {"$gte": now}}]},
-        ],
-    }
-    expire_now = {"updated_at": timestamp, "expires_at": now}
-    count = await database.update_many(
-        Notice, {**unread_filter, "type": _BROADCAST_TYPE}, {"$set": expire_now}
+    unread_filter = _get_unread_ref_filter(ref_type_ids_map, now=now)
+    count = await _expire_broadcasts(database, unread_filter, timestamp, now=now)
+    count += await _mark_direct_notices_read(
+        database, unread_filter, timestamp, now=now
     )
-
-    # a recipient's notice is read when it holds its own user_id in dismissed_by
-    direct_filter = {**unread_filter, "type": {"$ne": _BROADCAST_TYPE}}
-    user_ids = await database.find_distinct(Notice, "user_id", filter=direct_filter)
-    for user_id in user_ids:
-        count += await database.update_many(
-            Notice,
-            {**direct_filter, "user_id": user_id},
-            {
-                "$addToSet": {"dismissed_by": user_id},
-                "$set": {"read_at": timestamp, **expire_now},
-            },
-        )
     return count
 
 
@@ -378,6 +354,59 @@ async def on_startup(
     _conf = conf
     _is_email_enabled = is_email_enabled
     await _init_notice_templates_in_db(database)
+
+
+def _get_unread_ref_filter(
+    ref_type_ids_map: Dict[RefType, List[str]], now: datetime
+) -> Filter:
+    """Gets the filter of the unread, unexpired notices of the given references"""
+    return {
+        "read_at": None,
+        "$and": [
+            {
+                "$or": [
+                    {"ref_type": ref_type, "ref_id": {"$in": [str(v) for v in ref_ids]}}
+                    for ref_type, ref_ids in ref_type_ids_map.items()
+                ]
+            },
+            {"$or": [{"expires_at": None}, {"expires_at": {"$gte": now}}]},
+        ],
+    }
+
+
+async def _expire_broadcasts(
+    database: Database, unread_filter: Filter, timestamp: str, now: datetime
+) -> int:
+    """Expires the broadcast notices of the filter, as they are shared by every user"""
+    return await database.update_many(
+        Notice,
+        {**unread_filter, "type": _BROADCAST_TYPE},
+        {"$set": {"updated_at": timestamp, "expires_at": now}},
+    )
+
+
+async def _mark_direct_notices_read(
+    database: Database, unread_filter: Filter, timestamp: str, now: datetime
+) -> int:
+    """Marks the direct notices of the filter read by their recipients, and expires them"""
+    direct_filter = {**unread_filter, "type": {"$ne": _BROADCAST_TYPE}}
+    user_ids = await database.find_distinct(Notice, "user_id", filter=direct_filter)
+    count = 0
+    # a recipient's notice is read when it holds its own user_id in dismissed_by
+    for user_id in user_ids:
+        count += await database.update_many(
+            Notice,
+            {**direct_filter, "user_id": user_id},
+            {
+                "$addToSet": {"dismissed_by": user_id},
+                "$set": {
+                    "read_at": timestamp,
+                    "updated_at": timestamp,
+                    "expires_at": now,
+                },
+            },
+        )
+    return count
 
 
 async def _get_custom_notices(

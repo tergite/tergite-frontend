@@ -63,6 +63,7 @@ VERBS = frozenset(
         "encode",
         "encrypt",
         "ensure",
+        "expire",
         "export",
         "extract",
         "fetch",
