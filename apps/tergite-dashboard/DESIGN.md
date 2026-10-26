@@ -58,8 +58,10 @@ src/
     │   └── components/
     │       ├── device-summary.tsx            # leaf → a file
     │       ├── calibration-data-table.tsx
+    │       ├── calibration-points.ts         # shared by the map and the bar chart
     │       ├── bookings-calendar/            # has children → a folder
     │       │   ├── index.tsx
+    │       │   ├── event-content.tsx
     │       │   └── booking-form.tsx
     │       └── calibration-bar-chart/
     │           ├── index.tsx

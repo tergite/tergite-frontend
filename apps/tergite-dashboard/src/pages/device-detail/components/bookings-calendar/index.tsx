@@ -1,21 +1,15 @@
 import { EventCalendar } from "@/components/ui/event-calendar";
-import { useAppStore } from "@/lib/app-state";
 import type {
+  CalendarOptions,
   DayCellContentArg,
   DayHeaderContentArg,
   EventContentArg,
   EventDropArg,
   EventSourceInput,
 } from "@fullcalendar/core";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverArrow,
-} from "@/components/ui/popover";
-import { DateTime, Duration } from "luxon";
+import { DateTime } from "luxon";
 import { useCallback, useMemo, useState } from "react";
-import { Button, IconButton } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/button";
 import {
   Booking,
   BookingsConfig,
@@ -29,16 +23,39 @@ import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getBookingsOfBackendQuery, cancelBooking, createNewBooking, refreshBookingsQueries, updateBooking } from "@/lib/api/bookings";
 import { BookingForm } from "./booking-form";
+import { BookingEventContent } from "./event-content";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { AlertCircleIcon, XIcon } from "lucide-react";
 
-/**
- * The calendar for viewing and making bookings
- *
- * @param props - the props to pass to the bookings calendar component
- * @returns - a react node representing the bookings calendar
- */
+const CALENDAR_OPTIONS: CalendarOptions = {
+  plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
+  initialView: "timeGridWeek",
+  views: { timeGridPlugin: {} },
+  eventClassNames: getEventClassNames,
+  dayCellClassNames: getDayCellClassNames,
+  slotLabelFormat: { hour12: false, hour: "2-digit" },
+  slotLabelClassNames: "text-xs text-muted-foreground",
+  dayHeaderFormat: { weekday: "short", day: "numeric" },
+  dayHeaderContent: getDayHeaderContent,
+  nowIndicator: true,
+  allDaySlot: false,
+  businessHours: { start: "09:00", end: "17:00", daysOfWeek: [1, 2, 3, 4, 5] },
+  slotLaneClassNames: "!h-10",
+  firstDay: 1,
+  headerToolbar: {
+    start: "title",
+    center: "",
+    end: "today,timeGridWeek,dayGridMonth prev,next",
+  },
+  slotMinTime: "00:00:00",
+  slotMaxTime: "24:00:00",
+  scrollTime: "09:00:00",
+  contentHeight: "60vh",
+  editable: true,
+};
+
+/** The calendar for viewing and making bookings */
 export function BookingsCalendar({
   bookingsMetadata,
   bookingsConfig,
@@ -48,7 +65,6 @@ export function BookingsCalendar({
 }: Props) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const isDark = useAppStore((state) => state.isDark);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [errMessage, setErrMessage] = useState<string>();
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
@@ -127,36 +143,20 @@ export function BookingsCalendar({
     [bookingCancellation, setErrMessage]
   );
 
-  /**
-   * Handler to ger the classnames for the event
-   *
-   * This is useful for example in helping the events be responsive
-   * to dark mode changes etc.
-   */
-  const getEventClassNames = useMemo(
-    () =>
-      getEventClassNamesGenerator({
-        isAdmin,
-        isDark,
-        currentUserId,
-      }),
-    [isAdmin, isDark, currentUserId]
-  );
-
-  /**
-   * Handler for generating custom components to
-   * display the events on the calendar
-   */
-  const renderEventContent = useMemo(
-    () =>
-      getEventContentGenerator({
-        isAdmin,
-        isDark,
-        currentUserId,
-        handleBookingEdit,
-        handleBookingCancel,
-      }),
-    [isAdmin, isDark, currentUserId, handleBookingEdit, handleBookingCancel]
+  const renderEventContent = useCallback(
+    (eventInfo: EventContentArg) => (
+      <BookingEventContent
+        eventInfo={eventInfo}
+        isEditable={isBookingEditable(
+          eventInfo.event.extendedProps as Booking,
+          currentUserId,
+          isAdmin
+        )}
+        onEdit={handleBookingEdit}
+        onCancel={handleBookingCancel}
+      />
+    ),
+    [isAdmin, currentUserId, handleBookingEdit, handleBookingCancel]
   );
 
   /**
@@ -181,10 +181,11 @@ export function BookingsCalendar({
         // clear error message
         setErrMessage(undefined);
 
-        const isPast = DateTime.fromISO(arg.event.startStr) < DateTime.now();
-        const isOwnedByUser = currentUserId === arg.event.extendedProps.user_id;
-        const canEdit = !isPast && (isOwnedByUser || isAdmin);
-        if (!canEdit) {
+        const movedBooking = {
+          ...(arg.event.extendedProps as Booking),
+          start_utc: arg.event.startStr,
+        };
+        if (!isBookingEditable(movedBooking, currentUserId, isAdmin)) {
           return arg.revert();
         }
         const bookingId = arg.event.extendedProps.id;
@@ -250,45 +251,10 @@ export function BookingsCalendar({
         </Alert>
       )}
       <EventCalendar
-        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
+        {...CALENDAR_OPTIONS}
         events={calendarEvents}
-        views={{
-          timeGridPlugin: {},
-        }}
         eventContent={renderEventContent}
-        eventClassNames={getEventClassNames}
-        dayCellClassNames={getDayCellClassNames}
-        slotLabelFormat={{
-          hour12: false,
-          hour: "2-digit",
-        }}
-        slotLabelClassNames="text-xs text-muted-foreground"
-        dayHeaderFormat={{
-          weekday: "short",
-          day: "numeric",
-        }}
-        dayHeaderContent={getDayHeaderContent}
-        nowIndicator={true}
-        allDaySlot={false}
-        businessHours={{
-          start: "09:00",
-          end: "17:00",
-          daysOfWeek: [1, 2, 3, 4, 5],
-        }}
-        slotLaneClassNames="!h-10"
-        firstDay={1}
-        headerToolbar={{
-          start: "title",
-          center: "",
-          end: "today,timeGridWeek,dayGridMonth prev,next",
-        }}
-        slotMinTime="00:00:00"
-        slotMaxTime="24:00:00"
-        scrollTime="09:00:00"
-        contentHeight={"60vh"}
         dateClick={handleDateClick}
-        editable={true}
         eventDrop={handleEventDrop.mutate}
       />
       <BookingForm
@@ -348,114 +314,21 @@ function getDayCellClassNames(arg: DayCellContentArg) {
   return arg.isToday ? ["!bg-muted"] : [];
 }
 
-/**
- * Creates an eventClassNames function basing on the current state
- *
- * @param state - the external state this event class generator depends on
- */
-function getEventClassNamesGenerator(_props: EventState) {
-  return (eventInfo: EventContentArg) => {
-    const isPast = DateTime.fromISO(eventInfo.event.startStr) < DateTime.now();
-
-    return isPast
-      ? "border border-muted-foreground bg-muted-foreground hover:bg-muted"
-      : "border border-foreground bg-[black] hover:bg-secondary";
-  };
+function getEventClassNames(eventInfo: EventContentArg) {
+  const isPast = DateTime.fromISO(eventInfo.event.startStr) < DateTime.now();
+  return isPast
+    ? "border border-muted-foreground bg-muted-foreground hover:bg-muted"
+    : "border border-foreground bg-[black] hover:bg-secondary";
 }
 
-/**
- * Creates an EventContent generator function basing on the current state
- *
- * @param state - the external state this event class generator depends on
- */
-function getEventContentGenerator({
-  isAdmin,
-  currentUserId,
-  handleBookingEdit = () => {},
-  handleBookingCancel = () => {},
-}: EventState) {
-  return (eventInfo: EventContentArg) => {
-    const isPast = DateTime.fromISO(eventInfo.event.startStr) < DateTime.now();
-    const isOwnedByUser =
-      currentUserId === eventInfo.event.extendedProps.user_id;
-    const booking = eventInfo.event.extendedProps as Booking;
-
-    const canEdit = !isPast && (isOwnedByUser || isAdmin);
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <div
-            data-cy-calendar-event
-            className="fc-event-main border-1 px-2 w-full"
-            data-booking-id={booking.id}
-            data-booking-start={booking.start_utc}
-            data-booking-end={booking.end_utc}
-          >
-            <div className="fc-event-main-frame text-secondary hover:text-secondary-foreground">
-              <div className="fc-event-time">{eventInfo.timeText}</div>
-              <div className="fc-event-title-container">
-                <div className="fc-event-title fc-sticky">
-                  {eventInfo.event.title}
-                </div>
-              </div>
-            </div>
-          </div>
-        </PopoverTrigger>
-        <PopoverContent>
-          <div data-cy-event-details>
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <h4 className="leading-none font-medium">
-                  {eventInfo.event.title}
-                </h4>
-                <p className="text-muted-foreground text-sm">
-                  {eventInfo.timeText}
-                </p>
-              </div>
-              <div className="grid gap-2">
-                <div className="">
-                  <span className="text-muted-foreground pr-2">Device</span>
-                  <span>{eventInfo.event.extendedProps.backend}</span>
-                </div>
-                <div className="">
-                  <span className="text-muted-foreground pr-2">Duration</span>
-                  <span>
-                    {Duration.fromObject({
-                      seconds: eventInfo.event.extendedProps.total_duration,
-                    }).toHuman()}
-                  </span>
-                </div>
-              </div>
-              <div className="justify-between">
-                {/* FIXME: Add onClick to allow to change the time if this event belongs to the user*/}
-                {canEdit && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-1/2"
-                      disabled={isPast}
-                      onClick={() => handleBookingEdit(booking)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      className="w-1/2"
-                      disabled={isPast}
-                      onClick={() => handleBookingCancel(booking)}
-                    >
-                      Discard
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          <PopoverArrow />
-        </PopoverContent>
-      </Popover>
-    );
-  };
+/** A booking is editable by its owner or an admin, until it starts */
+function isBookingEditable(
+  booking: Booking,
+  userId: string,
+  isAdmin: boolean
+): boolean {
+  const isPast = DateTime.fromISO(booking.start_utc) < DateTime.now();
+  return !isPast && (booking.user_id === userId || isAdmin);
 }
 
 interface Props {
@@ -464,14 +337,6 @@ interface Props {
   backend: string;
   currentUser: User;
   isAdmin: boolean;
-}
-
-interface EventState {
-  isDark?: boolean;
-  currentUserId?: string;
-  isAdmin: boolean;
-  handleBookingEdit?: (booking: Booking) => void;
-  handleBookingCancel?: (booking: Booking) => void;
 }
 
 export interface BookingsMetadata {

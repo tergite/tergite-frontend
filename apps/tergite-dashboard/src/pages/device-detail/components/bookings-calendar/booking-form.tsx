@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { mergeDatetime, convertToInputDuration } from "@/lib/time";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookingsConfig, ErrorInfo, NewBookingInfo } from "types";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -80,9 +80,7 @@ export function BookingForm({
   //    if slots for that day are maxed out
   // const maxSlotsPerDay = bookingsConfig.max_slots_per_day;
 
-  const formSchema = useMemo(
-    () =>
-      z.object({
+  const formSchema = z.object({
         startDate: z
           .object({
             date: z.date(),
@@ -109,9 +107,7 @@ export function BookingForm({
           .refine((dt) => dt >= minDuration && dt <= maxDuration, {
             message: `duration must be between ${minDuration.toISOTime()} and ${maxDuration.toISOTime()}`,
           }),
-      }),
-    [maxDuration, minDuration, now]
-  );
+      });
   type FormInput = z.input<typeof formSchema>;
   type FormOutput = z.output<typeof formSchema>;
 
@@ -146,8 +142,7 @@ export function BookingForm({
   );
 
   const bookingUpdate = useMutation({
-    mutationFn: useCallback(
-      async ({ startDate, duration }: FormOutput) => {
+    mutationFn: async ({ startDate, duration }: FormOutput) => {
         const start_utc = startDate.toUTC().toISO();
         if (start_utc == null) {
           throw new Error("invalid start date");
@@ -171,8 +166,6 @@ export function BookingForm({
 
         return await mutate(backend, { start_utc, end_utc }, initialBooking);
       },
-      [backend, minDuration, maxDuration, initialBooking, mutate]
-    ),
     onSuccess: useCallback(
       async (booking: Booking) => {
         await refreshBookingsQueries(queryClient, backend);

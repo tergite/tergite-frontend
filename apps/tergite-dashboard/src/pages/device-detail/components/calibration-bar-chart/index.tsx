@@ -12,6 +12,7 @@ import { useParentSize } from "@visx/responsive";
 import { useMemo } from "react";
 import { CalibrationBar, getXValue, getYValue } from "./calibration-bar";
 import { useAppStore } from "@/lib/app-state";
+import { getCalibrationPoints } from "../calibration-points";
 
 const tooltipStyles = {
   ...defaultStyles,
@@ -41,13 +42,9 @@ export function CalibrationBarChart({
 
   const currentPropLabel = fieldLabels[currentProp];
 
-  const chatData: CalibrationDataPoint[] = useMemo(
-    () =>
-      data.qubits.map((v, index) => ({
-        ...(v[currentProp] ?? {}),
-        index,
-      })),
-    [data.qubits, currentProp]
+  const chatData = useMemo(
+    () => getCalibrationPoints(data, currentProp),
+    [data, currentProp]
   );
 
   const maxYValue = useMemo(

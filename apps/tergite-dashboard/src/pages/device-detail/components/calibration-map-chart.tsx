@@ -12,6 +12,10 @@ import { localPoint } from "@visx/event";
 import { scaleLinear, scalePoint } from "@visx/scale";
 import { interpolatePurples } from "d3-scale-chromatic";
 import { Group } from "@visx/group";
+import { getCalibrationPoints } from "./calibration-points";
+
+const MARGIN = { top: 20, right: 20, bottom: 20, left: 20 };
+const MIN_COLOR_RANGE_VALUE = 0.3;
 
 let tooltipTimeout: number;
 
@@ -29,95 +33,9 @@ export function CalibrationMapChart({
   } = useParentSize({ debounceTime: 50 });
 
   const width = Math.max(minWidth, _width);
-  const margin = { top: 20, right: 20, bottom: 20, left: 20 };
-  const xMax = Math.max(width - margin.left - margin.right, 0);
-  const yMax = Math.max(height - margin.top - margin.bottom, 0);
-
-  const xValues = useMemo(
-    () => [...new Set(device.coordinates.map((v) => v[0]))].sort((a, b) => a - b),
-    [device]
-  );
-  const yValues = useMemo(
-    () => [...new Set(device.coordinates.map((v) => v[1]))].sort((a, b) => a - b),
-    [device]
-  );
-
-  const chatData: CalibrationDataPoint[] = useMemo(
-    () =>
-      data.qubits.map((v, index) => ({
-        ...(v[currentProp] ?? {}),
-        index,
-      })),
-    [data.qubits, currentProp]
-  );
-
-  const maxCurrentPropValue = useMemo(
-    () =>
-      Math.max(
-        ...(chatData
-          .map((v) => v.value)
-          .filter((v) => v != undefined) as number[])
-      ),
-    [chatData]
-  );
-
-  // scales
-  const xScale = useMemo(
-    () =>
-      scalePoint<number>({
-        domain: xValues,
-        padding: 0.2,
-        range: [margin.left, xMax],
-      }),
-    [xValues, xMax, margin.left]
-  );
-  const yScale = useMemo(
-    () =>
-      scalePoint<number>({
-        domain: yValues,
-        padding: 0.2,
-        range: [yMax, margin.top],
-      }),
-    [yValues, yMax, margin.top]
-  );
-  const minColorRangeValue = 0.3;
-  const colorScale = useMemo(
-    () =>
-      scaleLinear<number>({
-        domain: [0, maxCurrentPropValue],
-        nice: true,
-        range: [minColorRangeValue, 1],
-      }),
-    [maxCurrentPropValue]
-  );
-
-  const qubitIdx = useMemo(
-    () => Object.fromEntries(device.qubit_ids.map((v, idx) => [v, idx])),
-    [device.qubit_ids]
-  );
-
-  const qubits: QubitNode[] = useMemo(
-    () =>
-      device.coordinates.map(([x, y], idx) => ({
-        x: xScale(x) ?? 0,
-        y: yScale(y) ?? 0,
-        data: chatData[idx],
-        color: interpolatePurples(
-          chatData[idx].value != undefined
-            ? colorScale(chatData[idx].value as number) ?? minColorRangeValue
-            : minColorRangeValue
-        ),
-      })),
-    [chatData, device, xScale, yScale, colorScale]
-  );
-
-  const couplers: CouplerLink[] = useMemo(
-    () =>
-      Object.values(device.coupling_dict ?? {}).map(([srcQubit, dstQubit]) => ({
-        source: qubits[qubitIdx[srcQubit]],
-        target: qubits[qubitIdx[dstQubit]],
-      })),
-    [device, qubits, qubitIdx]
+  const layout = useMemo(
+    () => computeQubitLayout(device, data, currentProp, { width, height }),
+    [device, data, currentProp, width, height]
   );
 
   const {
@@ -147,12 +65,9 @@ export function CalibrationMapChart({
           className="bg-transparent fill-transparent"
         />
         <Graph<CouplerLink, QubitNode>
-          graph={{
-            nodes: qubits,
-            links: couplers,
-          }}
-          top={margin.top}
-          left={margin.left}
+          graph={layout}
+          top={MARGIN.top}
+          left={MARGIN.left}
           nodeComponent={({ node: { data, color } }) => (
             <Group>
               <circle
@@ -233,6 +148,59 @@ interface Props {
   currentLabel: string;
   minWidth: number;
   fieldLabels: { [k: string]: string };
+}
+
+/** Places each qubit by its coordinates and colours it by its value of the property */
+function computeQubitLayout(
+  device: Device,
+  calibration: DeviceCalibration,
+  prop: QubitProp,
+  size: { width: number; height: number }
+): { nodes: QubitNode[]; links: CouplerLink[] } {
+  const points = getCalibrationPoints(calibration, prop);
+  const values = points
+    .map((v) => v.value)
+    .filter((v) => v != undefined) as number[];
+  const xScale = scalePoint<number>({
+    domain: getSortedUnique(device.coordinates.map((v) => v[0])),
+    padding: 0.2,
+    range: [MARGIN.left, Math.max(size.width - MARGIN.left - MARGIN.right, 0)],
+  });
+  const yScale = scalePoint<number>({
+    domain: getSortedUnique(device.coordinates.map((v) => v[1])),
+    padding: 0.2,
+    range: [Math.max(size.height - MARGIN.top - MARGIN.bottom, 0), MARGIN.top],
+  });
+  const colorScale = scaleLinear<number>({
+    domain: [0, Math.max(...values)],
+    nice: true,
+    range: [MIN_COLOR_RANGE_VALUE, 1],
+  });
+
+  const nodes = device.coordinates.map(([x, y], index) => ({
+    x: xScale(x) ?? 0,
+    y: yScale(y) ?? 0,
+    data: points[index],
+    color: interpolatePurples(
+      points[index].value != undefined
+        ? colorScale(points[index].value as number) ?? MIN_COLOR_RANGE_VALUE
+        : MIN_COLOR_RANGE_VALUE
+    ),
+  }));
+  const qubitIndex = Object.fromEntries(
+    device.qubit_ids.map((v, index) => [v, index])
+  );
+  const links = Object.values(device.coupling_dict ?? {}).map(
+    ([sourceQubit, targetQubit]) => ({
+      source: nodes[qubitIndex[sourceQubit]],
+      target: nodes[qubitIndex[targetQubit]],
+    })
+  );
+  return { nodes, links };
+}
+
+function getSortedUnique(values: number[]): number[] {
+  return [...new Set(values)].sort((a, b) => a - b);
 }
 
 interface QubitNode {
