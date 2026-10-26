@@ -170,23 +170,17 @@ reads `tergite-mss.service`'s journal and pushes it with `GRAFANA_LOKI_URL` and 
 | --- | --- | --- |
 | MSS unit/integration | `apps/tergite-mss/tests` — pytest against real MongoDB + Redis | `pytest` |
 | Dashboard component | `apps/tergite-mss/ui/src/**/__tests__` — vitest + happy-dom | `npm run test` |
-| Dashboard e2e | `apps/tergite-mss/ui/playwright` — Playwright against the **mock** API, a mock API per worker | `npm run e2e` |
-| Full-stack e2e | [dev/e2e_native_test.sh](dev/e2e_native_test.sh) — the same Playwright specs against real MSS + real backends, with MongoDB and Redis, all running natively | `BACKEND_PATH=../tergite-backend ./dev/e2e_native_test.sh` |
+| e2e | `apps/tergite-mss/ui/playwright` — the Playwright specs, through [dev/e2e_native_test.sh](dev/e2e_native_test.sh), against real MSS + real backends, with MongoDB and Redis, all running natively | `BACKEND_PATH=../tergite-backend ./dev/e2e_native_test.sh` |
 
-The dashboard's own e2e suite does not run MSS. It runs an Express mock API
-(`apps/tergite-mss/ui/dev/mock-api/`) that serves the same JSON shapes from
-`apps/tergite-mss/ui/fixtures/*.json`, plus a
-`GET /refreshed-db` endpoint tests hit to reset state.
-This keeps the UI suite fast and deterministic, at the cost of a second place to update
-when an MSS response changes.
-
-`dev/e2e_native_test.sh` is the one that catches contract drift: from a local
+The e2e runs against the whole stack, so it catches contract drift: from a local
 `tergite-backend` checkout or a clone, it runs one `main.py serve` for all the backends, each
-under its own path, from the base dependencies, MSS from this checkout, the dashboard's test
-build, and a MongoDB, a Redis and a reset service (`dev/e2e_reset_server.py`) of its own, all
-from fresh data in `temp-native/`; it seeds Mongo from the same fixtures, wires up a mock
-OpenID provider, and runs the Playwright specs against that stack, on one worker. It is a
-manual / tag-triggered job in CI, not a per-commit one.
+under its own path, from the base dependencies, MSS from this checkout serving the dashboard's
+test build at `/ui`, and a MongoDB, a Redis and a reset service (`dev/e2e_reset_server.py`) of
+its own, all from fresh data in `temp-native/`. It seeds MongoDB from
+`apps/tergite-mss/ui/fixtures/*.json`, stands in for the OpenID provider, and runs the
+Playwright specs against that stack, on one worker, as they share its data; a test that wrote
+has the next reset it through `GET /refreshed-db`. CI runs it on every merge request, on
+`main` and on tags.
 
 Visual regression is Playwright's `toHaveScreenshot`; its baselines are named after the
 platform, so make the Linux ones through the dashboard's `Dockerfile.playwright` (see its
@@ -199,12 +193,11 @@ Both GitHub Actions ([.github/workflows](.github/workflows)) and GitLab CI
 a mirror — see §8).
 
 - `mss-ci.yml` / `test mss` — `black --check .`, `pyflakes`, then `pytest` on Python 3.12 and
-  3.13 against `mongo` and `redis` services. Path-filtered to `apps/tergite-mss/**`.
-- `dashboard-ci.yml` / `lint dashboard`, `test dashboard`, `e2e test dashboard` —
-  eslint and `npm run check:api`, vitest, Playwright. Path-filtered to
-  `apps/tergite-mss/ui/**` and MSS's `dev/openapi/openapi.json`.
-- `frontend-ci.yml` / `full e2e` — the cross-app `dev/e2e_native_test.sh`, after installing
-  MongoDB, Redis, SQLite and uv, on `main`, on `v*` tags, or manually.
+  3.13 against `mongo` and `redis` services. Path-filtered to `apps/tergite-mss/**` but `ui/`.
+- `dashboard-ci.yml` / `lint dashboard`, `test dashboard` — eslint and `npm run check:api`,
+  vitest. Path-filtered to `apps/tergite-mss/ui/**` and MSS's `dev/openapi/openapi.json`.
+- `frontend-ci.yml` / `e2e` — `dev/e2e_native_test.sh`, after installing MongoDB, Redis, SQLite
+  and uv, on every pull or merge request, on `main`, on `v*` tags, or manually.
 - On a `v*` tag, `mss-release.yml` / `build dashboard`, `package mss linux`, `package mss macos`
   and `release` build the dashboard, then MSS's deb and macOS installer with it, and attach
   them to the release. GitLab's jobs upload them to the project's package registry and link

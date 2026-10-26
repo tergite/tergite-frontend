@@ -12,8 +12,10 @@
 # that they have been altered from the originals.
 #
 # Runs the dashboard's Playwright suite against the whole stack, each service running natively:
-# MongoDB, Redis, MSS from this checkout and the backends from a tergite-backend checkout, one
-# process serving them all, each under its own path, all from fresh data in temp-native/.
+# MongoDB seeded from the dashboard's fixtures/, Redis, MSS from this checkout serving the
+# dashboard's test build at /ui, and the backends from a tergite-backend checkout, one process
+# serving them all, each under its own path, all from fresh data in temp-native/. Its arguments
+# go to `playwright test`, e.g. a spec to run or --update-snapshots.
 # Needs mongod, mongosh, redis-server, sqlite3, uv, npm, jq and curl.
 #
 # Usage
@@ -46,7 +48,6 @@ OPENID_AUTH_URL="${OPENID_AUTH_URL:-https://samples.auth0.com/authorize}"
 # the dashboard's test build calls MSS at 8002, and the tests reset the data at 3001
 MSS_PORT=8002
 RESET_PORT=3001
-DASHBOARD_PORT=3000
 MONGO_PORT=27018
 REDIS_PORT=6380
 BACKEND_PORT=8101
@@ -143,7 +144,7 @@ stop_stack() {
   find "$WORK_PATH" -mindepth 1 -maxdepth 1 ! -name venvs -exec rm -rf {} +;
 }
 
-for port in $MSS_PORT $RESET_PORT $DASHBOARD_PORT $MONGO_PORT $REDIS_PORT $BACKEND_PORT; do
+for port in $MSS_PORT $RESET_PORT $MONGO_PORT $REDIS_PORT $BACKEND_PORT; do
   ! (exec 3<> "/dev/tcp/127.0.0.1/$port") 2> /dev/null || exit_with_err "port $port is in use"
 done
 
@@ -187,6 +188,10 @@ replace_str "$WORK_PATH/mongo-init.js" "rawTokens = \"\[\]\"" "rawTokens = $(rea
 replace_str "$WORK_PATH/mongo-init.js" "rawUserRequests = \"\[\]\"" "rawUserRequests = $(read_json $FIXTURES_PATH/user-requests.json)"
 replace_str "$WORK_PATH/mongo-init.js" "rawUsers = \"\[\]\"" "rawUsers = $(read_json $FIXTURES_PATH/users.json)"
 mongosh --quiet --port $MONGO_PORT "$WORK_PATH/mongo-init.js" > /dev/null
+
+echo "Building the dashboard, which MSS serves"
+(cd "$DASHBOARD_PATH" && { [[ -d node_modules ]] || npm ci; } \
+  && npm run build -- --mode test > "$WORK_PATH/logs/dashboard-build.log")
 
 echo "Starting MSS"
 cp "$FIXTURES_PATH/mss-config.toml" "$WORK_PATH/mss-config.toml"
@@ -244,28 +249,23 @@ done
 start_service backends bash -c "cd '$WORK_PATH/backends' && exec '$WORK_PATH/venvs/backend/bin/python' '$BACKEND_PATH/main.py' serve --host 127.0.0.1 --port $BACKEND_PORT ${env_file_args[*]}"
 wait_for_url backends "http://127.0.0.1:$BACKEND_PORT/docs" $SERVICE_PID
 
-echo "Starting the reset service and the dashboard"
+echo "Starting the reset service"
 start_service reset "$WORK_PATH/venvs/mss/bin/python" "$ROOT_PATH/dev/e2e_reset_server.py" \
   --port $RESET_PORT --mongo-port $MONGO_PORT --mongo-init-script "$WORK_PATH/mongo-init.js" \
   --sql "$FIXTURES_PATH/backend_db.sql" "${reset_databases[@]}"
 reset_pid=$SERVICE_PID
-cd "$DASHBOARD_PATH"
-[[ -d node_modules ]] || npm ci
-npx playwright install chromium > /dev/null
-npm run build -- --mode test > "$WORK_PATH/logs/dashboard-build.log"
-# vite itself, not npm, so that stopping it frees the port
-start_service dashboard node_modules/.bin/vite preview --host 127.0.0.1 --port $DASHBOARD_PORT --strictPort
 wait_for_url reset "http://127.0.0.1:$RESET_PORT/" $reset_pid
-wait_for_url dashboard "http://127.0.0.1:$DASHBOARD_PORT/ui/login" $SERVICE_PID
 
 echo "Running end-to-end test suite..."
-export DASHBOARD_URL="http://127.0.0.1:$DASHBOARD_PORT/ui/"
+cd "$DASHBOARD_PATH"
+npx playwright install chromium > /dev/null
+export DASHBOARD_URL="http://127.0.0.1:$MSS_PORT/ui/"
 export DB_RESET_URL="http://127.0.0.1:$RESET_PORT/refreshed-db"
 export OPENID_AUTH_URL
 if [[ $(echo "${VISUAL}" | tr '[:lower:]' '[:upper:]') = "TRUE" ]]; then
-  npx playwright test --ui
+  npx playwright test --ui "$@"
 else
-  npx playwright test
+  npx playwright test "$@"
 fi
 
 echo "Script completed."

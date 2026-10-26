@@ -18,40 +18,36 @@ for (const user of users) {
   const isDomainSupported = availableAuthProviders.length > 0;
 
   test.describe(`login page for authenticated user '${username}'`, () => {
-    test.beforeEach(async ({ page, resetData, baseURL }) => {
-      const dashboardUrl = baseURL!;
-      const isFullE2E = dashboardUrl.startsWith("http://127.0.0.1:3000");
+    test.beforeEach(async ({ page, resetData }) => {
       const domain = process.env.VITE_COOKIE_DOMAIN!;
       const cookieName = process.env.VITE_COOKIE_NAME!;
       const cookieExpiry = Math.round((Date.now() + 800_000) / 1000);
 
-      if (isFullE2E) {
-        const openidAuthUrl = process.env.OPENID_AUTH_URL!;
-        // a stand-in for a real OpenID Connect server; the browser would follow the API's redirect
-        // to it unrouted, so that redirect is answered here as the server would answer it, back
-        // to the dashboard with the session cookie, provided it does lead to the server
-        await page.route(
-          (url) => url.href.startsWith(apiBaseUrl) && url.pathname.endsWith("/auto-authorize"),
-          async (route) => {
-            const response = await route.fetch({ maxRedirects: 0 });
-            const authorizeUrl = response.headers().location ?? "";
-            if (!authorizeUrl.startsWith(openidAuthUrl)) {
-              await route.fulfill({ response });
-              return;
-            }
-            const state = new URL(authorizeUrl).searchParams.get("state");
-            const stateObj = decodeJwt(`${state}`);
-            const token = await signSession(user, cookieExpiry);
-            await route.fulfill({
-              status: 302,
-              headers: {
-                location: `${stateObj.next}?set-cookie=true`,
-                "set-cookie": `${cookieName}=${token}; Domain=${domain}; Secure; HttpOnly; SameSite=Lax; Path=/; Expires=${cookieExpiry}`,
-              },
-            });
-          },
-        );
-      }
+      const openidAuthUrl = process.env.OPENID_AUTH_URL!;
+      // a stand-in for a real OpenID Connect server; the browser would follow the API's redirect
+      // to it unrouted, so that redirect is answered here as the server would answer it, back
+      // to the dashboard with the session cookie, provided it does lead to the server
+      await page.route(
+        (url) => url.href.startsWith(apiBaseUrl) && url.pathname.endsWith("/auto-authorize"),
+        async (route) => {
+          const response = await route.fetch({ maxRedirects: 0 });
+          const authorizeUrl = response.headers().location ?? "";
+          if (!authorizeUrl.startsWith(openidAuthUrl)) {
+            await route.fulfill({ response });
+            return;
+          }
+          const state = new URL(authorizeUrl).searchParams.get("state");
+          const stateObj = decodeJwt(`${state}`);
+          const token = await signSession(user, cookieExpiry);
+          await route.fulfill({
+            status: 302,
+            headers: {
+              location: `${stateObj.next}?set-cookie=true`,
+              "set-cookie": `${cookieName}=${token}; Domain=${domain}; Secure; HttpOnly; SameSite=Lax; Path=/; Expires=${cookieExpiry}`,
+            },
+          });
+        },
+      );
 
       await page.context().addCookies([
         {
@@ -98,14 +94,13 @@ for (const user of users) {
     if (isDomainSupported) {
       test(`redirects to the home page of the dashboard`, async ({ page, baseURL }) => {
         const dashboardUrl = baseURL!;
-        const isFullE2E = dashboardUrl.startsWith("http://127.0.0.1:3000");
         await page.locator("input[name=email]").fill(user.email);
         await nextButton(page).click();
 
         const jobsLoaded = waitForApi(page, "GET", "/me/jobs/");
         await page.locator("[data-cy-login-link]").first().click();
-        // only the stand-in for the OpenID server, reached through it, adds set-cookie
-        const finalUrl = isFullE2E ? `${dashboardUrl}?set-cookie=true` : dashboardUrl;
+        // the stand-in for the OpenID server adds set-cookie
+        const finalUrl = `${dashboardUrl}?set-cookie=true`;
 
         await jobsLoaded;
 

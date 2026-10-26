@@ -104,7 +104,7 @@ npm run test
 
 - Ensure you have [nodejs](https://nodejs.org/en), [uv](https://docs.astral.sh/uv/), [jq](https://jqlang.org/download/),
   MongoDB's `mongod` and `mongosh`, `redis-server` and `sqlite3` installed
-- Ensure nothing is running on ports 3000, 3001, 8002, 8101, 27018 and 6380
+- Ensure nothing is running on ports 3001, 8002, 8101, 27018 and 6380
 - Clone the repo, and tergite-backend beside it unless `BACKEND_REPO` is given
 
 ```shell
@@ -121,6 +121,13 @@ BACKEND_PATH="../tergite-backend" \
 # DEBUG="True" \ # Set 'True' to keep the services running and temp-native/ after the tests, default: ''
 # VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
 ./dev/e2e_native_test.sh
+```
+
+- It seeds MongoDB from [fixtures/](./fixtures), serves this dashboard's test build from MSS at
+  `/ui`, and passes its arguments to `playwright test`, e.g. a spec to run alone:
+
+```shell
+BACKEND_PATH="../tergite-backend" ./dev/e2e_native_test.sh playwright/home.spec.ts
 ```
 
 ## How to Build
@@ -151,27 +158,30 @@ npm run build
 
 Playwright names each screenshot baseline after the platform (`-chromium-darwin.png`,
 `-chromium-linux.png`), so CI on linux needs the linux ones beside those made on a mac. Generate
-them in Playwright's own linux image, which has the browsers:
+them with the e2e stack in Playwright's own linux image, which has the browsers:
 
 - Make sure you have [docker](https://docs.docker.com/engine/install/) installed.
 
-- Clone the repo and enter its root folder
+- Clone the repo, and tergite-backend beside it, and enter the repo's root folder
 
 ```shell
 git clone git@github.com:tergite/tergite-frontend.git
-cd apps/tergite-mss/ui
+cd tergite-frontend
 ```
 
-- Generate the image `tergite-dashboard-playwright`
+- Generate the image `tergite-dashboard-playwright`, with the repo's root as the context
 
 ```shell
-docker build -t tergite-dashboard-playwright:latest -f Dockerfile.playwright .
+docker build -t tergite-dashboard-playwright:latest -f apps/tergite-mss/ui/Dockerfile.playwright .
 ```
 
-- Run the suite in it, with the specs' folder mounted so that the new baselines land in it
+- Run the suite in it, with the backend and the specs' folder mounted, so that the new baselines
+  land in it
 
 ```shell
-docker run --rm -v ./playwright:/app/playwright tergite-dashboard-playwright:latest
+docker run --rm -v "$PWD/../tergite-backend:/backend" -e BACKEND_PATH=/backend \
+  -v "$PWD/apps/tergite-mss/ui/playwright:/repo/apps/tergite-mss/ui/playwright" \
+  tergite-dashboard-playwright:latest
 ```
 
 - The new baselines are the `-chromium-linux.png` files in the `playwright/*-snapshots/` folders;

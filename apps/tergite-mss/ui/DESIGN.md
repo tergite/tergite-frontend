@@ -321,20 +321,19 @@ up as a passing UI suite against a stale contract — which is what the repo-lev
 | Suite | Runner | Scope |
 | --- | --- | --- |
 | Component | vitest + happy-dom + Testing Library | files matching `src/**/__tests__/*` only |
-| e2e | Playwright against vite preview, each worker with its own mock API | `playwright/*.spec.ts`, one spec per page |
+| e2e | Playwright against MSS serving the test build, with the backends, seeded from `fixtures/` | `playwright/*.spec.ts`, one spec per page |
 | Visual | Playwright's `toHaveScreenshot` inside the e2e run | baselines in `playwright/*-snapshots/`, one set per platform |
 
 ```bash
 npm run test    # component tests
-npm run e2e     # build --mode test, serve, run playwright on parallel workers
+npm run e2e     # with BACKEND_PATH set: dev/e2e_native_test.sh starts the stack and runs playwright
 npm run visual-e2e   # same, in playwright's UI mode
 ```
 
-Each Playwright worker starts its own mock API on `PW_API_PORT_BASE` (8100) plus its index, and
-`playwright/fixtures.ts` redirects the page's requests for the build's API address to it, so
-workers never share data. Runs at the same time need different `PW_API_PORT_BASE`s. With
-`DASHBOARD_URL` set, as [dev/e2e_native_test.sh](../../../dev/e2e_native_test.sh) sets it, the same specs test
-that dashboard on one worker against its stack's API instead.
+[dev/e2e_native_test.sh](../../../dev/e2e_native_test.sh) starts MongoDB, seeded from `fixtures/`,
+Redis, the backends, and MSS serving this dashboard's test build at `/ui`; it sets
+`DASHBOARD_URL`, which `playwright.config.ts` requires, and passes its arguments to
+`playwright test`. The specs run on one worker, as they share the stack's data.
 
 Each feature's happy path, and the spec that walks it:
 
@@ -364,14 +363,14 @@ vite defines.
 
 Component tests are the thin layer: `vite.config.ts` restricts them to `__tests__`
 directories, and only pure-ish primitives are covered there (`ui/__tests__/donut-chart.test.tsx`).
-The real coverage is the Playwright suite, which drives the app through the mock API. Each
-spec names the fixture users whose roles or data change its pages, and runs its tests for
-each (`for (const user of users)`). The `resetData` fixture resets a worker's data before a
-test only if an earlier test wrote, so read-only tests share a reset. The browser runs in
+The real coverage is the Playwright suite, which drives the app through MSS. Each spec names
+the fixture users whose roles or data change its pages, and runs its tests for each
+(`for (const user of users)`). The `resetData` fixture resets the stack's data before a test
+only if an earlier test wrote, so read-only tests share a reset. The browser runs in
 `Europe/Stockholm`, the config's `timezoneId` — a change of zone will move snapshots.
 
 Playwright names visual baselines after the platform, so CI needs the linux ones. Generate
-them in Playwright's linux image through `Dockerfile.playwright`; see the "How to Generate
+them with the stack in Playwright's linux image through `Dockerfile.playwright`; see the "How to Generate
 Snapshots for CI" section of [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## 7. Build and serve
