@@ -65,7 +65,10 @@ jobs:
         with:
           name: dashboard
           path: ui/dist
-      - run: sudo apt-get install -y -qq ccache patchelf
+      # the runner's apt lists can be out of date, for these and the deb's dependencies alike
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ccache patchelf
       - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/Nuitka
