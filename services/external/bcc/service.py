@@ -679,17 +679,20 @@ class BccClient:
         Raises:
             ServiceUnavailableError: device is currently unavailable
         """
-        headers = _create_headers(
-            self._private_key,
-            request_id=request_id,
-            user_id=f"{user_id}",
-            is_admin=is_admin,
+        request = self._client.build_request(method, url, json=json, params=params)
+        request.headers.update(
+            _create_headers(
+                self._private_key,
+                request_id=request_id,
+                method=request.method,
+                path=request.url.path,
+                user_id=f"{user_id}",
+                is_admin=is_admin,
+            )
         )
         logger.debug(f"Sending request to BCC: {method} {url}")
         try:
-            return await self._client.request(
-                method, url, json=json, headers=headers, params=params
-            )
+            return await self._client.send(request)
         except (httpx.ConnectError, httpx.TimeoutException):
             logger.exception("BCC connection failed")
             raise ServiceUnavailableError("device is currently unavailable")
@@ -730,14 +733,21 @@ def _extract_error_message(response: httpx.Response) -> str:
 def _create_headers(
     private_key: RSAPrivateKey,
     request_id: str,
+    method: str,
+    path: str,
     user_id: str = "",
     is_admin: Optional[bool] = None,
 ) -> BccClientHeaders:
     """Creates headers to show that the request is a valid one from MSS
 
+    The signature covers is_admin, the method and the path too, so that no one between
+    MSS and the BCC can turn on admin or move the headers to another route.
+
     Args:
         private_key: the MSS private key
         request_id: the unique identifier of the current request
+        method: the HTTP method of the request
+        path: the path of the request's URL, as the BCC receives it
         user_id: the unique identifier of the user
         is_admin: whether the request should show that the user is an admin
 
@@ -745,7 +755,8 @@ def _create_headers(
         The dictionary of headers that show a given request is from MSS
     """
     timestamp = time.time()
-    message = f"{user_id}-{request_id}-{timestamp}"
+    is_admin_header = "" if is_admin is None else f"{is_admin}"
+    message = f"{user_id}|{request_id}|{timestamp}|{is_admin_header}|{method}|{path}"
     signature = sign_message(private_key, message=message)
     headers = {
         "x-mss-request-id": request_id,

@@ -124,6 +124,9 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - [BREAKING]: Changed `/admin/bcc-users` to `/admin/bcc/users` endpoints
 - [BREAKING]: Changed `/admin/recalibration` to `/admin/bcc/recalibration` endpoints
 - [BREAKING]: Changed `/admin/switch` to `/admin/bcc/switch` endpoints
+- [BREAKING]: MSS signs a BCC request's `x-mss-is-admin`, method and path as well as its user, nonce and
+  timestamp, so they cannot be changed in transit; it needs a BCC that checks the same message, and an older BCC
+  refuses its requests with 401.
 - [BREAKING]: Changed GET `/me` profile endpoint to GET `/me/profile`
 - [BREAKING]: Remove `ext_id`, `source` and `resource_ids` from project schema
 - [BREAKING]: Changed the schema of beanie mongodb's strict even at the database level.

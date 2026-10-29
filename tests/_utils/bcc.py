@@ -131,7 +131,11 @@ def get_bcc_client_verified_headers(request: httpx.Request) -> BccClientHeaders:
         timestamp = bcc_headers["x-mss-timestamp"]
         signature = bcc_headers["x-mss-signature"]
 
-        message = f"{user_id}-{nonce}-{timestamp}"
+        is_admin = bcc_headers.get("x-mss-is-admin", "")
+        message = (
+            f"{user_id}|{nonce}|{timestamp}|{is_admin}"
+            f"|{request.method}|{request.url.path}"
+        )
         verify_mss_signature(signature=signature, message=message)
 
         return bcc_headers
