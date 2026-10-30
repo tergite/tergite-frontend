@@ -330,7 +330,10 @@ devices, calibrations, notices and the auth entities live in MongoDB.
 `WS /devices/ws/{name}` is how a backend pushes state. The handshake is verified by
 `get_verified_device_name` (signature, source IP, nonce freshness, nonce replay) and the
 socket is registered with the router's `WebsocketConnectionManager` (`connections.py` beside
-it). Each JSON frame is a `DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
+it). A BCC opens a socket per process (its API, heavy worker and light workers), so the device
+is marked online when one connects and offline only when the last of its sockets in this
+process closes, or is cancelled as MSS stops. With `--workers` above 1 the sockets may be spread
+across MSS's processes, each of which counts only its own. Each JSON frame is a `DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
 handler for its name:
 
 | Event | Handler effect |

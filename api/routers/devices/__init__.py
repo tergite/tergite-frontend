@@ -16,6 +16,7 @@
 from contextlib import suppress
 from typing import List, Optional
 
+import anyio
 from fastapi import APIRouter, Depends, Query, WebSocketException
 from fastapi.websockets import WebSocket
 from loguru import logger
@@ -102,7 +103,7 @@ async def handle_device_events(
     # a device not yet registered registers itself with its 'initialized' event
     with suppress(NotFoundError):
         await devices.mark_device_online(database, name=name)
-    await ws_manager.connect(websocket)
+    await ws_manager.connect(websocket, device=name)
     try:
         while True:
             data = await get_websocket_json(websocket, data_type="text")
@@ -114,11 +115,16 @@ async def handle_device_events(
             await websocket.send_json(response)
 
     except WebSocketDisconnect:
+        pass
+    finally:
         ws_manager.disconnect(websocket)
-        with suppress(NotFoundError):
-            await devices.mark_device_offline(
-                database, name=name, last_online=get_current_timestamp()
-            )
+        # the device's other processes may still hold theirs; shielded, so that a socket
+        # cancelled rather than closed, as the server stops, still marks it
+        if not ws_manager.is_connected(name):
+            with anyio.CancelScope(shield=True), suppress(NotFoundError):
+                await devices.mark_device_offline(
+                    database, name=name, last_online=get_current_timestamp()
+                )
 
 
 async def _handle_frame(

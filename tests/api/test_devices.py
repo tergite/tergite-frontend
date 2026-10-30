@@ -185,6 +185,23 @@ def test_a_replayed_nonce_is_refused(client):
     assert exp.value.code == 1008
 
 
+def test_a_device_stays_online_while_any_of_its_sockets_is_open(db, client):
+    """A BCC opens a socket per process, so one of them closing leaves its device online"""
+    device = _DEVICE_LIST[0]
+    db.insert(Device, to_record(Device, {**device, "id": generate_id()}))
+    name = device["name"]
+    url = f"/devices/ws/{name}"
+
+    with client as client:
+        with client.websocket_connect(url, headers=create_bcc_headers(name)):
+            with client.websocket_connect(url, headers=create_bcc_headers(name)):
+                pass
+            [is_online_with_one_open] = _get_online_flags(db)
+        [is_online_with_none_open] = _get_online_flags(db)
+
+    assert (is_online_with_one_open, is_online_with_none_open) == (True, False)
+
+
 @pytest.mark.parametrize("payload", _SAMPLE_DEVICES[:1])
 def test_create_device_wrong_cert(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """Only clients with the certificate known to MSS can push to /devices/ws/{name}"""
@@ -320,3 +337,7 @@ def _get_stored_devices(db) -> List[Dict[str, Any]]:
         device.model_dump(mode="json", exclude={"id"}, exclude_none=True)
         for device in db.find(Device)
     ]
+
+
+def _get_online_flags(db) -> List[bool]:
+    return [device.is_online for device in db.find(Device)]

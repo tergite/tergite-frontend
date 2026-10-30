@@ -163,6 +163,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Fixed
 
+- A device stays online while any of its backend's websockets is open; one of them closing, as a backend opens one
+  per process, marked the device offline though the others were open.
 - Expired notifications are no longer shown for up to a minute past their `expires_at`, while
   MongoDB's TTL monitor had yet to delete them.
 - GET `/jobs/`, `/jobs/{id}` and `/jobs/{id}/status` now show a job only to the user who
