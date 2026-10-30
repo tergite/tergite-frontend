@@ -159,7 +159,7 @@ def test_create_device(db, client, payload: Dict[str, Any]):
             updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
 
             assert original_data_in_db == []
-            assert final_data_in_db == [payload]
+            assert final_data_in_db == [_get_connected(payload)]
             assert all(
                 [is_not_older_than(x, seconds=30) for x in created_at_timestamps]
             )
@@ -319,10 +319,7 @@ def test_update_pre_existing_device(
             assert json_response["data"] == final_data_in_db[0]
 
             updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
-            expected = {
-                **original_data_in_db[0],
-                **payload,
-            }
+            expected = _get_connected({**original_data_in_db[0], **payload})
 
             assert original_data_in_db == [backend_dict]
             assert final_data_in_db[0] == expected
@@ -341,3 +338,10 @@ def _get_stored_devices(db) -> List[Dict[str, Any]]:
 
 def _get_online_flags(db) -> List[bool]:
     return [device.is_online for device in db.find(Device)]
+
+
+def _get_connected(device: Dict[str, Any]) -> Dict[str, Any]:
+    """Gets the device as stored once its socket marked it online, which clears last_online"""
+    connected = {**device, "is_online": True}
+    connected.pop("last_online", None)
+    return connected

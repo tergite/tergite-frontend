@@ -222,10 +222,11 @@ exists. Any config error is a startup crash, not a runtime surprise.
 The FastAPI `lifespan` in `app_kwargs.py` creates the BCC httpx clients, opens the
 `Database` (whose `setup` creates every schema's collection, validator and indexes) and the
 request log's, then runs the `on_startup` of `auth` (which stores the roles users may hold),
-`jobs` and `notices`, and, when `[email]` is configured, starts the only background loop in
-the app: the `Emailer` sending the notices' pending emails. On shutdown it stops the emailer,
-closes the BCC clients, closes all device websockets, marks every device disconnected, and
-closes both databases.
+`jobs` and `notices`, and starts the app's background loops: the device websockets'
+`WebsocketConnectionManager`, keeping this process's connections from lapsing (§7), and, when
+`[email]` is configured, the `Emailer` sending the notices' pending emails. On shutdown it
+stops the emailer, closes the BCC clients, closes all device websockets, each of which forgets
+its connection, and closes both databases.
 
 `docs_url` / `redoc_url` / `openapi_url` are set to `None` unless
 `general.environment == "development"` — there are no interactive docs in production.
@@ -330,10 +331,23 @@ devices, calibrations, notices and the auth entities live in MongoDB.
 `WS /devices/ws/{name}` is how a backend pushes state. The handshake is verified by
 `get_verified_device_name` (signature, source IP, nonce freshness, nonce replay) and the
 socket is registered with the router's `WebsocketConnectionManager` (`connections.py` beside
-it). A BCC opens a socket per process (its API, heavy worker and light workers), so the device
-is marked online when one connects and offline only when the last of its sockets in this
-process closes, or is cancelled as MSS stops. With `--workers` above 1 the sockets may be spread
-across MSS's processes, each of which counts only its own. Each JSON frame is a `DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
+it). A BCC opens a socket per process (its API, heavy worker and light workers), and each may
+reach a different MSS process, so whether a device is online is kept in the database, not in a
+process:
+
+- Each socket is a `device_connections` record from when it is accepted until it closes, or is
+  cancelled as MSS stops (`add_connection`, `remove_connection`). The MSS process holding it
+  pushes its `expires_at` on every `CONNECTION_REFRESH_SECONDS` (30 s) to
+  `CONNECTION_TTL_SECONDS` (90 s) ahead, so that the records of a process that died lapse.
+- A device is online while it has a live connection and is not in `switched_off_devices`,
+  which `switched_off` and `switched_on` events add it to and remove it from. Its stored
+  `is_online`, which the device routes filter on, and `last_online` are set from them on each
+  change (`sync_online_flags`), and for every device on each refresh, which puts right a
+  change two processes raced on and a dead process's lapsed connections.
+- An `initialized` event's own `is_online` is the backend's view, so the upsert sets the flag
+  from the connections after it.
+
+Each JSON frame is a `DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
 handler for its name:
 
 | Event | Handler effect |
@@ -395,7 +409,8 @@ Users are records like any other: `auth_users`, keeping the documents fastapi-us
 field for field, with roles referencing `auth_roles` and OAuth accounts in a list of models.
 
 Notable tables: `jobs`, `devices`, `calibrations`, `calibrations_logs` (historical,
-indexed on `(name, last_calibrated desc)`), `notices` (expiring at `expires_at`).
+indexed on `(name, last_calibrated desc)`), `notices` (expiring at `expires_at`),
+`device_connections` (expiring at `expires_at`) and `switched_off_devices` (§7).
 Deleting a project moves it to `deleted_auth_projects` rather than dropping it.
 
 **Request logs** (`services/request_log`) remember each request id and websocket nonce for
@@ -739,9 +754,10 @@ On top of the [style guide](#style-guide):
 
 Worth knowing before you are surprised by them:
 
-- **No realtime backend liveness.** A device is "online" because it said so over the
-  websocket; if BCC dies without disconnecting cleanly, MSS keeps showing it online until
-  the socket drops. Called out in
-  [docs/backends.md](docs/backends.md) and the README's TODO.
+- **Liveness is the websockets'.** A device is online while a process of its backend holds a
+  websocket open; a backend that is up but whose processes all lost their sockets shows
+  offline until one sends an event and reconnects. If MSS dies, its processes' connections
+  lapse within `CONNECTION_TTL_SECONDS`, and another process, or MSS restarted, marks the
+  device offline at its next refresh.
 - **503 handling in the dashboard is incomplete** (the README's TODO).
 - **`GET /counts/job-submitters` raises `NotImplementedError`.**

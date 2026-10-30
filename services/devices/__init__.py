@@ -10,32 +10,51 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from .dtos import Device, DeviceEvent, DeviceQuery, DeviceUpsert
+from .dtos import (
+    Device,
+    DeviceConnection,
+    DeviceEvent,
+    DeviceQuery,
+    DeviceUpsert,
+    SwitchedOffDevice,
+)
 from .events import EVENT_HANDLERS
 from .service import (
-    disconnect_all,
+    CONNECTION_REFRESH_SECONDS,
+    CONNECTION_TTL_SECONDS,
+    add_connection,
     find_devices,
     get_device,
-    mark_device_offline,
-    mark_device_online,
+    keep_connections_live,
     patch_device,
+    remove_connection,
+    switch_off_device,
+    switch_on_device,
+    sync_online_flags,
     upsert_device,
 )
 
-SCHEMAS = (Device,)
+SCHEMAS = (Device, DeviceConnection, SwitchedOffDevice)
 
 __all__ = [
     "SCHEMAS",
     "Device",
+    "DeviceConnection",
     "DeviceEvent",
     "DeviceQuery",
     "DeviceUpsert",
+    "SwitchedOffDevice",
+    "CONNECTION_REFRESH_SECONDS",
+    "CONNECTION_TTL_SECONDS",
     "EVENT_HANDLERS",
-    "disconnect_all",
+    "add_connection",
     "find_devices",
     "get_device",
-    "mark_device_offline",
-    "mark_device_online",
     "patch_device",
+    "keep_connections_live",
+    "remove_connection",
+    "switch_off_device",
+    "switch_on_device",
+    "sync_online_flags",
     "upsert_device",
 ]

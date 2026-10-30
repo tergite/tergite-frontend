@@ -13,13 +13,25 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence
 
 from libs.storage import Database
 from utils.date_time import get_current_timestamp
 from utils.exc import NotFoundError
 
-from .dtos import Device, DeviceQuery, DeviceUpsert
+from .dtos import (
+    Device,
+    DeviceConnection,
+    DeviceQuery,
+    DeviceUpsert,
+    SwitchedOffDevice,
+)
+
+# how long a connection counts unless the MSS process holding it refreshes it, which it does
+# every CONNECTION_REFRESH_SECONDS; past it, the process is taken to have died with it
+CONNECTION_TTL_SECONDS = 90.0
+CONNECTION_REFRESH_SECONDS = 30.0
 
 
 async def find_devices(
@@ -80,7 +92,7 @@ async def upsert_device(database: Database, payload: DeviceUpsert) -> Device:
     """
     timestamp = get_current_timestamp()
     payload.updated_at = timestamp
-    return await database.update_one(
+    await database.update_one(
         Device,
         filter={"name": payload.name},
         update={
@@ -89,6 +101,9 @@ async def upsert_device(database: Database, payload: DeviceUpsert) -> Device:
         },
         should_upsert=True,
     )
+    # the payload's is_online is the backend's view; MSS's is its connections'
+    await sync_online_flags(database, names=[payload.name])
+    return await get_device(database, payload.name)
 
 
 async def patch_device(
@@ -118,46 +133,106 @@ async def patch_device(
     return device
 
 
-async def mark_device_online(database: Database, name: str) -> Device:
-    """Marks the device of the given name as online
-
-    Raises:
-        NotFoundError: device {name} not found
-    """
-    return await patch_device(
-        database, name=name, payload={"last_online": None, "is_online": True}
-    )
-
-
-async def mark_device_offline(
-    database: Database, name: str, last_online: str
-) -> Device:
-    """Marks the device of the given name as offline since the given time
+async def add_connection(
+    database: Database, device_name: str, ttl: float = CONNECTION_TTL_SECONDS
+) -> str:
+    """Records a websocket of the device's backend, which marks the device online unless it
+    is switched off
 
     Args:
         database: the database where the devices are stored
-        name: the name of the device
-        last_online: the timestamp when the device was last online
+        device_name: the name of the device
+        ttl: the seconds the connection counts before it lapses, unless refreshed
+
+    Returns:
+        the connection's id
+    """
+    connection = await database.insert(
+        DeviceConnection,
+        DeviceConnection(device_name=device_name, expires_at=_get_expiry(ttl)),
+    )
+    await sync_online_flags(database, names=[device_name])
+    return connection.id
+
+
+async def remove_connection(database: Database, connection_id: str) -> None:
+    """Forgets the websocket, which marks its device offline if it was the last"""
+    connection = await database.delete_one(
+        DeviceConnection, filter={"id": connection_id}
+    )
+    if connection is not None:
+        await sync_online_flags(database, names=[connection.device_name])
+
+
+async def keep_connections_live(
+    database: Database,
+    connection_ids: Sequence[str],
+    ttl: float = CONNECTION_TTL_SECONDS,
+) -> None:
+    """Keeps the websockets from lapsing for another ttl seconds"""
+    if connection_ids:
+        await database.update_many(
+            DeviceConnection,
+            filter={"id": {"$in": list(connection_ids)}},
+            update={"$set": {"expires_at": _get_expiry(ttl)}},
+        )
+
+
+async def sync_online_flags(
+    database: Database, names: Optional[Sequence[str]] = None
+) -> None:
+    """Marks each device, or the named ones, online if it has a live connection and is not
+    switched off, and offline otherwise, since now"""
+    device_filter = {} if names is None else {"name": {"$in": list(names)}}
+    connected_names = set(
+        await database.find_distinct(DeviceConnection, "device_name", filter={})
+    )
+    switched_off_names = set(
+        await database.find_distinct(SwitchedOffDevice, "name", filter={})
+    )
+    for device in await database.find(Device, filter=device_filter):
+        is_online = (
+            device.name in connected_names and device.name not in switched_off_names
+        )
+        if is_online != device.is_online:
+            last_online = None if is_online else get_current_timestamp()
+            await patch_device(
+                database,
+                name=device.name,
+                payload={"is_online": is_online, "last_online": last_online},
+            )
+
+
+async def switch_off_device(database: Database, name: str, date: datetime) -> Device:
+    """Marks the device switched off, and so offline since the date, until switched on
 
     Raises:
         NotFoundError: device {name} not found
     """
+    await get_device(database, name)
+    await database.update_one(
+        SwitchedOffDevice,
+        filter={"name": name},
+        update={"$set": {"name": name, "switched_off_at": date}},
+        should_upsert=True,
+    )
     return await patch_device(
-        database, name=name, payload={"last_online": last_online, "is_online": False}
+        database,
+        name=name,
+        payload={"is_online": False, "last_online": date.isoformat()},
     )
 
 
-async def disconnect_all(database: Database) -> int:
-    """Marks every device offline, returning how many changed"""
-    timestamp = get_current_timestamp()
-    return await database.update_many(
-        Device,
-        filter={},
-        update={
-            "$set": {
-                "last_online": timestamp,
-                "is_online": False,
-                "updated_at": timestamp,
-            }
-        },
-    )
+async def switch_on_device(database: Database, name: str) -> Device:
+    """Marks the device switched on, and so online again if connected
+
+    Raises:
+        NotFoundError: device {name} not found
+    """
+    await database.delete_one(SwitchedOffDevice, filter={"name": name})
+    await sync_online_flags(database, names=[name])
+    return await get_device(database, name)
+
+
+def _get_expiry(ttl: float) -> datetime:
+    return datetime.now(timezone.utc) + timedelta(seconds=ttl)

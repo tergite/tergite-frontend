@@ -13,7 +13,6 @@
 # that they have been altered from the originals.
 #
 # Refactored by Martin Ahindura - 2023-11-08, 2024-08-01
-from contextlib import suppress
 from typing import List, Optional
 
 import anyio
@@ -35,8 +34,7 @@ from utils.api import (
     get_paginated_json,
     get_websocket_json,
 )
-from utils.date_time import get_current_timestamp
-from utils.exc import ForbiddenError, NotFoundError
+from utils.exc import ForbiddenError
 
 from .connections import WebsocketConnectionManager
 
@@ -100,11 +98,11 @@ async def handle_device_events(
     if verified_name != name:
         raise WebSocketException(code=WS_1008_POLICY_VIOLATION, reason="forbidden")
 
-    # a device not yet registered registers itself with its 'initialized' event
-    with suppress(NotFoundError):
-        await devices.mark_device_online(database, name=name)
-    await ws_manager.connect(websocket, device=name)
+    # a device not yet registered registers itself with its 'initialized' event, which
+    # the connection then marks online
+    connection_id = await devices.add_connection(database, device_name=name)
     try:
+        await ws_manager.connect(websocket, connection_id=connection_id)
         while True:
             data = await get_websocket_json(websocket, data_type="text")
             response = await _handle_frame(
@@ -118,13 +116,10 @@ async def handle_device_events(
         pass
     finally:
         ws_manager.disconnect(websocket)
-        # the device's other processes may still hold theirs; shielded, so that a socket
-        # cancelled rather than closed, as the server stops, still marks it
-        if not ws_manager.is_connected(name):
-            with anyio.CancelScope(shield=True), suppress(NotFoundError):
-                await devices.mark_device_offline(
-                    database, name=name, last_online=get_current_timestamp()
-                )
+        # shielded, so that a socket cancelled rather than closed, as the server stops, is
+        # still forgotten; else it lapses
+        with anyio.CancelScope(shield=True):
+            await devices.remove_connection(database, connection_id)
 
 
 async def _handle_frame(
