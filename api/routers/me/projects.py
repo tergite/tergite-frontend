@@ -42,6 +42,21 @@ async def get_projects(
     skip: int = Query(0),
     limit: Optional[int] = Query(None),
 ) -> Dict[str, Any]:
+    """Gets a paginated list of the current user's projects that fit the given filters
+
+    Args:
+        database: the database where the projects are stored
+        user_id: the id of the current logged-in user
+        query: the filters the projects must fit
+        skip: the number of projects to skip
+        limit: the maximum number of projects to return
+
+    Returns:
+        the page of projects
+
+    Raises:
+        401: not logged in
+    """
     projects = await auth.find_projects(
         database, query, member_id=user_id, skip=skip, limit=limit
     )
@@ -58,6 +73,20 @@ async def get_projects(
 async def get_project(
     database: DatabaseDep, id: str, user_id: CurrentUserIdDep
 ) -> Dict[str, Any]:
+    """Gets the project of the given id, if the current user is a member of it
+
+    Args:
+        database: the database where the projects are stored
+        id: the id of the project
+        user_id: the id of the current logged-in user
+
+    Returns:
+        the project
+
+    Raises:
+        401: not logged in
+        404: the project does not exist, or the user is not a member of it
+    """
     # a malformed id is as missing as an unknown one: 404, not 422
     if not is_id(id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -84,7 +113,20 @@ async def get_project(
 async def remove_member(
     database: DatabaseDep, _id: Id, member_id: Id, user: CurrentUserDep
 ) -> None:
-    """Removes a member from a project the caller administers, revoking their app tokens"""
+    """Removes a member from a project the caller administers, revoking their app tokens
+
+    Args:
+        database: the database where the projects are stored
+        _id: the id of the project
+        member_id: the id of the member to remove
+        user: the current logged-in user; the project's admin or a superuser
+
+    Raises:
+        400: the member is the project's admin
+        401: not logged in
+        403: the user neither administers the project nor is a superuser
+        404: the project does not exist, or member_id is not one of its members
+    """
     try:
         project = await auth.get_project(database, _id)
     except auth.ProjectNotExists as exp:
@@ -112,6 +154,18 @@ async def remove_member(
     name="projects:destroy_my_administered_project",
 )
 async def destroy(database: DatabaseDep, _id: Id, user_id: CurrentUserIdDep) -> None:
+    """Deletes a project the current user administers, with its app tokens
+
+    Args:
+        database: the database where the projects are stored
+        _id: the id of the project
+        user_id: the id of the current logged-in user; the project's admin
+
+    Raises:
+        401: not logged in
+        403: the user does not administer the project, or it is their personal project
+        404: the project does not exist
+    """
     try:
         project = await auth.get_project(database, _id)
     except auth.ProjectNotExists as exp:

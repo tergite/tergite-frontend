@@ -42,6 +42,15 @@ class Database:
         await self.__db_store.setup()
 
     async def get(self, schema: Type[T], key: Any) -> Optional[T]:
+        """Gets the record of the given key
+
+        Args:
+            schema: the schema of the record
+            key: the value of the schema's `__storage__.key` field
+
+        Returns:
+            the record, or None if there is none
+        """
         return await self.__db_store.get(self.__ensure_known(schema), key)
 
     async def find(
@@ -62,6 +71,9 @@ class Database:
             skip: the number of matched records to skip
             limit: the most records to return; None returns all
 
+        Returns:
+            the matched records
+
         Raises:
             QueryError: the filter or sort is not in the storage layer's dialect
             UnknownFieldError: a field the schema does not have
@@ -72,23 +84,70 @@ class Database:
     async def find_one(
         self, schema: Type[T], filter: Optional[Filter] = None, sort: Sequence[str] = ()
     ) -> Optional[T]:
+        """Finds the first record that matches the filter, in the sort's order
+
+        Args:
+            schema: the schema of the record
+            filter: MongoDB-style, as `find` takes it; None matches every record
+            sort: the fields to sort by; a leading '-' sorts descending
+
+        Returns:
+            the record, or None if none matched
+
+        Raises:
+            QueryError: the filter or sort is not in the storage layer's dialect
+            UnknownFieldError: a field the schema does not have
+        """
         records = await self.find(schema, filter=filter, sort=sort, limit=1)
         return records[0] if records else None
 
     async def count(self, schema: Type[T], filter: Optional[Filter] = None) -> int:
+        """Counts the records that match the filter
+
+        Args:
+            schema: the schema of the records
+            filter: MongoDB-style, as `find` takes it; None matches every record
+
+        Returns:
+            the number of matched records
+
+        Raises:
+            QueryError: the filter is not in the storage layer's dialect
+            UnknownFieldError: a field the schema does not have
+        """
         self.__ensure_known(schema, filter=filter)
         return await self.__db_store.count(schema, filter or {})
 
     async def find_distinct(
         self, schema: Type[T], field: str, filter: Optional[Filter] = None
     ) -> List[Any]:
-        """Gets the different values the field holds in the matched records"""
+        """Gets the different values the field holds in the matched records
+
+        Args:
+            schema: the schema of the records
+            field: the field, dotted for a nested one
+            filter: MongoDB-style, as `find` takes it; None matches every record
+
+        Returns:
+            the distinct values
+
+        Raises:
+            QueryError: the filter is not in the storage layer's dialect
+            UnknownFieldError: a field the schema does not have
+        """
         self.__ensure_known(schema, filter=filter)
         resolve_field(schema, field)
         return await self.__db_store.find_distinct(schema, field, filter or {})
 
     async def insert(self, schema: Type[T], record: T) -> T:
         """Inserts the record
+
+        Args:
+            schema: the schema of the record
+            record: the record to insert, an instance of the schema
+
+        Returns:
+            the inserted record
 
         Raises:
             DuplicateKeyError: a unique field's value is taken
@@ -97,6 +156,18 @@ class Database:
         return await self.__db_store.insert(schema, record)
 
     async def insert_many(self, schema: Type[T], records: Sequence[T]) -> List[T]:
+        """Inserts the records
+
+        Args:
+            schema: the schema of the records
+            records: the records to insert, each an instance of the schema
+
+        Returns:
+            the inserted records
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         self.__ensure_known(schema)
         for record in records:
             _ensure_instance(schema, record)
@@ -130,21 +201,47 @@ class Database:
         )
 
     async def update_many(self, schema: Type[T], filter: Filter, update: Update) -> int:
-        """Updates every matched record, returning how many changed"""
+        """Updates every matched record
+
+        Args:
+            schema: the schema of the records
+            filter: MongoDB-style, as `find` takes it
+            update: MongoDB update operators, as `update_one` takes them
+
+        Returns:
+            the number of records changed
+        """
         self.__ensure_known(schema, filter=filter, update=update)
         return await self.__db_store.update_many(schema, filter, update)
 
     async def delete_one(self, schema: Type[T], filter: Filter) -> Optional[T]:
-        """Deletes the first matched record, returning it, or None if none matched"""
+        """Deletes the first matched record
+
+        Args:
+            schema: the schema of the record
+            filter: MongoDB-style, as `find` takes it
+
+        Returns:
+            the deleted record, or None if none matched
+        """
         self.__ensure_known(schema, filter=filter)
         return await self.__db_store.delete_one(schema, filter)
 
     async def delete_many(self, schema: Type[T], filter: Filter) -> int:
-        """Deletes every matched record, returning how many were deleted"""
+        """Deletes every matched record
+
+        Args:
+            schema: the schema of the records
+            filter: MongoDB-style, as `find` takes it
+
+        Returns:
+            the number of records deleted
+        """
         self.__ensure_known(schema, filter=filter)
         return await self.__db_store.delete_many(schema, filter)
 
     async def close(self) -> None:
+        """Closes the connections to the database"""
         await self.__db_store.close()
 
     def __ensure_known(

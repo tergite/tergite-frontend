@@ -199,7 +199,18 @@ _NOTICE_TYPES: Dict[Tuple[RequestType, RequestStatus], NoticeTypeId] = {
 
 
 def validate_request_metadata(value: Any, info: ValidationInfo) -> RequestMetadata:
-    """Validates a request's metadata as the class of the request's type"""
+    """Validates a request's metadata as the class of the request's type
+
+    Args:
+        value: the metadata, as a dict, a model or None
+        info: the request's fields validated so far, including its type
+
+    Returns:
+        the metadata as the class of the request's type
+
+    Raises:
+        ValueError: the request's type is not supported
+    """
     req_type = RequestType(info.data["type"])
     try:
         metadata_cls = _METADATA_CLASSES[req_type]
@@ -298,7 +309,16 @@ class Request(Schema):
     def from_post_body(
         cls, body: RequestPostBody, requester: User, target_user_ids: List[str]
     ) -> Self:
-        """Creates a request given its post body, its requester and its target users"""
+        """Creates a request given its post body, its requester and its target users
+
+        Args:
+            body: the request's POST body
+            requester: the user making the request
+            target_user_ids: the ids of the users the request is directed to
+
+        Returns:
+            the request
+        """
         return cls(
             **body.model_dump(),
             requester_id=str(requester.id),

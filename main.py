@@ -52,6 +52,7 @@ _ROOT = Path(__file__).parent
 
 
 def main() -> None:
+    """Runs the MSS command given on the command line: start, serve or migrate"""
     parser = argparse.ArgumentParser(
         description="Manage the Main Service Server (MSS)."
     )

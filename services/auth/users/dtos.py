@@ -55,10 +55,12 @@ class User(Schema):
 
     @property
     def is_superuser(self) -> bool:
+        """Whether the user holds the admin role"""
         return UserRole.ADMIN in self.roles
 
     @property
     def username(self) -> str:
+        """The part of the user's email before the '@'"""
         return self.email.split("@")[0]
 
 

@@ -16,6 +16,8 @@ from libs.storage import Schema, StorageSpec
 
 
 class BccNonce(Schema):
+    """A nonce a backend signed its websocket handshake with, kept until it expires"""
+
     __storage__ = StorageSpec(
         table="bcc_nonces",
         key="nonce",

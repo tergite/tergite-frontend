@@ -21,6 +21,15 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     """Gives each request an ID, which it signs its calls to BCC with and echoes back"""
 
     async def dispatch(self, request: Request, call_next):
+        """Handles the request, tagging it and its response with the request ID
+
+        Args:
+            request: the incoming request; an `x-request-id` header it sends is reused
+            call_next: the next handler in the chain
+
+        Returns:
+            the response, with the `x-request-id` header set
+        """
         # Resolve request ID (reuse x-request-id header if sent, or generate new)
         request_id = request.headers.get("x-request-id") or get_uuid4_str()
         request.state.request_id = request_id

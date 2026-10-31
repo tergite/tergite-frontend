@@ -44,7 +44,11 @@ class AppTokenRead(AppTokenCreate):
 
     @field_serializer("created_at", when_used="json")
     def serialize_created_at(self, created_at: datetime):
-        """Convert created_at to string when working with JSON"""
+        """Convert created_at to string when working with JSON
+
+        Args:
+            created_at: the time the app token was created
+        """
         return datetime_to_zulu(created_at)
 
 
@@ -55,7 +59,11 @@ class AppTokenUpdate(BaseModel):
 
     @field_serializer("expires_at", when_used="json")
     def serialize_expires_at(self, expires_at: datetime):
-        """Convert expires_at to string when working with JSON"""
+        """Convert expires_at to string when working with JSON
+
+        Args:
+            expires_at: the time the app token expires
+        """
         return datetime_to_zulu(expires_at)
 
 

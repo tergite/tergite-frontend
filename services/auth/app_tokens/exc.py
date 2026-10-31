@@ -17,9 +17,13 @@ from utils.exc import ForbiddenError
 
 
 class ExtendedErrorCode(str, Enum):
+    """The error codes, beyond the standard ones, for app token errors"""
+
     BAD_CREDENTIALS = "BAD_CREDENTIALS"
 
 
 class AppTokenNotFound(ForbiddenError):
+    """The user has no such app token, or it has expired"""
+
     def __init__(self, message: str = "app token does not exist or is expired."):
         super().__init__(message)

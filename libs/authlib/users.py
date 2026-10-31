@@ -47,6 +47,9 @@ async def sign_in_with_oauth(
         account: the account's values: account_id, account_email, access_token,
             expires_at and refresh_token
 
+    Returns:
+        the signed-in user
+
     Raises:
         EmailNotPermitted: the email does not match the provider's email_regex
         UserAlreadyExists: a user has the email, and the provider does not link by email
@@ -84,12 +87,33 @@ async def sign_in_with_oauth(
 async def get_user(
     database: Database, user_schema: Type[models.UP], user_id: str
 ) -> Optional[models.UP]:
+    """Gets the user of the given id
+
+    Args:
+        database: the database where the users are kept
+        user_schema: the storage schema of the users
+        user_id: the id of the user
+
+    Returns:
+        the user, or None if no user has that id
+    """
     return await database.get(user_schema, user_id)
 
 
 async def get_user_by_oauth_account(
     database: Database, user_schema: Type[models.UOAP], oauth_name: str, account_id: str
 ) -> Optional[models.UOAP]:
+    """Gets the user who has the OAuth account of the given provider and account id
+
+    Args:
+        database: the database where the users are kept
+        user_schema: the storage schema of the users
+        oauth_name: the name of the provider
+        account_id: the account's id with the provider
+
+    Returns:
+        the user, or None if no user has the account
+    """
     account_filter = {"oauth_name": oauth_name, "account_id": account_id}
     return await database.find_one(
         user_schema, {"oauth_accounts": {"$elemMatch": account_filter}}
@@ -99,6 +123,16 @@ async def get_user_by_oauth_account(
 async def get_user_by_email(
     database: Database, user_schema: Type[models.UP], email: str
 ) -> Optional[models.UP]:
+    """Gets the user of the given email, whatever its case
+
+    Args:
+        database: the database where the users are kept
+        user_schema: the storage schema of the users
+        email: the email of the user
+
+    Returns:
+        the user, or None if no user has that email
+    """
     return await database.find_one(user_schema, {"email": email})
 
 
@@ -109,7 +143,18 @@ async def update_oauth_account(
     account_id: str,
     values: Dict[str, Any],
 ) -> models.UOAP:
-    """Replaces the values of the user's account with that provider and account id"""
+    """Replaces the values of the user's account with that provider and account id
+
+    Args:
+        database: the database where the users are kept
+        user: the user who has the account
+        oauth_name: the name of the provider
+        account_id: the account's id with the provider
+        values: the account's new values
+
+    Returns:
+        the updated user
+    """
     accounts = []
     for account in _get_account_values(user):
         if account["oauth_name"] == oauth_name and account["account_id"] == account_id:
@@ -125,7 +170,17 @@ async def update_oauth_account(
 async def add_oauth_account(
     database: Database, user: models.UOAP, account: Dict[str, Any], roles: Set[str]
 ) -> models.UOAP:
-    """Links an OAuth account to the user, who gains the roles it grants"""
+    """Links an OAuth account to the user, who gains the roles it grants
+
+    Args:
+        database: the database where the users are kept
+        user: the user to link the account to
+        account: the account's values
+        roles: the roles the account grants
+
+    Returns:
+        the updated user
+    """
     accounts = _get_validated_accounts(user, [*_get_account_values(user), account])
     return await database.update_one(
         type(user),
@@ -145,6 +200,17 @@ async def create_oauth_user(
     """Creates a user with its first OAuth account, in one write
 
     The user has the roles the schema gives every new user, and those the account grants.
+
+    Args:
+        database: the database where the users are kept
+        user_schema: the storage schema of the users
+        email: the user's email
+        is_verified: whether the user is verified from the start
+        account: the account's values
+        roles: the roles the account grants
+
+    Returns:
+        the created user
     """
     user = user_schema(email=email, is_verified=is_verified, oauth_accounts=[account])
     user = user.model_copy(update={"roles": user.roles | roles})

@@ -73,6 +73,9 @@ async def find_latest_calibrations(
         sort: the fields to sort by; a leading '-' sorts descending
         skip: the number of matched calibrations to skip
         limit: the most calibrations to return; None returns all
+
+    Returns:
+        the matching calibrations
     """
     return await database.find(
         DeviceCalibration,
@@ -87,6 +90,13 @@ async def find_latest_calibrations(
 
 async def get_one(database: Database, name: str) -> DeviceCalibration:
     """Gets the current calibration of the given device
+
+    Args:
+        database: the database where the calibrations are stored
+        name: the name of the device
+
+    Returns:
+        the device's calibration
 
     Raises:
         NotFoundError: no matches for {'name': name}

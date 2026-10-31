@@ -24,7 +24,12 @@ DASHBOARD_PATH = "/ui"
 
 
 def include_dashboard(app: FastAPI, directory: Path) -> None:
-    """Serves the dashboard's build in directory at /ui, and redirects / to it"""
+    """Serves the dashboard's build in directory at /ui, and redirects / to it
+
+    Args:
+        app: the FastAPI app to serve the dashboard on
+        directory: the folder holding the dashboard's build
+    """
     app.mount(DASHBOARD_PATH, _SinglePageApp(directory=directory), name="dashboard")
 
     @app.get("/", include_in_schema=False)

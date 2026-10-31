@@ -82,7 +82,17 @@ class BccConfig(BaseModel):
     @field_validator("public_key_path", mode="before")
     @classmethod
     def validate_public_key_path(cls, v: Any):
-        """Validate the public key path to ensure all relative paths are relative to the app root"""
+        """Validate the public key path to ensure all relative paths are relative to the app root
+
+        Args:
+            v: the configured public key path
+
+        Returns:
+            the path, made absolute against the app root if relative
+
+        Raises:
+            ValueError: the value is not a path or a string
+        """
         try:
             value_path = Path(v)
             if not value_path.is_absolute():
@@ -94,7 +104,14 @@ class BccConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def set_public_url_if_none(cls, data: Any) -> Any:
-        """Sets the public URL to the value of URL if public URL is none"""
+        """Sets the public URL to the value of URL if public URL is none
+
+        Args:
+            data: the BCC's configuration, before validation
+
+        Returns:
+            the configuration, with a public URL
+        """
         if isinstance(data, dict):
             if "public_url" not in data:
                 data["public_url"] = data["url"]
@@ -316,7 +333,16 @@ class AppConfig(BaseModel, extra="allow"):
 
     @model_validator(mode="after")
     def dashboard_url_required_for_email(self) -> "AppConfig":
-        """Silently sending mail with dead links is worse than failing at startup"""
+        """Checks that notices.dashboard_url is set whenever email is configured
+
+        Silently sending mail with dead links is worse than failing at startup.
+
+        Returns:
+            the config, once valid
+
+        Raises:
+            ValueError: email is configured without notices.dashboard_url
+        """
         if self.email is not None and not self.notices.dashboard_url:
             raise ValueError(
                 "notices.dashboard_url is required when [email] is configured"

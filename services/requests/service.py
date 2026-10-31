@@ -43,6 +43,7 @@ async def create(
     """Creates a new user request given the request body, requester_id and request type
 
     Args:
+        database: the database where the requests are stored
         request_body: the POST body of the request
         requester: the user making the request
 
@@ -80,6 +81,7 @@ async def get_one(database: Database, pk: str, current_user_id: str) -> Request:
     """Gets a single request if the given user is allowed to see it
 
     Args:
+        database: the database where the requests are stored
         pk: the id of the request
         current_user_id: the identifier of the current user
 

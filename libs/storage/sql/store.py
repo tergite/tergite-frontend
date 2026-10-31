@@ -73,6 +73,7 @@ class SqlStore(DbStore):
             _set_up_sqlite(self._engine.sync_engine)
 
     async def setup(self) -> None:
+        """Creates what the schemas need, such as tables and indexes; safe to repeat"""
         async with self._engine.begin() as conn:
             await conn.run_sync(self._metadata.create_all)
         is_any_expiring = any(
@@ -82,6 +83,15 @@ class SqlStore(DbStore):
             self._expiry_sweeper = asyncio.create_task(self._delete_expired_records())
 
     async def get(self, schema: Type[T], key: Any) -> Optional[T]:
+        """Gets the unexpired record of the given key
+
+        Args:
+            schema: the schema of the record
+            key: the value of the schema's key field
+
+        Returns:
+            the record, or None if there is none
+        """
         tables = self._schema_tables[schema]
         key_filter = {schema.__storage__.key: key}
         async with self._read_engine.connect() as conn:
@@ -98,6 +108,18 @@ class SqlStore(DbStore):
         skip: int,
         limit: Optional[int],
     ) -> List[T]:
+        """Finds the unexpired records that match the filter, in the sort's order
+
+        Args:
+            schema: the schema of the records
+            query_filter: the filter, as `Database.find` takes it
+            sort: the fields to sort by; a leading '-' sorts descending
+            skip: the number of matched records to skip
+            limit: the most records to return; None returns all
+
+        Returns:
+            the matched records
+        """
         tables = self._schema_tables[schema]
         async with self._read_engine.connect() as conn:
             return await _find_records(
@@ -105,6 +127,15 @@ class SqlStore(DbStore):
             )
 
     async def count(self, schema: Type[T], query_filter: Filter) -> int:
+        """Counts the unexpired records that match the filter
+
+        Args:
+            schema: the schema of the records
+            query_filter: the filter, as `Database.find` takes it
+
+        Returns:
+            the number of matched records
+        """
         tables = self._schema_tables[schema]
         statement = (
             select(func.count())
@@ -117,6 +148,16 @@ class SqlStore(DbStore):
     async def find_distinct(
         self, schema: Type[T], field: str, query_filter: Filter
     ) -> List[Any]:
+        """Gets the different values the field holds in the matched records
+
+        Args:
+            schema: the schema of the records
+            field: the field, dotted for a nested one
+            query_filter: the filter, as `Database.find` takes it
+
+        Returns:
+            the distinct values
+        """
         tables = self._schema_tables[schema]
         where = translate_filter(tables, query_filter)
         list_table = tables.list_tables.get(field)
@@ -136,6 +177,18 @@ class SqlStore(DbStore):
             return list(await conn.scalars(statement))
 
     async def insert(self, schema: Type[T], record: T) -> T:
+        """Inserts the record
+
+        Args:
+            schema: the schema of the record
+            record: the record to insert
+
+        Returns:
+            the inserted record
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         tables = self._schema_tables[schema]
         with _translate_unique_violations():
             async with self._engine.begin() as conn:
@@ -143,6 +196,18 @@ class SqlStore(DbStore):
         return record
 
     async def insert_many(self, schema: Type[T], records: Sequence[T]) -> List[T]:
+        """Inserts the records
+
+        Args:
+            schema: the schema of the records
+            records: the records to insert
+
+        Returns:
+            the inserted records
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         tables = self._schema_tables[schema]
         with _translate_unique_violations():
             async with self._engine.begin() as conn:
@@ -158,6 +223,22 @@ class SqlStore(DbStore):
         should_upsert: bool,
         returning: Returning,
     ) -> Optional[T]:
+        """Updates the first matched record
+
+        Args:
+            schema: the schema of the record
+            query_filter: the filter, as `Database.find` takes it
+            update: the update, as `Database.update_one` takes it
+            should_upsert: whether to create the record if none matched
+            returning: whether to return the record as it was before or after the update
+
+        Returns:
+            the record before or after the update, or None if none matched and none was
+            upserted
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         tables = self._schema_tables[schema]
         changes = translate_update(tables, update)
         with _translate_unique_violations():
@@ -182,6 +263,19 @@ class SqlStore(DbStore):
     async def update_many(
         self, schema: Type[T], query_filter: Filter, update: Update
     ) -> int:
+        """Updates every matched record
+
+        Args:
+            schema: the schema of the records
+            query_filter: the filter, as `Database.find` takes it
+            update: the update, as `Database.update_one` takes it
+
+        Returns:
+            the number of records changed
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         tables = self._schema_tables[schema]
         changes = translate_update(tables, update)
         with _translate_unique_violations():
@@ -206,6 +300,15 @@ class SqlStore(DbStore):
         )
 
     async def delete_one(self, schema: Type[T], query_filter: Filter) -> Optional[T]:
+        """Deletes the first matched record
+
+        Args:
+            schema: the schema of the record
+            query_filter: the filter, as `Database.find` takes it
+
+        Returns:
+            the deleted record, or None if none matched
+        """
         tables = self._schema_tables[schema]
         async with self._engine.begin() as conn:
             records = await _find_records(
@@ -219,6 +322,15 @@ class SqlStore(DbStore):
         return records[0]
 
     async def delete_many(self, schema: Type[T], query_filter: Filter) -> int:
+        """Deletes every matched record
+
+        Args:
+            schema: the schema of the records
+            query_filter: the filter, as `Database.find` takes it
+
+        Returns:
+            the number of records deleted
+        """
         tables = self._schema_tables[schema]
         statement = delete(tables.table).where(translate_filter(tables, query_filter))
         async with self._engine.begin() as conn:
@@ -226,6 +338,7 @@ class SqlStore(DbStore):
         return result.rowcount
 
     async def close(self) -> None:
+        """Closes the connections to the database"""
         if self._expiry_sweeper is not None:
             self._expiry_sweeper.cancel()
             with contextlib.suppress(asyncio.CancelledError):

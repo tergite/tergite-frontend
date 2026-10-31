@@ -48,7 +48,7 @@ async def get_notice_count(
     Args:
         database: the database where the notices are stored
         current_user: the current logged in user
-        user_id: The IDs of the users to retrieve notices for; only superusers can set it
+        user_id: the ID of the user whose notices to count; only superusers can set it
         min_start_utc: The minimum UTC timestamp the notice should start
         max_start_utc: The maximum UTC timestamp the notice should start
         min_expires_utc: The minimum UTC timestamp the notice should expire
@@ -56,6 +56,9 @@ async def get_notice_count(
         include_dismissed: whether to include dismissed notices; defaults to False
         types: the types to filter by; repeat the param for many
         is_read: filter on read state; default = None i.e. either
+
+    Returns:
+        the number of matching notices
     """
     query = NoticeQuery(
         user_id=user_id,
@@ -92,6 +95,9 @@ async def get_job_submitters_count(
         start_utc: the start of the window, inclusive
         end_utc: the end of the window, exclusive
         should_count_distinct: whether to count each submitter once; otherwise every job counts
+
+    Returns:
+        the number of submitters, or of jobs if not counted distinct
     """
     count = await jobs_service.count_job_submitters(
         database,

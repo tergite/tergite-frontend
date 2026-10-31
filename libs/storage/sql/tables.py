@@ -79,11 +79,29 @@ class UtcDateTime(TypeDecorator):
     cache_ok = True
 
     def process_bind_param(self, value: Any, dialect: Any) -> Any:
+        """Gives a naive datetime UTC's timezone before it is written
+
+        Args:
+            value: the value written
+            dialect: the database's dialect
+
+        Returns:
+            the value, aware if a datetime
+        """
         if isinstance(value, datetime) and value.tzinfo is None:
             return value.replace(tzinfo=timezone.utc)
         return value
 
     def process_result_value(self, value: Any, dialect: Any) -> Any:
+        """Gives a naive datetime UTC's timezone as it is read
+
+        Args:
+            value: the value read
+            dialect: the database's dialect
+
+        Returns:
+            the value, aware if a datetime
+        """
         if isinstance(value, datetime) and value.tzinfo is None:
             return value.replace(tzinfo=timezone.utc)
         return value
@@ -125,6 +143,13 @@ def get_schema_tables(
 
     Schemas are added referenced-first, so that a foreign key finds its table.
 
+    Args:
+        metadata: the metadata to add the tables to
+        schemas: the schemas
+
+    Returns:
+        the tables of each schema
+
     Raises:
         StorageSpecError: a list field that is unique, or a key that is a list
     """
@@ -135,14 +160,28 @@ def get_schema_tables(
 
 
 def get_metadata(schemas: Sequence[Type[Schema]]) -> MetaData:
-    """Gets the metadata of every table of the schemas, as migrations compare it"""
+    """Gets the metadata of every table of the schemas, as migrations compare it
+
+    Args:
+        schemas: the schemas
+
+    Returns:
+        the metadata
+    """
     metadata = MetaData()
     get_schema_tables(metadata, schemas)
     return metadata
 
 
 def get_child_fields(schema: Type[Schema]) -> Tuple[str, ...]:
-    """The list fields kept in child tables"""
+    """Gets the list fields kept in child tables
+
+    Args:
+        schema: the schema
+
+    Returns:
+        the fields in `indexed_lists`, then the list fields in `references`
+    """
     spec = schema.__storage__
     referenced_lists = tuple(
         field for field in spec.references if is_list_field(schema.model_fields[field])
@@ -151,13 +190,30 @@ def get_child_fields(schema: Type[Schema]) -> Tuple[str, ...]:
 
 
 def get_singular(table_name: str) -> str:
+    """Gets the singular of a table's name, for naming its child tables
+
+    Args:
+        table_name: the table's name, e.g. auth_projects
+
+    Returns:
+        the name without a trailing 's', e.g. auth_project
+    """
     return table_name[:-1] if table_name.endswith("s") else table_name
 
 
 def get_child_rows(
     list_table: ListTable, key: Any, elements: Sequence[Any]
 ) -> List[Dict[str, Any]]:
-    """Gets the child-table rows of a record's list elements, in their order"""
+    """Gets the child-table rows of a record's list elements, in their order
+
+    Args:
+        list_table: the child table of the list field
+        key: the key of the record
+        elements: the list's elements
+
+    Returns:
+        a row per element
+    """
     if list_table.element_model is None:
         return [
             {
@@ -184,7 +240,14 @@ def get_child_rows(
 
 
 def convert_to_column_value(value: Any) -> Any:
-    """Converts a value into what a SQL column holds: an enum's value, a UUID's text"""
+    """Converts a value into what a SQL column holds: an enum's value, a UUID's text
+
+    Args:
+        value: the value
+
+    Returns:
+        the value as the column holds it
+    """
     if isinstance(value, enum.Enum):
         return value.value
     if isinstance(value, (uuid.UUID, PurePath)):
@@ -193,7 +256,15 @@ def convert_to_column_value(value: Any) -> Any:
 
 
 def get_element(list_table: ListTable, row: Mapping[str, Any]) -> Any:
-    """Gets the list element a child-table row holds"""
+    """Gets the list element a child-table row holds
+
+    Args:
+        list_table: the child table of the list field
+        row: the child-table row
+
+    Returns:
+        the scalar element, or a dict of a model element's fields
+    """
     if list_table.element_model is None:
         return row[list_table.value_column]
     return {name: row[name] for name in list_table.element_model.model_fields}

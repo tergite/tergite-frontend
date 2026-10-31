@@ -280,7 +280,14 @@ class Notice(Schema):
         "expires_at", "starts_at", "created_at", "updated_at", when_used="json"
     )
     def serialize_date_fields(self, value: Optional[datetime]) -> Optional[str]:
-        """Convert datetime value to string when working with JSON"""
+        """Convert datetime value to string when working with JSON
+
+        Args:
+            value: the date field's value
+
+        Returns:
+            the value as a Zulu timestamp, or as it is if not a datetime
+        """
         try:
             return datetime_to_zulu(value)
         except AttributeError:
@@ -297,6 +304,11 @@ class Notice(Schema):
             - if 'read_at' is set then the 'dismissed_by' field must include the 'user_id' if type is not custom-broadcast
             - 'read_at' must be None if 'type' is custom-broadcast
 
+        Returns:
+            the notice, once valid
+
+        Raises:
+            ValueError: the notice breaks one of the rules above
         """
         custom_kind = NoticeTypeId.CUSTOM
         custom_broadcast_kind = NoticeTypeId.CUSTOM_BROADCAST
@@ -332,6 +344,9 @@ class Notice(Schema):
             template: The notice template
             context: The values the template's title and body are formatted with
             fields: Additional fields of the notice
+
+        Returns:
+            the notice
         """
         values = context.model_dump()
         return cls.model_validate(
@@ -392,7 +407,14 @@ class NoticeTemplate(Schema):
 
     @classmethod
     def from_notice_type(cls, type_id: NoticeTypeId) -> Self:
-        """Converts a notice type's default template to a template document"""
+        """Converts a notice type's default template to a template document
+
+        Args:
+            type_id: the notice type
+
+        Returns:
+            the notice type's default template
+        """
         info = NOTICE_TYPE_INFO[type_id]
         return cls(
             type=type_id, title=info.title, body=info.body, severity=info.severity
@@ -414,6 +436,9 @@ class CustomNoticeCreate(BaseModel):
         Args:
             database: the database where the users and notice templates are stored
             created_by: the id of the user publishing the notice
+
+        Returns:
+            a notice for each target user found, or a single broadcast if there are none
         """
         # imported here to avoid a circular import, as the auth service imports this one
         from services.auth import User

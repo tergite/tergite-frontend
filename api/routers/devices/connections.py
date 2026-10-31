@@ -31,7 +31,12 @@ class WebsocketConnectionManager:
         self._refresher: Optional[asyncio.Task] = None
 
     async def connect(self, websocket: WebSocket, connection_id: str) -> None:
-        """Allows a connection to be established"""
+        """Accepts the websocket, echoing its request ID, and records its connection
+
+        Args:
+            websocket: the device's websocket
+            connection_id: the id of the websocket's connection in the database
+        """
         request_id = websocket.headers.get("x-request-id")
         if request_id is None:
             request_id = get_uuid4_str()
@@ -43,14 +48,22 @@ class WebsocketConnectionManager:
         logger.info("Connected: {} at {}", websocket.client.host, websocket.url)
 
     def disconnect(self, websocket: WebSocket) -> None:
-        """Removes a given websocket connection, if it was accepted"""
+        """Removes a given websocket connection, if it was accepted
+
+        Args:
+            websocket: the websocket to forget
+        """
         if self.active_connections.pop(websocket, None) is not None:
             logger.info("Disconnected: {} at {}", websocket.client.host, websocket.url)
 
     def start_refreshing(self, database: Database) -> None:
         """Refreshes the connections of this process's websockets every
         CONNECTION_REFRESH_SECONDS, and with them every device's online flag, so that those
-        of a process that died lapse, and a missed change is put right"""
+        of a process that died lapse, and a missed change is put right
+
+        Args:
+            database: the database where the connections and devices are stored
+        """
         self._refresher = asyncio.create_task(
             self._keep_connections_live_forever(database)
         )

@@ -76,6 +76,18 @@ async def read_many(
 
 @router.get("/{name}", responses={200: {"model": Device}})
 async def read_one(database: DatabaseDep, name: str):
+    """Gets the device of the given name
+
+    Args:
+        database: the database where the devices are stored
+        name: the name of the device
+
+    Returns:
+        the device
+
+    Raises:
+        404: no device has that name
+    """
     record = await devices.get_device(database, name=name)
     return record.model_dump(mode="json", exclude_none=True)
 

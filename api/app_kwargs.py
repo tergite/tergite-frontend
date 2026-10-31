@@ -37,11 +37,15 @@ from .routers.devices import ws_manager as devices_ws_manager
 
 
 def get_app_kwargs() -> Dict[str, Any]:
-    """Retrieve the key-word args for the app instance"""
+    """Retrieve the key-word args for the app instance
+
+    Returns:
+        the FastAPI constructor's key-word args; no API docs outside development
+    """
     kwargs = dict(
         title="Main Service Server",
         description="A frontend to all our quantum backends",
-        version="2026.11.0-rc.1",
+        version="2026.11.0-rc.2",
         lifespan=lifespan,
     )
 
@@ -55,6 +59,11 @@ def get_app_kwargs() -> Dict[str, Any]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Starts the app's database, clients and services, and shuts them down on exit
+
+    Args:
+        app: the FastAPI app being served
+    """
     logger.info("Initializing Tergite MSS database connections and client services...")
     email_conf = settings.CONFIG.email
     emailer = Emailer(config=email_conf) if email_conf is not None else None

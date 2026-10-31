@@ -22,6 +22,8 @@ from utils.models import create_partial_model
 
 
 class CalibrationUnit(str, enum.Enum):
+    """The unit of a calibration value"""
+
     ns = "ns"
     s = "s"
     us = "us"

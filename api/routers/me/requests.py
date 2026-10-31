@@ -44,6 +44,7 @@ async def create(
     """Creates a request of the type named in the body
 
     Args:
+        database: the database where the requests are stored
         body: the request payload, discriminated by its `type` field
         requester: the current signed-in user
 

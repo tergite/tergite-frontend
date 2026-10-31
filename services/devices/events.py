@@ -40,6 +40,7 @@ async def on_job_updated_event(
         device: the name of the device for this job
         data: the new job update
         database: the database where the jobs and projects are stored
+        kwargs: any other arguments the event handlers are called with, ignored
 
     Returns:
         the general message with the updated job
@@ -74,6 +75,7 @@ async def on_device_initialized_event(
         device: the name of the device
         data: the new device parameters
         database: the database where the devices are stored
+        kwargs: any other arguments the event handlers are called with, ignored
 
     Returns:
         the general message with the updated job
@@ -102,6 +104,7 @@ async def on_device_switched_off_event(
         device: the name of the device
         data: the extra information about the event
         database: the database where the devices are stored
+        kwargs: any other arguments the event handlers are called with, ignored
 
     Returns:
         the general message with the updated job
@@ -126,6 +129,7 @@ async def on_device_switched_on_event(
         device: the name of the device
         data: the extra information about the event
         database: the database where the devices are stored
+        kwargs: any other arguments the event handlers are called with, ignored
 
     Returns:
         the general message with the updated job
@@ -150,6 +154,7 @@ async def on_device_recalibrated_event(
         device: the name of the device
         data: the new device calibration data
         database: the database where the calibrations are stored
+        kwargs: any other arguments the event handlers are called with, ignored
 
     Returns:
         the general message with the upserted calibration data

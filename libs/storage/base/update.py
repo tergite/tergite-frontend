@@ -37,6 +37,10 @@ class Returning(str, enum.Enum):
 def check_update(schema: Type[Schema], update: Update) -> None:
     """Checks that the update uses only the dialect's operators on the schema's fields
 
+    Args:
+        schema: the schema of the records updated
+        update: the update
+
     Raises:
         QueryError: no changes, an unknown operator, or a wrong operand
         UnknownFieldError: a field the schema does not have
@@ -66,6 +70,11 @@ def check_key_kept(
 
     A store may hold a record by its key, so no store lets an update move it. Setting it
     on insert, or to the very value matched, changes nothing and is allowed.
+
+    Args:
+        schema: the schema of the records updated
+        query_filter: the filter that picks the records
+        update: the update
 
     Raises:
         QueryError: the update would give a record another key

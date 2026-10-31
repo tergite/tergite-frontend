@@ -29,6 +29,14 @@ async def create_app_token(
 ) -> AppToken:
     """Creates an app token for an active project the user is a member of
 
+    Args:
+        database: the database where the app tokens and projects are stored
+        payload: the app token's title, project and lifespan
+        user_id: the user the app token acts for
+
+    Returns:
+        the created app token
+
     Raises:
         ForbiddenError: the project does not exist, is inactive, or the user is not a member
     """
@@ -46,6 +54,10 @@ async def create_app_token(
 
 async def get_token_owner(database: Database, token: str) -> Optional[TokenOwner]:
     """Gets the project and user an unexpired app token acts for
+
+    Args:
+        database: the database where the app tokens, users and projects are stored
+        token: the app token string
 
     Returns:
         the owner, or None if the token, its user or their membership is gone
@@ -79,6 +91,9 @@ async def find_app_tokens(
         skip: the number of matched app tokens to skip
         limit: the most app tokens to return; None returns all
 
+    Returns:
+        the matching app tokens
+
     Raises:
         TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
     """
@@ -107,6 +122,12 @@ async def update_app_token_expiry(
 ) -> Optional[AppToken]:
     """Moves the expiry of the user's unexpired app token
 
+    Args:
+        database: the database where the app tokens are stored
+        token_id: the id of the app token
+        user_id: the user who owns the app token
+        expires_at: the new expiry
+
     Returns:
         the updated app token, or None if the user has no unexpired token of that id
     """
@@ -125,6 +146,11 @@ async def update_app_token_expiry(
 async def delete_app_token(database: Database, token_id: str, user_id: str) -> None:
     """Deletes the user's app token, expired or not
 
+    Args:
+        database: the database where the app tokens are stored
+        token_id: the id of the app token
+        user_id: the user who owns the app token
+
     Raises:
         AppTokenNotFound: app token does not exist.
     """
@@ -134,14 +160,31 @@ async def delete_app_token(database: Database, token_id: str, user_id: str) -> N
 
 
 async def delete_project_tokens(database: Database, project_id: str) -> int:
-    """Deletes every app token for the project, returning how many were deleted"""
+    """Deletes every app token for the project
+
+    Args:
+        database: the database where the app tokens are stored
+        project_id: the id of the project
+
+    Returns:
+        the number of app tokens deleted
+    """
     return await database.delete_many(AppToken, {"project_id": project_id})
 
 
 async def delete_non_member_tokens(
     database: Database, project_id: str, member_ids: Sequence[str]
 ) -> int:
-    """Deletes the project's app tokens of users who are not among its members"""
+    """Deletes the project's app tokens of users who are not among its members
+
+    Args:
+        database: the database where the app tokens are stored
+        project_id: the id of the project
+        member_ids: the ids of the project's members, whose app tokens are kept
+
+    Returns:
+        the number of app tokens deleted
+    """
     return await database.delete_many(
         AppToken, {"project_id": project_id, "user_id": {"$nin": list(member_ids)}}
     )

@@ -38,6 +38,10 @@ ELEMENT_MATCH = "$elemMatch"
 def check_filter(schema: Type[Schema], query_filter: Optional[Filter]) -> None:
     """Checks that the filter names only the schema's fields and the dialect's operators
 
+    Args:
+        schema: the schema of the records filtered
+        query_filter: the filter; None matches every record
+
     Raises:
         QueryError: an operator the dialect does not have, or one given the wrong operand
         UnknownFieldError: a field the schema does not have
@@ -59,12 +63,28 @@ def check_filter(schema: Type[Schema], query_filter: Optional[Filter]) -> None:
 
 
 def check_sort(schema: Type[Schema], sort: Sequence[str]) -> None:
+    """Checks that the sort names only the schema's fields
+
+    Args:
+        schema: the schema of the records sorted
+        sort: the fields to sort by; a leading '-' sorts descending
+
+    Raises:
+        UnknownFieldError: a field the schema does not have
+    """
     for field in sort:
         resolve_field(schema, field.lstrip("-"))
 
 
 def extract_fields(query_filter: Optional[Filter]) -> Iterator[str]:
-    """Yields every field the filter names, nested filters included"""
+    """Yields every field the filter names, nested filters included
+
+    Args:
+        query_filter: the filter; None names no field
+
+    Yields:
+        each field the filter names, as named
+    """
     for field, condition in (query_filter or {}).items():
         if field in LOGICAL_OPERATORS:
             for item in condition:
@@ -74,17 +94,38 @@ def extract_fields(query_filter: Optional[Filter]) -> Iterator[str]:
 
 
 def parse_sort(sort: Sequence[str]) -> List[Tuple[str, bool]]:
-    """Parses sort fields such as ("-created_at", "name") into (field, is_descending) pairs"""
+    """Parses sort fields such as ("-created_at", "name") into (field, is_descending) pairs
+
+    Args:
+        sort: the fields to sort by; a leading '-' sorts descending
+
+    Returns:
+        a (field, is_descending) pair per field
+    """
     return [(field.lstrip("-"), field.startswith("-")) for field in sort]
 
 
 def get_searched_text(escaped_text: str) -> str:
-    """Gets the text a `$regex` searches for, from its escaped form"""
+    """Gets the text a `$regex` searches for, from its escaped form
+
+    Args:
+        escaped_text: the `$regex` operand, escaped as `re.escape` does
+
+    Returns:
+        the unescaped text
+    """
     return re.sub(r"\\(.)", r"\1", escaped_text, flags=re.DOTALL)
 
 
 def is_operator_map(condition: Any) -> bool:
-    """Whether the condition is a map of field operators rather than a value to equal"""
+    """Whether the condition is a map of field operators rather than a value to equal
+
+    Args:
+        condition: a field's condition in a filter
+
+    Returns:
+        True if any of the condition's keys is an operator, such as `$in`
+    """
     return isinstance(condition, Mapping) and any(
         str(key).startswith("$") for key in condition
     )

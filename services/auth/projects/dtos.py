@@ -77,6 +77,8 @@ class ProjectUpdate(ProjectCreate):
 
 
 class Project(ProjectRead, Schema):
+    """A project stored in the database, whose members share its QPU seconds"""
+
     __storage__ = StorageSpec(
         table=PROJECT_DB_COLLECTION, unique=("name",), indexed_lists=("user_ids",)
     )

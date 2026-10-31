@@ -138,6 +138,9 @@ async def get_latest_many(
         skip: the number of matched jobs to skip
         limit: the most jobs to return; None returns all
         exclude: the fields to leave out of each job
+
+    Returns:
+        the matching jobs, with the excluded fields set to None
     """
     job_filter = query.model_dump(
         exclude_unset=True, exclude_defaults=True, exclude_none=True
@@ -198,7 +201,7 @@ async def update_qpu_usage(
         job_id: the job id of the job
         qpu_usage: the resource usage in seconds
 
-    Return:
+    Returns:
         the updated project if the job was attached to a project, else None
 
     Raises:

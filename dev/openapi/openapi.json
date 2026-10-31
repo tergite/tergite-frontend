@@ -326,6 +326,7 @@
         "type": "object"
       },
       "CalibrationUnit": {
+        "description": "The unit of a calibration value",
         "enum": [
           "ns",
           "s",
@@ -1318,6 +1319,7 @@
         "type": "object"
       },
       "JobStatus": {
+        "description": "The status of a job",
         "enum": [
           "pending",
           "successful",
@@ -1648,6 +1650,7 @@
         "type": "string"
       },
       "OAuth2AuthorizeResponse": {
+        "description": "The URL to send the user to, to sign in with the provider",
         "properties": {
           "authorization_url": {
             "title": "Authorization Url",
@@ -2945,6 +2948,7 @@
         "type": "string"
       },
       "TimestampPair": {
+        "description": "When a stage of the job started and finished",
         "properties": {
           "finished": {
             "anyOf": [
@@ -3089,7 +3093,7 @@
   "info": {
     "description": "A frontend to all our quantum backends",
     "title": "Main Service Server",
-    "version": "2026.11.0-rc.1"
+    "version": "2026.11.0-rc.2"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -3860,6 +3864,7 @@
     },
     "/admin/projects/": {
       "get": {
+        "description": "Gets a paginated list of the projects that fit the given filters; superusers only\n\nArgs:\n    database: the database where the projects are stored\n    requester: the current superuser\n    query: the filters the projects must fit\n    skip: the number of projects to skip\n    limit: the maximum number of projects to return\n\nReturns:\n    the page of projects, each with its members' emails\n\nRaises:\n    401: not logged in\n    403: not a superuser",
         "operationId": "projects_many_projects_admin_projects__get",
         "parameters": [
           {
@@ -4032,6 +4037,7 @@
         ]
       },
       "post": {
+        "description": "Creates a project; superusers only\n\nArgs:\n    database: the database where the projects are stored\n    payload: the project to create\n    actor: the current superuser\n\nReturns:\n    the created project, with its members' emails\n\nRaises:\n    400: a project of that name already exists\n    401: not logged in\n    403: not a superuser",
         "operationId": "projects_create_project_admin_projects__post",
         "requestBody": {
           "content": {
@@ -4081,6 +4087,7 @@
     },
     "/admin/projects/{id}": {
       "delete": {
+        "description": "Deletes the project of the given id; superusers only\n\nArgs:\n    database: the database where the projects are stored\n    requester: the current superuser\n    project: the project of the path's id\n\nRaises:\n    401: not logged in\n    403: not a superuser\n    404: the project does not exist",
         "operationId": "projects_delete_project_admin_projects__id__delete",
         "parameters": [
           {
@@ -4122,6 +4129,7 @@
         ]
       },
       "get": {
+        "description": "Gets the project of the given id; superusers only\n\nArgs:\n    database: the database where the projects are stored\n    requester: the current superuser\n    project: the project of the path's id\n\nReturns:\n    the project, with its members' emails",
         "operationId": "projects_single_project_admin_projects__id__get",
         "parameters": [
           {
@@ -4179,6 +4187,7 @@
         ]
       },
       "put": {
+        "description": "Updates the project of the given id; superusers only\n\nMembers dropped from the project lose their app tokens for it, and the users whose\nstanding changed are notified.\n\nArgs:\n    database: the database where the projects are stored\n    payload: the new values for the project\n    actor: the current superuser\n    project: the project of the path's id\n\nReturns:\n    the updated project, with its members' emails\n\nRaises:\n    401: not logged in\n    403: not a superuser\n    404: the project does not exist",
         "operationId": "projects_put_project_admin_projects__id__put",
         "parameters": [
           {
@@ -4239,7 +4248,7 @@
     },
     "/admin/users/emails/": {
       "get": {
-        "description": "Gets user email addresses, for completing the admin project forms\n\nSuperuser only, and deliberately so: a superuser already sees every member address\nthrough ProjectAdminView, whereas a directory of addresses handed to any logged-in\nuser would be a disclosure. Returns addresses alone, never the user records.\n\nArgs:\n    requester: the superuser making the request; anyone else gets a 403\n    search: a case-insensitive substring of the address; omit for the first page\n    limit: the maximum number of addresses to return\n\nReturns:\n    the matched email addresses, alphabetically",
+        "description": "Gets user email addresses, for completing the admin project forms\n\nSuperuser only, and deliberately so: a superuser already sees every member address\nthrough ProjectAdminView, whereas a directory of addresses handed to any logged-in\nuser would be a disclosure. Returns addresses alone, never the user records.\n\nArgs:\n    database: the database where the users are stored\n    requester: the superuser making the request; anyone else gets a 403\n    search: a case-insensitive substring of the address; omit for the first page\n    limit: the maximum number of addresses to return\n\nReturns:\n    the matched email addresses, alphabetically",
         "operationId": "get_user_emails_admin_users_emails__get",
         "parameters": [
           {
@@ -4313,6 +4322,7 @@
     },
     "/auth/app/{provider}/authorize": {
       "get": {
+        "description": "Gets the URL to send the user to, to sign in through the provider\n\nArgs:\n    request: the incoming request, whose URL the provider is to call back on\n    provider: the name of the provider\n    scopes: the scopes to ask the provider for; default: the provider's own\n    next_url: where to send the user once signed in, as `next`\n\nReturns:\n    the provider's authorization URL\n\nRaises:\n    404: the app has no provider of that name",
         "operationId": "oauth_authorize_auth_app__provider__authorize_get",
         "parameters": [
           {
@@ -4390,7 +4400,7 @@
     },
     "/auth/app/{provider}/auto-authorize": {
       "get": {
-        "description": "Redirects to the provider's authorization URL",
+        "description": "Redirects to the provider's authorization URL\n\nArgs:\n    request: the incoming request, whose URL the provider is to call back on\n    provider: the name of the provider\n    scopes: the scopes to ask the provider for; default: the provider's own\n    next_url: where to send the user once signed in, as `next`\n\nReturns:\n    the provider's authorization URL, which the response redirects to\n\nRaises:\n    404: the app has no provider of that name",
         "operationId": "oauth_auto_authorize_auth_app__provider__auto_authorize_get",
         "parameters": [
           {
@@ -4570,6 +4580,7 @@
     },
     "/auth/logout": {
       "post": {
+        "description": "Logs the current user out, clearing the session cookie\n\nArgs:\n    user: the current active user\n\nReturns:\n    the message that the user is logged out",
         "operationId": "auth_logout_auth_logout_post",
         "responses": {
           "200": {
@@ -4710,6 +4721,7 @@
     },
     "/auth/{provider}/authorize": {
       "get": {
+        "description": "Gets the URL to send the user to, to sign in through the provider\n\nArgs:\n    request: the incoming request, whose URL the provider is to call back on\n    provider: the name of the provider\n    scopes: the scopes to ask the provider for; default: the provider's own\n    next_url: where to send the user once signed in, as `next`\n\nReturns:\n    the provider's authorization URL\n\nRaises:\n    404: the app has no provider of that name",
         "operationId": "oauth_authorize_auth__provider__authorize_get",
         "parameters": [
           {
@@ -4787,7 +4799,7 @@
     },
     "/auth/{provider}/auto-authorize": {
       "get": {
-        "description": "Redirects to the provider's authorization URL",
+        "description": "Redirects to the provider's authorization URL\n\nArgs:\n    request: the incoming request, whose URL the provider is to call back on\n    provider: the name of the provider\n    scopes: the scopes to ask the provider for; default: the provider's own\n    next_url: where to send the user once signed in, as `next`\n\nReturns:\n    the provider's authorization URL, which the response redirects to\n\nRaises:\n    404: the app has no provider of that name",
         "operationId": "oauth_auto_authorize_auth__provider__auto_authorize_get",
         "parameters": [
           {
@@ -5425,6 +5437,7 @@
     },
     "/calibrations/{name}": {
       "get": {
+        "description": "Gets the current calibration of the device of the given name\n\nArgs:\n    database: the database where the calibrations are stored\n    name: the name of the device\n\nReturns:\n    the device's calibration\n\nRaises:\n    404: the device has no calibration",
         "operationId": "read_one_calibrations__name__get",
         "parameters": [
           {
@@ -5467,7 +5480,7 @@
     },
     "/counts/job-submitters": {
       "get": {
-        "description": "Gets the number of users who submitted jobs in [start_utc, end_utc), for admins only\n\nArgs:\n    database: the database where the jobs are stored\n    requester: the superuser making the request; anyone else gets a 403\n    start_utc: the start of the window, inclusive\n    end_utc: the end of the window, exclusive\n    should_count_distinct: whether to count each submitter once; otherwise every job counts",
+        "description": "Gets the number of users who submitted jobs in [start_utc, end_utc), for admins only\n\nArgs:\n    database: the database where the jobs are stored\n    requester: the superuser making the request; anyone else gets a 403\n    start_utc: the start of the window, inclusive\n    end_utc: the end of the window, exclusive\n    should_count_distinct: whether to count each submitter once; otherwise every job counts\n\nReturns:\n    the number of submitters, or of jobs if not counted distinct",
         "operationId": "get_job_submitters_count_counts_job_submitters_get",
         "parameters": [
           {
@@ -5539,7 +5552,7 @@
     },
     "/counts/notices": {
       "get": {
-        "description": "Gets the number of notices that fulfill the given filters\n\nArgs:\n    database: the database where the notices are stored\n    current_user: the current logged in user\n    user_id: The IDs of the users to retrieve notices for; only superusers can set it\n    min_start_utc: The minimum UTC timestamp the notice should start\n    max_start_utc: The maximum UTC timestamp the notice should start\n    min_expires_utc: The minimum UTC timestamp the notice should expire\n    max_expires_utc: The maximum UTC timestamp the notice should expire\n    include_dismissed: whether to include dismissed notices; defaults to False\n    types: the types to filter by; repeat the param for many\n    is_read: filter on read state; default = None i.e. either",
+        "description": "Gets the number of notices that fulfill the given filters\n\nArgs:\n    database: the database where the notices are stored\n    current_user: the current logged in user\n    user_id: the ID of the user whose notices to count; only superusers can set it\n    min_start_utc: The minimum UTC timestamp the notice should start\n    max_start_utc: The maximum UTC timestamp the notice should start\n    min_expires_utc: The minimum UTC timestamp the notice should expire\n    max_expires_utc: The maximum UTC timestamp the notice should expire\n    include_dismissed: whether to include dismissed notices; defaults to False\n    types: the types to filter by; repeat the param for many\n    is_read: filter on read state; default = None i.e. either\n\nReturns:\n    the number of matching notices",
         "operationId": "get_notice_count_counts_notices_get",
         "parameters": [
           {
@@ -6018,6 +6031,7 @@
     },
     "/devices/{name}": {
       "get": {
+        "description": "Gets the device of the given name\n\nArgs:\n    database: the database where the devices are stored\n    name: the name of the device\n\nReturns:\n    the device\n\nRaises:\n    404: no device has that name",
         "operationId": "read_one_devices__name__get",
         "parameters": [
           {
@@ -6390,7 +6404,7 @@
         ]
       },
       "post": {
-        "description": "Creates a job in the given backend and given calibration_date in the body",
+        "description": "Creates a job in the given backend and given calibration_date in the body\n\nArgs:\n    request: the incoming request\n    database: the database where the jobs are stored\n    project_user_id_pair: the API token's project and user ids; the project must\n        have QPU seconds left\n    payload: the job to create\n\nReturns:\n    the job's id, and the URL and access token for uploading it to the backend\n\nRaises:\n    401: missing or invalid API token, or inactive project or user\n    403: the project has no QPU seconds left",
         "operationId": "create_one_jobs__post",
         "requestBody": {
           "content": {
@@ -7349,7 +7363,7 @@
     },
     "/me/profile": {
       "get": {
-        "description": "Retrieves the information on the current user",
+        "description": "Retrieves the information on the current user\n\nArgs:\n    user: the current logged-in user\n\nReturns:\n    the user's profile",
         "operationId": "get_my_user_profile_me_profile_get",
         "responses": {
           "200": {
@@ -7379,6 +7393,7 @@
     },
     "/me/projects/": {
       "get": {
+        "description": "Gets a paginated list of the current user's projects that fit the given filters\n\nArgs:\n    database: the database where the projects are stored\n    user_id: the id of the current logged-in user\n    query: the filters the projects must fit\n    skip: the number of projects to skip\n    limit: the maximum number of projects to return\n\nReturns:\n    the page of projects\n\nRaises:\n    401: not logged in",
         "operationId": "projects_my_many_projects_me_projects__get",
         "parameters": [
           {
@@ -7553,6 +7568,7 @@
     },
     "/me/projects/{_id}": {
       "delete": {
+        "description": "Deletes a project the current user administers, with its app tokens\n\nArgs:\n    database: the database where the projects are stored\n    _id: the id of the project\n    user_id: the id of the current logged-in user; the project's admin\n\nRaises:\n    401: not logged in\n    403: the user does not administer the project, or it is their personal project\n    404: the project does not exist",
         "operationId": "projects_destroy_my_administered_project_me_projects___id__delete",
         "parameters": [
           {
@@ -7597,7 +7613,7 @@
     },
     "/me/projects/{_id}/members/{member_id}": {
       "delete": {
-        "description": "Removes a member from a project the caller administers, revoking their app tokens",
+        "description": "Removes a member from a project the caller administers, revoking their app tokens\n\nArgs:\n    database: the database where the projects are stored\n    _id: the id of the project\n    member_id: the id of the member to remove\n    user: the current logged-in user; the project's admin or a superuser\n\nRaises:\n    400: the member is the project's admin\n    401: not logged in\n    403: the user neither administers the project nor is a superuser\n    404: the project does not exist, or member_id is not one of its members",
         "operationId": "projects_remove_project_member_me_projects___id__members__member_id__delete",
         "parameters": [
           {
@@ -7652,6 +7668,7 @@
     },
     "/me/projects/{id}": {
       "get": {
+        "description": "Gets the project of the given id, if the current user is a member of it\n\nArgs:\n    database: the database where the projects are stored\n    id: the id of the project\n    user_id: the id of the current logged-in user\n\nReturns:\n    the project\n\nRaises:\n    401: not logged in\n    404: the project does not exist, or the user is not a member of it",
         "operationId": "projects_my_single_project_me_projects__id__get",
         "parameters": [
           {
@@ -7828,7 +7845,7 @@
         ]
       },
       "post": {
-        "description": "Creates a request of the type named in the body\n\nArgs:\n    body: the request payload, discriminated by its `type` field\n    requester: the current signed-in user\n\nReturns:\n    the created user request",
+        "description": "Creates a request of the type named in the body\n\nArgs:\n    database: the database where the requests are stored\n    body: the request payload, discriminated by its `type` field\n    requester: the current signed-in user\n\nReturns:\n    the created user request",
         "operationId": "create_me_requests__post",
         "requestBody": {
           "content": {
@@ -7940,6 +7957,7 @@
     },
     "/me/tokens/": {
       "get": {
+        "description": "Gets a paginated list of the current user's app tokens that fit the given filters\n\nArgs:\n    database: the database where the app tokens are stored\n    user_id: the id of the current logged-in user\n    query: the filters the app tokens must fit\n    skip: the number of app tokens to skip\n    limit: the maximum number of app tokens to return\n\nReturns:\n    the page of app tokens, without their token strings\n\nRaises:\n    401: not logged in",
         "operationId": "app_tokens_my_many_app_tokens_me_tokens__get",
         "parameters": [
           {
@@ -8096,6 +8114,7 @@
         ]
       },
       "post": {
+        "description": "Generates an app token for the current user, on an active project of theirs\n\nArgs:\n    database: the database where the app tokens are stored\n    payload: the app token's title, project and lifespan\n    user_id: the id of the current logged-in user\n\nReturns:\n    the bearer token; it is shown only this once\n\nRaises:\n    401: not logged in\n    403: the project does not exist, is inactive, or the user is not a member of it",
         "operationId": "app_tokens_app_token_generate_token_me_tokens__post",
         "requestBody": {
           "content": {
@@ -8145,6 +8164,7 @@
     },
     "/me/tokens/{_id}": {
       "delete": {
+        "description": "Deletes the current user's app token of the given id, expired or not\n\nArgs:\n    database: the database where the app tokens are stored\n    _id: the id of the app token\n    user_id: the id of the current logged-in user\n\nRaises:\n    401: not logged in\n    403: the user has no app token of that id",
         "operationId": "app_tokens_app_token_destroy_token_me_tokens___id__delete",
         "parameters": [
           {
@@ -8187,6 +8207,7 @@
         ]
       },
       "put": {
+        "description": "Moves the expiry of the current user's unexpired app token of the given id\n\nArgs:\n    database: the database where the app tokens are stored\n    _id: the id of the app token\n    payload: the new expiry\n    user_id: the id of the current logged-in user\n\nReturns:\n    the updated app token\n\nRaises:\n    401: not logged in\n    404: the user has no unexpired app token of that id",
         "operationId": "app_tokens_app_token_update_token_me_tokens___id__put",
         "parameters": [
           {
@@ -8248,6 +8269,7 @@
     },
     "/me/tokens/{id}": {
       "get": {
+        "description": "Gets the current user's app token of the given id; the token string is not shown\n\nArgs:\n    database: the database where the app tokens are stored\n    id: the id of the app token\n    user_id: the id of the current logged-in user\n\nReturns:\n    the app token\n\nRaises:\n    401: not logged in\n    404: the user has no app token of that id",
         "operationId": "app_tokens_my_app_token_me_tokens__id__get",
         "parameters": [
           {

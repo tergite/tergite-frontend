@@ -10,6 +10,21 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.2] - 2026-10-31
+
+This is part of the tergite release v2026.11.0-rc.2.
+
+### Changed
+
+- Gave every public function and class a Google-style docstring, saying what it does for the caller, its arguments,
+  what it returns and what it raises; the OpenAPI schema's descriptions follow them.
+
+### Fixed
+
+- Fixed the GitHub release of a tag getting no installers: it is now published with them, as an immutable release
+  took none once published.
+- Fixed a release candidate's GitHub release being published as the latest release; it is now a pre-release.
+
 ## [2026.11.0-rc.1] - 2026-10-31
 
 This is part of the tergite release v2026.11.0-rc.1.

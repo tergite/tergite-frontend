@@ -36,7 +36,11 @@ _OAUTH2_CLIENT_CLASS_MAP: Dict[Oauth2ClientType, Type[BaseOAuth2]] = {
 
 
 def get_oauth2_client(conf: Oauth2ClientConfig):
-    """Gets the Oauth2 client from this configuration"""
+    """Gets the Oauth2 client from this configuration
+
+    Args:
+        conf: the auth client's configuration
+    """
     client_constructor = _OAUTH2_CLIENT_CLASS_MAP[conf.client_type]
     kwargs = conf.model_dump(exclude_none=True, exclude=conf._non_client_fields)
     return client_constructor(**kwargs)
@@ -44,6 +48,13 @@ def get_oauth2_client(conf: Oauth2ClientConfig):
 
 def ensure_short_list(query_param: str, values: Sequence[Any]) -> List[Any]:
     """Gets the values as a list, if there are few enough to query by
+
+    Args:
+        query_param: the name of the query param the values came in, for the error
+        values: the values to query by
+
+    Returns:
+        the values as a list
 
     Raises:
         TooManyListQueryParams: there are more than MAX_LIST_QUERY_LEN values

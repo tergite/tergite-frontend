@@ -54,7 +54,19 @@ def get_project_query(
     min_qpu_seconds: Optional[int] = Query(None),
     max_qpu_seconds: Optional[int] = Query(None),
 ) -> ProjectQuery:
-    """Dependency injector of the query params that narrow a list of projects"""
+    """Dependency injector of the query params that narrow a list of projects
+
+    Args:
+        ids: the ids, sent as `id`, of the projects to keep
+        user_ids: the ids of users; a kept project has at least one of them as a member
+        name: the names of the projects to keep
+        is_active: whether to keep only active, or only inactive, projects
+        min_qpu_seconds: the fewest QPU seconds a kept project may have
+        max_qpu_seconds: the most QPU seconds a kept project may have
+
+    Returns:
+        the query for the projects
+    """
     return ProjectQuery(
         ids=ids,
         user_ids=user_ids,
@@ -75,7 +87,18 @@ def get_app_token_query(
     min_lifespan_seconds: Optional[int] = Query(None),
     max_lifespan_seconds: Optional[int] = Query(None),
 ) -> AppTokenQuery:
-    """Dependency injector of the query params that narrow a list of app tokens"""
+    """Dependency injector of the query params that narrow a list of app tokens
+
+    Args:
+        ids: the ids, sent as `id`, of the app tokens to keep
+        project_id: the ids of the projects the kept app tokens belong to
+        title: the titles of the app tokens to keep
+        min_lifespan_seconds: the shortest lifespan, in seconds, of a kept app token
+        max_lifespan_seconds: the longest lifespan, in seconds, of a kept app token
+
+    Returns:
+        the query for the app tokens
+    """
     return AppTokenQuery(
         ids=ids,
         project_ids=project_id,

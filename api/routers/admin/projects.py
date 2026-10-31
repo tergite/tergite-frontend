@@ -31,7 +31,18 @@ router = APIRouter()
 
 
 async def get_project_or_404(database: DatabaseDep, id: str) -> Project:
-    """Gets the project of the path's id; a malformed id is as missing as an unknown one"""
+    """Gets the project of the path's id; a malformed id is as missing as an unknown one
+
+    Args:
+        database: the database where the projects are stored
+        id: the id of the project, from the path
+
+    Returns:
+        the project
+
+    Raises:
+        HTTPException: 404, the id is malformed or no project has it
+    """
     if not is_id(id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     try:
@@ -53,6 +64,21 @@ ProjectOr404Dep = Annotated[Project, Depends(get_project_or_404)]
 async def create(
     database: DatabaseDep, payload: ProjectCreate, actor: CurrentSuperuserDep
 ) -> ProjectAdminView:
+    """Creates a project; superusers only
+
+    Args:
+        database: the database where the projects are stored
+        payload: the project to create
+        actor: the current superuser
+
+    Returns:
+        the created project, with its members' emails
+
+    Raises:
+        400: a project of that name already exists
+        401: not logged in
+        403: not a superuser
+    """
     try:
         project = await auth.create_project(database, payload, actor=actor)
     except auth.ProjectExists as exp:
@@ -78,6 +104,16 @@ async def create(
 async def get_project(
     database: DatabaseDep, requester: CurrentSuperuserDep, project: ProjectOr404Dep
 ) -> ProjectAdminView:
+    """Gets the project of the given id; superusers only
+
+    Args:
+        database: the database where the projects are stored
+        requester: the current superuser
+        project: the project of the path's id
+
+    Returns:
+        the project, with its members' emails
+    """
     return await auth.get_admin_view(database, project)
 
 
@@ -93,6 +129,22 @@ async def get_many_projects(
     skip: int = Query(0),
     limit: Optional[int] = Query(None),
 ) -> PaginatedListResponse[ProjectAdminView]:
+    """Gets a paginated list of the projects that fit the given filters; superusers only
+
+    Args:
+        database: the database where the projects are stored
+        requester: the current superuser
+        query: the filters the projects must fit
+        skip: the number of projects to skip
+        limit: the maximum number of projects to return
+
+    Returns:
+        the page of projects, each with its members' emails
+
+    Raises:
+        401: not logged in
+        403: not a superuser
+    """
     projects = await auth.find_projects(database, query, skip=skip, limit=limit)
     data = await asyncio.gather(
         *(auth.get_admin_view(database, project) for project in projects)
@@ -112,6 +164,25 @@ async def update_project(
     actor: CurrentSuperuserDep,
     project: ProjectOr404Dep,
 ) -> ProjectAdminView:
+    """Updates the project of the given id; superusers only
+
+    Members dropped from the project lose their app tokens for it, and the users whose
+    standing changed are notified.
+
+    Args:
+        database: the database where the projects are stored
+        payload: the new values for the project
+        actor: the current superuser
+        project: the project of the path's id
+
+    Returns:
+        the updated project, with its members' emails
+
+    Raises:
+        401: not logged in
+        403: not a superuser
+        404: the project does not exist
+    """
     updated_project = await auth.update_project(database, project, payload, actor=actor)
     return await auth.get_admin_view(database, updated_project)
 
@@ -125,5 +196,17 @@ async def update_project(
 async def delete_project(
     database: DatabaseDep, requester: CurrentSuperuserDep, project: ProjectOr404Dep
 ) -> None:
+    """Deletes the project of the given id; superusers only
+
+    Args:
+        database: the database where the projects are stored
+        requester: the current superuser
+        project: the project of the path's id
+
+    Raises:
+        401: not logged in
+        403: not a superuser
+        404: the project does not exist
+    """
     await auth.delete_project(database, project, is_superuser=True)
     return None

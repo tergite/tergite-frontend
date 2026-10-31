@@ -19,7 +19,11 @@ class AuthProvider(AuthProviderRead):
     email_domain: str
 
     def as_public_view(self) -> AuthProviderRead:
-        """Returns this instance as a AuthProviderRead instance"""
+        """Returns this instance as a AuthProviderRead instance
+
+        Returns:
+            the provider without its email domain
+        """
         return AuthProviderRead(
             name=self.name,
             url=self.url,

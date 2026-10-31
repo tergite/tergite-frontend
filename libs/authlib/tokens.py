@@ -34,13 +34,30 @@ SecretType = Union[str, SecretStr]
 def write_session_token(
     user: UserProtocol, secret: SecretType, lifetime_seconds: Optional[int]
 ) -> str:
-    """Writes the session token of the user, which names their id and roles"""
+    """Writes the session token of the user, which names their id and roles
+
+    Args:
+        user: the user signing in
+        secret: the secret that signs the token
+        lifetime_seconds: how long the token lasts; None for ever
+
+    Returns:
+        the session token
+    """
     data = {"sub": str(user.id), "aud": SESSION_AUDIENCE, "roles": list(user.roles)}
     return _encode_jwt(data, secret, lifetime_seconds)
 
 
 def read_session_user_id(token: str, secret: SecretType) -> Optional[str]:
-    """Reads the user id from a session token; None if the token is invalid or expired"""
+    """Reads the user id from a session token; None if the token is invalid or expired
+
+    Args:
+        token: the session token
+        secret: the secret that signed the token
+
+    Returns:
+        the user's id, or None
+    """
     try:
         data = _decode_jwt(token, secret, SESSION_AUDIENCE)
     except jwt.PyJWTError:
@@ -49,13 +66,28 @@ def read_session_user_id(token: str, secret: SecretType) -> Optional[str]:
 
 
 def write_state_token(next_url: Optional[str], secret: SecretType) -> str:
-    """Writes the state passed through a provider, which keeps where to go once in"""
+    """Writes the state passed through a provider, which keeps where to go once in
+
+    Args:
+        next_url: the URL to redirect to once signed in, if any
+        secret: the secret that signs the token
+
+    Returns:
+        the state token
+    """
     data = {"next": next_url, "aud": STATE_AUDIENCE}
     return _encode_jwt(data, secret, STATE_LIFETIME_SECONDS)
 
 
 def read_state_token(token: Optional[str], secret: SecretType) -> Dict[str, Any]:
     """Reads the state a provider passed back
+
+    Args:
+        token: the state token, if the provider passed one
+        secret: the secret that signed the token
+
+    Returns:
+        the state's values, including `next`, the URL to redirect to once signed in
 
     Raises:
         InvalidStateToken: the state is missing, invalid or expired

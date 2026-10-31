@@ -40,7 +40,15 @@ KEY_FIELD = "_id"
 
 
 def translate_filter(schema: Type[Schema], query_filter: Filter) -> Dict[str, Any]:
-    """Translates the filter into a MongoDB query: the same document, with MongoDB's values"""
+    """Translates the filter into a MongoDB query: the same document, with MongoDB's values
+
+    Args:
+        schema: the schema of the records filtered
+        query_filter: the filter, already checked against the schema
+
+    Returns:
+        the MongoDB query
+    """
     query = {}
     for field, condition in query_filter.items():
         if field in LOGICAL_OPERATORS:
@@ -64,7 +72,15 @@ def translate_filter(schema: Type[Schema], query_filter: Filter) -> Dict[str, An
 
 
 def translate_update(schema: Type[Schema], update: Update) -> Dict[str, Any]:
-    """Translates the update into a MongoDB update, dropping operators with no changes"""
+    """Translates the update into a MongoDB update, dropping operators with no changes
+
+    Args:
+        schema: the schema of the records updated
+        update: the update, already checked against the schema
+
+    Returns:
+        the MongoDB update
+    """
     return {
         operator: {
             get_document_field(field): convert_to_bson_value(schema, field, value)
@@ -76,6 +92,14 @@ def translate_update(schema: Type[Schema], update: Update) -> Dict[str, Any]:
 
 
 def translate_sort(sort: Sequence[str]) -> List[Tuple[str, int]]:
+    """Translates the sort into MongoDB's (field, direction) pairs
+
+    Args:
+        sort: the fields to sort by; a leading '-' sorts descending
+
+    Returns:
+        a (document field, pymongo direction) pair per field
+    """
     return [
         (
             get_document_field(field),
@@ -86,12 +110,28 @@ def translate_sort(sort: Sequence[str]) -> List[Tuple[str, int]]:
 
 
 def get_document_field(field: str) -> str:
-    """Names the field as MongoDB stores it: the `id` field is the document's `_id`"""
+    """Names the field as MongoDB stores it: the `id` field is the document's `_id`
+
+    Args:
+        field: the schema's name for the field
+
+    Returns:
+        the document's name for the field
+    """
     return KEY_FIELD if field == "id" else field
 
 
 def convert_to_bson_value(schema: Type[Schema], field: str, value: Any) -> Any:
-    """Converts a value bound for the given field into what MongoDB stores"""
+    """Converts a value bound for the given field into what MongoDB stores
+
+    Args:
+        schema: the schema of the record
+        field: the field the value is bound for, dotted for a nested one
+        value: the value, or a list of them for an operator such as `$in`
+
+    Returns:
+        the value as MongoDB stores it, e.g. an id as an ObjectId
+    """
     if _is_id_path(schema, field):
         return _convert_to_object_ids(value)
     nested = _find_nested_model_at(schema, field)
@@ -101,7 +141,15 @@ def convert_to_bson_value(schema: Type[Schema], field: str, value: Any) -> Any:
 
 
 def convert_to_document(schema: Type[Schema], record: Schema) -> Dict[str, Any]:
-    """Converts the record into the document MongoDB stores; computed fields are not stored"""
+    """Converts the record into the document MongoDB stores; computed fields are not stored
+
+    Args:
+        schema: the schema of the record
+        record: the record
+
+    Returns:
+        the document
+    """
     computed = set(type(record).model_computed_fields)
     data = record.model_dump(mode="python", exclude=computed or None)
     document = _convert_to_document_values(schema, data)
@@ -113,7 +161,18 @@ def convert_to_document(schema: Type[Schema], record: Schema) -> Dict[str, Any]:
 
 
 def convert_to_record(schema: Type[Schema], document: Mapping[str, Any]) -> Schema:
-    """Converts a stored document into a record of the schema, validated"""
+    """Converts a stored document into a record of the schema, validated
+
+    Args:
+        schema: the schema of the record
+        document: the stored document
+
+    Returns:
+        the record
+
+    Raises:
+        ValidationError: the document does not fit the schema
+    """
     data = {key: _convert_from_bson(value) for key, value in document.items()}
     key = data.pop(KEY_FIELD, None)
     if "id" in schema.model_fields:
