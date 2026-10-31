@@ -54,7 +54,7 @@ async def test_an_expired_record_is_not_read_and_then_deleted(store):
 
 
 async def test_a_sqlite_file_is_written_ahead_and_synced_at_checkpoints(tmp_path):
-    """So that a commit, as the request log makes one per request, does not wait on the disk"""
+    """So that a commit does not wait on the disk"""
     store = SqlStore(f"sqlite+aiosqlite:///{tmp_path}/store.db", schemas=[_Session])
     await store.setup()
     async with store._engine.connect() as conn:

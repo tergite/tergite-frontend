@@ -15,7 +15,6 @@ from fastapi import FastAPI
 from starlette.requests import HTTPConnection
 
 from libs.storage import Database
-from services import request_log
 from services.schemas import SCHEMAS
 from utils.config import DatabaseConfig
 
@@ -28,24 +27,10 @@ async def open_database(app: FastAPI, conf: DatabaseConfig) -> Database:
     return database
 
 
-async def open_request_log_database(app: FastAPI, conf: DatabaseConfig) -> Database:
-    """Opens the Database the request log is kept in and keeps it on the app's state"""
-    database = Database(str(conf.redis_url), schemas=request_log.SCHEMAS)
-    await database.setup()
-    app.state.request_log_database = database
-    return database
-
-
 async def close_database(app: FastAPI) -> None:
     await app.state.database.close()
-    await app.state.request_log_database.close()
 
 
 def get_database(connection: HTTPConnection) -> Database:
     """Dependency injector of the app's Database, for HTTP routes and websockets alike"""
     return connection.app.state.database
-
-
-def get_request_log_database(connection: HTTPConnection) -> Database:
-    """Dependency injector of the request log's Database"""
-    return connection.app.state.request_log_database

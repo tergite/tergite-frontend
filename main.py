@@ -23,8 +23,6 @@
 # nuitka-project: --include-package=websockets
 # nuitka-project: --include-package=aiosmtplib
 # nuitka-project: --include-package=loguru
-# nuitka-project: --include-package=hiredis
-# nuitka-project: --include-package=redis
 # nuitka-project: --include-package=sqlalchemy
 # nuitka-project: --include-package=pymongo
 # nuitka-project: --include-package=aiosqlite
@@ -121,8 +119,6 @@ def _migrate() -> None:
         with MongoClient(database_url) as client:
             applied = migrations.mongodb.upgrade(client.get_default_database())
         print(f"MongoDB migrations applied: {applied or 'none pending'}")
-    elif database_url.startswith("redis"):
-        print("Redis migrations applied: none pending")
     else:
         command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
 

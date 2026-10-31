@@ -1,11 +1,11 @@
 #!/bin/sh
 # Writes /etc/tergite-mss/mss-config.toml and the private key beside it, creating MSS's
-# accounts on a local PostgreSQL, MongoDB or Redis. Runs as root before the service's first
-# start, when the databases apt installed alongside are up, and by hand on rpm or apk.
+# account on a local PostgreSQL or MongoDB. Runs as root before the service's first start,
+# when the database apt installed alongside is up, and by hand on rpm or apk.
 #
 # Reads the answers debconf saved to /etc/tergite-mss/provision.env, one key=value a line:
-# database=postgresql|mongodb|url, database_url, database_password, redis=local|url,
-# redis_url, redis_password. A URL comes without its password. No file means local both.
+# database=postgresql|mongodb|url, database_url, database_password. A URL comes without its
+# password. No file means a local PostgreSQL.
 # Leaves an existing config alone: delete it to provision again.
 
 set -e
@@ -22,18 +22,12 @@ main() {
 	database=postgresql
 	database_url=
 	database_password=
-	redis=local
-	redis_url=
-	redis_password=
 	if [ -f "$answers" ]; then
 		while IFS='=' read -r key value; do
 			case $key in
 				database) database=$value ;;
 				database_url) database_url=$value ;;
 				database_password) database_password=$value ;;
-				redis) redis=$value ;;
-				redis_url) redis_url=$value ;;
-				redis_password) redis_password=$value ;;
 			esac
 		done <"$answers"
 	fi
@@ -51,16 +45,6 @@ main() {
 			;;
 		url) database_url=$(add_password "$database_url" "$database_password") ;;
 		*) fail "unknown database '$database' in $answers" ;;
-	esac
-
-	case $redis in
-		local)
-			password=$(get_secret)
-			create_redis_user "$password"
-			redis_url="redis://tergite-mss:$password@localhost:6379/0"
-			;;
-		url) redis_url=$(add_password "$redis_url" "$redis_password") ;;
-		*) fail "unknown redis '$redis' in $answers" ;;
 	esac
 
 	umask 027
@@ -87,7 +71,6 @@ main() {
 		[database]
 		name = "tergite-mss"
 		url = "$database_url"
-		redis_url = "$redis_url"
 
 		[auth]
 		jwt_secret = "$(get_secret)"
@@ -125,16 +108,6 @@ create_mongodb_user() {
 		else db.createUser({user: 'tergite-mss', pwd: '$1', roles});
 	" >/dev/null ||
 		fail "could not create the MongoDB user; with authorization on, create 'tergite-mss' by hand and answer 'existing database'"
-}
-
-create_redis_user() {
-	command -v redis-cli >/dev/null 2>&1 ||
-		fail "Redis is not installed: install it, or answer 'existing Redis' to dpkg-reconfigure tergite-mss"
-	redis-cli ACL SETUSER tergite-mss reset on ">$1" '~*' '&*' '+@all' | grep -qx OK ||
-		fail "could not create the Redis user"
-	# ACL SAVE when Redis keeps its users in an aclfile, otherwise in redis.conf
-	redis-cli ACL SAVE | grep -qx OK || redis-cli CONFIG REWRITE | grep -qx OK ||
-		fail "could not save the Redis user"
 }
 
 as_postgres() {

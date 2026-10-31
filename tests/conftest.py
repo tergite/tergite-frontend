@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 
 
-from tests._utils.env import TEST_DATABASE_URL, TEST_REDIS_URL, setup_test_env
+from tests._utils.env import TEST_DATABASE_URL, setup_test_env
 from tests._utils.types import stub_pydantic_match_type_for_freezegun
 
 # Set up the test environment before any other imports are made
@@ -32,7 +32,6 @@ from typing import Any, Dict, Generator, List, Optional
 
 import aiosmtplib
 import pytest
-import redis
 from fastapi.testclient import TestClient
 from pydantic import AnyUrl
 
@@ -103,16 +102,6 @@ def db(api_database) -> Generator[SyncDatabase, Any, None]:
             api_database.delete_many(schema, {})
 
 
-@pytest.fixture
-def request_log_db() -> redis.Redis:
-    """The redis database of the request log for testing"""
-    client = redis.Redis.from_url(TEST_REDIS_URL, decode_responses=True)
-    yield client
-    # clean up
-    client.flushdb()
-    client.close()
-
-
 @pytest.fixture(params=DATABASE_KINDS)
 async def database_url(request, tmp_path) -> str:
     """The URL of a database, each kind in turn, emptied before and after the test"""
@@ -141,7 +130,7 @@ def app_runner(api_database) -> Generator["_AppRunner", Any, None]:
 
 @pytest.fixture
 def client(
-    request, app_runner, db, request_log_db, mock_socket_gethostbyname
+    request, app_runner, db, mock_socket_gethostbyname
 ) -> Generator[TestClient, Any, None]:
     """A test client for fast api, on the app the session keeps running
 

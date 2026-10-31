@@ -26,12 +26,12 @@ from starlette.websockets import WebSocket
 
 import settings
 from libs.storage import Database
-from services import request_log
+from services.bcc_nonces import claim_bcc_nonce
 from utils.config import BccConfig, get_ip_addr
 from utils.crypto import verify_ws_signature
 from utils.exc import InvalidRequestIDError
 
-from .database import get_request_log_database
+from .database import get_database
 
 
 async def get_request_id(request: Request) -> str:
@@ -59,7 +59,7 @@ async def get_request_id(request: Request) -> str:
 
 
 async def get_verified_device_name(
-    websocket: WebSocket, database: Database = Depends(get_request_log_database)
+    websocket: WebSocket, database: Database = Depends(get_database)
 ) -> str:
     """Returns the device name as got from BCC passed through special headers
 
@@ -83,7 +83,7 @@ async def get_verified_device_name(
     try:
         headers = _read_signed_headers(websocket)
         backend_conf = settings.CONFIG.backends_dict[headers.name]
-        client_ip = _check_client_ip(websocket, backend_conf)
+        _check_client_ip(websocket, backend_conf)
         verify_ws_signature(
             signature=headers.signature,
             message=f"{headers.name}-{headers.nonce}-{headers.timestamp}",
@@ -94,9 +94,8 @@ async def get_verified_device_name(
             now=datetime.now().timestamp(),
             ttl=settings.CONFIG.bcc_nonce_ttl,
         )
-        await _check_nonce_unused(
-            database, headers, client_ip, ttl=settings.CONFIG.request_log_ttl
-        )
+        # kept while its timestamp is fresh, after which _check_nonce_age refuses a replay
+        await _check_nonce_unused(database, headers, ttl=settings.CONFIG.bcc_nonce_ttl)
         return headers.name
     except (KeyError, InvalidSignature, ValueError, AttributeError) as exp:
         logger.warning(f"WebSocket signature/nonce validation failed: {exp}")
@@ -169,15 +168,13 @@ def _check_nonce_age(timestamp: float, now: float, ttl: float) -> None:
 
 
 async def _check_nonce_unused(
-    database: Database, headers: _SignedHeaders, client_ip: str, ttl: float
+    database: Database, headers: _SignedHeaders, ttl: float
 ) -> None:
-    """Records the nonce, checking it was not used before
+    """Claims the nonce, checking it was not used before
 
     Raises:
         ValueError: duplicate request nonce
     """
-    is_new_nonce = await request_log.record_request(
-        database, headers.nonce, ttl=ttl, client_name=headers.name, ip_address=client_ip
-    )
+    is_new_nonce = await claim_bcc_nonce(database, headers.name, headers.nonce, ttl=ttl)
     if not is_new_nonce:
         raise ValueError(f"duplicate request nonce: '{headers.nonce}'")

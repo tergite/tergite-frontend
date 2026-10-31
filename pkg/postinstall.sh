@@ -25,7 +25,7 @@ chmod 0750 /var/lib/tergite-mss
 
 if [ "$1" = configure ] && [ -e /usr/share/debconf/confmodule ] && [ ! -f "$config" ]; then
 	save_answers() {
-		for question in database database_url database_password redis redis_url redis_password; do
+		for question in database database_url database_password; do
 			db_get "tergite-mss/$question"
 			printf '%s=%s\n' "$question" "$RET"
 		done
@@ -34,7 +34,6 @@ if [ "$1" = configure ] && [ -e /usr/share/debconf/confmodule ] && [ ! -f "$conf
 	(umask 077 && save_answers >"$answers")
 	# the config is the one place a password is kept
 	db_set tergite-mss/database_password ""
-	db_set tergite-mss/redis_password ""
 	db_stop
 fi
 

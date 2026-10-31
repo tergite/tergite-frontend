@@ -35,12 +35,9 @@ overrides:
   deb:
     recommends:
       - postgresql
-      # 7.4 brought the per-field expiry MSS needs; Ubuntu 24.04 gets it from packages.redis.io
-      - redis-server (>= 5:7.4)
   rpm:
     recommends:
       - postgresql-server
-      - redis
 
 contents:
   # Nuitka's standalone build, whose executable finds the folder through the link

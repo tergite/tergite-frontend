@@ -171,10 +171,6 @@ def _create_store(database_url: str, schemas: Sequence[Type[Schema]]) -> DbStore
         from .mongo import MongoStore  # each backend's driver loads only when used
 
         return MongoStore(database_url, schemas)
-    if scheme in ("redis", "rediss"):
-        from .redis import RedisStore
-
-        return RedisStore(database_url, schemas)
     # SQLAlchemy names a database and its async driver, as in postgresql+asyncpg://
     if "+" in scheme:
         from .sql import SqlStore

@@ -103,7 +103,7 @@ cd tergite-frontend
 uv sync --extra dev
 ```
 
-- Run MSS's tests, which need the MongoDB and Redis that `tests/fixtures/config.test.toml` names,
+- Run MSS's tests, which need the MongoDB that `tests/fixtures/config.test.toml` names,
   and the PostgreSQL that `TEST_POSTGRES_URL` does
 
 ```shell
@@ -121,8 +121,8 @@ npm run test
 ## How to Run End-to-end Tests
 
 - Ensure you have [nodejs](https://nodejs.org/en), [uv](https://docs.astral.sh/uv/), MongoDB's
-  `mongod` and `mongosh`, `redis-server` 7.4 or later and `sqlite3` installed
-- Ensure nothing is running on ports 3001, 8002, 8101, 27018 and 6380
+  `mongod` and `mongosh` and `sqlite3` installed
+- Ensure nothing is running on ports 3001, 8002, 8101 and 27018
 - Clone the repo, and tergite-backend beside it unless `BACKEND_REPO` is given
 
 ```shell

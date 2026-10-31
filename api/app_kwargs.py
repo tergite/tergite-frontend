@@ -32,11 +32,7 @@ from services.external.email import Emailer
 from utils.config import NoticesConfig
 from utils.crypto import load_private_key
 
-from .database import (
-    close_database,
-    open_database,
-    open_request_log_database,
-)
+from .database import close_database, open_database
 from .routers.devices import ws_manager as devices_ws_manager
 
 
@@ -68,7 +64,6 @@ async def lifespan(app: FastAPI):
     await bcc.create_clients(settings.CONFIG.backends, private_key=private_key)
     database = await open_database(app, settings.CONFIG.database)
     devices_ws_manager.start_refreshing(database)
-    await open_request_log_database(app, settings.CONFIG.database)
     await auth_service.on_startup(database, conf=settings.CONFIG.auth)
     await jobs_service.on_startup(
         private_key=private_key,

@@ -115,6 +115,6 @@ async def health():
     """Liveness probe for the container healthcheck.
 
     Deliberately public, trivial and unlogged: the probe runs every ten seconds and
-    drowned the request log when it went through a real endpoint.
+    drowned the access log when it went through a real endpoint.
     """
     return {"status": "ok"}

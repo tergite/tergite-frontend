@@ -14,34 +14,17 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-import settings
-from services import request_log
 from utils.crypto import get_uuid4_str
-from utils.logging import UNLOGGED_PATHS
-
-from .database import get_request_log_database
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
-    """Middleware for handling all requests IDs in a store"""
+    """Gives each request an ID, which it signs its calls to BCC with and echoes back"""
 
     async def dispatch(self, request: Request, call_next):
-        """Generates request ID, and records the request IDs in requests_store."""
-        if request.url.path in UNLOGGED_PATHS:
-            return await call_next(request)
-
         # Resolve request ID (reuse x-request-id header if sent, or generate new)
         request_id = request.headers.get("x-request-id") or get_uuid4_str()
         request.state.request_id = request_id
         response = await call_next(request)
-
-        await request_log.record_request(
-            get_request_log_database(request),
-            request_id,
-            ttl=settings.CONFIG.request_log_ttl,
-            client_name=request.headers.get("x-id"),
-            ip_address=request.client.host if request.client else None,
-        )
 
         # Attach request ID to response headers
         response.headers["x-request-id"] = request_id

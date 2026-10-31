@@ -21,10 +21,6 @@ private_key_password="some-secret-password"
 # time-to-live for the nonce; defaults to 5 minutes
 bcc_nonce_ttl = 300
 
-# how long, in seconds, a request id or websocket nonce is remembered to reject a replay
-# default: 1209600 (two weeks)
-request_log_ttl = 1209600
-
 [database]
 # configurations for the database
 name = "sample-database"
@@ -32,8 +28,6 @@ name = "sample-database"
 # with an async driver (postgresql+asyncpg://, sqlite+aiosqlite://), which `tergite-mss start`
 # migrates with Alembic
 url = "mongodb://user:pass@host:port"
-# the database of the request log, which a cache suits; default=redis://tergite-redis:6379/0
-redis_url = "redis://tergite-redis:6379/0"
 
 
 # Add backends in the form: Note: [[...]] creates an array of tables

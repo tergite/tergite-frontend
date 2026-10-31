@@ -9,3 +9,10 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
+"""The nonces of the backends' signed websocket handshakes"""
+from .dtos import BccNonce
+from .service import claim_bcc_nonce
+
+SCHEMAS = (BccNonce,)
+
+__all__ = ["BccNonce", "SCHEMAS", "claim_bcc_nonce"]

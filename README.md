@@ -32,27 +32,17 @@ more of MSS's API.
 
 ## Deployment
 
-MSS runs from its package, as a system service, and serves the dashboard. MongoDB, or
-PostgreSQL, and Redis 7.4 or later are expected to be installed already, or are installed
-alongside MSS on Debian and Ubuntu.
+MSS runs from its package, as a system service, and serves the dashboard. MongoDB or
+PostgreSQL is expected to be installed already, or is installed alongside MSS on Debian and
+Ubuntu.
 
 ### MSS
 
 - Download the installer of a [release](https://github.com/tergite/tergite-frontend/releases):
   a deb for amd64, for Debian 13 and Ubuntu 24.04 onwards, or a macOS arm64 installer.
 
-- On Ubuntu 24.04, whose Redis 7.0 is older than the 7.4 MSS needs, add Redis's own repository
-  first, so that the deb's local Redis comes from there.
-
-```shell
-sudo apt-get install -y curl gpg
-curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb noble main" | sudo tee /etc/apt/sources.list.d/redis.list
-sudo apt-get update
-```
-
-- On Debian or Ubuntu, install the deb. It asks where MSS's database and Redis are, creates
-  their accounts, writes `/etc/tergite-mss/mss-config.toml` with a private key beside it, and
+- On Debian or Ubuntu, install the deb. It asks where MSS's database is, creates its
+  account, writes `/etc/tergite-mss/mss-config.toml` with a private key beside it, and
   starts the `tergite-mss` service on port 8002.
 
 ```shell

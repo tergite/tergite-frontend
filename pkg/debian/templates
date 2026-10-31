@@ -19,25 +19,3 @@ Type: password
 Description: Password of the database user:
  Stored only in /etc/tergite-mss/mss-config.toml, which root and the
  tergite-mss service alone can read. Leave it empty if the user has none.
-
-Template: tergite-mss/redis
-Type: select
-Choices-C: local, url
-Choices: local Redis, existing Redis
-Default: local
-Description: Redis for the request log:
- A local Redis gets its own tergite-mss user, created on the service's first
- start.
-
-Template: tergite-mss/redis_url
-Type: string
-Default: redis://redis.example.com:6379/0
-Description: URL of the existing Redis, without its password:
- With its ACL user if it has one, e.g. redis://mss@redis.example.com:6379/0.
- The password is asked next.
-
-Template: tergite-mss/redis_password
-Type: password
-Description: Password of the Redis user:
- Stored only in /etc/tergite-mss/mss-config.toml, which root and the
- tergite-mss service alone can read. Leave it empty if Redis has none.

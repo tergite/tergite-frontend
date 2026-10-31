@@ -12,9 +12,9 @@
 # that they have been altered from the originals.
 #
 # Records the performance measures into <out-dir>: Lighthouse on the
-# dashboard as MSS serves it, then Locust on MSS from this working tree, with a MongoDB and
-# a Redis of its own, all running natively, both over the e2e fixtures. It samples the CPU and
-# memory of the MSS, mongod and redis-server processes, and each database's connections.
+# dashboard as MSS serves it, then Locust on MSS from this working tree, with a MongoDB of
+# its own, all running natively, both over the e2e fixtures. It samples the CPU and memory of
+# the MSS and mongod processes, and the database's connections.
 #
 # Usage
 # =====
@@ -24,9 +24,8 @@
 #   ./dev/perf/record.sh /tmp/perf mss                # MSS alone, or dashboard alone
 #   python3 dev/perf/compare.py dev/perf/baselines /tmp/perf
 #
-# Needs node, uv, mongod, mongosh, redis-server and redis-cli, and ports 8002, 27019 and 6381
-# free: MSS takes 8002, where the dashboard's test build calls it; the locustfile reaches
-# MongoDB at 27019.
+# Needs node, uv, mongod and mongosh, and ports 8002 and 27019 free: MSS takes 8002, where
+# the dashboard's test build calls it; the locustfile reaches MongoDB at 27019.
 # Compare only runs made on the same machine: the numbers are this machine's.
 
 set -e
@@ -47,11 +46,10 @@ MSS_PATH="$ROOT_PATH"
 DASHBOARD_PATH="$MSS_PATH/ui"
 MSS_PORT=8002
 MONGO_PORT=27019
-REDIS_PORT=6381
 
 main() {
   [[ -n "$1" ]] || exit_with_err "usage: $0 <out-dir>"
-  for tool in node uv mongod mongosh redis-server redis-cli; do
+  for tool in node uv mongod mongosh; do
     command -v "$tool" &> /dev/null || exit_with_err "$tool is not available"
   done
   mkdir -p "$1"
@@ -89,20 +87,18 @@ record_mss() {
   stop_stack
 }
 
-# Starts MongoDB, Redis and MSS, each of its own, in WORK_PATH, seeding MSS's database from the fixtures
+# Starts MongoDB and MSS, each of its own, in WORK_PATH, seeding MSS's database from the fixtures
 start_stack() {
   WORK_PATH="$(mktemp -d)"
   trap stop_stack EXIT
   sed -e "s|mongodb://tergite-mongo:27017|mongodb://127.0.0.1:$MONGO_PORT|" \
-    -e "s|redis://tergite-redis:6379|redis://127.0.0.1:$REDIS_PORT|" -e "s|bcc_certs/|$FIXTURES_PATH/|" \
+    -e "s|bcc_certs/|$FIXTURES_PATH/|" \
     -e "s|OPENID_CONFIG_URL|$OPENID_CONFIG_URL|" -e "s|OPENID_CLIENT_ID|perf|" \
     -e "s|OPENID_CLIENT_SECRET|perf|" "$FIXTURES_PATH/mss-config.toml" > "$WORK_PATH/mss-config.toml"
 
   mkdir "$WORK_PATH/mongo"
   mongod --dbpath "$WORK_PATH/mongo" --port "$MONGO_PORT" --bind_ip 127.0.0.1 > "$WORK_PATH/mongod.log" 2>&1 &
   mongo_pid=$!
-  redis-server --port "$REDIS_PORT" --bind 127.0.0.1 --save "" --appendonly no > "$WORK_PATH/redis.log" 2>&1 &
-  redis_pid=$!
   until mongosh --quiet --port "$MONGO_PORT" --eval "db.runCommand('ping').ok" &> /dev/null; do sleep 0.5; done
 
   UV_PROJECT_ENVIRONMENT="$WORK_PATH/venv" uv sync -q --frozen --no-dev --project "$MSS_PATH"
@@ -123,7 +119,7 @@ start_mss() {
 }
 
 stop_stack() {
-  kill $sampler_pid $connections_pid "$mss_pid" "$redis_pid" "$mongo_pid" 2> /dev/null
+  kill $sampler_pid $connections_pid "$mss_pid" "$mongo_pid" 2> /dev/null
   wait 2> /dev/null
   rm -rf "$WORK_PATH"
   sampler_pid="" connections_pid=""
@@ -133,7 +129,7 @@ stop_stack() {
 # SAMPLE_INTERVAL_SECONDS, the CPU being its share of a core over that interval
 sample_processes() {
   uv run -q --no-project --with psutil python - "$OUT_PATH/process-stats.csv" "$SAMPLE_INTERVAL_SECONDS" \
-    "mss=$mss_pid" "mongodb=$mongo_pid" "redis=$redis_pid" <<'PYTHON'
+    "mss=$mss_pid" "mongodb=$mongo_pid" <<'PYTHON'
 import csv
 import sys
 import time
@@ -172,8 +168,6 @@ sample_connections() {
     now="$(date +%s)"
     echo "$now,mongodb,$(mongosh --quiet --port "$MONGO_PORT" \
       --eval 'db.serverStatus().connections.current')" >> "$OUT_PATH/connections.csv"
-    echo "$now,redis,$(redis-cli -p "$REDIS_PORT" info clients \
-      | awk -F: '/^connected_clients/ {print $2}' | tr -d '\r')" >> "$OUT_PATH/connections.csv"
     sleep "$SAMPLE_INTERVAL_SECONDS"
   done
 }
