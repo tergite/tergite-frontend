@@ -10,6 +10,10 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.3] - 2026-10-31
+
+This is part of the tergite release v2026.11.0-rc.3.
+
 ### Changed
 
 - Changed a tag's GitHub release notes, which only said "See CHANGELOG.md.", to its CHANGELOG.md section; a tag
