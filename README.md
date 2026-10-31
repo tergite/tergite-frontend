@@ -177,6 +177,8 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 ## TODO
 
 - [ ] Fix failing GitHub/GitLab CI runs
+- [ ] Give every public function a Google-style docstring, saying what it does for the caller and how to use
+  it, with `Args:`, `Returns:` and `Raises:` where they apply; many lack `Args:`
 
 ## Acknowledgements
 
