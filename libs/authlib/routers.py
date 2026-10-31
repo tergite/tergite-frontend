@@ -32,6 +32,8 @@ CALLBACK_ROUTE_NAME = "oauth:callback"
 
 
 class OAuth2AuthorizeResponse(BaseModel):
+    """The URL to send the user to, to sign in with the provider"""
+
     authorization_url: str
 
 
@@ -45,6 +47,9 @@ def get_oauth_router(auth: Auth, should_add_app_alias: bool = False) -> APIRoute
         auth: the app's auth, whose providers are served
         should_add_app_alias: whether the routes are also served under /app, as
             /app/{provider}/authorize
+
+    Returns:
+        the router
     """
     provider_router = APIRouter()
 
@@ -59,6 +64,20 @@ def get_oauth_router(auth: Auth, should_add_app_alias: bool = False) -> APIRoute
         scopes: Optional[List[str]] = Query(None),
         next_url: Optional[str] = Query(None, alias="next"),
     ) -> OAuth2AuthorizeResponse:
+        """Gets the URL to send the user to, to sign in through the provider
+
+        Args:
+            request: the incoming request, whose URL the provider is to call back on
+            provider: the name of the provider
+            scopes: the scopes to ask the provider for; default: the provider's own
+            next_url: where to send the user once signed in, as `next`
+
+        Returns:
+            the provider's authorization URL
+
+        Raises:
+            404: the app has no provider of that name
+        """
         authorization_url = await _get_authorization_url(
             auth, request, provider, scopes, next_url
         )
@@ -75,7 +94,20 @@ def get_oauth_router(auth: Auth, should_add_app_alias: bool = False) -> APIRoute
         scopes: Optional[List[str]] = Query(None),
         next_url: Optional[str] = Query(None, alias="next"),
     ) -> str:
-        """Redirects to the provider's authorization URL"""
+        """Redirects to the provider's authorization URL
+
+        Args:
+            request: the incoming request, whose URL the provider is to call back on
+            provider: the name of the provider
+            scopes: the scopes to ask the provider for; default: the provider's own
+            next_url: where to send the user once signed in, as `next`
+
+        Returns:
+            the provider's authorization URL, which the response redirects to
+
+        Raises:
+            404: the app has no provider of that name
+        """
         return await _get_authorization_url(auth, request, provider, scopes, next_url)
 
     @provider_router.get(
@@ -102,6 +134,18 @@ def get_oauth_router(auth: Auth, should_add_app_alias: bool = False) -> APIRoute
         ),
         database: Database = Depends(auth.get_database),
     ) -> Response:
+        """Signs the user in from the provider's callback, setting the session cookie
+
+        Args:
+            request: the provider's callback request
+            provider: the name of the provider
+            access_token_state: the provider's access token, and the state sent with
+                the authorization
+            database: the database where the users are kept
+
+        Returns:
+            a 204, or a redirect to the state's `next` URL
+        """
         token, state = access_token_state
         state_data = read_state_token(state, auth.secret)
         user = await _sign_in_user(auth, database, provider, token)
@@ -126,7 +170,15 @@ def get_oauth_router(auth: Auth, should_add_app_alias: bool = False) -> APIRoute
 
 
 def get_logout_router(auth: Auth, should_require_verified: bool = False) -> APIRouter:
-    """Gets a router whose /logout clears the session cookie of an active user"""
+    """Gets a router whose /logout clears the session cookie of an active user
+
+    Args:
+        auth: the app's auth
+        should_require_verified: whether an unverified user is refused, with a 403
+
+    Returns:
+        the router
+    """
     router = APIRouter()
     get_current_user = auth.get_current_user(
         should_require_active=True, should_require_verified=should_require_verified
@@ -146,6 +198,14 @@ def get_logout_router(auth: Auth, should_require_verified: bool = False) -> APIR
         },
     )
     async def logout(user: Any = Depends(get_current_user)) -> JSONResponse:
+        """Logs the current user out, clearing the session cookie
+
+        Args:
+            user: the current active user
+
+        Returns:
+            the message that the user is logged out
+        """
         response = JSONResponse({"message": "logged out"})
         clear_session_cookie(response, auth.cookie)
         return response

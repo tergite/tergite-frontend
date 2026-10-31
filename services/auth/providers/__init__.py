@@ -10,7 +10,11 @@ _ALL_AUTH_PROVIDERS: List[AuthProvider] = []
 
 
 def set_auth_providers(clients: Sequence[Oauth2ClientConfig]) -> None:
-    """Sets the providers the login page can offer, one per auth client"""
+    """Sets the providers the login page can offer, one per auth client
+
+    Args:
+        clients: the configured auth clients
+    """
     _ALL_AUTH_PROVIDERS[:] = [
         AuthProvider(
             name=client.name,

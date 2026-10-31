@@ -46,6 +46,7 @@ async def get_verified_device_name(
 
     Args:
         websocket: the current FastAPI websocket request
+        database: the database where the used nonces are kept
 
     Returns:
         the name of the device

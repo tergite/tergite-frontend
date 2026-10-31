@@ -47,6 +47,8 @@ class Forbidden(AuthError):
 
 
 class ProviderNotFound(AuthError):
+    """No OAuth provider has the requested name"""
+
     status_code = status.HTTP_404_NOT_FOUND
     default_detail = "Not Found"
 
@@ -81,7 +83,11 @@ class EmailNotPermitted(AuthError):
 
 
 def add_exception_handlers(app: FastAPI) -> None:
-    """Answers every AuthError the app's routes raise with its status and detail"""
+    """Answers every AuthError the app's routes raise with its status and detail
+
+    Args:
+        app: the FastAPI app to add the handler to
+    """
     app.add_exception_handler(AuthError, _handle_auth_error)
 
 

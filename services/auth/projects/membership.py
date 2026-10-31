@@ -78,7 +78,14 @@ async def notify_membership_change(
 async def notify_membership_revoked(
     database: Database, project: Project, member_id: str, actor: User
 ) -> None:
-    """Tells a removed member they no longer belong to the project"""
+    """Tells a removed member they no longer belong to the project
+
+    Args:
+        database: the database where the notices are stored
+        project: the project the member was removed from
+        member_id: the id of the removed member
+        actor: the project admin or superuser who removed them
+    """
     await notices.create_system_notice(
         database,
         user_ids=[member_id],
@@ -96,7 +103,15 @@ async def notify_membership_revoked(
 async def get_user_id_email_map(
     database: Database, user_ids: List[str]
 ) -> Dict[str, str]:
-    """Gets the emails of the users of the given ids, keyed by id"""
+    """Gets the emails of the users of the given ids, keyed by id
+
+    Args:
+        database: the database where the users are stored
+        user_ids: the ids of the users
+
+    Returns:
+        the email of each user found, keyed by their id
+    """
     users = await database.find(User, filter={"id": {"$in": list(user_ids)}})
     return {user.id: user.email for user in users}
 
@@ -107,6 +122,13 @@ async def get_user_email_id_map(
     """Gets the ids of the users of the given emails, keyed by each email as given
 
     Emails match in any case. It creates a user for each email that has none yet.
+
+    Args:
+        database: the database where the users are stored
+        user_emails: the emails of the users
+
+    Returns:
+        the id of each user, keyed by their email as given
     """
     if len(user_emails) == 0:
         return {}

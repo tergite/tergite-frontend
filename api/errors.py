@@ -51,7 +51,15 @@ def make_http_error_handler(
 
 
 async def handle_bcc_http_error(request: Request, exp: BccHttpError) -> Response:
-    """An error handler that answers with the status code and message the BCC gave"""
+    """An error handler that answers with the status code and message the BCC gave
+
+    Args:
+        request: the request that raised the error
+        exp: the error from the BCC
+
+    Returns:
+        the HTTP error response
+    """
     return await make_http_error_handler(exp.status_code)(request, exp)
 
 

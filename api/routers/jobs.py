@@ -112,7 +112,22 @@ async def create_one(
     project_user_id_pair: CurrentStrictProjectUserIdsDep,
     payload: JobCreate,
 ) -> CreatedJobResponse:
-    """Creates a job in the given backend and given calibration_date in the body"""
+    """Creates a job in the given backend and given calibration_date in the body
+
+    Args:
+        request: the incoming request
+        database: the database where the jobs are stored
+        project_user_id_pair: the API token's project and user ids; the project must
+            have QPU seconds left
+        payload: the job to create
+
+    Returns:
+        the job's id, and the URL and access token for uploading it to the backend
+
+    Raises:
+        401: missing or invalid API token, or inactive project or user
+        403: the project has no QPU seconds left
+    """
     project_id, user_id = project_user_id_pair
     return await jobs_service.create_job(
         database,

@@ -60,10 +60,20 @@ class MongoStore(DbStore):
 
     async def setup(self) -> None:
         # one at a time: concurrently, each opens a pooled connection that is never closed
+        """Creates what the schemas need, such as tables and indexes; safe to repeat"""
         for schema in self._schemas:
             await self._set_up_collection(schema)
 
     async def get(self, schema: Type[T], key: Any) -> Optional[T]:
+        """Gets the unexpired record of the given key
+
+        Args:
+            schema: the schema of the record
+            key: the value of the schema's key field
+
+        Returns:
+            the record, or None if there is none
+        """
         key_field = schema.__storage__.key
         document = await self._get_collection(schema).find_one(
             _translate_unexpired_filter(schema, {key_field: key})
@@ -80,6 +90,18 @@ class MongoStore(DbStore):
         skip: int,
         limit: Optional[int],
     ) -> List[T]:
+        """Finds the unexpired records that match the filter, in the sort's order
+
+        Args:
+            schema: the schema of the records
+            query_filter: the filter, as `Database.find` takes it
+            sort: the fields to sort by; a leading '-' sorts descending
+            skip: the number of matched records to skip
+            limit: the most records to return; None returns all
+
+        Returns:
+            the matched records
+        """
         cursor = self._get_collection(schema).find(
             _translate_unexpired_filter(schema, query_filter),
             sort=translate_sort(sort) or None,
@@ -94,6 +116,15 @@ class MongoStore(DbStore):
         return [record for record in records if record is not None]
 
     async def count(self, schema: Type[T], query_filter: Filter) -> int:
+        """Counts the unexpired records that match the filter
+
+        Args:
+            schema: the schema of the records
+            query_filter: the filter, as `Database.find` takes it
+
+        Returns:
+            the number of matched records
+        """
         options = _get_collation_option(schema, query_filter)
         return await self._get_collection(schema).count_documents(
             _translate_unexpired_filter(schema, query_filter), **options
@@ -102,6 +133,16 @@ class MongoStore(DbStore):
     async def find_distinct(
         self, schema: Type[T], field: str, query_filter: Filter
     ) -> List[Any]:
+        """Gets the different values the field holds in the matched records
+
+        Args:
+            schema: the schema of the records
+            field: the field, dotted for a nested one
+            query_filter: the filter, as `Database.find` takes it
+
+        Returns:
+            the distinct values
+        """
         values = await self._get_collection(schema).distinct(
             get_document_field(field),
             _translate_unexpired_filter(schema, query_filter),
@@ -112,6 +153,18 @@ class MongoStore(DbStore):
         ]
 
     async def insert(self, schema: Type[T], record: T) -> T:
+        """Inserts the record
+
+        Args:
+            schema: the schema of the record
+            record: the record to insert
+
+        Returns:
+            the inserted record
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         with _translate_duplicate_key_errors():
             await self._get_collection(schema).insert_one(
                 convert_to_document(schema, record)
@@ -119,6 +172,18 @@ class MongoStore(DbStore):
         return record
 
     async def insert_many(self, schema: Type[T], records: Sequence[T]) -> List[T]:
+        """Inserts the records
+
+        Args:
+            schema: the schema of the records
+            records: the records to insert
+
+        Returns:
+            the inserted records
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         if len(records) == 0:
             return []
         with _translate_duplicate_key_errors():
@@ -135,6 +200,22 @@ class MongoStore(DbStore):
         should_upsert: bool,
         returning: Returning,
     ) -> Optional[T]:
+        """Updates the first matched record
+
+        Args:
+            schema: the schema of the record
+            query_filter: the filter, as `Database.find` takes it
+            update: the update, as `Database.update_one` takes it
+            should_upsert: whether to create the record if none matched
+            returning: whether to return the record as it was before or after the update
+
+        Returns:
+            the record before or after the update, or None if none matched and none was
+            upserted
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         return_document = (
             ReturnDocument.BEFORE
             if returning == Returning.BEFORE
@@ -153,6 +234,19 @@ class MongoStore(DbStore):
     async def update_many(
         self, schema: Type[T], query_filter: Filter, update: Update
     ) -> int:
+        """Updates every matched record
+
+        Args:
+            schema: the schema of the records
+            query_filter: the filter, as `Database.find` takes it
+            update: the update, as `Database.update_one` takes it
+
+        Returns:
+            the number of records changed
+
+        Raises:
+            DuplicateKeyError: a unique field's value is taken
+        """
         with _translate_duplicate_key_errors():
             result = await self._get_collection(schema).update_many(
                 _translate_unexpired_filter(schema, query_filter),
@@ -162,6 +256,15 @@ class MongoStore(DbStore):
         return result.modified_count
 
     async def delete_one(self, schema: Type[T], query_filter: Filter) -> Optional[T]:
+        """Deletes the first matched record
+
+        Args:
+            schema: the schema of the record
+            query_filter: the filter, as `Database.find` takes it
+
+        Returns:
+            the deleted record, or None if none matched
+        """
         document = await self._get_collection(schema).find_one_and_delete(
             _translate_unexpired_filter(schema, query_filter),
             **_get_collation_option(schema, query_filter),
@@ -169,6 +272,15 @@ class MongoStore(DbStore):
         return None if document is None else convert_to_record(schema, document)
 
     async def delete_many(self, schema: Type[T], query_filter: Filter) -> int:
+        """Deletes every matched record
+
+        Args:
+            schema: the schema of the records
+            query_filter: the filter, as `Database.find` takes it
+
+        Returns:
+            the number of records deleted
+        """
         result = await self._get_collection(schema).delete_many(
             _translate_unexpired_filter(schema, query_filter),
             **_get_collation_option(schema, query_filter),
@@ -176,6 +288,7 @@ class MongoStore(DbStore):
         return result.deleted_count
 
     async def close(self) -> None:
+        """Closes the connections to the database"""
         await self._client.close()
 
     def _get_collection(self, schema: Type[Schema]) -> AsyncCollection:

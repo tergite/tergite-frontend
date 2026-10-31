@@ -13,6 +13,8 @@
 
 
 class BaseMssException(Exception):
+    """The base of MSS's own errors, shown by their message, or class name if none"""
+
     def __init__(self, message: str = ""):
         self._message = message
 

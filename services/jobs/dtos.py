@@ -44,12 +44,18 @@ class CreatedJobResponse(TypedDict):
 
 
 class TimestampPair(BaseModel):
+    """When a stage of the job started and finished"""
+
     started: Optional[datetime] = None
     finished: Optional[datetime] = None
 
     @field_serializer("started", when_used="json")
     def serialize_started(self, value: Optional[datetime]):
-        """Convert started to builtin types like str when working with JSON"""
+        """Convert started to builtin types like str when working with JSON
+
+        Args:
+            value: when the stage started
+        """
         try:
             return datetime_to_zulu(value)
         except AttributeError:
@@ -57,7 +63,11 @@ class TimestampPair(BaseModel):
 
     @field_serializer("finished", when_used="json")
     def serialize_finished(self, value: Optional[datetime]):
-        """Convert finished to builtin types like str when working with JSON"""
+        """Convert finished to builtin types like str when working with JSON
+
+        Args:
+            value: when the stage finished
+        """
         try:
             return datetime_to_zulu(value)
         except AttributeError:
@@ -90,6 +100,8 @@ class JobTimestamps(BaseModel):
 
 
 class JobStatus(str, enum.Enum):
+    """The status of a job"""
+
     PENDING = "pending"
     SUCCESSFUL = "successful"
     FAILED = "failed"
@@ -159,7 +171,14 @@ class JobStatusResponse(BaseModel):
 
     @classmethod
     def from_job(cls, job: Job) -> Self:
-        """Extracts the job status response from the job"""
+        """Extracts the job status response from the job
+
+        Args:
+            job: the job
+
+        Returns:
+            the job's status response
+        """
         return cls(status=job.status)
 
 

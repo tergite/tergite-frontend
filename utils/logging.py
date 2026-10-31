@@ -31,6 +31,11 @@ class InterceptHandler(logging.Handler):
     """
 
     def emit(self, record: logging.LogRecord) -> None:
+        """Logs the record through Loguru, at its level and from its caller
+
+        Args:
+            record: the standard logging record
+        """
         # Get corresponding Loguru level if it exists
         try:
             level = logger.level(record.levelname).name
@@ -49,7 +54,14 @@ class InterceptHandler(logging.Handler):
 
 
 def json_formatter(record):
-    """Serialize Loguru records to a single-line flat JSON object."""
+    """Serialize Loguru records to a single-line flat JSON object.
+
+    Args:
+        record: the Loguru record; the JSON is kept in its extra's `serialized` key
+
+    Returns:
+        the Loguru format string that writes the JSON
+    """
     # Handle exception if present
     exception_data = None
     exception = record["exception"]
@@ -91,7 +103,11 @@ def json_formatter(record):
 
 
 def patch_record(record):
-    """Patch record to ensure request_id exists and formats display correctly."""
+    """Patch record to ensure request_id exists and formats display correctly.
+
+    Args:
+        record: the Loguru record to patch
+    """
     request_id = record["extra"].get("request_id")
     if request_id:
         record["extra"]["request_id_display"] = f"[ID:{request_id}] | "
@@ -100,7 +116,11 @@ def patch_record(record):
 
 
 def setup_logging(environment: str) -> None:
-    """Configure Loguru to handle all logging in the application."""
+    """Configure Loguru to handle all logging in the application.
+
+    Args:
+        environment: the app's environment, which picks the log level and format
+    """
     log_level = get_log_level(environment)
     logger.remove()
     _add_sink(environment, log_level=log_level)
@@ -108,7 +128,14 @@ def setup_logging(environment: str) -> None:
 
 
 def get_log_level(environment: str) -> str:
-    """Gets the name of the lowest level the environment logs"""
+    """Gets the name of the lowest level the environment logs
+
+    Args:
+        environment: the app's environment, e.g. 'production'
+
+    Returns:
+        the level's name, e.g. 'INFO'
+    """
     if environment == "production":
         return "INFO"
     if environment == "test":

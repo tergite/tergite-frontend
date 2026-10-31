@@ -45,6 +45,7 @@ class EmailResult:
     # @computed_field
     @property
     def is_success(self) -> bool:
+        """Whether the email was sent without error"""
         return self.error is None
 
 
@@ -66,7 +67,14 @@ class EmailDetails(BaseModel):
     can_retry: bool = True
 
     def to_email_message(self, from_value: str) -> EmailMessage:
-        """Converts the details to an email message."""
+        """Converts the details to an email message.
+
+        Args:
+            from_value: the sender's address, for the From header
+
+        Returns:
+            the email message, ready to send
+        """
         message = EmailMessage()
         message["From"] = from_value
         message["To"] = self.to

@@ -34,6 +34,7 @@ async def get_user_emails(
     user would be a disclosure. Returns addresses alone, never the user records.
 
     Args:
+        database: the database where the users are stored
         requester: the superuser making the request; anyone else gets a 403
         search: a case-insensitive substring of the address; omit for the first page
         limit: the maximum number of addresses to return

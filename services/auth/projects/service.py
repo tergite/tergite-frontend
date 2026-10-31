@@ -33,6 +33,13 @@ from .exc import ProjectExists, ProjectNotExists
 async def get_project(database: Database, project_id: str) -> Project:
     """Gets the project of the given id
 
+    Args:
+        database: the database where the projects are stored
+        project_id: the id of the project
+
+    Returns:
+        the project
+
     Raises:
         ProjectNotExists: project {id} not found
     """
@@ -45,7 +52,16 @@ async def get_project(database: Database, project_id: str) -> Project:
 async def get_project_if_member(
     database: Database, project_id: str, user_id: str
 ) -> Optional[Project]:
-    """Gets the project of the given id if the user is a member, else None"""
+    """Gets the project of the given id if the user is a member, else None
+
+    Args:
+        database: the database where the projects are stored
+        project_id: the id of the project
+        user_id: the id of the user
+
+    Returns:
+        the project, or None if it does not exist or the user is not a member
+    """
     return await database.find_one(Project, {"id": project_id, "user_ids": user_id})
 
 
@@ -64,6 +80,9 @@ async def find_projects(
         member_id: the user whose projects alone are wanted; None for anyone's
         skip: the number of matched projects to skip
         limit: the most projects to return; None returns all
+
+    Returns:
+        the matching projects
 
     Raises:
         TooManyListQueryParams: a list has more than MAX_LIST_QUERY_LEN items
@@ -292,14 +311,32 @@ async def increment_qpu_seconds(
 
 
 async def add_member(database: Database, project_id: str, user_id: str) -> Project:
-    """Adds the user to the project's members, if not one already"""
+    """Adds the user to the project's members, if not one already
+
+    Args:
+        database: the database where the projects are stored
+        project_id: the id of the project
+        user_id: the id of the user
+
+    Returns:
+        the updated project, or None if no project has that id
+    """
     return await database.update_one(
         Project, {"id": project_id}, {"$addToSet": {"user_ids": user_id}}
     )
 
 
 async def set_admin(database: Database, project_id: str, user_id: str) -> Project:
-    """Makes the user the project's admin, and a member if not one already"""
+    """Makes the user the project's admin, and a member if not one already
+
+    Args:
+        database: the database where the projects are stored
+        project_id: the id of the project
+        user_id: the id of the user
+
+    Returns:
+        the updated project, or None if no project has that id
+    """
     return await database.update_one(
         Project,
         {"id": project_id},
@@ -309,6 +346,13 @@ async def set_admin(database: Database, project_id: str, user_id: str) -> Projec
 
 async def get_admin_view(database: Database, project: Project) -> ProjectAdminView:
     """Gets the project as an admin sees it, its admin and members named by email
+
+    Args:
+        database: the database where the users are stored
+        project: the project
+
+    Returns:
+        the project with its admin's and members' emails
 
     Raises:
         KeyError: a member's user does not exist

@@ -94,6 +94,9 @@ async def get_websocket_json(
         websocket: the websocket object
         data_type: the type of the data to expect to come from the websocket
 
+    Returns:
+        the JSON data, parsed
+
     Raises:
         fastapi.WebSocketException: invalid data type: websocket only supports {data_type} data
     """

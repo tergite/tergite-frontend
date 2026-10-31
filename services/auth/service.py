@@ -33,7 +33,11 @@ async def on_startup(database: Database, conf: AuthConfig) -> None:
 
 
 async def ensure_roles(database: Database) -> None:
-    """Stores every role users may hold, so that their roles can reference it"""
+    """Stores every role users may hold, so that their roles can reference it
+
+    Args:
+        database: the database where the roles are kept
+    """
     for role in UserRole:
         await database.update_one(
             Role, {"name": role}, {"$set": {"name": role}}, should_upsert=True

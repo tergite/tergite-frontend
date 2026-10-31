@@ -42,7 +42,19 @@ class Changes:
 
 
 def translate_filter(tables: SchemaTables, query_filter: Filter) -> ColumnElement:
-    """Translates the filter into a WHERE clause on the schema's table, unexpired rows only"""
+    """Translates the filter into a WHERE clause on the schema's table, unexpired rows only
+
+    Args:
+        tables: the schema's tables
+        query_filter: the filter, already checked against the schema
+
+    Returns:
+        the WHERE clause
+
+    Raises:
+        QueryError: the filter reaches into a JSON field, or gives a list field an
+            operator it does not take
+    """
     conditions = [_translate_conditions(tables, query_filter)]
     expires_field = tables.schema.__storage__.expires
     if expires_field is not None:
@@ -52,7 +64,18 @@ def translate_filter(tables: SchemaTables, query_filter: Filter) -> ColumnElemen
 
 
 def translate_sort(tables: SchemaTables, sort: Sequence[str]) -> List[ColumnElement]:
-    """Translates the sort, None first as MongoDB sorts it, ties in insertion order"""
+    """Translates the sort, None first as MongoDB sorts it, ties in insertion order
+
+    Args:
+        tables: the schema's tables
+        sort: the fields to sort by; a leading '-' sorts descending
+
+    Returns:
+        the ORDER BY clauses
+
+    Raises:
+        QueryError: the sort names a list field or reaches into a JSON field
+    """
     order = []
     for field_name, is_descending in parse_sort(sort):
         column = _get_column(tables, field_name)
@@ -66,6 +89,13 @@ def translate_sort(tables: SchemaTables, sort: Sequence[str]) -> List[ColumnElem
 
 def translate_update(tables: SchemaTables, update: Update) -> Changes:
     """Translates the update into column values and child-table writes
+
+    Args:
+        tables: the schema's tables
+        update: the update, already checked against the schema
+
+    Returns:
+        the changes to write
 
     Raises:
         QueryError: the update reaches into a JSON field

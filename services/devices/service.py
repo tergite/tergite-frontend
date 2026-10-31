@@ -50,6 +50,9 @@ async def find_devices(
         skip: the number of matched devices to skip
         limit: the most devices to return; None returns all
 
+    Returns:
+        the matching devices
+
     Raises:
         ValidationError: final results are not valid Device objects
     """
@@ -66,6 +69,13 @@ async def find_devices(
 
 async def get_device(database: Database, name: str) -> Device:
     """Gets the device of the given name
+
+    Args:
+        database: the database where the devices are stored
+        name: the name of the device
+
+    Returns:
+        the device
 
     Raises:
         ValidationError: if the final result could not be validated as a Device
@@ -156,7 +166,12 @@ async def add_connection(
 
 
 async def remove_connection(database: Database, connection_id: str) -> None:
-    """Forgets the websocket, which marks its device offline if it was the last"""
+    """Forgets the websocket, which marks its device offline if it was the last
+
+    Args:
+        database: the database where the devices are stored
+        connection_id: the id of the websocket's connection
+    """
     connection = await database.delete_one(
         DeviceConnection, filter={"id": connection_id}
     )
@@ -169,7 +184,13 @@ async def keep_connections_live(
     connection_ids: Sequence[str],
     ttl: float = CONNECTION_TTL_SECONDS,
 ) -> None:
-    """Keeps the websockets from lapsing for another ttl seconds"""
+    """Keeps the websockets from lapsing for another ttl seconds
+
+    Args:
+        database: the database where the connections are stored
+        connection_ids: the ids of the websockets' connections
+        ttl: the seconds the connections count for from now
+    """
     if connection_ids:
         await database.update_many(
             DeviceConnection,
@@ -182,7 +203,12 @@ async def sync_online_flags(
     database: Database, names: Optional[Sequence[str]] = None
 ) -> None:
     """Marks each device, or the named ones, online if it has a live connection and is not
-    switched off, and offline otherwise, since now"""
+    switched off, and offline otherwise, since now
+
+    Args:
+        database: the database where the devices and connections are stored
+        names: the names of the devices to mark; None marks every device
+    """
     device_filter = {} if names is None else {"name": {"$in": list(names)}}
     connected_names = set(
         await database.find_distinct(DeviceConnection, "device_name", filter={})
@@ -206,6 +232,14 @@ async def sync_online_flags(
 async def switch_off_device(database: Database, name: str, date: datetime) -> Device:
     """Marks the device switched off, and so offline since the date, until switched on
 
+    Args:
+        database: the database where the devices are stored
+        name: the name of the device
+        date: when the device was switched off
+
+    Returns:
+        the updated device
+
     Raises:
         NotFoundError: device {name} not found
     """
@@ -225,6 +259,13 @@ async def switch_off_device(database: Database, name: str, date: datetime) -> De
 
 async def switch_on_device(database: Database, name: str) -> Device:
     """Marks the device switched on, and so online again if connected
+
+    Args:
+        database: the database where the devices are stored
+        name: the name of the device
+
+    Returns:
+        the updated device
 
     Raises:
         NotFoundError: device {name} not found

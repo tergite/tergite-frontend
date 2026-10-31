@@ -63,7 +63,14 @@ _JSON_TO_BSON_TYPES = {
 
 
 def get_validator(schema: Type[Schema]) -> dict:
-    """Gets the $jsonSchema validator that makes MongoDB reject records off the schema"""
+    """Gets the $jsonSchema validator that makes MongoDB reject records off the schema
+
+    Args:
+        schema: the schema of the collection's records
+
+    Returns:
+        the validator, for the collection's `validator` option
+    """
     json_schema = schema.model_json_schema()
     mongo_schema = _convert_to_mongo_json_schema(
         json_schema, json_schema.get("$defs", {})
@@ -80,7 +87,14 @@ def get_validator(schema: Type[Schema]) -> dict:
 
 
 def get_indexes(schema: Type[Schema]) -> List[IndexModel]:
-    """Gets the indexes the schema's storage facts ask for, at most one per set of keys"""
+    """Gets the indexes the schema's storage facts ask for, at most one per set of keys
+
+    Args:
+        schema: the schema of the collection's records
+
+    Returns:
+        the indexes, leaving out the one MongoDB keeps on `_id`
+    """
     spec = schema.__storage__
     candidates: List[Tuple[List[Tuple[str, int]], Dict[str, Any]]] = []
     for group in spec.unique:

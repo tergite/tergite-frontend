@@ -41,6 +41,13 @@ class SessionCookie:
 
 
 def set_session_cookie(response: Response, cookie: SessionCookie, token: str) -> None:
+    """Sets the session cookie on the response, holding the session token
+
+    Args:
+        response: the response to set the cookie on
+        cookie: the session cookie's name and attributes
+        token: the session token
+    """
     response.set_cookie(
         cookie.name,
         token,
@@ -54,6 +61,12 @@ def set_session_cookie(response: Response, cookie: SessionCookie, token: str) ->
 
 
 def clear_session_cookie(response: Response, cookie: SessionCookie) -> None:
+    """Clears the session cookie in the browser the response goes to
+
+    Args:
+        response: the response to clear the cookie with
+        cookie: the session cookie's name and attributes
+    """
     response.set_cookie(
         cookie.name,
         "",

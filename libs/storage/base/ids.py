@@ -30,12 +30,23 @@ Id = Annotated[str, StringConstraints(pattern=ID_PATTERN), IdMarker()]
 
 
 def is_id(value: Any) -> bool:
-    """Whether the value is an Id, for checking text that no schema has validated"""
+    """Whether the value is an Id, for checking text that no schema has validated
+
+    Args:
+        value: the value to check
+
+    Returns:
+        True if the value is a string of 24 lowercase hex characters
+    """
     return isinstance(value, str) and re.fullmatch(ID_PATTERN, value) is not None
 
 
 def generate_id() -> str:
-    """Generates a new id, later than any generated before it in this second"""
+    """Generates a new id, later than any generated before it in this second
+
+    Returns:
+        the new id
+    """
     # bson's ObjectId is exactly this shape; nothing about it ties the id to MongoDB
     return str(ObjectId())
 
@@ -55,7 +66,14 @@ def derive_id(parent_id: str, namespace: str) -> str:
 
 
 def is_id_field(field_info: Optional[FieldInfo]) -> bool:
-    """Whether the field holds an Id, alone or in an Optional, List or Union"""
+    """Whether the field holds an Id, alone or in an Optional, List or Union
+
+    Args:
+        field_info: the field, or None for a field the schema lacks
+
+    Returns:
+        True if the field holds an Id
+    """
     if field_info is None:
         return False
     return _is_id_marker_in(field_info.metadata) or _is_id_inside(field_info.annotation)

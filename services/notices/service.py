@@ -175,6 +175,13 @@ async def clear_notices_by_reference(
 async def delete_notice(database: Database, pk: str) -> Notice:
     """Deletes the notice
 
+    Args:
+        database: the database where the notices are stored
+        pk: the id of the notice
+
+    Returns:
+        the deleted notice
+
     Raises:
         NotFoundError: if the notice does not exist
     """
@@ -223,6 +230,7 @@ async def create_system_notice(
             without a project name gets the name of the project of its project_id
         ref_type: the reference type that is associated with this notice, e.g. a user_request
         ref_id: the unique identifier of the reference in the collection of the given ref_type
+        kwargs: ignored
 
     Returns:
         the created notices, or an empty list if none were created
@@ -270,6 +278,9 @@ async def find_many(
         skip: the number of matched notices to skip
         limit: the most notices to return; None returns all
 
+    Returns:
+        the matching notices
+
     Raises:
         ValidationError: final results are not valid Notice objects
     """
@@ -285,6 +296,9 @@ async def count_many(database: Database, requester: "User", query: NoticeQuery) 
         database: the database where the notices are stored
         requester: the user asking; anyone but a superuser counts only their own notices
         query: the constraints the notices fit
+
+    Returns:
+        the number of matching notices
     """
     if not requester.is_superuser:
         query = query.model_copy(update={"user_id": requester.id})
@@ -293,6 +307,13 @@ async def count_many(database: Database, requester: "User", query: NoticeQuery) 
 
 async def get_one(database: Database, pk: str) -> Notice:
     """Gets the notice of the given pk
+
+    Args:
+        database: the database where the notices are stored
+        pk: the id of the notice
+
+    Returns:
+        the notice
 
     Raises:
         NotFoundError: no matches for {_id: '<pk>'}
@@ -306,7 +327,15 @@ async def get_one(database: Database, pk: str) -> Notice:
 async def get_email_preferences(
     database: Database, user_id: str
 ) -> Dict[NoticeTypeId, bool]:
-    """The user's effective preferences, with defaults filled in for every type"""
+    """Gets the user's email preferences, with defaults filled in for every type
+
+    Args:
+        database: the database where the preferences are stored
+        user_id: the id of the user
+
+    Returns:
+        whether the user wants emails, for each notice type
+    """
     record = await database.get(NoticePreferences, str(user_id))
     prefs_in_db = record.email_prefs if record is not None else {}
     return _with_default_email_preferences(prefs_in_db)
@@ -316,6 +345,11 @@ async def set_email_preferences(
     database: Database, user_id: str, prefs: Dict[NoticeTypeId, bool]
 ) -> Dict[NoticeTypeId, bool]:
     """Applies a partial preference update
+
+    Args:
+        database: the database where the preferences are stored
+        user_id: the id of the user
+        prefs: whether the user wants emails, for the notice types to change
 
     Returns:
         the user's full effective preferences after the update

@@ -76,6 +76,14 @@ def read_stored(schema: Type[T], data: Any, convert: Callable[[Any], T]) -> Opti
     """Converts stored data into a record, or None if it fails validation and the schema
     skips invalid records
 
+    Args:
+        schema: the schema of the record
+        data: the data as stored
+        convert: turns the stored data into a record, validating it
+
+    Returns:
+        the record, or None if it is invalid and the schema skips invalid records
+
     Raises:
         ValidationError: the data fails validation and the schema does not skip it
     """
@@ -94,6 +102,13 @@ def resolve_field(schema: Type[BaseModel], path: str) -> Optional[FieldInfo]:
     """Gets the field a dotted path names, or None for a path into a free-form mapping
 
     A model that allows extra fields is free-form beyond the fields it declares.
+
+    Args:
+        schema: the model the path starts from
+        path: the field's dotted path, e.g. `timestamps.started`
+
+    Returns:
+        the field, or None for a path into a free-form mapping
 
     Raises:
         UnknownFieldError: the schema has no such field
@@ -115,7 +130,14 @@ def resolve_field(schema: Type[BaseModel], path: str) -> Optional[FieldInfo]:
 
 
 def is_list_field(field_info: Optional[FieldInfo]) -> bool:
-    """Whether the field holds a list, possibly Optional"""
+    """Whether the field holds a list, possibly Optional
+
+    Args:
+        field_info: the field, or None for a free-form one
+
+    Returns:
+        True if the field holds a list, tuple or set
+    """
     if field_info is None:
         return False
     return any(
@@ -125,7 +147,14 @@ def is_list_field(field_info: Optional[FieldInfo]) -> bool:
 
 
 def is_model_list(field_info: Optional[FieldInfo]) -> bool:
-    """Whether the field holds a list of models"""
+    """Whether the field holds a list of models
+
+    Args:
+        field_info: the field, or None for a free-form one
+
+    Returns:
+        True if the field holds a list of models
+    """
     return (
         is_list_field(field_info)
         and find_nested_model(field_info.annotation) is not None
@@ -133,7 +162,14 @@ def is_model_list(field_info: Optional[FieldInfo]) -> bool:
 
 
 def find_nested_model(annotation: Any) -> Optional[Type[BaseModel]]:
-    """Gets the model the annotation holds, alone or in an Optional, List or Union"""
+    """Gets the model the annotation holds, alone or in an Optional, List or Union
+
+    Args:
+        annotation: the type annotation
+
+    Returns:
+        the first model found, or None if it holds none
+    """
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
         return annotation
     for arg in get_args(annotation):

@@ -17,6 +17,8 @@ from utils.exc import ConflictError, NotFoundError
 
 
 class ExtendedErrorCode(str, Enum):
+    """The error codes, beyond the standard ones, for project errors"""
+
     PROJECT_ALREADY_EXISTS = "PROJECT_ALREADY_EXISTS"
     PROJECT_NOT_FOUND = "PROJECT_NOT_FOUND"
     BAD_CREDENTIALS = "BAD_CREDENTIALS"
@@ -24,8 +26,12 @@ class ExtendedErrorCode(str, Enum):
 
 
 class ProjectNotExists(NotFoundError):
+    """No project has the given id"""
+
     pass
 
 
 class ProjectExists(ConflictError):
+    """A project of the same name already exists"""
+
     pass

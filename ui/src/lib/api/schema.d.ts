@@ -341,10 +341,43 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Projects:Many Projects */
+        /**
+         * Projects:Many Projects
+         * @description Gets a paginated list of the projects that fit the given filters; superusers only
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         requester: the current superuser
+         *         query: the filters the projects must fit
+         *         skip: the number of projects to skip
+         *         limit: the maximum number of projects to return
+         *
+         *     Returns:
+         *         the page of projects, each with its members' emails
+         *
+         *     Raises:
+         *         401: not logged in
+         *         403: not a superuser
+         */
         get: operations["projects_many_projects_admin_projects__get"];
         put?: never;
-        /** Projects:Create Project */
+        /**
+         * Projects:Create Project
+         * @description Creates a project; superusers only
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         payload: the project to create
+         *         actor: the current superuser
+         *
+         *     Returns:
+         *         the created project, with its members' emails
+         *
+         *     Raises:
+         *         400: a project of that name already exists
+         *         401: not logged in
+         *         403: not a superuser
+         */
         post: operations["projects_create_project_admin_projects__post"];
         delete?: never;
         options?: never;
@@ -359,12 +392,56 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Projects:Single Project */
+        /**
+         * Projects:Single Project
+         * @description Gets the project of the given id; superusers only
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         requester: the current superuser
+         *         project: the project of the path's id
+         *
+         *     Returns:
+         *         the project, with its members' emails
+         */
         get: operations["projects_single_project_admin_projects__id__get"];
-        /** Projects:Put Project */
+        /**
+         * Projects:Put Project
+         * @description Updates the project of the given id; superusers only
+         *
+         *     Members dropped from the project lose their app tokens for it, and the users whose
+         *     standing changed are notified.
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         payload: the new values for the project
+         *         actor: the current superuser
+         *         project: the project of the path's id
+         *
+         *     Returns:
+         *         the updated project, with its members' emails
+         *
+         *     Raises:
+         *         401: not logged in
+         *         403: not a superuser
+         *         404: the project does not exist
+         */
         put: operations["projects_put_project_admin_projects__id__put"];
         post?: never;
-        /** Projects:Delete Project */
+        /**
+         * Projects:Delete Project
+         * @description Deletes the project of the given id; superusers only
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         requester: the current superuser
+         *         project: the project of the path's id
+         *
+         *     Raises:
+         *         401: not logged in
+         *         403: not a superuser
+         *         404: the project does not exist
+         */
         delete: operations["projects_delete_project_admin_projects__id__delete"];
         options?: never;
         head?: never;
@@ -387,6 +464,7 @@ export interface paths {
          *     user would be a disclosure. Returns addresses alone, never the user records.
          *
          *     Args:
+         *         database: the database where the users are stored
          *         requester: the superuser making the request; anyone else gets a 403
          *         search: a case-insensitive substring of the address; omit for the first page
          *         limit: the maximum number of addresses to return
@@ -410,7 +488,22 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Oauth:Authorize */
+        /**
+         * Oauth:Authorize
+         * @description Gets the URL to send the user to, to sign in through the provider
+         *
+         *     Args:
+         *         request: the incoming request, whose URL the provider is to call back on
+         *         provider: the name of the provider
+         *         scopes: the scopes to ask the provider for; default: the provider's own
+         *         next_url: where to send the user once signed in, as `next`
+         *
+         *     Returns:
+         *         the provider's authorization URL
+         *
+         *     Raises:
+         *         404: the app has no provider of that name
+         */
         get: operations["oauth_authorize_auth_app__provider__authorize_get"];
         put?: never;
         post?: never;
@@ -430,6 +523,18 @@ export interface paths {
         /**
          * Oauth:Auto-Authorize
          * @description Redirects to the provider's authorization URL
+         *
+         *     Args:
+         *         request: the incoming request, whose URL the provider is to call back on
+         *         provider: the name of the provider
+         *         scopes: the scopes to ask the provider for; default: the provider's own
+         *         next_url: where to send the user once signed in, as `next`
+         *
+         *     Returns:
+         *         the provider's authorization URL, which the response redirects to
+         *
+         *     Raises:
+         *         404: the app has no provider of that name
          */
         get: operations["oauth_auto_authorize_auth_app__provider__auto_authorize_get"];
         put?: never;
@@ -469,7 +574,16 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Auth:Logout */
+        /**
+         * Auth:Logout
+         * @description Logs the current user out, clearing the session cookie
+         *
+         *     Args:
+         *         user: the current active user
+         *
+         *     Returns:
+         *         the message that the user is logged out
+         */
         post: operations["auth_logout_auth_logout_post"];
         delete?: never;
         options?: never;
@@ -504,7 +618,22 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Oauth:Authorize */
+        /**
+         * Oauth:Authorize
+         * @description Gets the URL to send the user to, to sign in through the provider
+         *
+         *     Args:
+         *         request: the incoming request, whose URL the provider is to call back on
+         *         provider: the name of the provider
+         *         scopes: the scopes to ask the provider for; default: the provider's own
+         *         next_url: where to send the user once signed in, as `next`
+         *
+         *     Returns:
+         *         the provider's authorization URL
+         *
+         *     Raises:
+         *         404: the app has no provider of that name
+         */
         get: operations["oauth_authorize_auth__provider__authorize_get"];
         put?: never;
         post?: never;
@@ -524,6 +653,18 @@ export interface paths {
         /**
          * Oauth:Auto-Authorize
          * @description Redirects to the provider's authorization URL
+         *
+         *     Args:
+         *         request: the incoming request, whose URL the provider is to call back on
+         *         provider: the name of the provider
+         *         scopes: the scopes to ask the provider for; default: the provider's own
+         *         next_url: where to send the user once signed in, as `next`
+         *
+         *     Returns:
+         *         the provider's authorization URL, which the response redirects to
+         *
+         *     Raises:
+         *         404: the app has no provider of that name
          */
         get: operations["oauth_auto_authorize_auth__provider__auto_authorize_get"];
         put?: never;
@@ -706,7 +847,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read One */
+        /**
+         * Read One
+         * @description Gets the current calibration of the device of the given name
+         *
+         *     Args:
+         *         database: the database where the calibrations are stored
+         *         name: the name of the device
+         *
+         *     Returns:
+         *         the device's calibration
+         *
+         *     Raises:
+         *         404: the device has no calibration
+         */
         get: operations["read_one_calibrations__name__get"];
         put?: never;
         post?: never;
@@ -733,6 +887,9 @@ export interface paths {
          *         start_utc: the start of the window, inclusive
          *         end_utc: the end of the window, exclusive
          *         should_count_distinct: whether to count each submitter once; otherwise every job counts
+         *
+         *     Returns:
+         *         the number of submitters, or of jobs if not counted distinct
          */
         get: operations["get_job_submitters_count_counts_job_submitters_get"];
         put?: never;
@@ -757,7 +914,7 @@ export interface paths {
          *     Args:
          *         database: the database where the notices are stored
          *         current_user: the current logged in user
-         *         user_id: The IDs of the users to retrieve notices for; only superusers can set it
+         *         user_id: the ID of the user whose notices to count; only superusers can set it
          *         min_start_utc: The minimum UTC timestamp the notice should start
          *         max_start_utc: The maximum UTC timestamp the notice should start
          *         min_expires_utc: The minimum UTC timestamp the notice should expire
@@ -765,6 +922,9 @@ export interface paths {
          *         include_dismissed: whether to include dismissed notices; defaults to False
          *         types: the types to filter by; repeat the param for many
          *         is_read: filter on read state; default = None i.e. either
+         *
+         *     Returns:
+         *         the number of matching notices
          */
         get: operations["get_notice_count_counts_notices_get"];
         put?: never;
@@ -813,7 +973,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read One */
+        /**
+         * Read One
+         * @description Gets the device of the given name
+         *
+         *     Args:
+         *         database: the database where the devices are stored
+         *         name: the name of the device
+         *
+         *     Returns:
+         *         the device
+         *
+         *     Raises:
+         *         404: no device has that name
+         */
         get: operations["read_one_devices__name__get"];
         put?: never;
         post?: never;
@@ -848,6 +1021,20 @@ export interface paths {
         /**
          * Create One
          * @description Creates a job in the given backend and given calibration_date in the body
+         *
+         *     Args:
+         *         request: the incoming request
+         *         database: the database where the jobs are stored
+         *         project_user_id_pair: the API token's project and user ids; the project must
+         *             have QPU seconds left
+         *         payload: the job to create
+         *
+         *     Returns:
+         *         the job's id, and the URL and access token for uploading it to the backend
+         *
+         *     Raises:
+         *         401: missing or invalid API token, or inactive project or user
+         *         403: the project has no QPU seconds left
          */
         post: operations["create_one_jobs__post"];
         delete?: never;
@@ -1191,6 +1378,12 @@ export interface paths {
         /**
          * Get My User Profile
          * @description Retrieves the information on the current user
+         *
+         *     Args:
+         *         user: the current logged-in user
+         *
+         *     Returns:
+         *         the user's profile
          */
         get: operations["get_my_user_profile_me_profile_get"];
         put?: never;
@@ -1208,7 +1401,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Projects:My Many Projects */
+        /**
+         * Projects:My Many Projects
+         * @description Gets a paginated list of the current user's projects that fit the given filters
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         user_id: the id of the current logged-in user
+         *         query: the filters the projects must fit
+         *         skip: the number of projects to skip
+         *         limit: the maximum number of projects to return
+         *
+         *     Returns:
+         *         the page of projects
+         *
+         *     Raises:
+         *         401: not logged in
+         */
         get: operations["projects_my_many_projects_me_projects__get"];
         put?: never;
         post?: never;
@@ -1228,7 +1437,20 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Projects:Destroy My Administered Project */
+        /**
+         * Projects:Destroy My Administered Project
+         * @description Deletes a project the current user administers, with its app tokens
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         _id: the id of the project
+         *         user_id: the id of the current logged-in user; the project's admin
+         *
+         *     Raises:
+         *         401: not logged in
+         *         403: the user does not administer the project, or it is their personal project
+         *         404: the project does not exist
+         */
         delete: operations["projects_destroy_my_administered_project_me_projects___id__delete"];
         options?: never;
         head?: never;
@@ -1248,6 +1470,18 @@ export interface paths {
         /**
          * Projects:Remove Project Member
          * @description Removes a member from a project the caller administers, revoking their app tokens
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         _id: the id of the project
+         *         member_id: the id of the member to remove
+         *         user: the current logged-in user; the project's admin or a superuser
+         *
+         *     Raises:
+         *         400: the member is the project's admin
+         *         401: not logged in
+         *         403: the user neither administers the project nor is a superuser
+         *         404: the project does not exist, or member_id is not one of its members
          */
         delete: operations["projects_remove_project_member_me_projects___id__members__member_id__delete"];
         options?: never;
@@ -1262,7 +1496,22 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Projects:My Single Project */
+        /**
+         * Projects:My Single Project
+         * @description Gets the project of the given id, if the current user is a member of it
+         *
+         *     Args:
+         *         database: the database where the projects are stored
+         *         id: the id of the project
+         *         user_id: the id of the current logged-in user
+         *
+         *     Returns:
+         *         the project
+         *
+         *     Raises:
+         *         401: not logged in
+         *         404: the project does not exist, or the user is not a member of it
+         */
         get: operations["projects_my_single_project_me_projects__id__get"];
         put?: never;
         post?: never;
@@ -1303,6 +1552,7 @@ export interface paths {
          * @description Creates a request of the type named in the body
          *
          *     Args:
+         *         database: the database where the requests are stored
          *         body: the request payload, discriminated by its `type` field
          *         requester: the current signed-in user
          *
@@ -1357,10 +1607,41 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** App Tokens:My Many App Tokens */
+        /**
+         * App Tokens:My Many App Tokens
+         * @description Gets a paginated list of the current user's app tokens that fit the given filters
+         *
+         *     Args:
+         *         database: the database where the app tokens are stored
+         *         user_id: the id of the current logged-in user
+         *         query: the filters the app tokens must fit
+         *         skip: the number of app tokens to skip
+         *         limit: the maximum number of app tokens to return
+         *
+         *     Returns:
+         *         the page of app tokens, without their token strings
+         *
+         *     Raises:
+         *         401: not logged in
+         */
         get: operations["app_tokens_my_many_app_tokens_me_tokens__get"];
         put?: never;
-        /** App Tokens:App-Token.Generate Token */
+        /**
+         * App Tokens:App-Token.Generate Token
+         * @description Generates an app token for the current user, on an active project of theirs
+         *
+         *     Args:
+         *         database: the database where the app tokens are stored
+         *         payload: the app token's title, project and lifespan
+         *         user_id: the id of the current logged-in user
+         *
+         *     Returns:
+         *         the bearer token; it is shown only this once
+         *
+         *     Raises:
+         *         401: not logged in
+         *         403: the project does not exist, is inactive, or the user is not a member of it
+         */
         post: operations["app_tokens_app_token_generate_token_me_tokens__post"];
         delete?: never;
         options?: never;
@@ -1376,10 +1657,38 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** App Tokens:App-Token.Update Token */
+        /**
+         * App Tokens:App-Token.Update Token
+         * @description Moves the expiry of the current user's unexpired app token of the given id
+         *
+         *     Args:
+         *         database: the database where the app tokens are stored
+         *         _id: the id of the app token
+         *         payload: the new expiry
+         *         user_id: the id of the current logged-in user
+         *
+         *     Returns:
+         *         the updated app token
+         *
+         *     Raises:
+         *         401: not logged in
+         *         404: the user has no unexpired app token of that id
+         */
         put: operations["app_tokens_app_token_update_token_me_tokens___id__put"];
         post?: never;
-        /** App Tokens:App-Token.Destroy Token */
+        /**
+         * App Tokens:App-Token.Destroy Token
+         * @description Deletes the current user's app token of the given id, expired or not
+         *
+         *     Args:
+         *         database: the database where the app tokens are stored
+         *         _id: the id of the app token
+         *         user_id: the id of the current logged-in user
+         *
+         *     Raises:
+         *         401: not logged in
+         *         403: the user has no app token of that id
+         */
         delete: operations["app_tokens_app_token_destroy_token_me_tokens___id__delete"];
         options?: never;
         head?: never;
@@ -1393,7 +1702,22 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** App Tokens:My App Token */
+        /**
+         * App Tokens:My App Token
+         * @description Gets the current user's app token of the given id; the token string is not shown
+         *
+         *     Args:
+         *         database: the database where the app tokens are stored
+         *         id: the id of the app token
+         *         user_id: the id of the current logged-in user
+         *
+         *     Returns:
+         *         the app token
+         *
+         *     Raises:
+         *         401: not logged in
+         *         404: the user has no app token of that id
+         */
         get: operations["app_tokens_my_app_token_me_tokens__id__get"];
         put?: never;
         post?: never;
@@ -1570,6 +1894,7 @@ export interface components {
         };
         /**
          * CalibrationUnit
+         * @description The unit of a calibration value
          * @enum {string}
          */
         CalibrationUnit: "ns" | "s" | "us" | "GHz" | "MHz" | "Hz" | "rad" | "deg" | "";
@@ -1874,6 +2199,7 @@ export interface components {
         };
         /**
          * JobStatus
+         * @description The status of a job
          * @enum {string}
          */
         JobStatus: "pending" | "successful" | "failed" | "executing" | "cancelled";
@@ -1987,7 +2313,10 @@ export interface components {
          * @enum {string}
          */
         NoticeTypeId: "project-access-requested" | "project-access-approved" | "project-access-rejected" | "project-create-requested" | "project-create-approved" | "project-create-rejected" | "project-close-requested" | "project-close-approved" | "project-close-rejected" | "project-transfer-requested" | "project-transfer-approved" | "project-transfer-rejected" | "qpu-seconds-requested" | "qpu-seconds-granted" | "qpu-seconds-denied" | "qpu-seconds-low" | "qpu-seconds-depleted" | "project-membership-granted" | "project-membership-revoked" | "project-admin-assigned" | "custom" | "custom-broadcast";
-        /** OAuth2AuthorizeResponse */
+        /**
+         * OAuth2AuthorizeResponse
+         * @description The URL to send the user to, to sign in with the provider
+         */
         OAuth2AuthorizeResponse: {
             /** Authorization Url */
             authorization_url: string;
@@ -2432,7 +2761,10 @@ export interface components {
          * @enum {string}
          */
         RqJobStatus: "created" | "queued" | "finished" | "failed" | "started" | "deferred" | "scheduled" | "stopped" | "canceled";
-        /** TimestampPair */
+        /**
+         * TimestampPair
+         * @description When a stage of the job started and finished
+         */
         TimestampPair: {
             /** Finished */
             finished?: string | null;

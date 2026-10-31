@@ -94,6 +94,9 @@ class Auth(Generic[models.UOAP]):
                 with a 403
             roles: the roles of which the user must have one, or be refused with a 403;
                 none required if empty
+
+        Returns:
+            the dependency, which gives the user, or None if refused and optional
         """
 
         async def read_current_user(
@@ -124,6 +127,9 @@ class Auth(Generic[models.UOAP]):
 
         Args:
             is_optional: whether to give None instead of refusing the request with a 401
+
+        Returns:
+            the dependency, which gives the user's id, or None if refused and optional
         """
 
         async def read_current_user_id(

@@ -63,5 +63,17 @@ async def get_many(
 
 @router.get("/{name}", responses={200: {"model": DeviceCalibration}})
 async def read_one(database: DatabaseDep, name: str):
+    """Gets the current calibration of the device of the given name
+
+    Args:
+        database: the database where the calibrations are stored
+        name: the name of the device
+
+    Returns:
+        the device's calibration
+
+    Raises:
+        404: the device has no calibration
+    """
     record = await calibration_service.get_one(database, name)
     return record.model_dump(mode="json")

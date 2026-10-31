@@ -35,6 +35,7 @@ async def get_email_preferences_map(
     """Retrieves a map of email preferences for the given notice type keyed by user_id
 
     Args:
+        database: the database where the preferences are stored
         notice_type: the notice type
         user_ids: the IDs of the users
 
@@ -59,6 +60,7 @@ async def get_pending_email_batches(
     """Generates email details batches that are yet to be sent.
 
     Args:
+        database: the database where the notices are stored
         batch_size: the size of each the batch
         dashboard_url: the URL of the dashboard
         app_name: the name of the application
@@ -90,6 +92,13 @@ async def claim_pending_emails(database: Database, limit: int) -> List[Notice]:
     """Claims up to limit pending emails for this process, leaving any another claims first
 
     Each claim counts an attempt, so a process that stops while sending loses it.
+
+    Args:
+        database: the database where the notices are stored
+        limit: the most emails to claim
+
+    Returns:
+        the notices whose emails this process claimed
     """
     notices = await _find_notices_pending_email(database, limit)
     now = get_current_timestamp()
@@ -113,6 +122,7 @@ async def process_email_batch_results(
     """Processes the results of an email batch dispatch
 
     Args:
+        database: the database where the notices are stored
         results: the results of an email batch dispatch
     """
     ids = _partition_results(results)
@@ -134,6 +144,7 @@ async def _find_notices_pending_email(database: Database, limit: int) -> List[No
     """Gets the notices whose emails are pending, or claimed by a process that stopped
 
     Args:
+        database: the database where the notices are stored
         limit: the maximum number of notices to return
 
     Returns:
@@ -171,6 +182,7 @@ async def _to_email_details(
     Notices of users without an email address are marked failed, as no retry would help.
 
     Args:
+        database: the database where the users are stored
         notices: the list of notice objects
         dashboard_url: the URL of the dashboard
         app_name: the name of the application

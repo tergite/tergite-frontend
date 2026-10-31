@@ -48,6 +48,8 @@ if TYPE_CHECKING:
 
 
 class DeviceEventName(str, Enum):
+    """The name of an event a device sends over its websocket"""
+
     INITIALIZED = "initialized"
     RECALIBRATED = "recalibrated"
     JOB_UPDATED = "job_updated"
@@ -56,6 +58,8 @@ class DeviceEventName(str, Enum):
 
 
 class DeviceSwitchData(BaseModel):
+    """The data of a device's switched_off or switched_on event"""
+
     date: datetime
 
 
@@ -159,7 +163,15 @@ class DeviceEvent(BaseModel):
     def validate_data(
         cls, value: DeviceEventData, info: ValidationInfo
     ) -> DeviceEventData:
-        """Validates the data depending on the name type"""
+        """Validates the data depending on the name type
+
+        Args:
+            value: the event's data
+            info: the event's fields validated so far, including its name
+
+        Returns:
+            the data, if it is of the type the event's name expects
+        """
         expected_data_cls = _EVENT_DATA_CLASSES[info.data["name"]]
         if not isinstance(value, expected_data_cls):
             raise ValueError(
