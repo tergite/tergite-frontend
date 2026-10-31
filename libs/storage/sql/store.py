@@ -449,7 +449,8 @@ async def _write_changes(
 
 
 def _set_up_sqlite(sync_engine: Any) -> None:
-    """Switches on SQLite's foreign keys, and begins every transaction immediately"""
+    """Switches on SQLite's foreign keys and its write-ahead log, synced at checkpoints, and
+    begins every transaction immediately"""
 
     @event.listens_for(sync_engine, "connect")
     def on_connect(dbapi_connection: Any, connection_record: Any) -> None:
@@ -457,6 +458,9 @@ def _set_up_sqlite(sync_engine: Any) -> None:
         dbapi_connection.isolation_level = None
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        # a commit waits on no disk sync; a power cut may lose the last ones, not corrupt
+        cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.close()
 
     @event.listens_for(sync_engine, "begin")

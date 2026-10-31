@@ -9,14 +9,14 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-"""What only SqlStore does: expiry without a TTL index, on each SQL database"""
+"""What only SqlStore does: expiry without a TTL index, on each SQL database, and SQLite's journal"""
 import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import pytest
 from pydantic import Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from libs.storage import Id, Schema, StorageSpec, generate_id
 from libs.storage.sql import SqlStore
@@ -51,6 +51,19 @@ async def test_an_expired_record_is_not_read_and_then_deleted(store):
     assert [session.id for session in found] == [current.id, lasting.id]
     assert await store.get(_Session, expired.id) is None
     assert await _count_rows(store) == 2
+
+
+async def test_a_sqlite_file_is_written_ahead_and_synced_at_checkpoints(tmp_path):
+    """So that a commit, as the request log makes one per request, does not wait on the disk"""
+    store = SqlStore(f"sqlite+aiosqlite:///{tmp_path}/store.db", schemas=[_Session])
+    await store.setup()
+    async with store._engine.connect() as conn:
+        journal_mode = await conn.scalar(text("PRAGMA journal_mode"))
+        synchronous = await conn.scalar(text("PRAGMA synchronous"))
+    await store.close()
+
+    # 1 is NORMAL
+    assert (journal_mode, synchronous) == ("wal", 1)
 
 
 async def _count_rows(store: SqlStore) -> int:

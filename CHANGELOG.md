@@ -97,6 +97,7 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Changed
 
+- Changed MSS's SQLite databases to write ahead to a log, synced at checkpoints, so a commit no longer waits on the disk.
 - MSS needs Python 3.13 or later, and its deb and macOS installer are built with 3.13: built by Nuitka on 3.12, it
   failed about half of many concurrent requests, as CPython 3.12 refuses the compiled functions anyio sorts exception groups with.
 - Moved the `api.rest` package into `api`, so the ASGI app is `api:app`.
