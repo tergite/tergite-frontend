@@ -63,6 +63,8 @@ class SqlStore(DbStore):
         expiry_sweep_seconds: float = _EXPIRY_SWEEP_SECONDS,
     ):
         self._engine = create_async_engine(database_url)
+        # the same pool, whose transactions take no write lock on SQLite
+        self._read_engine = self._engine.execution_options(is_read_only=True)
         self._metadata = MetaData()
         self._schema_tables = get_schema_tables(self._metadata, schemas)
         self._expiry_sweep_seconds = expiry_sweep_seconds
@@ -82,7 +84,7 @@ class SqlStore(DbStore):
     async def get(self, schema: Type[T], key: Any) -> Optional[T]:
         tables = self._schema_tables[schema]
         key_filter = {schema.__storage__.key: key}
-        async with self._engine.connect() as conn:
+        async with self._read_engine.connect() as conn:
             records = await _find_records(
                 conn, tables, key_filter, limit=1, is_read=True
             )
@@ -97,7 +99,7 @@ class SqlStore(DbStore):
         limit: Optional[int],
     ) -> List[T]:
         tables = self._schema_tables[schema]
-        async with self._engine.connect() as conn:
+        async with self._read_engine.connect() as conn:
             return await _find_records(
                 conn, tables, query_filter, sort, skip, limit, is_read=True
             )
@@ -109,7 +111,7 @@ class SqlStore(DbStore):
             .select_from(tables.table)
             .where(translate_filter(tables, query_filter))
         )
-        async with self._engine.connect() as conn:
+        async with self._read_engine.connect() as conn:
             return await conn.scalar(statement)
 
     async def find_distinct(
@@ -130,7 +132,7 @@ class SqlStore(DbStore):
             statement = select(distinct(child.c[list_table.value_column])).where(
                 child.c[list_table.parent_column].in_(parent_keys)
             )
-        async with self._engine.connect() as conn:
+        async with self._read_engine.connect() as conn:
             return list(await conn.scalars(statement))
 
     async def insert(self, schema: Type[T], record: T) -> T:
@@ -450,7 +452,7 @@ async def _write_changes(
 
 def _set_up_sqlite(sync_engine: Any) -> None:
     """Switches on SQLite's foreign keys and its write-ahead log, synced at checkpoints, and
-    begins every transaction immediately"""
+    begins every transaction that may write immediately"""
 
     @event.listens_for(sync_engine, "connect")
     def on_connect(dbapi_connection: Any, connection_record: Any) -> None:
@@ -465,7 +467,11 @@ def _set_up_sqlite(sync_engine: Any) -> None:
 
     @event.listens_for(sync_engine, "begin")
     def on_begin(conn: Any) -> None:
-        conn.exec_driver_sql("BEGIN IMMEDIATE")
+        # a deferred one that wrote after reading could not wait for the lock, only fail
+        if conn.get_execution_options().get("is_read_only"):
+            conn.exec_driver_sql("BEGIN")
+        else:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
 
 
 @contextlib.contextmanager

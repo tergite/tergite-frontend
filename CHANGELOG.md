@@ -164,6 +164,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Fixed
 
+- Fixed a read of a SQLite database waiting for another connection's write to finish, as every transaction took the
+  write lock.
 - A device stays online while any of its backend's websockets is open, whichever MSS process holds it; one of them
   closing, as a backend opens one per process, marked the device offline though the others were open.
 - A device whose backend, or the MSS process holding its websocket, died without closing it is shown offline within

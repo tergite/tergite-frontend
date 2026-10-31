@@ -66,6 +66,22 @@ async def test_a_sqlite_file_is_written_ahead_and_synced_at_checkpoints(tmp_path
     assert (journal_mode, synchronous) == ("wal", 1)
 
 
+async def test_a_sqlite_read_does_not_wait_on_a_write_in_progress(tmp_path):
+    store = SqlStore(f"sqlite+aiosqlite:///{tmp_path}/store.db", schemas=[_Session])
+    await store.setup()
+    session = await store.insert(_Session, _Session())
+    table = store._metadata.tables["sessions"]
+
+    async with store._engine.begin() as writer:
+        await writer.execute(table.insert().values(id=generate_id()))
+        found = await asyncio.wait_for(store.get(_Session, session.id), timeout=1)
+        count = await asyncio.wait_for(store.count(_Session, {}), timeout=1)
+    await store.close()
+
+    # the write was not committed when they read
+    assert (found.id, count) == (session.id, 1)
+
+
 async def _count_rows(store: SqlStore) -> int:
     """Counts the rows around the expiry filter, to see what the sweep deleted"""
     async with store._engine.connect() as conn:
