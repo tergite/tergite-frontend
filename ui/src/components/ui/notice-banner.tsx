@@ -1,0 +1,72 @@
+import { IconButton } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { dismissNotice, refreshMyNotices } from "@/lib/api/notices";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { X } from "lucide-react";
+import { useMemo } from "react";
+import type { NoticeSeverity, Notice } from "@/lib/api/types";
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const SEVERITY_LABELS: Record<NoticeSeverity, string> = {
+  3: "Info",
+  2: "Warning",
+  1: "Critical",
+};
+
+const SEVERITY_BADGE_CLASSES: Record<NoticeSeverity, string> = {
+  3:
+    "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  2:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  1:
+    "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+};
+
+export function NoticeBanner({ notice }: Props) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const severityClass = SEVERITY_BADGE_CLASSES[notice.severity];
+  const title = useMemo(
+    () => (notice.user_id ? "" : " · All users"),
+    [notice.user_id],
+  );
+
+  const noticeDismissal = useMutation({
+    mutationKey: ["me", "notices", "dismiss", notice.id],
+    async mutationFn(id: string) {
+      return await dismissNotice(id);
+    },
+    async onSuccess(data) {
+      await refreshMyNotices(queryClient);
+      toast({ title: `Notice dismissal: ${data.status}` });
+    },
+    throwOnError: true,
+  });
+
+  return (
+    <div className={`rounded-md border p-3 ${severityClass} border-current/20`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between gap-2">
+            <div className="text-xs font-medium uppercase tracking-wide mb-1 opacity-70">
+              {SEVERITY_LABELS[notice.severity]} {title}
+            </div>
+            <IconButton
+              Icon={X}
+              size="xs"
+              variant="ghost"
+              aria-label="Dismiss notice"
+              className="rounded-full text-xs"
+              onClick={() => noticeDismissal.mutate(notice.id)}
+            />
+          </div>
+          <p className="text-sm">{notice.body}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface Props {
+  notice: Notice;
+}

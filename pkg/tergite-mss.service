@@ -1,0 +1,60 @@
+[Unit]
+Description=Tergite Main Service Server (MSS)
+After=network-online.target postgresql.service mongod.service redis-server.service redis.service
+Wants=network-online.target
+# not until there is a config, or debconf's answers to write one from
+ConditionPathExists=|/etc/tergite-mss/mss-config.toml
+ConditionPathExists=|/etc/tergite-mss/provision.env
+
+[Service]
+Type=exec
+User=tergite-mss
+Group=tergite-mss
+
+Environment=MSS_CONFIG_FILE=/etc/tergite-mss/mss-config.toml
+Environment=PRIVATE_KEY_FILE=/etc/tergite-mss/private-mss-key.pem
+
+# as root, unsandboxed, to create the database accounts; a database still being installed
+# fails it, and Restart= retries until it is up
+ExecStartPre=+/usr/share/tergite-mss/provision.sh
+# migrates, so an upgrade's schema change applies before it serves, then serves
+ExecStart=/usr/bin/tergite-mss start --port 8002
+Restart=on-failure
+RestartSec=5s
+
+# where a SQLite database lives
+StateDirectory=tergite-mss
+StateDirectoryMode=0750
+WorkingDirectory=/var/lib/tergite-mss
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tergite-mss
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+RemoveIPC=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

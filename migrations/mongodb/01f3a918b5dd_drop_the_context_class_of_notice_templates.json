@@ -1,0 +1,10 @@
+{
+  "upgrade": [
+    {
+      "collection": "notice_templates",
+      "filter": { "context_cls_path": { "$exists": true } },
+      "update": [{ "$unset": "context_cls_path" }]
+    }
+  ],
+  "rollback": []
+}

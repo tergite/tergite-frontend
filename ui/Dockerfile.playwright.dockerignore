@@ -1,0 +1,12 @@
+# the repository root is the context: leave out what each machine makes for itself
+**/node_modules
+**/.venv
+**/dist
+**/main.build
+**/main.dist
+**/main.onefile-build
+**/test-results
+**/playwright-report
+temp
+temp-native
+.git

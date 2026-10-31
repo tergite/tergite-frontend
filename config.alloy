@@ -1,9 +1,23 @@
-discovery.docker "docker" {
-	host             = "unix:///var/run/docker.sock"
-	refresh_interval = "5s"
+// Ships the journal of the tergite services, as systemd runs them from their packages, to
+// Loki. Run by Grafana Alloy installed beside them, with ENVIRONMENT, GRAFANA_LOKI_URL and
+// LOKI_LOGGER_ID set in its environment, e.g. in /etc/default/alloy: see the README.
+
+loki.relabel "journal" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__journal__systemd_unit"]
+		target_label  = "unit"
+	}
 }
 
-loki.process "docker" {
+loki.source.journal "tergite" {
+	matches       = "_SYSTEMD_UNIT=tergite-mss.service"
+	relabel_rules = loki.relabel.journal.rules
+	forward_to    = [loki.process.tergite.receiver]
+}
+
+loki.process "tergite" {
 	forward_to = [loki.write.default.receiver]
 
 	stage.static_labels {
@@ -11,24 +25,6 @@ loki.process "docker" {
 			environment = sys.env("ENVIRONMENT"),
 		}
 	}
-}
-
-discovery.relabel "docker" {
-	targets = []
-
-	rule {
-		source_labels = ["__meta_docker_container_name"]
-		regex         = "/(.*)"
-		target_label  = "container"
-	}
-}
-
-loki.source.docker "docker" {
-	host             = "unix:///var/run/docker.sock"
-	targets          = discovery.docker.docker.targets
-	forward_to       = [loki.process.docker.receiver]
-	relabel_rules    = discovery.relabel.docker.rules
-	refresh_interval = "5s"
 }
 
 loki.write "default" {

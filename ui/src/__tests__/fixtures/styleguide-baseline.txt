@@ -1,0 +1,53 @@
+# Code that broke the styleguide when src/__tests__/styleguide.test.ts was added.
+# Fix one, then delete its line; the tests fail until you do.
+# Names set by a library or the DOM (React Router's loader, react-query's mutationFn,
+# Radix and shadcn props such as asChild, open, disabled) stay listed.
+boolean: src/components/ui/breadcrumb.tsx::asChild
+boolean: src/components/ui/button-group.tsx::asChild
+boolean: src/components/ui/button.tsx::asChild
+boolean: src/components/ui/confirm-dialog.tsx::open
+boolean: src/components/ui/datetime-input.tsx::disabled
+boolean: src/components/ui/dropdown-menu.tsx::inset
+boolean: src/components/ui/pagination.tsx::iconOnly
+boolean: src/pages/admin-control/components/backend-control-card/toggle.tsx::checked
+boolean: src/pages/admin-control/components/status-tile.tsx::truncate
+boolean: src/pages/device-detail/components/bookings-calendar/booking-form.tsx::open
+boolean: src/pages/device-detail/components/bookings-calendar/booking-form.tsx::value
+private-helper-position: src/hooks/use-toast.ts::reducer
+private-helper-position: src/pages/admin-control/components/calibration-card/metrics.tsx::CalibrationMetrics
+props-position: src/components/ui/duration-input.tsx::Props
+props-position: src/pages/admin-control/components/backend-control-card/index.tsx::Props
+props-position: src/pages/admin-control/components/backend-control-card/toggle.tsx::Props
+props-position: src/pages/admin-control/components/calibration-card/actions.tsx::Props
+props-position: src/pages/admin-control/components/calibration-card/index.tsx::Props
+verb: src/components/layouts/dashboard/components/top-banner.tsx::mutationFn
+verb: src/components/layouts/dashboard/index.tsx::loader
+verb: src/components/ui/duration-input.tsx::toLooseISOFormat
+verb: src/components/ui/multi-input.tsx::_MultiInput
+verb: src/components/ui/multi-input.tsx::toStringValue
+verb: src/components/ui/multi-input.tsx::toinputValue
+verb: src/components/ui/notice-banner.tsx::mutationFn
+verb: src/hooks/use-toast.ts::dispatch
+verb: src/hooks/use-toast.ts::genId
+verb: src/hooks/use-toast.ts::reducer
+verb: src/hooks/use-toast.ts::toast
+verb: src/lib/utils.ts::cn
+verb: src/pages/admin-control/components/backend-control-card/toggle.tsx::mutationFn
+verb: src/pages/admin-control/components/calibration-card/actions.tsx::mutationFn
+verb: src/pages/admin-control/components/calibration-card/metrics.tsx::median
+verb: src/pages/admin-control/components/calibration-card/metrics.tsx::statusBadgeVariant
+verb: src/pages/admin-control/components/notices-card/banner.tsx::mutationFn
+verb: src/pages/admin-control/components/notices-card/form.tsx::mutationFn
+verb: src/pages/admin-control/index.tsx::loader
+verb: src/pages/admin-projects/index.tsx::loader
+verb: src/pages/admin-requests/index.tsx::loader
+verb: src/pages/approvals/index.tsx::loader
+verb: src/pages/device-detail/index.tsx::loader
+verb: src/pages/devices.tsx::loader
+verb: src/pages/home/components/devices-table/index.tsx::goToDevice
+verb: src/pages/home/index.tsx::combineMyBookingsQueries
+verb: src/pages/home/index.tsx::loader
+verb: src/pages/projects/index.tsx::loader
+verb: src/pages/requests/index.tsx::loader
+verb: src/pages/settings/index.tsx::loader
+verb: src/pages/tokens/index.tsx::loader

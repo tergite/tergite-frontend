@@ -1,0 +1,17 @@
+<!-- WinSW's config for the tergite-mss service: uvicorn cannot answer the Service Control Manager itself -->
+<service>
+  <id>tergite-mss</id>
+  <name>Tergite MSS</name>
+  <description>The Main Service Server (MSS) of Tergite, the API between users and quantum backends.</description>
+  <executable>%SystemRoot%\System32\cmd.exe</executable>
+  <arguments>/c "%BASE%\tergite-mss-start.cmd"</arguments>
+  <env name="MSS_CONFIG_FILE" value="%ProgramData%\Tergite MSS\mss-config.toml" />
+  <env name="PRIVATE_KEY_FILE" value="%ProgramData%\Tergite MSS\private-mss-key.pem" />
+  <workingdirectory>%ProgramData%\Tergite MSS\data</workingdirectory>
+  <logpath>%ProgramData%\Tergite MSS\data\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+  <onfailure action="restart" delay="5 sec" />
+</service>

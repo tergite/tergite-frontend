@@ -1,0 +1,24 @@
+#!/bin/sh
+# Gives the service account its directories, then starts the daemon once there is a config
+
+set -e
+
+label=se.chalmersnextlabs.tergite-mss
+service_user=_tergite-mss
+config=/usr/local/etc/tergite-mss/mss-config.toml
+
+# the config holds every secret: root's, readable by the service alone
+mkdir -p /usr/local/etc/tergite-mss /usr/local/var/tergite-mss /usr/local/var/log
+chown root:"$service_user" /usr/local/etc/tergite-mss
+chmod 0750 /usr/local/etc/tergite-mss
+chown "$service_user:$service_user" /usr/local/var/tergite-mss
+chmod 0750 /usr/local/var/tergite-mss
+touch /usr/local/var/log/tergite-mss.log
+chown "$service_user:$service_user" /usr/local/var/log/tergite-mss.log
+chmod 0640 /usr/local/var/log/tergite-mss.log
+
+if [ -f "$config" ]; then
+	launchctl bootstrap system "/Library/LaunchDaemons/$label.plist"
+else
+	echo "tergite-mss: not starting, $config does not exist yet."
+fi

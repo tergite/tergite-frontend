@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>se.chalmersnextlabs.tergite-mss</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/local/bin/tergite-mss</string>
+		<string>start</string>
+		<string>--port</string>
+		<string>8002</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>MSS_CONFIG_FILE</key>
+		<string>/usr/local/etc/tergite-mss/mss-config.toml</string>
+		<key>PRIVATE_KEY_FILE</key>
+		<string>/usr/local/etc/tergite-mss/private-mss-key.pem</string>
+	</dict>
+	<key>UserName</key>
+	<string>_tergite-mss</string>
+	<key>GroupName</key>
+	<string>_tergite-mss</string>
+	<key>WorkingDirectory</key>
+	<string>/usr/local/var/tergite-mss</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>5</integer>
+	<key>Umask</key>
+	<integer>63</integer>
+	<key>StandardOutPath</key>
+	<string>/usr/local/var/log/tergite-mss.log</string>
+	<key>StandardErrorPath</key>
+	<string>/usr/local/var/log/tergite-mss.log</string>
+</dict>
+</plist>

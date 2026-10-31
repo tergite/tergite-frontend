@@ -1,0 +1,275 @@
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Form,
+} from "@/components/ui/form";
+import { mergeDatetime } from "@/lib/time";
+import { SEVERITY_LABELS } from "@/components/ui/notice-banner";
+import { DateTimeInput } from "@/components/ui/datetime-input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { DateTime, Duration } from "luxon";
+import {
+  createNotice,
+  refreshAllNoticeCounts,
+  refreshAllNotices,
+} from "@/lib/api/notices";
+import type { NoticeSeverity } from "@/lib/api/types";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DurationInput } from "@/components/ui/duration-input";
+import { Label } from "@/components/ui/label";
+import { MultiInput } from "@/components/ui/multi-input";
+import { ButtonGroup } from "@/components/ui/button-group";
+
+const MAX_CHARS = 280;
+const MIN_DURATION = Duration.fromObject({ minutes: 1 });
+const MAX_DURATION = Duration.fromObject({ months: 3 });
+// the least urgent first
+const SEVERITY_OPTIONS: NoticeSeverity[] = [3, 2, 1];
+
+const formSchema = z.object({
+  message: z.string().min(1).max(MAX_CHARS),
+  severity: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  target_user_emails: z.string().email().min(1).array().optional(),
+  starts_at: z
+    .object({
+      date: z.date(),
+      time: z.object({
+        hour: z.number().int(),
+        minute: z.number().int(),
+        second: z.number().int(),
+        millisecond: z.number().int().optional().default(0),
+      }),
+    })
+    .transform(mergeDatetime)
+    .refine((dt) => dt.isValid, { message: "invalid date" }),
+  duration: z
+    .object({
+      hours: z.number().int(),
+      minutes: z.number().int(),
+      seconds: z.number().int(),
+    })
+    .transform(Duration.fromDurationLike)
+    .refine((dt) => dt.isValid, { message: "invalid duration" })
+    .refine((dt) => dt >= MIN_DURATION && dt <= MAX_DURATION, {
+      message: `duration must be between ${MIN_DURATION.toISOTime()} and ${MAX_DURATION.toISOTime()}`,
+    }),
+});
+
+type FormInput = z.input<typeof formSchema>;
+type FormOutput = z.output<typeof formSchema>;
+
+export default function NoticeForm({ onPost }: Props) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const now = DateTime.now();
+  const yesterday = now.minus({ day: 1 }).toJSDate();
+
+  const creationForm = useForm<FormInput, unknown, FormOutput>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      message: "",
+      severity: 3,
+      starts_at: {
+        date: now.toJSDate(),
+        time: now,
+      },
+      duration: {
+        hours: 1,
+        minutes: 0,
+        seconds: 0,
+      },
+    },
+  });
+
+  const noticeCreation = useMutation({
+    mutationKey: ["admin", "notices", "post"],
+    async mutationFn({
+      duration,
+      starts_at: startTimestamp,
+      ...rest
+    }: FormOutput) {
+      const expires_at = startTimestamp.plus(duration).toISO()!;
+      const starts_at = startTimestamp.toISO()!;
+      return await createNotice(
+        {
+          expires_at,
+          starts_at,
+          ...rest,
+        },
+      );
+    },
+    async onSuccess(data) {
+      onPost();
+      await refreshAllNotices(queryClient);
+      await refreshAllNoticeCounts(queryClient);
+      const isBroadcast = data.length === 1 && !data[0].user_id;
+      const description = `Visible to ${isBroadcast ? "all" : data.length} users.`;
+      toast({ title: "Notice posted", description });
+    },
+    throwOnError: true,
+  });
+
+  return (
+    <Form {...creationForm}>
+      <form
+        onSubmit={creationForm.handleSubmit((values) =>
+          noticeCreation.mutate(values),
+        )}
+        className="rounded-md border p-3 flex flex-col gap-3"
+      >
+        <p className="text-sm font-medium">New notice</p>
+        <FormField
+          control={creationForm.control}
+          name="severity"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Select
+                  value={String(field.value)}
+                  name={field.name}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                >
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      placeholder="Severity"
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEVERITY_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={String(s)} className="text-xs">
+                        {SEVERITY_LABELS[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={creationForm.control}
+          name="message"
+          render={({ field }) => (
+            <FormItem className="flex flex-col gap-1">
+              <FormLabel className="sr-only" htmlFor="notice-message">
+                Message
+              </FormLabel>
+              <FormControl>
+                <>
+                  <Textarea
+                    id="notice-message"
+                    placeholder="Write a message..."
+                    className="h-20 resize-none text-sm"
+                    {...field}
+                  />
+                  <p
+                    className={`text-xs self-end ${field.value.length >= MAX_CHARS ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {field.value.length}/{MAX_CHARS}
+                  </p>
+                </>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={creationForm.control}
+          name="starts_at"
+          render={({ field }) => (
+            <FormItem>
+              <ButtonGroup className="w-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-muted-foreground pointer-events-none"
+                >
+                  Starts
+                </Button>
+
+                <DateTimeInput
+                  disabled={noticeCreation.isPending}
+                  value={field.value}
+                  onChange={field.onChange}
+                  minDate={yesterday}
+                />
+              </ButtonGroup>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={creationForm.control}
+          name="duration"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <div className="">
+                  <Label className="text-muted-foreground" htmlFor="duration">
+                    Duration
+                  </Label>
+                  <DurationInput id="duration" {...field} />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={creationForm.control}
+          name="target_user_emails"
+          render={({ field }) => (
+            <FormItem className="">
+              <FormControl>
+                <div className="flex flex-col">
+                  <Label
+                    className="text-muted-foreground mb-1"
+                    htmlFor="user_emails"
+                  >
+                    Audience
+                  </Label>
+                  <MultiInput id="user_emails" type="email" {...field} />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button
+          type="submit"
+          variant="default"
+          size="sm"
+          className="w-full"
+          disabled={!creationForm.formState.isDirty}
+        >
+          Post
+        </Button>
+      </form>
+    </Form>
+  );
+}
+
+interface Props {
+  onPost: () => void;
+}

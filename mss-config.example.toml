@@ -21,20 +21,18 @@ private_key_password="some-secret-password"
 # time-to-live for the nonce; defaults to 5 minutes
 bcc_nonce_ttl = 300
 
-# The time to live in seconds for the request logs in the store.
+# how long, in seconds, a request id or websocket nonce is remembered to reject a replay
 # default: 1209600 (two weeks)
 request_log_ttl = 1209600
-
-# Interval in seconds between expired index cleanups for the request log store.
-# default: 18000 (5 hours)
-request_log_clean_interval = 18000
 
 [database]
 # configurations for the database
 name = "sample-database"
-# database URI
+# database URI: mongodb:// or mongodb+srv://. The storage layer also takes a SQLAlchemy URL
+# with an async driver (postgresql+asyncpg://, sqlite+aiosqlite://), which `tergite-mss start`
+# migrates with Alembic
 url = "mongodb://user:pass@host:port"
-# redis URI; default=redis://tergite-redis:6379/0
+# the database of the request log, which a cache suits; default=redis://tergite-redis:6379/0
 redis_url = "redis://tergite-redis:6379/0"
 
 
@@ -46,21 +44,24 @@ name = "simulator-arusha"
 url = "http://127.0.0.1:8002"
 # request timeout in seconds beyond which a timeout error is raised; default = 10
 timeout = 10
-public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
+public_key_path = "data/simulator-kampala-pub-key.pem"
 # the public url for the backend; defaults to the 'url' if not set but can be set to say a reverse proxy
 public_url = "http://proxy.example.com/simulator-arusha"
+# Whether we should always check source IP address of connections from this backend
+# default: true
+is_strict_ip = false
 
 # Add as many backends as you wish to have
 [[backends]]
 name = "simulator-kampala"
 url = "http://127.0.0.1:8003"
-public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
+public_key_path = "data/simulator-kampala-pub-key.pem"
 
 [[backends]]
 name = "simulator-stockholm"
 url = "http://127.0.0.1:8004"
 timeout = 2
-public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
+public_key_path = "data/simulator-kampala-pub-key.pem"
 # the public url for the backend; defaults to the 'url' if not set but can be set to say a reverse proxy
 public_url = "http://proxy.example.com/simulator-stockholm"
 
@@ -69,41 +70,33 @@ public_url = "http://proxy.example.com/simulator-stockholm"
 # deployment behaving as it did before personal projects existed; set a non-zero
 # value to let every new user start with usable time.
 personal_qpu_seconds = 0
-# whether personal projects are auto-created when a user logs in; default = true
-personal_projects_enabled = true
 # notify the project admin when remaining QPU seconds fall below this; default = 600
 qpu_seconds_low_threshold = 600
-# maximum pending user requests one user may hold at a time; default = 5
-max_pending_requests_per_user = 5
-# maximum failed project lookups per user per hour before 429; default = 20
-max_failed_lookups_per_hour = 20
-# upper bound on a single bulk QPU-seconds grant, so a mistyped figure cannot hand out
-# a decade of machine time; default = 2592000 (30 days)
-max_grant_seconds = 2592000
 
-[notifications]
-# days a notification is kept before the TTL index removes it; default = 90
+
+[notices]
+# days a notice is kept before the TTL index removes it; default = 90
 retention_days = 90
-# base URL of the dashboard, used for the deep links in notification emails.
+# base URL of the dashboard, which MSS serves at /ui, used for the deep links in notice emails.
 # Required whenever [email] is set, since a mail with a dead link is worse than no mail.
-dashboard_url = "https://dashboard.example.com"
+dashboard_url = "https://mss.example.com/ui"
 # seconds between sweeps of the pending-email outbox; default = 60
 email_sweep_interval = 60
-# attempts per notification email before it is marked failed; default = 3
+# attempts per notice email before it is marked failed; default = 3
 email_retry_limit = 3
+# the name of the application as will be seen in the email notices; default = Tergite
+app_name = "WACQT"
 
-# Outbound SMTP. Omit this whole section to leave notifications in-app only:
+# Outbound SMTP. Omit this whole section to leave notices in-app only:
 # emails are then never queued, and per-user email preferences have no effect.
 [email]
-# host = "smtp.example.com"
-host = "mailpit"
-# port = 587
-port = 1025
+hostname = "smtp.example.com"
+port = 587
 username = "mss@example.com"
 password = "some hidden secret"
 # whether to upgrade the connection with STARTTLS; default = true
-use_tls = false
-from_address = "no-reply@tergite.com"
+use_tls = true
+from_address = "no-reply@example.com"
 # display name on the From header; default = "Tergite"
 from_name = "Tergite"
 # seconds to wait on the SMTP server before giving up; default = 10
@@ -158,6 +151,17 @@ roles = ["user"]
 # e.g. Github may have scopes
 # scopes = ["user:email"]
 
+# Whether the user should be associated with an existing user of the same email if
+# that user exists.
+# If False, a user who already signed in with a different Oauth provider will
+# not be allowed to sign in
+# default = false
+associate_by_email = false
+
+# Whether when a user signs in, they are considered verified
+# default = true
+is_verified_by_default = true
+
 # Add as many clients as you wish to have
 [[auth.clients]]
 name = "github"
@@ -179,5 +183,3 @@ email_regex = "^(john\\.doe|jane)@example\\.com$"
 email_domain = "example.com"
 roles = ["user"]
 openid_configuration_endpoint = "https://example.org/.well-known/openid-configuration"
-
-

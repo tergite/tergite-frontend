@@ -1,0 +1,82 @@
+# Packages the standalone Nuitka build, built natively for each target: run from
+# the repository root with VERSION and ARCH set, e.g.
+# `VERSION=2026.10.0 ARCH=amd64 nfpm package -f pkg/nfpm.yaml -p deb -t dist/`
+name: tergite-mss
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+version_schema: none
+section: net
+maintainer: tergite <contact@quantum.chalmersnextlabs.se>
+vendor: Chalmers Next Labs
+homepage: https://github.com/tergite/tergite-frontend
+license: Apache-2.0
+description: The Main Service Server (MSS) of Tergite, the API between users and quantum backends.
+
+scripts:
+  preinstall: pkg/preinstall.sh
+  postinstall: pkg/postinstall.sh
+  preremove: pkg/preremove.sh
+  postremove: pkg/postremove.sh
+
+deb:
+  scripts:
+    templates: pkg/debian/templates
+    config: pkg/debian/config
+
+apk:
+  scripts:
+    postupgrade: pkg/postinstall.sh
+
+depends:
+  - openssl
+
+overrides:
+  deb:
+    recommends:
+      - postgresql
+      # 7.4 brought the per-field expiry MSS needs; Ubuntu 24.04 gets it from packages.redis.io
+      - redis-server (>= 5:7.4)
+  rpm:
+    recommends:
+      - postgresql-server
+      - redis
+
+contents:
+  # Nuitka's standalone build, whose executable finds the folder through the link
+  - src: main.dist/
+    dst: /usr/lib/tergite-mss/
+    type: tree
+  - src: /usr/lib/tergite-mss/mss
+    dst: /usr/bin/tergite-mss
+    type: symlink
+
+  - src: pkg/tergite-mss.service
+    dst: /lib/systemd/system/tergite-mss.service
+    packager: deb
+  - src: pkg/tergite-mss.service
+    dst: /lib/systemd/system/tergite-mss.service
+    packager: rpm
+  - src: pkg/tergite-mss.initd
+    dst: /etc/init.d/tergite-mss
+    packager: apk
+    file_info:
+      mode: 0755
+
+  - src: pkg/provision.sh
+    dst: /usr/share/tergite-mss/provision.sh
+    file_info:
+      mode: 0755
+  - src: mss-config.example.toml
+    dst: /usr/share/tergite-mss/mss-config.example.toml
+  - src: LICENSE.txt
+    dst: /usr/share/doc/tergite-mss/LICENSE.txt
+
+  # Generated on first install, not shipped: it holds the only copy of the secrets,
+  # and an upgrade must never overwrite it.
+  - dst: /etc/tergite-mss
+    type: dir
+    file_info:
+      mode: 0750
+      owner: root
+      group: tergite-mss

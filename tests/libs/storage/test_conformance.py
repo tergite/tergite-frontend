@@ -1,0 +1,403 @@
+# This code is part of Tergite
+#
+# (C) Copyright Chalmers Next Labs AB 2026
+#
+# This code is licensed under the Apache License, Version 2.0. You may
+# obtain a copy of this license in the LICENSE.txt file in the root directory
+# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
+"""Runs every Database method against each database in the matrix, with the same results
+
+MongoDB, PostgreSQL and SQLite each get a database of their own, emptied after every test.
+"""
+import re
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
+
+import pytest
+from pydantic import BaseModel, Field, ValidationError, field_validator
+
+from libs.storage import (
+    Database,
+    DuplicateKeyError,
+    Id,
+    QueryError,
+    Returning,
+    Schema,
+    StorageSpec,
+    generate_id,
+)
+
+
+class _Owner(Schema):
+    __storage__ = StorageSpec(
+        table="owners", unique=("email",), case_insensitive=("email",)
+    )
+
+    id: Id = Field(default_factory=generate_id)
+    email: str
+
+
+class _Stats(BaseModel):
+    walks: int = 0
+
+
+class _Pet(Schema):
+    __storage__ = StorageSpec(
+        table="pets",
+        unique=("name",),
+        expires="expires_at",
+        references={"owner_id": _Owner, "friend_ids": _Owner},
+        indexes=(("owner_id", "-age"),),
+    )
+
+    id: Id = Field(default_factory=generate_id)
+    name: str
+    age: int = 0
+    owner_id: Optional[Id] = None
+    friend_ids: List[Id] = []
+    stats: _Stats = _Stats()
+    expires_at: Optional[datetime] = None
+
+
+class _Job(Schema):
+    __storage__ = StorageSpec(table="jobs", key="job_id", unique=("job_id",))
+
+    job_id: str
+    status: str = "pending"
+
+
+class _Device(Schema):
+    __storage__ = StorageSpec(table="devices", key="name")
+
+    id: Id
+    name: str
+    version: str = ""
+
+
+class _Account(BaseModel):
+    id: Id = Field(default_factory=generate_id)
+    provider: str
+    account_id: str
+    expires_at: Optional[int] = None
+
+
+class _Member(Schema):
+    __storage__ = StorageSpec(
+        table="members",
+        indexed_lists=("accounts",),
+        indexes=(("accounts.provider", "accounts.account_id"),),
+    )
+
+    id: Id = Field(default_factory=generate_id)
+    accounts: List[_Account] = []
+
+
+class _NoteFields(Schema):
+    id: Id = Field(default_factory=generate_id)
+    title: str
+
+    # a rule MongoDB's validator cannot see, so an invalid note can still be stored
+    @field_validator("title")
+    @classmethod
+    def refuse_drafts(cls, value: str) -> str:
+        if value.startswith("draft"):
+            raise ValueError("drafts are never stored")
+        return value
+
+
+class _Note(_NoteFields):
+    __storage__ = StorageSpec(table="notes", should_skip_invalid=True)
+
+
+class _StrictNote(_NoteFields):
+    __storage__ = StorageSpec(table="strict_notes")
+
+
+_SCHEMAS = [_Owner, _Pet, _Job, _Device, _Member, _Note, _StrictNote]
+
+
+@pytest.fixture
+async def database(database_url):
+    database = Database(database_url, schemas=_SCHEMAS)
+    await database.setup()
+    yield database
+    await database.close()
+
+
+async def test_insert_and_get(database):
+    owner = await database.insert(_Owner, _Owner(email="ann@example.com"))
+    pet = await database.insert(_Pet, _Pet(name="Rex", owner_id=owner.id))
+
+    assert await database.get(_Pet, pet.id) == pet
+    assert await database.get(_Pet, generate_id()) is None
+
+
+async def test_a_schema_keyed_by_another_field(database):
+    await database.insert(_Job, _Job(job_id="j-1"))
+
+    assert await database.get(_Job, "j-1") == _Job(job_id="j-1")
+    with pytest.raises(DuplicateKeyError):
+        await database.insert(_Job, _Job(job_id="j-1"))
+
+
+async def test_unique_fields_refuse_duplicates(database):
+    await database.insert(_Owner, _Owner(email="ann@example.com"))
+
+    with pytest.raises(DuplicateKeyError):
+        await database.insert(_Owner, _Owner(email="ANN@example.com"))
+    with pytest.raises(DuplicateKeyError):
+        await database.insert_many(
+            _Owner, [_Owner(email="bob@example.com"), _Owner(email="Bob@example.com")]
+        )
+
+
+async def test_find_filters_sorts_and_pages(database):
+    owner = await database.insert(_Owner, _Owner(email="ann@example.com"))
+    names = ["a", "b", "c", "d"]
+    await database.insert_many(
+        _Pet,
+        [_Pet(name=name, age=i, owner_id=owner.id) for i, name in enumerate(names)],
+    )
+
+    got = await database.find(
+        _Pet, filter={"age": {"$gte": 1}}, sort=["-age"], skip=1, limit=2
+    )
+    either = {"$or": [{"name": "a"}, {"age": {"$gt": 2}}]}
+
+    assert [pet.name for pet in got] == ["c", "b"]
+    assert [pet.name for pet in await database.find(_Pet)] == names
+    assert await database.count(_Pet, filter={"owner_id": owner.id}) == 4
+    assert await database.count(_Pet, filter=either) == 2
+    assert (await database.find_one(_Pet, filter={"name": {"$in": ["d"]}})).age == 3
+    assert await database.find_distinct(_Pet, "owner_id") == [owner.id]
+
+
+async def test_none_matches_a_null_field_as_mongodb_does(database):
+    owner = await database.insert(_Owner, _Owner(email="ann@example.com"))
+    await database.insert(_Pet, _Pet(name="Rex", owner_id=owner.id))
+    await database.insert(_Pet, _Pet(name="Max"))
+
+    async def find_names(pet_filter):
+        return sorted(pet.name for pet in await database.find(_Pet, pet_filter))
+
+    assert await find_names({"owner_id": None}) == ["Max"]
+    assert await find_names({"owner_id": {"$ne": owner.id}}) == ["Max"]
+    assert await find_names({"owner_id": {"$ne": None}}) == ["Rex"]
+    assert await find_names({"owner_id": {"$in": [owner.id, None]}}) == ["Max", "Rex"]
+    assert await find_names({"owner_id": {"$nin": [owner.id]}}) == ["Max"]
+    assert await find_names({"owner_id": {"$nin": [None]}}) == ["Rex"]
+
+
+async def test_case_insensitive_fields_match_without_case(database):
+    await database.insert(_Owner, _Owner(email="ann@example.com"))
+
+    assert await database.count(_Owner, filter={"email": "ANN@EXAMPLE.COM"}) == 1
+    assert await database.count(_Owner, filter={"email": {"$in": ["Ann@x.y"]}}) == 0
+
+
+async def test_regex_finds_escaped_text_in_any_case(database):
+    emails = ["ann.b@example.com", "annab@example.com", "a_n@example.com", "aXn@x.com"]
+    await database.insert_many(_Owner, [_Owner(email=email) for email in emails])
+
+    async def find_emails(text: str) -> list:
+        owners = await database.find(
+            _Owner,
+            filter={"email": {"$regex": re.escape(text), "$options": "i"}},
+            sort=["email"],
+        )
+        return [owner.email for owner in owners]
+
+    assert await find_emails("ANN.B") == ["ann.b@example.com"]
+    assert await find_emails("a_n") == ["a_n@example.com"]
+    assert await find_emails("%") == []
+    with pytest.raises(QueryError):
+        await database.find(
+            _Owner, filter={"email": {"$regex": "ann.b", "$options": "i"}}
+        )
+    with pytest.raises(QueryError):
+        await database.find(_Owner, filter={"email": {"$regex": "ann"}})
+
+
+async def test_update_one_returns_the_record_before_or_after(database):
+    pet = await database.insert(_Pet, _Pet(name="Rex"))
+
+    before = await database.update_one(
+        _Pet,
+        filter={"id": pet.id},
+        update={"$inc": {"age": 1}},
+        returning=Returning.BEFORE,
+    )
+    after = await database.update_one(
+        _Pet, filter={"id": pet.id}, update={"$set": {"stats": {"walks": 2}}}
+    )
+    missing = await database.update_one(
+        _Pet, filter={"name": "Nobody"}, update={"$set": {"age": 1}}
+    )
+
+    assert before.age == 0
+    assert after.age == 1 and after.stats.walks == 2
+    assert missing is None
+
+
+async def test_an_update_may_set_the_key_it_has_but_not_another(database):
+    await database.insert(_Job, _Job(job_id="j-1"))
+
+    same = await database.update_one(
+        _Job, {"job_id": "j-1"}, {"$set": {"job_id": "j-1", "status": "done"}}
+    )
+
+    assert same == _Job(job_id="j-1", status="done")
+    with pytest.raises(QueryError):
+        await database.update_one(_Job, {"job_id": "j-1"}, {"$set": {"job_id": "j-2"}})
+
+
+async def test_an_upsert_generates_the_id_of_a_schema_keyed_by_another_field(database):
+    created = await database.update_one(
+        _Device,
+        filter={"name": "Loke"},
+        update={"$set": {"name": "Loke", "version": "1"}},
+        should_upsert=True,
+    )
+
+    assert created.name == "Loke" and len(created.id) == 24
+    assert await database.get(_Device, "Loke") == created
+
+
+async def test_update_one_upserts(database):
+    created = await database.update_one(
+        _Job,
+        filter={"job_id": "j-2"},
+        update={"$set": {"status": "done"}, "$setOnInsert": {"job_id": "j-2"}},
+        should_upsert=True,
+    )
+    updated = await database.update_one(
+        _Job,
+        filter={"job_id": "j-2"},
+        update={"$set": {"status": "failed"}, "$setOnInsert": {"job_id": "j-2"}},
+        should_upsert=True,
+    )
+
+    assert created == _Job(job_id="j-2", status="done")
+    assert updated == _Job(job_id="j-2", status="failed")
+    assert await database.count(_Job) == 1
+
+
+async def test_list_fields_take_and_drop_members(database):
+    friend = await database.insert(_Owner, _Owner(email="bob@example.com"))
+    other = await database.insert(_Owner, _Owner(email="cat@example.com"))
+    pet = await database.insert(_Pet, _Pet(name="Rex", friend_ids=[other.id]))
+
+    pet_filter = {"id": pet.id}
+    await database.update_many(
+        _Pet, pet_filter, {"$addToSet": {"friend_ids": friend.id}}
+    )
+    count = await database.update_many(
+        _Pet, pet_filter, {"$addToSet": {"friend_ids": friend.id}}
+    )
+    assert count == 0
+    assert (await database.get(_Pet, pet.id)).friend_ids == [other.id, friend.id]
+    assert await database.count(_Pet, filter={"friend_ids": friend.id}) == 1
+    assert await database.count(_Pet, filter={"friend_ids": {"$nin": [friend.id]}}) == 0
+
+    count = await database.update_many(
+        _Pet, pet_filter, {"$pull": {"friend_ids": friend.id}}
+    )
+    assert count == 1
+    assert (await database.get(_Pet, pet.id)).friend_ids == [other.id]
+
+    await database.update_many(_Pet, pet_filter, {"$set": {"friend_ids": [friend.id]}})
+    assert (await database.get(_Pet, pet.id)).friend_ids == [friend.id]
+
+
+async def test_a_list_of_models_is_matched_by_one_element(database):
+    github = _Account(provider="github", account_id="1")
+    google = _Account(provider="google", account_id="2", expires_at=7)
+    member = await database.insert(_Member, _Member(accounts=[github, google]))
+
+    found = await database.find_one(
+        _Member,
+        {"accounts": {"$elemMatch": {"provider": "google", "account_id": "2"}}},
+    )
+    across_elements = await database.count(
+        _Member,
+        {"accounts": {"$elemMatch": {"provider": "google", "account_id": "1"}}},
+    )
+
+    assert found == member
+    assert across_elements == 0
+    assert await database.get(_Member, member.id) == member
+
+
+async def test_a_list_of_models_is_set_whole(database):
+    member = await database.insert(
+        _Member, _Member(accounts=[_Account(provider="github", account_id="1")])
+    )
+    renewed = _Account(provider="github", account_id="1", expires_at=9)
+    added = _Account(provider="google", account_id="2")
+
+    updated = await database.update_one(
+        _Member,
+        {"id": member.id},
+        {"$set": {"accounts": [renewed.model_dump(), added.model_dump()]}},
+    )
+
+    assert updated.accounts == [renewed, added]
+    with pytest.raises(QueryError):
+        await database.update_many(
+            _Member, {"id": member.id}, {"$addToSet": {"accounts": added.model_dump()}}
+        )
+    with pytest.raises(QueryError):
+        await database.count(_Member, {"accounts": {"provider": "github"}})
+
+
+async def test_reads_leave_out_invalid_records_of_a_schema_that_skips_them(
+    database, caplog
+):
+    note = await database.insert(_Note, _Note(title="final"))
+    draft = await database.insert(_Note, _Note.model_construct(title="draft"))
+
+    assert await database.find(_Note) == [note]
+    assert await database.get(_Note, draft.id) is None
+    assert await database.count(_Note) == 2
+    assert "left out a stored _Note invalid in: title" in caplog.text
+
+
+async def test_writes_raise_on_invalid_records_of_a_schema_that_skips_them(database):
+    draft = await database.insert(_Note, _Note.model_construct(title="draft"))
+
+    with pytest.raises(ValidationError):
+        await database.delete_one(_Note, {"id": draft.id})
+
+
+async def test_reads_raise_on_invalid_records_of_other_schemas(database):
+    draft = await database.insert(
+        _StrictNote, _StrictNote.model_construct(title="draft")
+    )
+
+    with pytest.raises(ValidationError):
+        await database.find(_StrictNote)
+    with pytest.raises(ValidationError):
+        await database.get(_StrictNote, draft.id)
+
+
+async def test_delete_one_and_many(database):
+    rex = await database.insert(_Pet, _Pet(name="Rex"))
+    await database.insert_many(_Pet, [_Pet(name="a", age=1), _Pet(name="b", age=1)])
+
+    assert await database.delete_one(_Pet, {"id": rex.id}) == rex
+    assert await database.delete_one(_Pet, {"id": rex.id}) is None
+    assert await database.delete_many(_Pet, {"age": 1}) == 2
+    assert await database.count(_Pet) == 0
+
+
+async def test_expiring_records_carry_a_datetime(database):
+    expires_at = datetime.now(timezone.utc) + timedelta(days=1)
+    pet = await database.insert(_Pet, _Pet(name="Rex", expires_at=expires_at))
+
+    got = await database.get(_Pet, pet.id)
+
+    assert abs(got.expires_at - expires_at) < timedelta(milliseconds=1)

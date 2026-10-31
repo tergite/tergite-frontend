@@ -1,0 +1,158 @@
+# This code is part of Tergite
+#
+# (C) Copyright Martin Ahindura 2024
+#
+# This code is licensed under the Apache License, Version 2.0. You may
+# obtain a copy of this license in the LICENSE.txt file in the root directory
+# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
+"""Utilities for logging"""
+import json
+import logging
+import sys
+import traceback
+
+from loguru import logger
+
+UNLOGGED_PATHS = frozenset({"/health"})
+"""Paths polled by machines rather than requested by people.
+
+The container healthcheck hits these every few seconds, which buries real traffic in
+both the request log and uvicorn's access log.
+"""
+
+
+class InterceptHandler(logging.Handler):
+    """Custom logging handler that intercepts standard Python logging logs
+    and redirects them to Loguru.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        # Get corresponding Loguru level if it exists
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Find caller from where originated the logged message
+        frame, depth = logging.currentframe(), 2
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
+
+
+def json_formatter(record):
+    """Serialize Loguru records to a single-line flat JSON object."""
+    # Handle exception if present
+    exception_data = None
+    exception = record["exception"]
+    if exception is not None:
+        exception_data = {
+            "type": exception.type.__name__,
+            "value": str(exception.value),
+            "traceback": "".join(
+                traceback.format_exception(
+                    exception.type, exception.value, exception.traceback
+                )
+            ),
+        }
+
+    # Construct the flat structured log object
+    log_object = {
+        "timestamp": record["time"].isoformat(),
+        "level": record["level"].name,
+        "message": record["message"],
+        "logger": record["name"],
+        "file": f"{record['file'].name}:{record['line']}",
+        "function": record["function"],
+        "process_id": record["process"].id,
+        "thread_id": record["thread"].id,
+    }
+
+    # Inject contextual variables from extra (e.g. request_id)
+    for key, val in record["extra"].items():
+        if key != "request_id_display":
+            log_object[key] = val
+
+    # If exception is present, add to json
+    if exception_data:
+        log_object["exception"] = exception_data
+
+    # Save serialized string to extra and return standard key
+    record["extra"]["serialized"] = json.dumps(log_object)
+    return "{extra[serialized]}\n"
+
+
+def patch_record(record):
+    """Patch record to ensure request_id exists and formats display correctly."""
+    request_id = record["extra"].get("request_id")
+    if request_id:
+        record["extra"]["request_id_display"] = f"[ID:{request_id}] | "
+    else:
+        record["extra"]["request_id_display"] = ""
+
+
+def setup_logging(environment: str) -> None:
+    """Configure Loguru to handle all logging in the application."""
+    log_level = get_log_level(environment)
+    logger.remove()
+    _add_sink(environment, log_level=log_level)
+    _route_std_logging(log_level)
+
+
+def get_log_level(environment: str) -> str:
+    """Gets the name of the lowest level the environment logs"""
+    if environment == "production":
+        return "INFO"
+    if environment == "test":
+        return "WARNING"
+    return "DEBUG"
+
+
+def _add_sink(environment: str, log_level: str) -> None:
+    """Logs single-line JSON to stdout in production, coloured text to stderr elsewhere"""
+    if environment == "production":
+        logger.add(sys.stdout, level=log_level, format=json_formatter)
+        return
+
+    log_format = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
+        "{extra[request_id_display]}"
+        "<level>{message}</level>"
+    )
+    logger.configure(patcher=patch_record)
+    logger.add(sys.stderr, level=log_level, format=log_format)
+
+
+def _route_std_logging(log_level: str) -> None:
+    """Sends the standard library's records, uvicorn's and fastapi's among them, to Loguru"""
+    logging.basicConfig(
+        handlers=[InterceptHandler()], level=logging.getLevelName(log_level), force=True
+    )
+    # their own handlers would log each record a second time
+    for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
+        std_logger = logging.getLogger(logger_name)
+        std_logger.handlers = []
+        std_logger.propagate = True
+
+    # a logger's filter runs before propagation, so this drops the record outright
+    logging.getLogger("uvicorn.access").addFilter(_is_logged_access)
+
+
+def _is_logged_access(record: logging.LogRecord) -> bool:
+    """Drops uvicorn access-log records for UNLOGGED_PATHS"""
+    args = record.args or ()
+    # uvicorn.access logs (client_addr, method, full_path, http_version, status)
+    path = args[2] if len(args) > 2 and isinstance(args[2], str) else None
+    if path is None:
+        return True
+    return not path.startswith(tuple(UNLOGGED_PATHS))

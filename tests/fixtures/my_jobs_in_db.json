@@ -1,0 +1,107 @@
+[
+  {
+    "_id": "66f130781ab9e8f8fee0f603",
+    "job_id": "951bcab8-4d88-4a27-9f1c-23197d92148a",
+    "device": "Loke",
+    "project_id": "653a8f19e736d76276597a6c",
+    "user_id": "8154077d9cb952b92453d575",
+    "status": "pending",
+    "created_at": "2024-06-20T09:12:00.233Z",
+    "updated_at": "2024-06-20T09:12:00.233Z",
+    "calibration_date": "2024-06-20T09:12:00.233Z"
+  },
+  {
+    "_id": "66f130781ab9e8f8fee0f60c",
+    "job_id": "cee16be6-5869-4820-8686-98c761c8a0e1",
+    "device": "Loke",
+    "status": "successful",
+    "project_id": "653aabd880cd1f9fab6196d2",
+    "user_id": "de7ddbd2500951be940356a2",
+    "timestamps": {
+      "registration": { "started": null, "finished": null },
+      "pre_processing": { "started": null, "finished": null },
+      "execution": {
+        "started": "2023-12-04T09:54:52.309Z",
+        "finished": "2023-12-04T11:52:54.031Z"
+      },
+      "post_processing": { "started": null, "finished": null },
+      "final": { "started": null, "finished": null }
+    },
+    "created_at": "2023-12-04T09:54:52.233Z",
+    "updated_at": "2023-12-04T09:54:52.233Z",
+    "calibration_date": "2023-12-04T09:54:52.233Z"
+  },
+  {
+    "_id": "66f130781ab9e8f8fee0f60d",
+    "job_id": "5b11de5b-34d2-4618-bbc2-a25112981b44",
+    "device": "Pingu",
+    "status": "successful",
+    "user_id": "de7ddbd2500951be940356a2",
+    "created_at": "2023-12-04T09:54:52.733Z",
+    "updated_at": "2023-12-04T09:54:52.733Z",
+    "calibration_date": "2023-12-04T09:54:52.733Z",
+    "timestamps": {
+      "registration": { "started": null, "finished": null },
+      "pre_processing": { "started": null, "finished": null },
+      "execution": {
+        "started": "2023-12-04T09:54:52.309Z",
+        "finished": "2023-12-04T10:10:53.554Z"
+      },
+      "post_processing": { "started": null, "finished": null },
+      "final": { "started": null, "finished": null }
+    }
+  },
+  {
+    "_id": "66f130781ab9e8f8fee0f606",
+    "job_id": "17ddd1b7-b867-4ba3-ad0e-2cea04215e56",
+    "device": "Loke",
+    "project_id": "653a8f19e736d76276597a6c",
+    "user_id": "8154077d9cb952b92453d575",
+    "status": "pending",
+    "created_at": "2024-06-20T11:12:00.233Z",
+    "updated_at": "2024-06-20T11:12:00.233Z",
+    "calibration_date": "2024-06-20T11:12:00.233Z"
+  },
+  {
+    "_id": "66f130781ab9e8f8fee0f607",
+    "job_id": "2df4ad77-4a36-4837-b3ce-0b9acd9493eb",
+    "device": "Pingu",
+    "project_id": "653a81b2e736d76276597a6b",
+    "user_id": "8154077d9cb952b92453d575",
+    "status": "successful",
+    "timestamps": {
+      "registration": { "started": null, "finished": null },
+      "pre_processing": { "started": null, "finished": null },
+      "execution": {
+        "started": "2023-12-04T09:54:52.309Z",
+        "finished": "2023-12-04T16:26:52.309Z"
+      },
+      "post_processing": { "started": null, "finished": null },
+      "final": { "started": null, "finished": null }
+    },
+    "created_at": "2023-12-04T09:54:52.233Z",
+    "updated_at": "2023-12-04T09:54:52.233Z",
+    "calibration_date": "2023-12-04T09:54:52.233Z"
+  },
+  {
+    "_id": "66f130781ab9e8f8fee0f608",
+    "job_id": "aa37d115-eddb-493e-b5e9-4e4c14c8482f",
+    "device": "Thor",
+    "project_id": "653a8f19e736d76276597a6c",
+    "user_id": "8154077d9cb952b92453d575",
+    "status": "failed",
+    "timestamps": {
+      "registration": { "started": null, "finished": null },
+      "pre_processing": { "started": null, "finished": null },
+      "execution": {
+        "started": "2023-12-04T09:54:52.309Z",
+        "finished": null
+      },
+      "post_processing": { "started": null, "finished": null },
+      "final": { "started": null, "finished": null }
+    },
+    "created_at": "2023-12-04T09:54:52.233Z",
+    "updated_at": "2023-12-04T09:54:52.233Z",
+    "calibration_date": "2023-12-04T09:54:52.233Z"
+  }
+]

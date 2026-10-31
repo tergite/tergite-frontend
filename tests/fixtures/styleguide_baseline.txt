@@ -1,0 +1,93 @@
+# Code that broke the styleguide when tests/test_styleguide.py was added.
+# Fix one, then delete its line; the tests fail until you do.
+# Public names (query parameters, config keys, overrides of library methods) need an alias first, or stay listed.
+verb: api/__init__.py::health
+verb: api/app_kwargs.py::lifespan
+verb: api/routers/me/notices/notices.py::unread_all_my_notices
+verb: api/routers/me/notices/notices.py::unread_my_notice
+verb: services/auth/providers/dtos.py::AuthProvider.as_public_view
+verb: services/notices/service.py::_with_default_email_preferences
+verb: services/notices/service.py::_with_project_name
+verb: services/requests/service.py::_has_resource_access
+verb: utils/config.py::AppConfig.dashboard_url_required_for_email
+verb: utils/date_time.py::datetime_to_zulu
+verb: utils/logging.py::json_formatter
+verb: utils/models.py::_as_optional
+boolean: api/routers/admin/bcc/recalibration.py::cancel_recalibration(ignore_errors)
+boolean: api/routers/admin/notices.py::get_many_notices(include_dismissed)
+boolean: api/routers/counts.py::get_notice_count(include_dismissed)
+boolean: services/auth/providers/__init__.py::_to_hash(negated)
+boolean: services/devices/dtos.py::DeviceUpsert.characterized
+boolean: services/devices/dtos.py::DeviceUpsert.open_pulse
+boolean: services/external/bcc/service.py::BccClient.stop_recalibration(ignore_errors)
+boolean: services/external/email/dtos.py::EmailDetails.can_retry
+boolean: services/external/email/dtos.py::EmailResult.can_retry
+boolean: utils/config.py::EmailConfig.start_tls
+boolean: utils/config.py::EmailConfig.use_tls
+boolean: utils/config.py::Oauth2ClientConfig.associate_by_email
+constant-position: utils/date_time.py::DEFAULT_FROM_DATETIME_STR
+constant-position: utils/date_time.py::DEFAULT_TO_DATETIME_STR
+license-header: api/routers/__init__.py
+license-header: services/__init__.py
+license-header: services/auth/providers/__init__.py
+license-header: services/auth/providers/dtos.py
+license-header: services/external/__init__.py
+license-header: tests/__init__.py
+license-header: tests/_utils/__init__.py
+license-header: tests/api/__init__.py
+license-header: tests/api/admin/__init__.py
+license-header: tests/api/admin/bcc/__init__.py
+license-header: tests/api/me/__init__.py
+license-header: tests/api/me/notices/__init__.py
+license-header: utils/__init__.py
+facade-import: api/routers/auth.py::import services.auth.providers.dtos
+facade-import: services/devices/dtos.py::import services.calibration.dtos
+facade-import: services/devices/dtos.py::import services.jobs.dtos
+facade-import: services/jobs/service.py::import services.notices.dtos
+facade-import: services/notices/emails.py::import services.auth.users.dtos
+facade-import: services/notices/service.py::import services.auth.projects.dtos
+facade-import: services/requests/dtos.py::import services.notices.dtos
+facade-import: services/requests/service.py::import services.auth.projects.dtos
+facade-import: services/requests/service.py::import services.auth.users.dtos
+type-hints: api/__init__.py::health
+type-hints: api/app_kwargs.py::lifespan
+type-hints: api/middleware.py::RequestIDMiddleware.dispatch
+type-hints: api/routers/admin/bcc/users.py::view_bcc_users
+type-hints: api/routers/auth.py::include_auth_router
+type-hints: api/routers/auth.py::include_auth_router.get_auth_providers
+type-hints: api/routers/booking.py::view_bookings
+type-hints: api/routers/booking.py::view_bookings_configs
+type-hints: api/routers/calibrations.py::get_many
+type-hints: api/routers/calibrations.py::read_one
+type-hints: api/routers/devices/__init__.py::handle_device_events
+type-hints: api/routers/devices/__init__.py::read_many
+type-hints: api/routers/devices/__init__.py::read_one
+type-hints: services/devices/events.py::on_device_initialized_event
+type-hints: services/devices/events.py::on_device_recalibrated_event
+type-hints: services/devices/events.py::on_device_switched_off_event
+type-hints: services/devices/events.py::on_device_switched_on_event
+type-hints: services/devices/events.py::on_job_updated_event
+type-hints: api/routers/jobs.py::get_many
+type-hints: api/routers/jobs.py::get_one
+type-hints: api/routers/me/jobs.py::get_my_jobs
+type-hints: api/routers/me/notices/notices.py::get_my_notices
+type-hints: api/routers/me/profile.py::get_my_user_profile
+type-hints: api/routers/me/requests.py::get_many
+type-hints: api/utils.py::_is_valid_uuid4
+type-hints: services/auth/app_tokens/dtos.py::AppTokenRead.serialize_created_at
+type-hints: services/auth/app_tokens/dtos.py::AppTokenUpdate.serialize_expires_at
+type-hints: services/auth/providers/__init__.py::_order_by_many.get_key
+type-hints: services/auth/utils.py::get_oauth2_client
+type-hints: services/external/bcc/dtos.py::Booking.validate_username
+type-hints: services/external/bcc/service.py::BccClient.close
+type-hints: services/external/bcc/service.py::close_clients
+type-hints: services/jobs/dtos.py::TimestampPair.serialize_finished
+type-hints: services/jobs/dtos.py::TimestampPair.serialize_started
+type-hints: services/notices/service.py::create_system_notice
+type-hints: utils/config.py::BccConfig.validate_public_key_path
+type-hints: utils/crypto.py::get_uuid4_str
+type-hints: utils/exc.py::BaseMssException.__repr__
+type-hints: utils/exc.py::BaseMssException.__str__
+type-hints: utils/logging.py::json_formatter
+type-hints: utils/logging.py::patch_record
+type-hints: utils/models.py::_as_optional

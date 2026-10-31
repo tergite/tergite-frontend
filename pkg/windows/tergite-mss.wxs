@@ -1,0 +1,48 @@
+<!-- Built by pkg/windows/build.ps1, which passes MsiVersion and BinDir -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Tergite MSS" Manufacturer="Chalmers Next Labs" Version="$(MsiVersion)"
+           UpgradeCode="A5891E66-10C0-4C93-A0EB-E1F56234F774" Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer Tergite MSS is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Tergite MSS">
+        <Files Include="$(BinDir)\app\**" />
+        <Component Id="StartScript">
+          <File Source="pkg\windows\tergite-mss-start.cmd" />
+        </Component>
+        <Component Id="ExampleConfig">
+          <File Source="mss-config.example.toml" />
+        </Component>
+        <Component Id="Service">
+          <File Id="ServiceWrapper" Name="tergite-mss-service.exe" Source="$(BinDir)\WinSW-x64.exe" KeyPath="yes" />
+          <File Id="ServiceConfig" Name="tergite-mss-service.xml" Source="pkg\windows\tergite-mss-service.xml" />
+          <ServiceInstall Name="tergite-mss" DisplayName="Tergite MSS"
+                          Description="The Main Service Server (MSS) of Tergite."
+                          Type="ownProcess" Start="auto" ErrorControl="normal"
+                          Account="NT AUTHORITY\LocalService" />
+          <ServiceControl Id="ServiceControl" Name="tergite-mss" Stop="both" Remove="uninstall" Wait="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Kept on uninstall: they hold the only copy of the secrets. Protected ACLs, so
+         ProgramData's read access for every user does not reach the config. -->
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="CONFIGFOLDER" Name="Tergite MSS">
+        <Component Id="ConfigFolder" Permanent="yes">
+          <CreateFolder>
+            <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FR;;;LS)" />
+          </CreateFolder>
+        </Component>
+        <Directory Id="DATAFOLDER" Name="data">
+          <Component Id="DataFolder" Permanent="yes">
+            <CreateFolder>
+              <PermissionEx Sddl="D:PAI(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;0x1301bf;;;LS)" />
+            </CreateFolder>
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+  </Package>
+</Wix>

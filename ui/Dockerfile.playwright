@@ -1,0 +1,20 @@
+# Makes the linux screenshot baselines: the e2e stack, MongoDB, Redis, MSS and the backends, in
+# Playwright's linux image, with the repository root as the context; see CONTRIBUTING.md
+FROM mcr.microsoft.com/playwright:v1.64.0-noble
+
+RUN apt-get update -qq \
+  && apt-get install -y -qq curl gnupg git jq sqlite3 \
+  && curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg \
+  && echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb noble main" > /etc/apt/sources.list.d/redis.list \
+  && curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc \
+    | gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg \
+  && echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" \
+    > /etc/apt/sources.list.d/mongodb-org-8.0.list \
+  && apt-get update -qq && apt-get install -y -qq mongodb-org redis \
+  && curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+WORKDIR /repo
+COPY . /repo
+
+CMD [ "./dev/e2e_native_test.sh", "--update-snapshots" ]

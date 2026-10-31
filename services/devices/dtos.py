@@ -1,0 +1,164 @@
+# This code is part of Tergite
+#
+# (C) Copyright Simon Genne, Arvid Holmqvist, Bashar Oumari, Jakob Ristner,
+#               Björn Rosengren, and Jakob Wik 2022 (BSc project)
+# (C) Copyright Chalmers Next Labs 2025
+#
+# This code is licensed under the Apache License, Version 2.0. You may
+# obtain a copy of this license in the LICENSE.txt file in the root directory
+# of this source tree or at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
+#
+# Refactored by Martin Ahindura 2023-11-08
+from datetime import datetime
+from enum import Enum
+from typing import (
+    TYPE_CHECKING,
+    AbstractSet,
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
+
+from fastapi import Query
+from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
+
+from libs.storage import Id, Schema, StorageSpec
+from utils.api import GeneralMessage
+from utils.models import create_partial_model
+
+from ..calibration.dtos import DeviceCalibrationCreate
+from ..jobs.dtos import JobUpdate
+
+if TYPE_CHECKING:
+    DictStrAny = Dict[str, Any]
+    IntStr = Union[int, str]
+    AbstractSetIntStr = AbstractSet[IntStr]
+    MappingIntStrAny = Mapping[IntStr, Any]
+
+
+class DeviceEventName(str, Enum):
+    INITIALIZED = "initialized"
+    RECALIBRATED = "recalibrated"
+    JOB_UPDATED = "job_updated"
+    SWITCHED_OFF = "switched_off"
+    SWITCHED_ON = "switched_on"
+
+
+class DeviceSwitchData(BaseModel):
+    date: datetime
+
+
+class DeviceUpsert(BaseModel):
+    """The schema for upserting device"""
+
+    model_config = ConfigDict(extra="allow")
+
+    name: str
+    version: str
+    number_of_qubits: int
+    last_online: Optional[str] = None
+    is_online: bool
+    basis_gates: List[str]
+    coupling_map: List[Tuple[int, int]]
+    coordinates: List[Tuple[int, int]]
+    is_simulator: bool
+    coupling_dict: Dict[str, Union[str, List[str]]]
+    characterized: bool
+    open_pulse: bool
+    meas_map: List[List[int]]
+    description: Optional[str] = None
+    number_of_couplers: int = 0
+    number_of_resonators: int = 0
+    dt: Optional[float] = None
+    dtm: Optional[float] = None
+    qubit_ids: List[str] = []
+    meas_lo_freq: Optional[List[int]] = None
+    qubit_lo_freq: Optional[List[int]] = None
+    gates: Optional[Dict[str, Any]] = None
+    is_active: Optional[bool] = None
+    qubit_ids_coupler_map: List[Tuple[Tuple[int, int], int]] = []
+
+
+class Device(Schema, DeviceUpsert):
+    """The Schema for the devices"""
+
+    __storage__ = StorageSpec(table="devices", key="name", indexes=("name",))
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="allow",
+    )
+
+    id: Id
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+type DeviceEventData = Union[
+    DeviceUpsert, DeviceCalibrationCreate, JobUpdate, DeviceSwitchData
+]
+"""Data type for the data attached to device events"""
+
+
+type DeviceEventHandler = Callable[..., Awaitable[GeneralMessage]]
+"""An event's handler, called with the device, the event's data and the database"""
+
+
+_EVENT_DATA_CLASSES: Dict[DeviceEventName, Type[DeviceEventData]] = {
+    DeviceEventName.INITIALIZED: DeviceUpsert,
+    DeviceEventName.RECALIBRATED: DeviceCalibrationCreate,
+    DeviceEventName.JOB_UPDATED: JobUpdate,
+    DeviceEventName.SWITCHED_OFF: DeviceSwitchData,
+    DeviceEventName.SWITCHED_ON: DeviceSwitchData,
+}
+
+
+class DeviceEvent(BaseModel):
+    """The schema for device events"""
+
+    id: str
+    name: DeviceEventName
+    data: DeviceEventData
+
+    @field_validator("data", mode="after")
+    @classmethod
+    def validate_data(
+        cls, value: DeviceEventData, info: ValidationInfo
+    ) -> DeviceEventData:
+        """Validates the data depending on the name type"""
+        expected_data_cls = _EVENT_DATA_CLASSES[info.data["name"]]
+        if not isinstance(value, expected_data_cls):
+            raise ValueError(
+                f"data must be of type {expected_data_cls.__name__}, was {type(value)}"
+            )
+
+        return value
+
+
+DeviceQuery = create_partial_model(
+    "DeviceQuery",
+    original=Device,
+    default=Query(None),
+    exclude=(
+        "basis_gates",
+        "coupling_map",
+        "coordinates",
+        "coupling_dict",
+        "meas_map",
+        "qubit_ids",
+        "meas_lo_freq",
+        "qubit_lo_freq",
+        "gates",
+        "qubit_ids_coupler_map",
+    ),
+)

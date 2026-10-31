@@ -1,0 +1,154 @@
+name: CI
+# MSS's and the dashboard's lint and tests, the full-stack e2e, and the push to the upstream mirror
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # cancel any previous run on this branch or tag that is still in progress
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mss:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+
+    services:
+      mongodb:
+        image: mongo
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "echo 'db.runCommand("ping").ok' | mongosh --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          --name mongo_container
+
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: tergite
+          POSTGRES_PASSWORD: tergite
+          POSTGRES_DB: tergite_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tergite"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Lint
+        env:
+          UV_PYTHON: ${{ matrix.python-version }}
+        run: |
+          uv sync --frozen --extra dev
+          uv run black --check .
+          uv run isort --check-only .
+          uv run pyflakes api services utils libs migrations settings.py main.py tests dev
+      - name: Run tests
+        run: uv run pytest
+
+  dashboard:
+    runs-on: ubuntu-latest
+    env:
+      TEST_THRESHOLD: "${{ vars.TEST_THRESHOLD }}"
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Nodejs 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Lint
+        run: |
+          cd ui
+          npm ci
+          npm run lint
+          npm run check:api
+      - name: Component tests
+        run: |
+          cd ui
+          npm run test
+
+  e2e:
+    # noble, as the MongoDB repository below names it
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Nodejs 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: astral-sh/setup-uv@v6
+      - name: Install MongoDB, Redis and SQLite
+        run: |
+          curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc |
+            sudo gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
+          echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg ] https://repo.mongodb.org/apt/ubuntu noble/mongodb-org/8.0 multiverse" |
+            sudo tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+          # Redis's own, as noble's 7.0 lacks the per-field expiry MSS needs
+          curl -fsSL https://packages.redis.io/gpg |
+            sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb noble main" |
+            sudo tee /etc/apt/sources.list.d/redis.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-org redis sqlite3 jq
+      - name: Install the system libraries of Playwright's browser
+        run: npx -y playwright@1.64.0 install-deps chromium
+      - name: Run end-to-end-tests
+        env:
+          DEBUG: ${{ vars.DEBUG || 'false' }}
+          BACKEND_REPO: https://github.com/${{ github.repository_owner }}/tergite-backend.git
+          # a pull request's source branch, as its ref_name is N/merge
+          BACKEND_BRANCH: ${{ github.head_ref || github.ref_name }}
+          OPENID_CONFIG_URL: "${{ secrets.OPENID_CONFIG_URL }}"
+          OPENID_CLIENT_ID: "${{ secrets.OPENID_CLIENT_ID }}"
+          OPENID_CLIENT_SECRET: "${{ secrets.OPENID_CLIENT_SECRET }}"
+          OPENID_AUTH_URL: "${{ secrets.OPENID_AUTH_URL }}"
+          TEST_THRESHOLD: "${{ vars.TEST_THRESHOLD }}"
+        run: ./dev/e2e_native_test.sh
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-logs
+          path: temp-native/logs/
+
+  upstream:
+    name: Update upstream
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && vars.SHOULD_PUSH_UPSTREAM == 'true' }}
+    steps:
+      - name: Checkout the commit
+        uses: actions/checkout@v4
+
+      - name: Push upstream
+        run: |
+          if [ "${{ github.event_name }}" != "push" ] || [ "${{ vars.SHOULD_PUSH_UPSTREAM }}" != 'true' ]; then printf "upstream not enabled"; exit; fi
+          git config user.email ${{ secrets.UPSTREAM_USER }}
+          git pull -r ${{ secrets.UPSTREAM_REPO }} ${{ github.ref_name }} || echo "${{ github.ref_name }} does not exist"
+          git push ${{ secrets.UPSTREAM_REPO }} ${{ github.ref_name }} || echo "${{ github.ref_name }} already exists"

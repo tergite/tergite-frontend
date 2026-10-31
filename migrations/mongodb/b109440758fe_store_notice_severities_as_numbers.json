@@ -1,0 +1,83 @@
+{
+  "upgrade": [
+    {
+      "collection": "notices",
+      "filter": { "severity": { "$type": "string" } },
+      "update": [
+        {
+          "$set": {
+            "severity": {
+              "$switch": {
+                "branches": [
+                  { "case": { "$eq": ["$severity", "critical"] }, "then": 1 },
+                  { "case": { "$eq": ["$severity", "warning"] }, "then": 2 }
+                ],
+                "default": 3
+              }
+            }
+          }
+        },
+        { "$unset": "severity_number" }
+      ]
+    },
+    {
+      "collection": "notice_templates",
+      "filter": { "severity": { "$type": "string" } },
+      "update": [
+        {
+          "$set": {
+            "severity": {
+              "$switch": {
+                "branches": [
+                  { "case": { "$eq": ["$severity", "critical"] }, "then": 1 },
+                  { "case": { "$eq": ["$severity", "warning"] }, "then": 2 }
+                ],
+                "default": 3
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "rollback": [
+    {
+      "collection": "notices",
+      "filter": { "severity": { "$type": "number" } },
+      "update": [
+        {
+          "$set": {
+            "severity": {
+              "$switch": {
+                "branches": [
+                  { "case": { "$eq": ["$severity", 1] }, "then": "critical" },
+                  { "case": { "$eq": ["$severity", 2] }, "then": "warning" }
+                ],
+                "default": "info"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collection": "notice_templates",
+      "filter": { "severity": { "$type": "number" } },
+      "update": [
+        {
+          "$set": {
+            "severity": {
+              "$switch": {
+                "branches": [
+                  { "case": { "$eq": ["$severity", 1] }, "then": "critical" },
+                  { "case": { "$eq": ["$severity", 2] }, "then": "warning" }
+                ],
+                "default": "info"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
