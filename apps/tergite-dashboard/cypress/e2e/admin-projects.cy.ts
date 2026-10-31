@@ -48,7 +48,12 @@ users.forEach((user) => {
       cy.intercept("GET", `${apiBaseUrl}/me/projects/?is_active=true`).as(
         "my-project-list"
       );
-      cy.intercept("GET", `${apiBaseUrl}/me`).as("my-user-info");
+      cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
+      cy.intercept("GET", `${apiBaseUrl}/admin/users/emails/*`).as(
+        "user-emails"
+      );
+      cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("notices");
+      cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
       cy.intercept("GET", `${apiBaseUrl}/admin/projects/*`).as("projects-list");
       cy.intercept("POST", `${apiBaseUrl}/admin/projects/`).as(
         "create-project"
@@ -81,6 +86,10 @@ users.forEach((user) => {
       cy.wait("@my-user-info");
       cy.wait("@my-project-list");
       isAdmin && cy.wait("@projects-list");
+      // the notice banner shows on admin screens too; letting it land keeps it from
+      // shifting the layout under a realClick
+      cy.wait("@notices");
+      cy.wait("@notice-count");
     });
 
     isAdmin &&
@@ -89,17 +98,17 @@ users.forEach((user) => {
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] a", /projects/i).click();
+        cy.get("[data-testid='sidebar'] a[href='/admin-projects']").click();
         cy.url().should("equal", `${dashboardUrl}admin-projects`);
       });
 
     !isAdmin &&
-      it("projects link in sidebar does not exist", () => {
+      it("admin projects link in sidebar does not exist", () => {
         cy.visit("/");
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] a", /projects/i).should(
+        cy.get("[data-testid='sidebar'] a[href='/admin-projects']").should(
           "not.exist"
         );
       });
@@ -314,8 +323,8 @@ users.forEach((user) => {
                 cy.get("input").should("have.value", project.name);
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id).should("be.visible");
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                cy.contains(project.id).should("be.visible");
               });
 
               cy.contains("#project-summary div", /description/i).within(() => {
@@ -449,8 +458,8 @@ users.forEach((user) => {
                 updates.name && cy.get("input").clear().type(updates.name);
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id).should("be.visible");
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                cy.contains(project.id).should("be.visible");
               });
 
               cy.contains("#project-summary div", /description/i).within(() => {
@@ -514,8 +523,8 @@ users.forEach((user) => {
                 cy.get("input").should("have.value", expected.name);
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id).should("be.visible");
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                cy.contains(project.id).should("be.visible");
               });
 
               cy.contains("#project-summary div", /description/i).within(() => {
@@ -613,7 +622,6 @@ users.forEach((user) => {
         const now = new Date();
         const defaultValues: ProjectFormData = {
           name: `${now.toLocaleDateString()} project`,
-          ext_id: `project-${now.getTime()}`,
           description: `Project created on ${now.toLocaleDateString()}`,
           is_active: true,
           qpu_seconds: 0,
@@ -625,7 +633,6 @@ users.forEach((user) => {
           {
             admin_email: "david.doe@example.com",
             user_emails: undefined,
-            ext_id: undefined,
             is_active: true,
             name: "fooo bar",
             description: "fancy description",
@@ -634,7 +641,6 @@ users.forEach((user) => {
           {
             admin_email: "david.doe@example.com",
             user_emails: ["tom.doe@example.com", "jane.doe@example.com"],
-            ext_id: "ebyaheru",
             is_active: true,
             name: "fenecansi owenyini",
             description: "Musa yateeza amajju",
@@ -643,7 +649,6 @@ users.forEach((user) => {
           {
             admin_email: "john.doe@example.com",
             user_emails: ["paul.doe@example.com"],
-            ext_id: "default project",
             is_active: true,
             name: undefined,
             description: "Bulyomu akajunwa hwabwembazi za Ruhanga",
@@ -652,7 +657,6 @@ users.forEach((user) => {
           {
             admin_email: "new.user@xample.com",
             user_emails: [],
-            ext_id: "some-other-ext-id-5",
             is_active: true,
             name: "Mukama ahaisibwe",
             description: undefined,
@@ -680,7 +684,7 @@ users.forEach((user) => {
                 ]),
               ];
 
-              cy.contains("#projects-table button", /new/i).realClick();
+              cy.contains("#projects-table button", /new/i).click();
 
               // sidebar placeholder should not exist
               cy.get("#sidebar-placeholder").should("not.exist");
@@ -689,12 +693,23 @@ users.forEach((user) => {
                 "be.visible"
               );
 
+              // the email fields complete from the directory, so a superuser does
+              // not have to remember an exact address
+              cy.get("#create-project input#admin_email").type("doe");
+              cy.get("[data-cy-suggestions] [role='option']")
+                .should("have.length.at.least", 1)
+                .first()
+                .then(($option) => {
+                  const suggested = $option.text();
+                  cy.wrap($option).click();
+                  cy.get("#create-project input#admin_email").should(
+                    "have.value",
+                    suggested
+                  );
+                });
+
               cy.contains("#create-project div", /name/i).within(() => {
                 project.name && cy.get("input").clear().type(project.name);
-              });
-
-              cy.contains("#create-project div", /external id/i).within(() => {
-                project.ext_id && cy.get("input").clear().type(project.ext_id);
               });
 
               cy.contains("#create-project div", /description/i).within(() => {
@@ -811,8 +826,9 @@ users.forEach((user) => {
                   );
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id ?? /project-\d+/i).should(
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                // the id is given by the API, so only that there is one is known
+                cy.contains(/\w+/).should(
                   "be.visible"
                 );
               });
@@ -891,7 +907,7 @@ users.forEach((user) => {
     isAdmin &&
       it("cancelling project creation goes back to the default placeholder", () => {
         cy.viewport(1728, 1117);
-        cy.contains("#projects-table button", /new/i).realClick();
+        cy.contains("#projects-table button", /new/i).click();
 
         cy.get("#sidebar-placeholder").should("not.exist");
         cy.contains("#create-project button", /cancel/i)
@@ -905,7 +921,7 @@ users.forEach((user) => {
     isAdmin &&
       it("clicking x on the create project card header goes back to the default holder", () => {
         cy.viewport(1728, 1117);
-        cy.contains("#projects-table button", /new/i).realClick();
+        cy.contains("#projects-table button", /new/i).click();
 
         cy.get("#sidebar-placeholder").should("not.exist");
         cy.contains("#create-project div.justify-between", /new project/i)
@@ -955,7 +971,7 @@ users.forEach((user) => {
           cy.wrap({ el, idx }).then((obj) => {
             const project = projects[obj.idx];
             if (project) {
-              cy.contains("#projects-table button", /new/i).realClick();
+              cy.contains("#projects-table button", /new/i).click();
               cy.get("#create-project").should("be.visible");
               cy.get("#project-summary").should("not.exist");
               cy.get("#sidebar-placeholder").should("not.exist");
@@ -970,8 +986,8 @@ users.forEach((user) => {
                 cy.get("input").should("have.value", project.name);
               });
 
-              cy.contains("#project-summary div", /external id/i).within(() => {
-                cy.contains(project.ext_id).should("be.visible");
+              cy.contains("#project-summary div", /^ID/).within(() => {
+                cy.contains(project.id).should("be.visible");
               });
 
               cy.contains("#project-summary div", /description/i).within(() => {

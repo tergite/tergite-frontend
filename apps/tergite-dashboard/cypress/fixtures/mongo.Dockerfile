@@ -17,4 +17,6 @@ RUN apt-get update && apt-get install -y socat curl && rm -rf /var/lib/apt/lists
 EXPOSE 27017 3001
 
 # Start MongoDB and HTTP server
-CMD ["sh", "-c", "mongod --bind_ip_all & sleep 5 && nohup socat TCP-LISTEN:3001,reuseaddr,fork EXEC:/usr/local/bin/router.sh & tail -f /dev/null"]
+# The TTL monitor runs every second, not every minute, so that the expired notices
+# are gone before a test asks for them
+CMD ["sh", "-c", "mongod --bind_ip_all --setParameter ttlMonitorSleepSecs=1 & sleep 5 && nohup socat TCP-LISTEN:3001,reuseaddr,fork EXEC:/usr/local/bin/router.sh & tail -f /dev/null"]

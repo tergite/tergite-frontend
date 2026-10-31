@@ -17,9 +17,11 @@ import socket
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import aiosmtplib
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
+    Field,
     MongoDsn,
     RedisDsn,
     computed_field,
@@ -181,6 +183,62 @@ class Oauth2ClientConfig(BaseModel, extra="allow"):
     }
 
 
+class ProjectsConfig(BaseModel):
+    """Configuration for projects, including auto-created personal projects"""
+
+    # QPU seconds a personal project is created with. Default 0 keeps an unconfigured
+    # deployment behaving as it did before personal projects existed.
+    personal_qpu_seconds: float = 0
+
+    # notify the project admin when remaining QPU seconds fall below this
+    qpu_seconds_low_threshold: float = 600
+
+
+class EmailConfig(BaseModel):
+    """SMTP settings. Omit the whole table to disable the email channel."""
+
+    hostname: str = "localhost"
+    port: int = 587
+    username: str | bytes | None = None
+    password: str | bytes | None = None
+    timeout: float | None = aiosmtplib.smtp.DEFAULT_TIMEOUT
+    use_tls: bool = False
+    start_tls: bool | None = True
+
+    from_address: str
+    from_name: str = "Tergite"
+
+    # A helper protected property to help during initialization of the email SMTP
+    _non_smtp_fields = {
+        "from_address",
+        "from_name",
+    }
+
+    @property
+    def non_smtp_fields(self) -> set[str]:
+        """The fields that are not used when initializing the SMTP instance"""
+        return self._non_smtp_fields
+
+
+class NoticesConfig(BaseModel):
+    """Configuration for the notices service"""
+
+    # days a notification is kept before the TTL index removes it
+    retention_days: int = Field(default=90, ge=0)
+
+    # base URL of the dashboard, used for deep links in emails.
+    dashboard_url: str = ""
+
+    # seconds between outbox sweeps
+    email_sweep_interval: float = Field(default=60, gt=0)
+
+    # attempts before an email is marked failed
+    email_retry_limit: int = Field(default=3, ge=0)
+
+    # the name of the application as will be seen in the email notices
+    app_name: str = "Tergite"
+
+
 class AuthConfig(BaseModel):
     """Configration for auth"""
 
@@ -239,6 +297,15 @@ class AppConfig(BaseModel, extra="allow"):
     # configuration for authentication
     auth: AuthConfig
 
+    # configuration for projects and personal projects
+    projects: ProjectsConfig = ProjectsConfig()
+
+    # configuration for notices
+    notices: NoticesConfig = NoticesConfig()
+
+    # SMTP settings; None disables the email channel entirely
+    email: Optional[EmailConfig] = None
+
     # cache for the backends dict
     _backends_dict: Dict[str, BccConfig] = None
 
@@ -251,6 +318,15 @@ class AppConfig(BaseModel, extra="allow"):
         if self._backends_dict is None:
             self._backends_dict = {item.name: item for item in self.backends}
         return self._backends_dict
+
+    @model_validator(mode="after")
+    def dashboard_url_required_for_email(self) -> "AppConfig":
+        """Silently sending mail with dead links is worse than failing at startup"""
+        if self.email is not None and not self.notices.dashboard_url:
+            raise ValueError(
+                "notices.dashboard_url is required when [email] is configured"
+            )
+        return self
 
     @classmethod
     def from_json_str(cls, data_str: str) -> "AppConfig":

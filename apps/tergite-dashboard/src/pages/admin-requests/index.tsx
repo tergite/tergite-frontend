@@ -5,9 +5,10 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import {
+  allAdminProjectsQuery,
   allUserRequestsQuery,
   currentUserQuery,
-  refreshAllAdminQueries,
+  refreshMyRequests,
   refreshMyProjectsQueries,
 } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
@@ -29,10 +30,14 @@ import { Row, RowSelectionState } from "@tanstack/react-table";
 export function AdminRequests() {
   const queryClient = useQueryClient();
   const { currentUser } = useLoaderData() as AdminRequestsData;
+  const { data: projects = [] } = useQuery(
+    allAdminProjectsQuery({ currentUser })
+  );
   const { data: requests = [] } = useQuery(
     allUserRequestsQuery({
       status: UserRequestStatus.PENDING,
       currentUser,
+      projectList: projects,
     })
   );
 
@@ -58,7 +63,7 @@ export function AdminRequests() {
   );
 
   const handleRequestReaction = useCallback(async () => {
-    await refreshAllAdminQueries(queryClient);
+    await refreshMyRequests(queryClient);
     await refreshMyProjectsQueries(queryClient);
     // clear selected rows
     setRowSelection({});

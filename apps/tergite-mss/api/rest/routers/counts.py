@@ -12,13 +12,15 @@
 
 """Routes for getting counts of different records"""
 from datetime import datetime
+from typing import List, Optional
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Query
 
 from api.rest.dependencies import CurrentUserDep, CurrentUserIdDep, MongoDbDep
-from services import notices as notice_service
+from services import notices as notices_service
 from services.auth.users.dtos import User
+from services.notices.dtos import NoticeTypeId
 from utils.api import CountsResponse
 
 router = APIRouter(prefix="/counts", tags=["counts"])
@@ -36,23 +38,28 @@ async def get_notice_count(
     min_expires_utc: datetime = Query(None),
     max_expires_utc: datetime = Query(None),
     include_dismissed: bool = Query(False),
+    types: List[NoticeTypeId] = Query((), alias="type"),
+    is_read: Optional[bool] = Query(None),
 ) -> CountsResponse:
-    """Gets the number of notices of current user that fulfill a given
+    """Gets the number of notices that fulfill the given filters
 
     Args:
+        db: the MongoDB database where the notices are stored
         current_user: the current logged in user
-        user_id: The IDs of the users to retrieve notices for
+        user_id: The IDs of the users to retrieve notices for; only superusers can set it
         min_start_utc: The minimum UTC timestamp the notice should start
         max_start_utc: The maximum UTC timestamp the notice should start
         min_expires_utc: The minimum UTC timestamp the notice should expire
         max_expires_utc: The maximum UTC timestamp the notice should expire
         include_dismissed: whether to include dismissed notices; defaults to False
+        types: the types to filter by; repeat the param for many
+        is_read: filter on read state; default = None i.e. either
     """
     # Make sure for ordinary users, the user id is always of the current user
     if not current_user.is_superuser:
         user_id = current_user.id
 
-    count = await notice_service.count_many_notices(
+    count = await notices_service.count_many(
         db,
         user_id=user_id,
         min_start_utc=min_start_utc,
@@ -60,6 +67,8 @@ async def get_notice_count(
         min_expires_utc=min_expires_utc,
         max_expires_utc=max_expires_utc,
         include_dismissed=include_dismissed,
+        types=types,
+        is_read=is_read,
     )
     return {"count": count}
 

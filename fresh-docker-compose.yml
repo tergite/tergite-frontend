@@ -18,6 +18,8 @@ services:
     depends_on:
       tergite-redis:
         condition: service_healthy
+      mailpit:
+        condition: service_healthy
     image: "tergite/tergite-mss:${MSS_VERSION:-v0.4.0}"
     build:
       context: apps/tergite-mss
@@ -41,7 +43,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'wget -qO- --server-response --tries=1 --quiet http://mss:${MSS_PORT:-80}/devices/ 2>&1 | grep -q "HTTP/1.1 200" || exit 1',
+          'wget -qO- --server-response --tries=1 --quiet http://mss:${MSS_PORT:-80}/health 2>&1 | grep -q "HTTP/1.1 200" || exit 1',
         ]
       interval: 10s
       timeout: 5s
@@ -72,7 +74,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'wget -qO- --server-response --tries=1 --quiet http://dashboard:80 2>&1 | grep -q "HTTP/1.1 200" || exit 1',
+          'wget -qO- --server-response --tries=1 --quiet http://dashboard:80/health 2>&1 | grep -q "HTTP/1.1 200" || exit 1',
         ]
       interval: 10s
       timeout: 5s
@@ -93,5 +95,23 @@ services:
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  mailpit:
+    restart: unless-stopped
+    image: axllent/mailpit:v1.30
+    logging:
+      driver: ${LOGGING_DRIVER}
+    environment:
+      - TZ=Europe/Stockholm
+      - MP_DATABASE=/data/mailpit.db
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    env_file:
+      - .env
+    volumes:
+      - ./.data/mailpit:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"

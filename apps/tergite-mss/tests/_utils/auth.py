@@ -26,12 +26,12 @@ from utils.config import UserRole
 
 TEST_PROJECT_ID = "bf4876d01e60f05ebc9fac9e"
 TEST_NO_QPU_PROJECT_ID = "fd530427c7141f2693aa850b"
-TEST_PROJECT_EXT_ID = "test-project-1"
-TEST_NO_QPU_PROJECT_EXT_ID = "no-qpu-project-1"
 TEST_USER_ID = "8154077d9cb952b92453d575"
 TEST_SUPERUSER_ID = "de7ddbd2500951be940356a2"
 TEST_SYSTEM_USER_ID = "6431c4a4508205d9d43015fe"
+TEST_OUTSIDER_ID = "9264188e0dc063ea3564e686"
 TEST_USER_EMAIL = "john.doe@example.com"
+TEST_OUTSIDER_EMAIL = "outsider.doe@example.com"
 TEST_SUPERUSER_EMAIL = "jane.doe@example.com"
 TEST_SYSTEM_USER_EMAIL = "system.doe@example.com"
 TEST_APP_TOKEN_STRING = "46-0Jhgb1_thq8MqIF0SlVHoS8rFPiLBFL33XO_eJ7I"
@@ -83,6 +83,14 @@ TEST_USER_DICT = dict(
     hashed_password=_password_helper.hash(_password_helper.generate()),
     is_verified=True,
 )
+# a plain user who administers nothing and belongs to no project
+TEST_OUTSIDER_DICT = dict(
+    _id=PydanticObjectId(TEST_OUTSIDER_ID),
+    email=TEST_OUTSIDER_EMAIL,
+    roles=[UserRole.USER],
+    hashed_password=_password_helper.hash(_password_helper.generate()),
+    is_verified=True,
+)
 TEST_SYSTEM_USER_DICT = dict(
     _id=PydanticObjectId(TEST_SYSTEM_USER_ID),
     email=TEST_SYSTEM_USER_EMAIL,
@@ -92,29 +100,29 @@ TEST_SYSTEM_USER_DICT = dict(
 )
 USER_ID_EMAIL_MAP = {
     TEST_USER_ID: TEST_USER_EMAIL,
+    TEST_OUTSIDER_ID: TEST_OUTSIDER_EMAIL,
     TEST_SUPERUSER_ID: TEST_SUPERUSER_EMAIL,
     TEST_SYSTEM_USER_ID: TEST_SYSTEM_USER_EMAIL,
 }
-
+TEST_PROJECT_NAME = "test-project"
 TEST_PROJECT_DICT = dict(
     _id=PydanticObjectId(TEST_PROJECT_ID),
-    name="test-project",
+    name=TEST_PROJECT_NAME,
     description="some default project",
-    ext_id=TEST_PROJECT_EXT_ID,
-    admin_id=TEST_USER_ID,
-    user_ids=[TEST_USER_ID, TEST_SYSTEM_USER_ID],
+    admin_id=PydanticObjectId(TEST_USER_ID),
+    user_ids=[PydanticObjectId(TEST_USER_ID), PydanticObjectId(TEST_SYSTEM_USER_ID)],
     qpu_seconds=108000000000000,
     created_at="2024-09-20T09:12:00.733Z",
     updated_at="2024-09-20T09:12:00.733Z",
 )
 
+TEST_NO_QPU_PROJECT_NAME = "test-no-qpu-project"
 TEST_NO_QPU_PROJECT_DICT = dict(
     _id=PydanticObjectId(TEST_NO_QPU_PROJECT_ID),
-    name="test-no-qpu-project",
+    name=TEST_NO_QPU_PROJECT_NAME,
     description="some project without QPU seconds",
-    ext_id=TEST_NO_QPU_PROJECT_EXT_ID,
-    admin_id=TEST_USER_ID,
-    user_ids=[TEST_USER_ID],
+    admin_id=PydanticObjectId(TEST_USER_ID),
+    user_ids=[PydanticObjectId(TEST_USER_ID)],
     qpu_seconds=-108000,
     created_at="2024-09-20T09:12:00.733Z",
     updated_at="2024-09-20T09:12:00.733Z",
@@ -124,7 +132,7 @@ TEST_APP_TOKEN_DICT = dict(
     title="test-token",
     token=TEST_APP_TOKEN_STRING,
     user_id=TEST_USER_DICT["_id"],
-    project_ext_id=TEST_PROJECT_EXT_ID,
+    project_id=TEST_PROJECT_DICT["_id"],
     lifespan_seconds=3600,
 )
 
@@ -132,7 +140,7 @@ TEST_NO_QPU_APP_TOKEN_DICT = dict(
     title="no-qpu-token",
     token=TEST_NO_QPU_APP_TOKEN_STRING,
     user_id=TEST_USER_DICT["_id"],
-    project_ext_id=TEST_NO_QPU_PROJECT_EXT_ID,
+    project_id=TEST_NO_QPU_PROJECT_DICT["_id"],
     lifespan_seconds=3600,
 )
 
@@ -140,7 +148,7 @@ TEST_SYSTEM_USER_TOKEN_DICT = dict(
     title="system-user-token",
     token=TEST_SYSTEM_USER_APP_TOKEN_STRING,
     user_id=TEST_SYSTEM_USER_DICT["_id"],
-    project_ext_id=TEST_PROJECT_EXT_ID,
+    project_id=TEST_PROJECT_DICT["_id"],
     lifespan_seconds=3600,
 )
 
@@ -150,6 +158,7 @@ def init_test_auth(db: database.Database):
     insert_if_not_exist(db, User, TEST_USER_DICT)
     insert_if_not_exist(db, User, TEST_SUPERUSER_DICT)
     insert_if_not_exist(db, User, TEST_SYSTEM_USER_DICT)
+    insert_if_not_exist(db, User, TEST_OUTSIDER_DICT)
     insert_if_not_exist(db, Project, TEST_PROJECT_DICT)
     insert_if_not_exist(db, Project, TEST_NO_QPU_PROJECT_DICT)
     insert_if_not_exist(db, AppToken, TEST_APP_TOKEN_DICT)
@@ -216,6 +225,11 @@ def get_jwt_token(
     return generate_jwt(
         data=data, secret=secret, lifetime_seconds=ttl, algorithm="HS256"
     )
+
+
+def get_auth_cookie(user_id: str) -> Dict[str, str]:
+    """Generates the authorization cookie for the given user_id"""
+    return {"some-cookie": get_jwt_token(user_id)}
 
 
 def is_valid_jwt(token: str, secret: str = TEST_JWT_SECRET) -> bool:

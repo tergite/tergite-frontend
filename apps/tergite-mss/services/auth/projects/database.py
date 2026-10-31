@@ -11,48 +11,78 @@
 # that they have been altered from the originals.
 
 """Definition of the FastAPIUsers-inspired Database adapter for projects"""
-from typing import Any, Dict, List, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional
 
 from beanie import PydanticObjectId, UpdateResponse
-from beanie.odm.operators.find.logical import Or
 from beanie.odm.operators.update.general import Inc
 from fastapi_users.models import ID
+from pymongo.errors import DuplicateKeyError
+
+from utils.config import ProjectsConfig
+from utils.crypto import generate_linked_id
 
 from .dtos import Project
+from .exc import ProjectExists
+
+if TYPE_CHECKING:
+    from services.auth.users.dtos import User
 
 
 class ProjectDatabase:
     """Database adapter for accessing projects"""
 
-    async def get(self, id: ID) -> Optional[Project]:
+    def __init__(self, conf: ProjectsConfig):
+        self.conf = conf
+
+    @staticmethod
+    async def get(pk: ID) -> Optional[Project]:
         """Get a single project by id."""
-        return await Project.get(id)  # type: ignore
+        return await Project.get(pk)
+
+    async def create_personal_project_if_not_exist(self, user: "User") -> Project:
+        """Creates the user's personal project if they do not have one yet.
+
+        Args:
+            user: the user whose personal project is required
+
+        Returns:
+            the personal project
+        """
+        project_id = generate_linked_id(user.id, namespace="project")
+        existing = await Project.get(project_id)
+        if existing is not None:
+            return existing
+
+        project = Project(
+            id=project_id,
+            name=f"{user.username} (personal)",
+            description=f"{user.username} personal project",
+            qpu_seconds=self.conf.personal_qpu_seconds,
+            admin_id=user.id,
+            user_ids=[user.id],
+            is_personal=True,
+        )
+        try:
+            await project.create()
+        except DuplicateKeyError:
+            return await Project.get(project_id)
+
+        return project
 
     @staticmethod
-    async def get_by_ext_id(ext_id: str) -> Optional[Project]:
-        """Get a single project by ext_id."""
-        return await Project.find_one(Project.ext_id == ext_id)
-
-    @staticmethod
-    async def get_by_ext_and_user_email_or_id(
-        ext_id: str, user_email: Optional[str] = None, user_id: Optional[str] = None
+    async def get_if_member(
+        pk: PydanticObjectId, user_id: PydanticObjectId
     ) -> Optional[Project]:
-        """Get a single project by ext_id and user_email.
-
-        The user_email must be among the Project's user emails
+        """Get a single project by its primary key if the given user is a member else return None
 
         Args:
             user_id: the id of the given user
-            user_email: the email of the given user
-            ext_id: the external id of the project
+            pk: the external id of the project
 
         Returns:
-            the project that matches the filter
+            the project if it exists and user is a member or None
         """
-        return await Project.find_one(
-            Project.ext_id == ext_id,
-            Or(Project.user_emails == user_email, Project.user_ids == user_id),
-        )
+        return await Project.find_one(Project.id == pk, Project.user_ids == user_id)
 
     @staticmethod
     async def get_many(
@@ -77,9 +107,16 @@ class ProjectDatabase:
         ).to_list()
 
     async def create(self, create_dict: Dict[str, Any]) -> Project:
-        """Create a project."""
+        """Create a project.
+
+        Raises:
+            ProjectExists: a project of the same name exists
+        """
         project = Project(**create_dict)
-        await project.create()
+        try:
+            await project.create()
+        except DuplicateKeyError:
+            raise ProjectExists()
         return project
 
     async def update(self, project: Project, update_dict: Dict[str, Any]) -> Project:
@@ -94,7 +131,7 @@ class ProjectDatabase:
         await project.delete()
 
     @staticmethod
-    async def increment_qpu_seconds(project_id: str, qpu_seconds: float):
+    async def increment_qpu_seconds(project_id: PydanticObjectId, qpu_seconds: float):
         """Increments the QPU seconds of the given project
 
         Args:
@@ -104,9 +141,8 @@ class ProjectDatabase:
         Returns:
             the updated document
         """
-        return await Project.find_one(
-            Project.id == PydanticObjectId(project_id)
-        ).update(
+        result = Project.find_one(Project.id == project_id).update(
             Inc({Project.qpu_seconds: qpu_seconds}),
             response_type=UpdateResponse.NEW_DOCUMENT,
         )
+        return await result

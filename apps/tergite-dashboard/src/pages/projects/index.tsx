@@ -8,6 +8,7 @@ import {
   currentUserQuery,
   myProjectsQpuTimeRequestsQuery,
   myProjectsQuery,
+  myRequestsQuery,
   refreshMyProjectsQueries,
 } from "@/lib/api-client";
 import { loadOrRedirectIfAuthErr } from "@/lib/utils";
@@ -22,7 +23,8 @@ import {
 import { ProjectsTable } from "./components/project-table";
 import { ProjectsSidebar } from "./components/projects-sidebar";
 import { Row, RowSelectionState } from "@tanstack/react-table";
-import { useLoaderData } from "react-router-dom";
+import { Link, useLoaderData } from "react-router-dom";
+import { RequestAccessDialog } from "./components/request-access-dialog";
 
 export function Projects() {
   const queryClient = useQueryClient();
@@ -33,6 +35,9 @@ export function Projects() {
       status: UserRequestStatus.PENDING,
       projects,
     })
+  );
+  const { data: pendingApprovals = [] } = useQuery(
+    myRequestsQuery({ role: "approver", status: UserRequestStatus.PENDING }),
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const selectedProjectIdx = useMemo(() => {
@@ -65,7 +70,21 @@ export function Projects() {
     <main className="grid flex-1 items-start gap-4 grid-cols-1 p-4 sm:px-6 sm:py-0 xl:grid-cols-4">
       <Card className="col-span-1 xl:pt-3 xl:col-span-3">
         <CardHeader>
-          <CardDescription>Projects</CardDescription>
+          <div className="flex items-center justify-between gap-2">
+            <CardDescription>Projects</CardDescription>
+            <div className="flex items-center gap-2">
+              {pendingApprovals.length > 0 && (
+                <Link
+                  to="/approvals"
+                  data-cy-approvals-link
+                  className="text-sm underline"
+                >
+                  {pendingApprovals.length} awaiting your approval
+                </Link>
+              )}
+              <RequestAccessDialog />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <ProjectsTable
@@ -83,7 +102,11 @@ export function Projects() {
         project={projects[selectedProjectIdx]}
         className="order-first xl:order-none col-span-1"
         onDelete={handleProjectDelete}
-        canDelete={projects[selectedProjectIdx]?.admin_id === currentUser.id}
+        canDelete={
+          projects[selectedProjectIdx]?.admin_id === currentUser.id &&
+          // the API refuses the owner deleting their own, superusers aside
+          !projects[selectedProjectIdx]?.is_personal
+        }
       />
     </main>
   );

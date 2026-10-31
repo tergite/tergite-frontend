@@ -14,6 +14,7 @@
 from typing import Optional
 
 from fastapi.requests import Request
+from fastapi.responses import Response
 from fastapi_users import BaseUserManager, models
 from fastapi_users.db import BaseUserDatabase
 from fastapi_users.password import PasswordHelperProtocol
@@ -34,6 +35,24 @@ class UserManager(ObjectIDIDMixin, BaseUserManager):
         self.__email_validator = (
             email_validator if email_validator else EmailRegexValidator()
         )
+
+    async def on_after_login(
+        self,
+        user: models.UP,
+        request: Optional[Request] = None,
+        response: Optional[Response] = None,
+    ) -> None:
+        """Ensures the user has their personal project.
+
+        Done on login rather than registration so that users predating this feature, and
+        stub users created by admins listing unknown emails on a project, also get one.
+        """
+        # imported here because projects imports this module at import time
+        from ..projects import get_project_db
+
+        project_db = await get_project_db()
+
+        await project_db.create_personal_project_if_not_exist(user)
 
     async def oauth_callback(
         self,

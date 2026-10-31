@@ -7,21 +7,80 @@ and this project follows versions of format `{year}.{month}.{patch_number}`.
 
 ## [Unreleased]
 
-### Changed
-
-- Removed puhuri support as this is not in the long term plans for maintenance
-
 ### Added
 
+- Added the `id`, `user_ids`, `name`, `is_active`, `min_qpu_seconds` and `max_qpu_seconds` filters
+  of GET `/admin/projects/` to GET `/me/projects/`, which ignored them, so the dashboard's list of
+  active projects also showed inactive ones.
+- Added `GET /admin/users/emails/`, a superuser-only lookup of user email addresses behind the
+  admin project forms.
+- Added an unlogged `GET /health` for the container healthcheck.
+- Added `project-membership-granted` and `project-admin-assigned` notifications, emitted when an
+  admin creates or edits a project, or approves a request to create one. Being added to a project,
+  or handed one to administer, was silent; only removal was announced.
+- Added `qpu-seconds-low` and `qpu-seconds-depleted` notifications, raised as a job's usage takes a
+  project below `projects.qpu_seconds_low_threshold` (default 600) or to zero. The admin hears about
+  running low, admin and members both hear about running out; previously the first sign was a
+  rejected job.
+- Added an optional email copy of every notification, configured under `[email]` with
+  `notices.dashboard_url`. Omit `[email]` and nothing changes. Sending is done by a
+  background sweeper reading the notification rows themselves, so an approval is never as slow
+  as the mail server and a restart resumes the queue rather than losing it.
+- Personal projects are now named after the owner's email local part, e.g.
+  `paul.doe (personal)`, so an admin listing projects no longer sees a column of
+  identically named rows.
+- Added an auto-created personal project for every user, granted on login with
+  `projects.personal_qpu_seconds` (default 0). Previously a new user had no project and so
+  could not create an app token or submit a job without an admin adding them to one.
+- Added DELETE `/me/projects/{_id}/members/{member_id}` so a project admin can remove a member,
+  which also revokes that member's app tokens for the project. Previously only a superuser could
+  change membership, so a mistaken approval needed an email to an operator.
+- Added in-app notifications as notices: GET `/me/notices/`, POST `/me/notices/{id}/dismiss` and
+  `/me/notices/{id}/unread` or, for all at once, `/me/notices/dismiss` and `/me/notices/unread`,
+  GET/PUT `/me/notices/preferences/` for email opt-outs, and `type` filters on GET
+  `/admin/notices` and, with `is_read`, on GET `/counts/notices`. Requesters are now told when a
+  request of theirs is decided, and approvers when one needs them; previously neither side
+  learned anything without checking the dashboard.
+- Added POST `/me/requests/`, GET `/me/requests/` and PUT `/me/requests/{_id}` so users can ask
+  to join, create, close or transfer a project, or for QPU time, and whoever may decide can
+  approve or reject. Previously only a superuser could change a project.
 - Integrated `loguru` for clean, structured, and environment-dependent logging.
 - Added flat JSON log formatter in production for seamless Docker and `journalctl` ingestion.
 - Added standard logging `InterceptHandler` to capture and route logs from Uvicorn, FastAPI, and Beanie/Motor to Loguru.
-- Added request correlation tracking via `logger.contextualize` in a unified request-response logging middleware.
-- Added smart traceback capture in exception handlers (logs full tracebacks for `500+` server errors, logs `4xx` client errors as warnings without tracebacks).
+- Added smart traceback capture in exception handlers 
+  (logs full tracebacks for `500+` server errors, logs `4xx` client errors as warnings without tracebacks).
 - Added lifecycle process start/shutdown messages and OAuth2 client provider registration logs.
+
+### Changed
+
+- The low and depleted QPU warnings come only from the job that crosses the threshold or zero,
+  so the jobs after it do not repeat them.
+- A superuser can delete a personal project, for offboarding or an erasure request; only the
+  owner is refused, since deleting their own would hand them a fresh allowance on next login.
+  An earlier iteration refused everyone, leaving no route but editing the database by hand.
+- Project responses now include `is_personal`. Clients asserting on exact response bodies will
+  see the new field.
+- Removed puhuri support as this is not in the long term plans for maintenance
+- [BREAKING]: Changed `/admin/qpu-user-requests` to `/me/requests` endpoints; 
+  expanding it to handle all types of user requests
+- [BREAKING]: Changed `/admin/bcc-users` to `/admin/bcc/users` endpoints
+- [BREAKING]: Changed `/admin/recalibration` to `/admin/bcc/recalibration` endpoints
+- [BREAKING]: Changed `/admin/switch` to `/admin/bcc/switch` endpoints
+- [BREAKING]: Changed GET `/me` profile endpoint to GET `/me/profile`
+- [BREAKING]: Remove `ext_id`, `source` and `resource_ids` from project schema
+- [BREAKING]: Changed the schema of beanie mongodb's strict even at the database level.
 
 ### Fixed
 
+- Fixed GET `/me/profile` reporting `is_superuser` as false for every user, admins included.
+- An unhandled server error now answers with a 500 carrying the CORS headers. Errors with no
+  handler of their own were turned into a response outside the CORS middleware, so a browser
+  reported "Failed to fetch" and a CORS violation instead of the error that actually happened.
+- Deciding a request now marks the "please decide this" notification read for every eligible
+  approver. Deciding anywhere but the notifications dropdown left the prompt to be cleared by
+  hand, once per approver.
+- Fixed approving a project access request failing with "Cannot apply $addToSet to non-array
+  field" on any project whose member lists were stored as null rather than empty.
 - Fixed error OAUTH_USER_ALREADY_EXISTS when a user signs in with a different Oauth provider but same email.
 
 ## [2026.06.0] - 2026-06-26

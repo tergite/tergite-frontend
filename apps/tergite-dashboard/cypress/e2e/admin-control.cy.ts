@@ -13,23 +13,23 @@ import { type Device, type User, UserRole } from "../../types";
  */
 interface NoticeFixture {
   id: string;
-  starts_at_offset_hours: number;
-  expires_at_offset_hours: number;
-  target_user_ids: string[] | null;
-  dismissed_by: string[];
+  type: string;
+  starts_at_offset_hours: number | null;
+  expires_at_offset_hours: number | null;
 }
 
 /**
- * Returns every notice that is temporally active at the supplied reference
+ * Returns every custom notice that is temporally active at the supplied reference
  * time, mirroring the admin NoticesCard query which omits user_id and sets
  * include_dismissed: true.
  *
  * A notice is active when:
+ *  - it is a custom one      (type is custom or custom-broadcast)
  *  - it has already started  (starts_at <= now)
  *  - it has not yet expired  (expires_at >= now)
  *
- * No target_user_ids or dismissed_by filtering is applied because the admin
- * panel shows all system notices regardless of audience.
+ * No user_id or dismissed_by filtering is applied because the admin panel
+ * shows every custom notice regardless of audience, one per recipient.
  */
 function getAllActiveNotices(
   notices: NoticeFixture[],
@@ -37,9 +37,9 @@ function getAllActiveNotices(
 ): NoticeFixture[] {
   const now = currentDate.getTime();
   return notices.filter((n) => {
-    const startsAt = now + n.starts_at_offset_hours * 3_600_000;
-    const expiresAt = now + n.expires_at_offset_hours * 3_600_000;
-    return startsAt <= now && expiresAt >= now;
+    const startsAt = now + (n.starts_at_offset_hours ?? 0) * 3_600_000;
+    const expiresAt = now + (n.expires_at_offset_hours ?? 0) * 3_600_000;
+    return n.type.startsWith("custom") && startsAt <= now && expiresAt >= now;
   });
 }
 
@@ -58,8 +58,6 @@ const onlineDevice = devices.find((d) => d.is_online)!; // Thor
 users.forEach((user) => {
   const isAdmin = user.roles.includes(UserRole.ADMIN);
   const username = getUsername(user);
-  let currentDateStr: string;
-  let currentDate: Date;
   let activeNotices: NoticeFixture[];
   let activeNoticeCount: number;
 
@@ -72,11 +70,9 @@ users.forEach((user) => {
       const secret = Cypress.env("JWT_SECRET");
       const audience = Cypress.env("AUTH_AUDIENCE");
       const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
-      currentDateStr = Cypress.env("CURRENT_DATE");
-      currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
       // The admin NoticesCard fetches all notices with no user_id filter, so the
       // expected count is every notice that has started and not yet expired.
-      activeNotices = getAllActiveNotices(rawNotices, currentDate);
+      activeNotices = getAllActiveNotices(rawNotices, new Date());
       activeNoticeCount = activeNotices.length;
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("device-req");
@@ -84,17 +80,22 @@ users.forEach((user) => {
         "my-project-list"
       );
       cy.intercept("GET", `${apiBaseUrl}/calibrations/*`).as("calibration");
-      cy.intercept("GET", `${apiBaseUrl}/admin/recalibration/**/info**`).as(
-        "recalib-info"
+      cy.intercept(
+        "GET",
+        `${apiBaseUrl}/admin/bcc/recalibration/**/info**`
+      ).as("recalib-info");
+      cy.intercept(
+        "POST",
+        `${apiBaseUrl}/admin/bcc/recalibration/**/init**`
+      ).as("start-recalib");
+      cy.intercept(
+        "POST",
+        `${apiBaseUrl}/admin/bcc/recalibration/**/cancel**`
+      ).as("stop-recalib");
+      cy.intercept("POST", `${apiBaseUrl}/admin/bcc/switch/**/on`).as(
+        "switch-on"
       );
-      cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/**/init**`).as(
-        "start-recalib"
-      );
-      cy.intercept("POST", `${apiBaseUrl}/admin/recalibration/**/cancel**`).as(
-        "stop-recalib"
-      );
-      cy.intercept("POST", `${apiBaseUrl}/admin/switch/**/on`).as("switch-on");
-      cy.intercept("POST", `${apiBaseUrl}/admin/switch/**/off`).as(
+      cy.intercept("POST", `${apiBaseUrl}/admin/bcc/switch/**/off`).as(
         "switch-off"
       );
       cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
@@ -103,13 +104,13 @@ users.forEach((user) => {
         "delete-notice"
       );
       cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
+      cy.intercept("GET", `${apiBaseUrl}/me/notices/?*`).as("my-notices");
 
       // for the home page
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
       cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
       cy.intercept("GET", `${apiBaseUrl}/bookings/*`).as("my-bookings-list");
 
-      cy.clock(currentDate, ["Date"]);
       if (user.id) {
         cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
           (jwtToken) => {
@@ -149,7 +150,7 @@ users.forEach((user) => {
         // Just make sure the online device is online because the tests change this sometimes
         cy.request(
           "POST",
-          `${apiBaseUrl}/admin/switch/${onlineDevice.name}/on`
+          `${apiBaseUrl}/admin/bcc/switch/${onlineDevice.name}/on`
         );
 
         cy.wait("@my-project-list");
@@ -394,6 +395,18 @@ users.forEach((user) => {
         cy.get("[aria-label='Delete notice']").first().should("be.visible");
         // Each banner shows a severity label (info / warning / critical)
         cy.contains(/\b(info|warning|critical)\b/i).should("be.visible");
+      });
+
+      it("shows the active notice banner on an admin screen too", () => {
+        cy.wait("@my-notices");
+        // the banner used to be suppressed under /admin-*, so an admin never saw a
+        // notice until they navigated back out
+        cy.get('[data-testid="top-banner"]').should("be.visible");
+        cy.get('[data-testid="top-banner"] [aria-label="Dismiss notice"]').should(
+          "be.visible"
+        );
+        // the API token widget stays off: no project is selected here
+        cy.get('[data-testid="top-banner"] input#api-token').should("not.exist");
       });
 
       it("creates a new notice and increments the active count, showing a success toast", () => {

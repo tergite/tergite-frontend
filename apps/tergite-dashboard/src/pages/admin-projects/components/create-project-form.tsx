@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiInput } from "@/components/ui/multi-input";
+import { UserEmailInput } from "./user-email-input";
 import { useToast } from "@/hooks/use-toast";
 import { createAdminProject } from "@/lib/api-client";
 import { DateTime } from "luxon";
@@ -34,7 +35,6 @@ const formSchema = z.object({
   name: z.string().min(1),
   admin_email: z.string().email().min(1),
   description: z.string().min(1),
-  ext_id: z.string().min(1),
   user_emails: z.string().email().min(1).array().default([]),
   qpu_seconds: z.number().min(0).default(0),
   is_active: z.boolean().default(true),
@@ -58,7 +58,6 @@ export function CreateProjectForm({
       qpu_seconds: 0,
       admin_email: "",
       user_emails: [],
-      ext_id: `project-${now.toMillis()}`,
     },
   });
 
@@ -122,27 +121,6 @@ export function CreateProjectForm({
                             Name
                           </Label>
                           <Input id="name" type="string" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={createForm.control}
-                  name="ext_id"
-                  render={({ field }) => (
-                    <FormItem className="">
-                      <FormControl>
-                        <div className="">
-                          <Label
-                            className="text-muted-foreground"
-                            htmlFor="ext_id"
-                          >
-                            External ID
-                          </Label>
-                          <Input id="ext_id" type="string" {...field} />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -238,7 +216,8 @@ export function CreateProjectForm({
                           >
                             Admin email
                           </Label>
-                          <Input id="admin_email" type="email" {...field} />
+                          <UserEmailInput id="admin_email" type="email" {...field}
+                          />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -263,6 +242,7 @@ export function CreateProjectForm({
                             id="user_emails"
                             type="email"
                             {...field}
+                            InputComponent={UserEmailInput}
                           />
                         </div>
                       </FormControl>

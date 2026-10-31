@@ -111,12 +111,12 @@ export function loader(appState: AppState, queryClient: QueryClient) {
       cachedProjects ?? (await queryClient.fetchQuery(myProjectsQuery));
 
     const currentProject = projectList.filter(
-      (v) => v.ext_id === appState.currentProjectExtId
+      (v) => v.id === appState.currentProjectId
     )[0];
 
     // tokens
     const tokensQuery = myTokensQuery({
-      project_ext_id: currentProject?.ext_id,
+      project_id: currentProject?.id,
       projectList,
     });
 

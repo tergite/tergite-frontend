@@ -74,7 +74,7 @@ export function Topbar({
             None
           </Button>
           {projects.map((project) => (
-            <SelectItem value={project.ext_id} key={project.ext_id}>
+            <SelectItem value={project.id} key={project.id}>
               {project.name}
             </SelectItem>
           ))}
@@ -92,10 +92,9 @@ export function Topbar({
           <DropdownMenuLabel>{username}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link to="/projects">Projects</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/tokens">Tokens</Link>
+            <Link to="/settings" data-cy-settings-link>
+              Settings
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
 
@@ -110,7 +109,7 @@ interface TopbarProps {
   currentProject?: string;
   currentUser: User;
   projects: Project[];
-  onProjectChange: (projectExtId?: string) => void;
+  onProjectChange: (projectId?: string) => void;
   onLogout: () => void;
   pendingRequestsTotal: number;
   isUserAdmin: boolean;

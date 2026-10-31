@@ -24,6 +24,8 @@ from utils.exc import NotFoundError
 
 from .dtos import Device, DeviceUpsert
 
+# FIXME: Add init_strict_beanie and an on_startup function
+
 
 async def get_all_devices(
     db: AsyncIOMotorDatabase,

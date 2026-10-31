@@ -5,6 +5,7 @@ import userList from "../fixtures/users.json";
 import projectList from "../fixtures/projects.json";
 import userRequestList from "../fixtures/user-requests.json";
 import { generateJwt, getUsername } from "../../api/utils";
+import { getUserRequestDetails } from "../support/utils";
 import {
   type UserRequest,
   type Project,
@@ -12,19 +13,11 @@ import {
   UserRole,
   UserRequestStatus,
   UserRequestType,
-  AnyFlatRecord,
-  QpuTimeExtensionUserRequest,
 } from "../../types";
 
 const projects = [...projectList] as Project[];
 const projectsIndex = Object.fromEntries(projects.map((v, i) => [v.id, i]));
 const userRequests = [...userRequestList] as UserRequest[];
-const pendingUserRequests = userRequests.filter(
-  (v) => v.status === UserRequestStatus.PENDING
-);
-const qpuTimeRequests = pendingUserRequests.filter(
-  (v) => v.type === UserRequestType.PROJECT_QPU_SECONDS
-) as QpuTimeExtensionUserRequest[];
 const users = [...userList] as User[];
 
 const requestsTableHeaders = [
@@ -33,6 +26,7 @@ const requestsTableHeaders = [
   "Requested by",
   "Created",
   "Status",
+  "",
 ];
 const requestsTableDataProps = [
   "title",
@@ -40,11 +34,23 @@ const requestsTableDataProps = [
   "requester_name",
   "created_at",
   "status",
+  "actions",
 ];
 
 users.forEach((user) => {
   const isAdmin = user.roles.includes(UserRole.ADMIN);
   const username = getUsername(user);
+  // the page lists the pending requests awaiting this user's decision, newest first
+  const pendingUserRequests = userRequests
+    .filter(
+      (v) =>
+        v.status === UserRequestStatus.PENDING &&
+        v.target_user_ids.includes(user.id)
+    )
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const qpuTimeRequests = pendingUserRequests.filter(
+    (v) => v.type === UserRequestType.PROJECT_QPU_SECONDS
+  );
 
   describe(`admin user requests page for ${username}`, () => {
     const dashboardUrl = Cypress.config("baseUrl");
@@ -63,11 +69,8 @@ users.forEach((user) => {
         "my-active-project-list"
       );
       cy.intercept("GET", `${apiBaseUrl}/me/projects/?*`).as("my-project-list");
-      cy.intercept("GET", `${apiBaseUrl}/me`).as("my-user-info");
-      cy.intercept("GET", `${apiBaseUrl}/admin/qpu-time-requests/*`).as(
-        "my-qpu-requests-list"
-      );
-      cy.intercept("GET", `${apiBaseUrl}/admin/user-requests/*`).as(
+      cy.intercept("GET", `${apiBaseUrl}/me/profile`).as("my-user-info");
+      cy.intercept("GET", `${apiBaseUrl}/me/requests/?*`).as(
         "user-requests-list"
       );
 
@@ -100,7 +103,7 @@ users.forEach((user) => {
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] div", /requests/i).within(() => {
+        cy.get("[data-testid='sidebar'] a[href='/admin-requests']").within(() => {
           cy.contains(".bg-primary", `${pendingUserRequests.length}`);
         });
       });
@@ -115,7 +118,7 @@ users.forEach((user) => {
           .parent()
           .click();
 
-        cy.contains("[data-testid='sidebar'] div", /requests/i).within(() => {
+        cy.get("[data-testid='sidebar'] a[href='/admin-requests']").within(() => {
           cy.contains(".bg-primary", `${pendingUserRequests.length}`).should(
             "not.exist"
           );
@@ -128,7 +131,7 @@ users.forEach((user) => {
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] a", /requests/i).click();
+        cy.get("[data-testid='sidebar'] a[href='/admin-requests']").click();
         cy.url().should("equal", `${dashboardUrl}admin-requests`);
       });
 
@@ -138,7 +141,7 @@ users.forEach((user) => {
         cy.wait("@my-user-info");
         cy.url().should("equal", dashboardUrl);
 
-        cy.contains("[data-testid='sidebar'] a", /requests/i).should(
+        cy.get("[data-testid='sidebar'] a[href='/admin-requests']").should(
           "not.exist"
         );
       });
@@ -183,6 +186,12 @@ users.forEach((user) => {
                           } else if (prop === "status") {
                             expect(cell.td.text()).to.match(
                               new RegExp(cell.request[prop], "i")
+                            );
+                          } else if (prop === "actions") {
+                            // every row here is pending, so both quick
+                            // responses are offered
+                            expect(cell.td.text()).to.match(
+                              /approve\s*reject/i
                             );
                           } else if (prop === "title") {
                             expect(cell.td.text()).to.eql(
@@ -387,7 +396,7 @@ users.forEach((user) => {
 
             if (request) {
               const requestTitle = getTitle(request);
-              const requestBody = request.request as AnyFlatRecord;
+              const requestBody = getUserRequestDetails(request);
 
               cy.wrap(obj.el).realClick();
 
@@ -460,6 +469,23 @@ users.forEach((user) => {
       });
 
     isAdmin &&
+      it("approves straight from the row, without opening the request", () => {
+        cy.viewport(1080, 750);
+        cy.wait("@user-requests-list");
+
+        const title = getTitle(qpuTimeRequests[0]);
+        cy.contains(".bg-card tbody tr", title).within(() => {
+          cy.get("[data-cy-row-approve]").click();
+        });
+
+        cy.wait("@user-requests-list");
+        // the table lists only pending requests, so an approved one drops out
+        cy.contains(".bg-card tbody td", title).should("not.exist");
+        // and the row click never fired, so no detail panel opened
+        cy.get("#request-summary").should("not.exist");
+      });
+
+    isAdmin &&
       it("approving a QPU time request increases project QPU time and removes request from pending list", () => {
         cy.viewport(1080, 750);
         const projectsMap = Object.fromEntries(
@@ -469,7 +495,7 @@ users.forEach((user) => {
 
         for (const request of qpuTimeRequests) {
           cy.wrap({ request, projectsMap, counts }).then((obj) => {
-            const projectId = obj.request.request.project_id;
+            const projectId = obj.request.resource_id;
             const project = obj.projectsMap[projectId];
             const projectIdx = projectsIndex[projectId];
             const isProjectMember = project.user_ids.includes(user.id);
@@ -506,10 +532,10 @@ users.forEach((user) => {
             // update data
             obj.counts.pending -= 1;
             obj.projectsMap[projectId].qpu_seconds +=
-              obj.request.request.seconds;
+              obj.request.metadata.seconds ?? 0;
 
             // sidebar shows correct number
-            cy.contains("[data-testid='sidebar'] div", /requests/i).within(
+            cy.get("[data-testid='sidebar'] a[href='/admin-requests']").within(
               () => {
                 cy.contains(".bg-primary", `${obj.counts.pending}`);
               }
@@ -542,7 +568,7 @@ users.forEach((user) => {
 
         for (const request of qpuTimeRequests) {
           cy.wrap({ request, projectsMap, counts }).then((obj) => {
-            const projectId = obj.request.request.project_id;
+            const projectId = obj.request.resource_id;
             const project = obj.projectsMap[projectId];
             const projectIdx = projectsIndex[projectId];
             const isProjectMember = project.user_ids.includes(user.id);
@@ -580,7 +606,7 @@ users.forEach((user) => {
             obj.counts.pending -= 1;
 
             // sidebar shows correct number
-            cy.contains("[data-testid='sidebar'] div", /requests/i).within(
+            cy.get("[data-testid='sidebar'] a[href='/admin-requests']").within(
               () => {
                 cy.contains(".bg-primary", `${obj.counts.pending}`);
               }
@@ -611,11 +637,14 @@ users.forEach((user) => {
  * @param userRequest - the request whose title is to be obtained
  */
 function getTitle(userRequest: UserRequest): string {
-  const reqBody = userRequest.request as AnyFlatRecord;
+  // an admin sees every project, so knows the name of the one requested on
+  const project = projects[projectsIndex[userRequest.resource_id]];
+  const projectName = project?.name ?? userRequest.resource_id;
   return {
-    [UserRequestType.CLOSE_PROJECT]: `Close project '${reqBody.project_name}'`,
-    [UserRequestType.CREATE_PROJECT]: `Create new project '${reqBody.name}'`,
-    [UserRequestType.PROJECT_QPU_SECONDS]: `Add QPU time on project: '${reqBody.project_name}'`,
-    [UserRequestType.TRANSFER_PROJECT]: `Transfer project '${reqBody.project_name}'`,
+    [UserRequestType.CLOSE_PROJECT]: `Close project '${projectName}'`,
+    [UserRequestType.CREATE_PROJECT]: `Create new project '${userRequest.metadata.name}'`,
+    [UserRequestType.PROJECT_QPU_SECONDS]: `Add QPU time on project: '${projectName}'`,
+    [UserRequestType.TRANSFER_PROJECT]: `Transfer project '${projectName}'`,
+    [UserRequestType.PROJECT_ACCESS]: `Join project '${projectName}'`,
   }[userRequest.type];
 }

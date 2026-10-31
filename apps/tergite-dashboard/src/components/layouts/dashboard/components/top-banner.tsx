@@ -1,49 +1,42 @@
-import { BellIcon, Copy, RefreshCcw } from "lucide-react";
+import { Copy, RefreshCcw } from "lucide-react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AppStateContext } from "@/lib/app-state";
 import { copyToClipboard } from "@/lib/utils";
 import {
   createAppToken,
   refreshMyTokensQueries,
   apiBaseUrl,
-  noticesQuery,
-  noticeCountQuery,
+  myNoticesQuery,
 } from "@/lib/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NoticeBanner } from "@/components/ui/notice-banner";
 import { DateTime } from "luxon";
-import { User } from "types";
+import { CUSTOM_NOTICE_TYPES, User } from "../../../../../types";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Badge } from "@/components/ui/badge";
+import { NotificationsBell } from "./notifications";
 
-export function TopBanner({ currentUser }: Props) {
-  const { apiToken, setApiToken, currentProjectExtId } =
+export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
+  const { apiToken, setApiToken, currentProjectId } =
     useContext(AppStateContext);
   const queryClient = useQueryClient();
   const [timestamp, setTimestamp] = useState(DateTime.now().toISO());
-  const filters = {
-    user_id: currentUser?.id,
-    max_start_utc: timestamp,
-    min_expires_utc: timestamp,
-    include_dismissed: false,
-  };
 
   const appTokenCreation = useMutation({
     mutationKey: [
       apiBaseUrl,
       "me",
       "tokens",
-      "?project_ext_id=",
-      currentProjectExtId,
+      "?project_id=",
+      currentProjectId,
       "post",
     ],
-    async mutationFn({ projectExtId }: { projectExtId?: string }) {
-      if (projectExtId) {
+    async mutationFn({ projectId }: { projectId?: string }) {
+      if (projectId) {
         return await createAppToken({
-          title: `${projectExtId}-${new Date().getTime()}`,
-          project_ext_id: projectExtId,
+          title: `${projectId}-${new Date().getTime()}`,
+          project_id: projectId,
           lifespan_seconds: 7_200,
         });
       }
@@ -57,19 +50,32 @@ export function TopBanner({ currentUser }: Props) {
     throwOnError: true,
   });
 
-  const { data: notices } = useQuery(
-    noticesQuery({
-      ...filters,
-      sort: ["severity_number", "starts_at"],
-    }),
+  const { data: unreadNotices } = useQuery(
+    myNoticesQuery({ types: CUSTOM_NOTICE_TYPES, is_read: false })
   );
-  const { data: noticeCount } = useQuery(noticeCountQuery(filters));
+  // the most severe of the announcements in force, earliest first
+  const notices = useMemo(
+    () =>
+      unreadNotices
+        ?.filter(
+          (v) =>
+            (!v.starts_at || v.starts_at <= timestamp) &&
+            (!v.expires_at || v.expires_at > timestamp)
+        )
+        .sort(
+          (a, b) =>
+            a.severity_number - b.severity_number ||
+            (a.starts_at ?? "").localeCompare(b.starts_at ?? "")
+        ),
+    [unreadNotices, timestamp]
+  );
 
   const handleApiTokenCopy = useCallback(
     () => copyToClipboard(apiToken || ""),
-    [apiToken],
+    [apiToken]
   );
 
+  // FIXME: Use react query, come on!
   useEffect(() => {
     const interval = setInterval(() => {
       setTimestamp(DateTime.now().toISO());
@@ -85,44 +91,45 @@ export function TopBanner({ currentUser }: Props) {
           {notices?.slice(0, 1).map((notice) => (
             <NoticeBanner key={notice.id} notice={notice} />
           ))}
-          <Badge variant="outline">
-            {noticeCount}
-            <BellIcon data-icon="inline-end" size={12} />
-          </Badge>
+          <div className="flex items-center gap-2">
+            <NotificationsBell userId={currentUser.id} />
+          </div>
         </div>
 
-        <ButtonGroup>
-          <Button
-            variant="outline"
-            type="button"
-            className="text-sm pr-2 pointer-events-none text-muted-foreground"
-          >
-            API token
-          </Button>
-          <Input
-            type="password"
-            id="api-token"
-            value={apiToken || ""}
-            readOnly={true}
-            className="w-full rounded-l-md rounded-r-none bg-background pr-8  md:w-[320px]"
-          />
-          <IconButton
-            variant="outline"
-            className="rounded-none focus:mr-[1px] disabled:text-muted-foreground disabled:bg-muted"
-            Icon={RefreshCcw}
-            disabled={!currentProjectExtId || appTokenCreation.isPending}
-            onClick={() =>
-              appTokenCreation.mutate({ projectExtId: currentProjectExtId })
-            }
-          />
-          <IconButton
-            variant="outline"
-            className="rounded-l-none disabled:text-muted-foreground disabled:bg-muted"
-            disabled={!apiToken}
-            onClick={handleApiTokenCopy}
-            Icon={Copy}
-          />
-        </ButtonGroup>
+        {shouldShowApiToken && (
+          <ButtonGroup>
+            <Button
+              variant="outline"
+              type="button"
+              className="text-sm pr-2 pointer-events-none text-muted-foreground"
+            >
+              API token
+            </Button>
+            <Input
+              type="password"
+              id="api-token"
+              value={apiToken || ""}
+              readOnly={true}
+              className="w-full rounded-l-md rounded-r-none bg-background pr-8  md:w-[320px]"
+            />
+            <IconButton
+              variant="outline"
+              className="rounded-none focus:mr-[1px] disabled:text-muted-foreground disabled:bg-muted"
+              Icon={RefreshCcw}
+              disabled={!currentProjectId || appTokenCreation.isPending}
+              onClick={() =>
+                appTokenCreation.mutate({ projectId: currentProjectId })
+              }
+            />
+            <IconButton
+              variant="outline"
+              className="rounded-l-none disabled:text-muted-foreground disabled:bg-muted"
+              disabled={!apiToken}
+              onClick={handleApiTokenCopy}
+              Icon={Copy}
+            />
+          </ButtonGroup>
+        )}
       </div>
     </header>
   );
@@ -130,4 +137,6 @@ export function TopBanner({ currentUser }: Props) {
 
 interface Props {
   currentUser: User;
+  // admin screens have no project selected, so a token minted there would be meaningless
+  shouldShowApiToken: boolean;
 }

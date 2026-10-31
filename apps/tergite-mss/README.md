@@ -80,6 +80,10 @@ setting the `PRIVATE_KEY_FILE` environment variable._
 
 Find more documentation in the [docs folder](./docs)
 
+## TODO
+
+- [ ] Clean up the requests and qpu_grants API
+
 ## Contribution Guidelines
 
 If you would like to contribute, please have a look at our

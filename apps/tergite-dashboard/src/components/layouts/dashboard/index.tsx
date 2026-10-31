@@ -26,6 +26,10 @@ export function Dashboard() {
   const { currentUser, isUserAdmin } = useLoaderData() as DashboardData;
 
   const { data: projects = [] } = useQuery(myActiveProjectsQuery);
+  const personalProject = useMemo(
+    () => projects.filter((v) => v.is_personal)[0],
+    [projects],
+  );
   const appState = useContext(AppStateContext);
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -62,13 +66,14 @@ export function Dashboard() {
           onIsExpandedChange={toggleIsExpanded}
           pendingRequestsCount={pendingRequestsCount}
           isUserAdmin={isUserAdmin}
+          personalProject={personalProject}
         />
         <div
           className={`flex flex-col sm:gap-4 h-full sm:pt-4 ${contentAreaPaddingCls}`}
         >
           <Topbar
-            currentProject={appState.currentProjectExtId}
-            onProjectChange={appState.setCurrentProjectExtId}
+            currentProject={appState.currentProjectId}
+            onProjectChange={appState.setCurrentProjectId}
             projects={projects}
             onLogout={handleLogout}
             currentUser={currentUser}
@@ -76,7 +81,10 @@ export function Dashboard() {
             isUserAdmin={isUserAdmin}
           />
 
-          {!isAdminScreen && <TopBanner currentUser={currentUser} />}
+          <TopBanner
+            currentUser={currentUser}
+            shouldShowApiToken={!isAdminScreen}
+          />
           <Outlet />
           <Footer />
           <Toaster />

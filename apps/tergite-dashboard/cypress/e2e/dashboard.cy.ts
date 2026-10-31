@@ -3,7 +3,6 @@
 import userList from "../fixtures/users.json";
 import projectList from "../fixtures/projects.json";
 import userRequestList from "../fixtures/user-requests.json";
-import rawNoticeList from "../fixtures/notices.json";
 import { generateJwt, getUsername } from "../../api/utils";
 import {
   UserRequest,
@@ -17,22 +16,19 @@ const users = [...userList] as User[];
 const projects = [...projectList] as Project[];
 const userRequests = [...userRequestList] as UserRequest[];
 
-const rawNotices = [...rawNoticeList] as NoticeFixture[];
-
 users.forEach((user) => {
   const userProjects = projects.filter(
     (v) => v.user_ids.includes(user.id) && v.is_active,
   );
   const username = getUsername(user);
   const isAdmin = user.roles.includes(UserRole.ADMIN);
+  // the admin badge counts the pending requests awaiting this user's decision
   const pendingUserRequests = userRequests.filter(
-    (v) => v.status === UserRequestStatus.PENDING,
+    (v) =>
+      v.status === UserRequestStatus.PENDING &&
+      v.target_user_ids.includes(user.id),
   );
   const requestsCount = pendingUserRequests.length;
-  let currentDateStr: string;
-  let currentDate: Date;
-  let activeNotices: NoticeFixture[];
-  let activeNoticeCount: number;
 
   describe(`dashboard-layout for ${username}`, () => {
     const dashboardUrl = Cypress.config("baseUrl");
@@ -45,22 +41,12 @@ users.forEach((user) => {
       const secret = Cypress.env("JWT_SECRET");
       const audience = Cypress.env("AUTH_AUDIENCE");
       const cookieExpiry = Math.round((new Date().getTime() + 800_000) / 1000);
-      currentDateStr = Cypress.env("CURRENT_DATE");
-      currentDate = currentDateStr ? new Date(currentDateStr) : new Date();
-      activeNotices = getActiveNoticesForUser(user.id, rawNotices, currentDate);
-      activeNoticeCount = activeNotices.length;
 
       cy.intercept("GET", `${apiBaseUrl}/devices/*`).as("devices-list");
       cy.intercept("GET", `${apiBaseUrl}/me/projects/*`).as("my-project-list");
       cy.intercept("GET", `${apiBaseUrl}/me/jobs/*`).as("my-jobs-list");
       cy.intercept("POST", `${apiBaseUrl}/auth/logout`).as("logout");
-      cy.intercept("GET", `${apiBaseUrl}/admin/notices*`).as("notices");
-      cy.intercept("GET", `${apiBaseUrl}/counts/notices*`).as("notice-count");
-      cy.intercept("POST", `${apiBaseUrl}/admin/notices/*/dismiss`).as(
-        "dismiss-notice",
-      );
 
-      cy.clock(currentDate, ["Date"]);
       if (user.id) {
         cy.wrap(generateJwt(user, cookieExpiry, { secret, audience })).then(
           (jwtToken) => {
@@ -84,32 +70,53 @@ users.forEach((user) => {
     });
 
     it("renders the sidebar in desktop mode", () => {
-      cy.viewport(1080, 720);
+      cy.viewport(1080, 750);
       cy.get("[data-testid='sidebar']").should("be.visible");
       cy.get("[data-testid='sidebar']").within(() => {
         cy.contains("WACQT").should("be.visible");
         cy.contains(/Wallenberg Centre for Quantum Technology/i).should(
           "be.visible",
         );
-        cy.get("nav")
+        cy.get("nav a[href='/']")
           .contains(/dashboard/i)
           .should("be.visible");
-        cy.get("nav")
+        cy.get("nav a[href='/devices']")
           .contains(/devices/i)
           .should("be.visible");
 
-        if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
+        cy.get("nav [data-testid='access-submenu']").within(() => {
+          cy.get("button")
+            .contains(/access/i)
             .should("be.visible");
 
-          cy.get("nav")
+          cy.get("a[href='/projects']")
             .contains(/projects/i)
             .should("be.visible");
-
-          cy.get("nav")
-            .contains(/control/i)
+          cy.get("a[href='/tokens']")
+            .contains(/tokens/i)
             .should("be.visible");
+          cy.get("a[href='/requests']")
+            .contains(/requests/i)
+            .should("be.visible");
+        });
+
+        if (isAdmin) {
+          cy.get("nav [data-testid='admin-submenu']").within(() => {
+            cy.get("button").contains(/admin/i).should("be.visible");
+
+            cy.get("a[href='/admin-projects']")
+              .scrollIntoView()
+              .contains(/projects/i)
+              .should("be.visible");
+            cy.get("a[href='/admin-control']")
+              .scrollIntoView()
+              .contains(/control/i)
+              .should("be.visible");
+            cy.get("a[href='/admin-requests']")
+              .scrollIntoView()
+              .contains(/requests/i)
+              .should("be.visible");
+          });
         }
 
         // collapse button
@@ -118,7 +125,7 @@ users.forEach((user) => {
     });
 
     it("renders the mobile-menu in mobile mode", () => {
-      cy.viewport(320, 700);
+      cy.viewport(360, 740);
       cy.contains("button", "Toggle Menu").should("be.visible");
 
       cy.get('[data-testid="mobile-menu"]').should("not.exist");
@@ -126,116 +133,155 @@ users.forEach((user) => {
       cy.contains("button", "Toggle Menu").realClick();
 
       cy.get('[data-testid="mobile-menu"]').within(() => {
-        cy.get("nav")
-          .contains(/dashboard/i)
-          .should("be.visible");
-        cy.get("nav")
-          .contains(/devices/i)
-          .should("be.visible");
-
-        if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
+          cy.get("a[href='/']")
+            .contains(/dashboard/i)
             .should("be.visible");
 
-          cy.get("nav")
+          cy.get("a[href='/devices']")
+            .contains(/devices/i)
+            .should("be.visible");
+
+        cy.get('nav [data-testid="access-submenu"]').within(() => {
+          cy.get("a[href='/projects']")
+            .scrollIntoView()
             .contains(/projects/i)
             .should("be.visible");
+          cy.get("a[href='/tokens']")
+            .scrollIntoView()
+            .contains(/tokens/i)
+            .should("be.visible");
+
+          cy.get("a[href='/requests']")
+            .scrollIntoView()
+            .contains(/requests/i)
+            .should("be.visible");
+        });
+
+
+        if (isAdmin) {
+          cy.get('nav [data-testid="admin-submenu"]').within(() => {
+            cy.get("a[href='/admin-requests']")
+              .scrollIntoView()
+              .contains(/requests/i)
+              .should("be.visible");
+
+            cy.get("a[href='/admin-projects']")
+              .scrollIntoView()
+              .contains(/projects/i)
+              .should("be.visible");
+
+            cy.get("a[href='/admin-control']")
+              .scrollIntoView()
+              .contains(/control/i)
+              .should("be.visible");
+          });
         }
       });
     });
 
     it("renders the collapsed sidebar when collapse button is pressed", () => {
+      cy.viewport(1080, 750);
       cy.get("[data-testid='sidebar']").within(() => {
-        cy.get("nav")
-          .contains("div", /dashboard/i)
-          .should("have.text", "DashboardDashboard");
-        cy.get("nav")
-          .contains("div", /devices/i)
-          .should("have.text", "DevicesDevices");
-        if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
-            .should("have.text", `RequestsRequests ${requestsCount}`);
+        const assertIsUncollapsed = () => {
+          cy.get("nav a[href='/']")
+            .contains("div", /dashboard/i)
+            .should("have.text", "DashboardDashboard");
+          cy.get("nav a[href='/devices']")
+            .contains("div", /devices/i)
+            .should("have.text", "DevicesDevices");
+
+          cy.get("nav [data-testid='access-submenu']").within(() => {
+            cy.get("button")
+              .contains(/access/i)
+              .should("be.visible");
+
+            cy.get("a[href='/projects']")
+              .contains("div", /projects/i)
+              .should("have.text", "ProjectsProjects");
+
+            cy.get("a[href='/tokens']")
+              .contains("div", /tokens/i)
+              .should("have.text", "TokensTokens");
+
+            cy.get("a[href='/requests']")
+              .contains("div", /requests/i)
+              .should("have.text", "RequestsRequests");
+          });
+
+          if (isAdmin) {
+            cy.get("nav [data-testid='admin-submenu']").within(() => {
+              cy.get("button").contains(/admin/i).should("be.visible");
+
+              cy.get("a[href='/admin-requests']").should(
+                "have.text",
+                `RequestsRequests ${requestsCount}`
+              );
+
+              cy.get("a[href='/admin-projects']").should(
+                "have.text",
+                "ProjectsProjects"
+              );
+
+              cy.get("a[href='/admin-control']").should(
+                "have.text",
+                "ControlControl"
+              );
+            });
+          }
+          cy.get("[aria-label='PanelLeftClose']").should("be.visible");
+          cy.get("[aria-label='PanelRightClose']").should("not.exist");
+        };
+
+        const assertIsCollapsed = () => {
+          cy.get("[aria-label='PanelLeftClose']").should("not.exist");
+          cy.get("[aria-label='PanelRightClose']").should("be.visible");
+
+          cy.get("nav [aria-label='Home']").should("be.visible");
+          cy.get("nav [aria-label='Cpu']").should("be.visible");
+          cy.get("nav [aria-label='FolderKanban']").should("be.visible");
+          cy.get("nav [aria-label='KeySquare']").should("be.visible");
+          cy.get("nav [aria-label='ClipboardList']").should("be.visible");
+          if (isAdmin) {
+            // cy.get("nav [aria-label='HelpingHand']").should("be.visible");
+            cy.get("nav [aria-label='HardHat']").should("be.visible");
+            cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
+          }
 
           cy.get("nav")
-            .contains(/projects/i)
-            .should("have.text", "ProjectsProjects");
-
+            .contains("div", /dashboard/i)
+            .should("have.text", "Dashboard");
           cy.get("nav")
-            .contains(/control/i)
-            .should("have.text", "ControlControl");
-        }
-        cy.get("[aria-label='PanelLeftClose']").should("be.visible");
-        cy.get("[aria-label='PanelRightClose']").should("not.exist");
+            .contains("div", /devices/i)
+            .should("have.text", "Devices");
 
+          cy.get("nav a[href='/projects']").should("have.text", "Projects");
+          cy.get("nav a[href='/tokens']").should("have.text", "Tokens");
+          cy.get("nav a[href='/requests']").should("have.text", "Requests");
+
+          if (isAdmin) {
+            cy.get("nav a[href='/admin-requests']").should(
+              "have.text",
+              "Requests "
+            );
+
+            cy.get("nav a[href='/admin-projects']").should(
+              "have.text",
+              "Projects"
+            );
+
+            cy.get("nav a[href='/admin-control']").should(
+              "have.text",
+              "Control"
+            );
+          }
+        };
+
+        // run
+        assertIsUncollapsed();
         cy.get("[aria-label='PanelLeftClose']").parent().realClick();
-
-        cy.get("[aria-label='PanelLeftClose']").should("not.exist");
-        cy.get("[aria-label='PanelRightClose']").should("be.visible");
-
-        cy.get("nav [aria-label='Home']").should("be.visible");
-        cy.get("nav [aria-label='Cpu']").should("be.visible");
-        if (isAdmin) {
-          cy.get("nav [aria-label='HandHelping']").should("be.visible");
-          cy.get("nav [aria-label='HardHat']").should("be.visible");
-          cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
-        }
-
-        cy.get("nav")
-          .contains("div", /dashboard/i)
-          .should("have.text", "Dashboard");
-        cy.get("nav")
-          .contains("div", /devices/i)
-          .should("have.text", "Devices");
-
-        if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
-            .should("have.text", "Requests ");
-
-          cy.get("nav")
-            .contains(/projects/i)
-            .should("have.text", "Projects");
-
-          cy.get("nav")
-            .contains(/control/i)
-            .should("have.text", "Control");
-        }
-
+        assertIsCollapsed();
         cy.get("[aria-label='PanelRightClose']").parent().click();
-
-        cy.get("[aria-label='PanelLeftClose']").should("be.visible");
-        cy.get("[aria-label='PanelRightClose']").should("not.exist");
-
-        cy.get("nav [aria-label='Home']").should("be.visible");
-        cy.get("nav [aria-label='Cpu']").should("be.visible");
-
-        if (isAdmin) {
-          cy.get("nav [aria-label='HandHelping']").should("be.visible");
-          cy.get("nav [aria-label='HardHat']").should("be.visible");
-          cy.get("nav [aria-label='SlidersHorizontal']").should("be.visible");
-        }
-
-        cy.get("nav")
-          .contains("div", /dashboard/i)
-          .should("have.text", "DashboardDashboard");
-        cy.get("nav")
-          .contains("div", /devices/i)
-          .should("have.text", "DevicesDevices");
-        if (isAdmin) {
-          cy.get("nav")
-            .contains(/requests/i)
-            .should("have.text", `RequestsRequests ${requestsCount}`);
-
-          cy.get("nav")
-            .contains(/projects/i)
-            .should("have.text", "ProjectsProjects");
-
-          cy.get("nav")
-            .contains(/control/i)
-            .should("have.text", "ControlControl");
-        }
+        assertIsUncollapsed();
       });
     });
 
@@ -271,72 +317,8 @@ users.forEach((user) => {
         cy.get("[aria-label='RefreshCcw']").should("be.visible");
         cy.get("[aria-label='Copy']").should("be.visible");
         // Notice count badge (bell icon) is always visible in the banner
-        cy.get('[data-icon="inline-end"]').should("exist");
+        cy.get('[data-testid="notices-bell-icon"]').should("exist");
       });
-    });
-
-    it(`displays the correct notice count badge (expected: ${activeNoticeCount}) in the top banner`, () => {
-      cy.wait("@notices");
-      cy.wait("@notice-count");
-      cy.wait(100);
-
-      // The badge renders: <count><BellIcon data-icon="inline-end" />
-      cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
-        .parent()
-        .invoke("text")
-        .then((text) => {
-          const count = parseInt(text.trim(), 10);
-          expect(count).to.equal(activeNoticeCount);
-        });
-    });
-
-    it("shows an active notice banner in the top banner", () => {
-      // Every user in the fixture has at least two active notices visible to them
-      // (ntc_007 and ntc_009 target all users and fall within the test date range)
-      cy.wait("@notices");
-      cy.wait("@notice-count");
-
-      cy.get('[data-testid="top-banner"]').within(() => {
-        cy.get('[aria-label="Dismiss notice"]').should("be.visible");
-        // Severity label is rendered in the banner
-        cy.contains(/\b(info|warning|critical)\b/i).should("be.visible");
-      });
-    });
-
-    it("decreases the notice count badge by one when a notice banner is dismissed", () => {
-      cy.wait("@notices");
-      cy.wait("@notice-count");
-      cy.wait(100);
-
-      // Capture the initial badge count before any dismissal
-      cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
-        .parent()
-        .invoke("text")
-        .then((before) => {
-          const initialCount = parseInt(before.trim(), 10);
-          expect(initialCount).to.be.gt(0);
-
-          // Dismiss the visible notice
-          cy.get(
-            '[data-testid="top-banner"] [aria-label="Dismiss notice"]'
-          ).click();
-
-          cy.wait("@dismiss-notice");
-          // Both the notices list and the count are refreshed after dismissal
-          cy.wait("@notices");
-          cy.wait("@notice-count");
-          cy.wait(100);
-
-          // Badge must now show exactly one less than before
-          cy.get('[data-testid="top-banner"] [data-icon="inline-end"]')
-            .parent()
-            .invoke("text")
-            .then((after) => {
-              const newCount = parseInt(after.trim(), 10);
-              expect(newCount).to.equal(initialCount - 1);
-            });
-          // @prettier-ignore
-        });
     });
 
     it("logout button logs current user out", () => {
@@ -429,45 +411,3 @@ users.forEach((user) => {
     });
   });
 });
-
-/**
- * Shape of a notice record in the fixture (uses relative-time offsets instead
- * of absolute ISO strings so the data stays valid on any run date).
- */
-interface NoticeFixture {
-  id: string;
-  starts_at_offset_hours: number;
-  expires_at_offset_hours: number;
-  target_user_ids: string[] | null;
-  dismissed_by: string[];
-}
-
-/**
- * Returns the subset of notices that are active for the given user at the
- * supplied reference time, mirroring the server-side getUserNoticesFilter logic.
- *
- * A notice is active when:
- *  - it has already started  (starts_at <= now)
- *  - it has not yet expired  (expires_at >= now, or expires_at is null = permanent)
- *  - it targets this user    (target_user_ids is null = everyone, or includes userId)
- *  - it has not been dismissed by this user (dismissed_by excludes userId)
- */
-function getActiveNoticesForUser(
-  userId: string,
-  notices: NoticeFixture[],
-  currentDate: Date,
-): NoticeFixture[] {
-  const now = currentDate.getTime();
-  return notices.filter((n) => {
-    const startsAt = now + n.starts_at_offset_hours * 3_600_000;
-    const expiresAt = now + n.expires_at_offset_hours * 3_600_000;
-
-    if (startsAt > now) return false; // not yet started
-    if (expiresAt < now) return false; // already expired
-    if (n.target_user_ids !== null && !n.target_user_ids.includes(userId))
-      return false; // not targeted at this user
-    if (n.dismissed_by.includes(userId)) return false; // dismissed
-
-    return true;
-  });
-}

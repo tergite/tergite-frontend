@@ -100,25 +100,25 @@ sudo systemctl enable docker
 - To stop the services, run:
 
 ```shell
-docker compose stop -f fresh-docker-compose.yml
+docker compose -f fresh-docker-compose.yml stop
 ```
 
 or for prebuilt:
 
 ```shell
-docker compose stop -f prebuilt-docker-compose.yml
+docker compose -f prebuilt-docker-compose.yml stop
 ```
 
 - To remove stop the services and remove their containers also, run:
 
 ```shell
-docker compose down -f fresh-docker-compose.yml
+docker compose -f fresh-docker-compose.yml down
 ```
 
 or for prebuilt:
 
 ```shell
-docker compose down -f prebuilt-docker-compose.yml
+docker compose -f prebuilt-docker-compose.yml down
 ```
 
 ## How to Run wi
@@ -164,8 +164,42 @@ To view the changelog for each version, have a look at the [CHANGELOG.md](./CHAN
 
 ## TODO
 
+- [ ] Notifications marked as read still show up in the notification list.
+    - they should disappear after being marked read
+- [ ] Make the 'Project External ID' input an autocomplete
+    - Maybe add a read-only autocomplete GET endpoint for project IDs
+    - Make the input autocomplete with shadcn `Combobox`
+    - BLOCKED: RFC 0001 §4 makes this an explicit non-goal — "No autocomplete, search, or
+      project browser for shared projects. Deliberate: project membership is not public" —
+      and §8.3 repeats the refusal. Any endpoint listing project IDs lets any logged-in user
+      enumerate every project in the system. Needs a decision to amend the RFC before it can
+      be built; the admin-only email autocomplete below is not in tension and can proceed. 
+      <!-- FIXME: Rethought this. Logged in users are free to know the shared projects available. 
+      It is not PII. They are logged in already and there is already a gate in the name of the project
+      admin who must admit membership into a project if anyone wants to enter.-->
+- [ ] Health check requests spam the logs of tergite-backend
+    - MSS and the dashboard now answer the container probe on an unlogged `/health`; the
+      backend lives in its own repo and needs the same treatment there.
 - Handle 503 unavailbale service on the dashboard
 - Handle the disconnection issues between MSS and the backends
+    - NEEDS A DECISION, not just a patch. `is_online` is set True on websocket connect and
+      False only in the `WebSocketDisconnect` handler
+      (`api/rest/routers/devices/__init__.py`), so a backend that dies without closing
+      cleanly stays "online" until TCP notices. Two candidate fixes, neither safe to land
+      unreviewed:
+      - **Liveness TTL in MSS alone.** Stamp `last_seen` on every websocket frame and treat
+        a device whose stamp is older than N as offline when serving it. No backend change,
+        but it redefines `is_online` for every consumer — dashboard, fixtures, e2e — and a
+        quiet-but-healthy backend would read as offline unless it is made to send keepalives.
+      - **Websocket ping/pong with a deadline**, which is the real answer but needs a matching
+        change in tergite-backend and therefore an RFC spanning both repos.
+        <!-- FIXME: Choose this. Note however that the disconnection issues would not have been solved.
+        In the past, the backend abruptly became unreachable in production and sometimes even the 
+        frontend did the same. I was thinking of having a stream-persisted NATS in between them
+        at least as another medium of exchange between the two - being switchable say in one of 
+        our config files such that if one wants to use websockets, they go ahead. If NATS they go ahead.
+        It would also mean it is easy to check if the NATS gets rid of those sporadic disconnections.
+        But all this is for a future RFC or something-->
 
 ## Acknowledgements
 

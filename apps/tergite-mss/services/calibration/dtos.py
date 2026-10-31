@@ -13,12 +13,17 @@
 import enum
 from typing import Any, Dict, List, Optional, Union
 
-from beanie import PydanticObjectId
+import pymongo
+from beanie import Document, PydanticObjectId
 from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pymongo import IndexModel
 
 from utils.date_time import get_current_timestamp
 from utils.models import create_partial_model
+
+CALIBRATION_LOGS_COLLECTION = "calibrations_logs"
+CALIBRATIONS_COLLECTION = "calibrations"
 
 
 class CalibrationUnit(str, enum.Enum):
@@ -114,7 +119,7 @@ class DeviceCalibrationCreate(BaseModel):
     last_calibrated: Optional[str] = Field(default_factory=get_current_timestamp)
 
 
-class DeviceCalibration(DeviceCalibrationCreate):
+class DeviceCalibration(DeviceCalibrationCreate, Document):
     """Schema for the calibration data of a given device"""
 
     model_config = ConfigDict(from_attributes=True)
@@ -122,10 +127,27 @@ class DeviceCalibration(DeviceCalibrationCreate):
     id: PydanticObjectId = Field(alias="_id")
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
+    class Settings:
+        name = CALIBRATIONS_COLLECTION
+        indexes = [
+            IndexModel([("name", pymongo.ASCENDING)], unique=True),
+        ]
+
     @field_serializer("id", when_used="json")
     def serialize_id(self, _id: PydanticObjectId):
         """Convert id to string when working with JSON"""
         return str(_id)
+
+
+class DeviceCalibrationLog(DeviceCalibration):
+    """Schema for the historical calibration data of a given device"""
+
+    class Settings:
+        name = CALIBRATION_LOGS_COLLECTION
+        indexes = [
+            IndexModel([("name", pymongo.ASCENDING)]),
+            IndexModel([("last_calibrated", pymongo.DESCENDING)], sparse=True),
+        ]
 
 
 # derived models

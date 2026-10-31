@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 """Utility functions for API related code"""
 import base64
+from inspect import isawaitable
 from pathlib import Path
 from typing import (
     Any,
@@ -20,6 +21,7 @@ from typing import (
     Generic,
     List,
     Literal,
+    Mapping,
     NotRequired,
     Optional,
     TypedDict,
@@ -251,6 +253,35 @@ def to_http_error(
 
         http_exp = HTTPException(status_code, message)
         return await http_exception_handler(request, http_exp)
+
+    return handler
+
+
+def unwrap_exception_group(
+    handlers: Mapping[Any, Callable[[Request, Exception], Any]],
+) -> Callable[[Request, ExceptionGroup], Awaitable[Response]]:
+    """An error handler that answers an exception group of one error as that error
+
+    A group of several errors is answered as any other unexpected exception.
+
+    Args:
+        handlers: the app's exception handlers, which must include one for Exception;
+            read when an error is handled, so handlers added later are used
+
+    Returns:
+        an exception group handler function
+    """
+
+    async def handler(request: Request, exp: ExceptionGroup) -> Response:
+        error = exp.exceptions[0] if len(exp.exceptions) == 1 else exp
+        error_cls = next(cls for cls in type(error).__mro__ if cls in handlers)
+        if error_cls is ExceptionGroup:
+            error_cls = Exception
+
+        response = handlers[error_cls](request, error)
+        if isawaitable(response):
+            response = await response
+        return response
 
     return handler
 

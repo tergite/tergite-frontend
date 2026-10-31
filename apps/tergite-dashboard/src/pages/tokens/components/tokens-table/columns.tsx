@@ -13,12 +13,6 @@ export const columns: ColumnDef<ExtendedAppToken>[] = [
     ),
   },
   {
-    accessorKey: "project_ext_id",
-    header: ({ column }) => (
-      <SortHeader label="Project Ext ID" column={column} />
-    ),
-  },
-  {
     accessorKey: "project_name",
     header: ({ column }) => <SortHeader label="Project" column={column} />,
   },

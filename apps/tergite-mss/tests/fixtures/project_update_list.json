@@ -14,14 +14,12 @@
     "qpu_seconds": 340000000
   },
   {
-    "ext_id": "normal-2",
     "admin_email": "john.doe@example.com",
     "user_emails": ["paul.doe@example.com"],
     "is_active": true,
     "description": "Bulyomu akajunwa hwabwembazi za Ruhanga"
   },
   {
-    "ext_id": "zero-qpu-2",
     "admin_email": "new.user@xample.com",
     "user_emails": [],
     "is_active": false,

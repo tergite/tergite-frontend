@@ -7,6 +7,69 @@ and this project follows versions of format {year}.{month}.{patch_number}.
 
 ## [Unreleased]
 
+### Added
+
+- Added address completion to the "Admin email" and "Member emails" inputs of the admin
+  project forms, so a superuser no longer has to recall an address exactly. It is a
+  combobox rather than a `<datalist>`, which Firefox and iOS Safari render only partially,
+  and it searches the server on a pause in typing rather than filtering one fetched page.
+- Added an unlogged `/health` location to the nginx config for the container healthcheck,
+  which used to fetch the whole SPA every ten seconds and fill the access log.
+- Added the "Added to project" and "Made project admin" notifications to the bell and to
+  the per-type email switches on the settings page.
+- Added Approve and Reject buttons to each pending row of the admin requests table, so a
+  queue can be cleared without opening every request in turn.
+- Added a `/requests` page, under Access in the sidebar, listing the requests the reader has
+  made with their status, decision and what was asked for. A requester previously had no way
+  to see an outcome except by noticing the notification.
+- Added an "Access" group to the sidebar and mobile menu holding Projects and Tokens. Both
+  were reachable only from the user menu in the top bar, where a new user never looked.
+- Added the low and exhausted QPU-time notifications to the bell and the settings page, so a project
+  running out of time is visible before a job is rejected for it.
+- Added a `/settings` page, reached from the user menu, with a switch per notification type
+  for the email copy. In-app delivery of anything awaiting the reader stays on regardless.
+- Added a notifications bell reporting the outcome of project-access and QPU-time requests,
+  with approve and reject inline on the ones awaiting the reader. Previously neither
+  requester nor approver learned anything without hunting for it.
+- Added a "Request project access" dialog on the projects page. It takes a project ID and
+  reports an unknown one on the field, so a mistyped ID is self-correcting.
+- Added an `/approvals` page where a project admin decides requests for projects they
+  administer, reached from a notification or the projects page rather than the nav.
+- Added the remaining QPU time of the user's personal project at the foot of the sidebar,
+  pointing at the request flow when it is empty.
+
+### Changed
+
+- The user menu no longer repeats Projects and Tokens, which the sidebar now carries. It
+  keeps only what lives nowhere else: Settings and Logout.
+- The "Request Pending" button on the projects page now carries how much QPU time was
+  asked for. A requester had no way to see the figure they had submitted.
+- Notices and the notifications bell now show on the admin screens too; they were
+  suppressed under `/admin-*`, so an admin saw a notice only after navigating away. The
+  API token control stays off those screens, where no project is selected.
+- Submitting an access request now confirms with a toast. The dialog simply closed, which
+  was indistinguishable from it having been dismissed.
+- [BREAKING]: Projects are known by their ID alone, as MSS dropped `ext_id`: the projects
+  tables show and filter by it, the access-request form asks for it, and tokens refer to it.
+- The projects page's access-request button is now a primary button reading "Request
+  access". As a long outline button it neither stood out nor fitted a phone screen.
+- The projects page no longer offers Delete on the reader's own personal project, matching
+  the API, which refuses it. The admin projects page still offers it, for offboarding.
+- Made sidebar and mobile menu scrollable
+- [BREAKING]: Notifications and notices are one thing, as in MSS: the bell lists and counts
+  the unread ones from `/me/notices/`, the top banner shows the announcements among them, and
+  the settings page has one email switch per notice type at `/me/notices/preferences/`.
+- [BREAKING]: Requests of every kind, including the admin requests page and QPU time, go
+  through `/me/requests/`; the profile, backend control and email lookup moved to
+  `/me/profile`, `/admin/bcc/*` and `/admin/users/emails/` along with MSS.
+
+### Fixed
+
+- Fixed the days box of the QPU-time request form counting a day as 24 seconds, so 2 days
+  asked for 48 seconds on top of the default hour.
+- Fixed the QPU-time request form sending a duration other than the one displayed: days,
+  hours and seconds showed blank while counting as zero, and emptying a box blocked Submit.
+
 ## [2026.06.0] - 2026-06-26
 
 This is part of the tergite release v2026.06.0.

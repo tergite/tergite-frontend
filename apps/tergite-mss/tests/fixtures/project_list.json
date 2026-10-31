@@ -2,7 +2,6 @@
   {
     "_id": "7c445113e77284cef9397c5b",
     "name": "Normal Test",
-    "ext_id": "normal",
     "admin_id": "de7ddbd2500951be940356a2",
     "user_ids": [ "de7ddbd2500951be940356a2", "8154077d9cb952b92453d575"],
     "qpu_seconds": 54000,
@@ -14,7 +13,6 @@
   {
     "_id": "b1df91c3b796a1d6ddaaa875",
     "name": "Negative QPU",
-    "ext_id": "negative-qpu",
     "admin_id": "de7ddbd2500951be940356a2",
     "user_ids": [
       "de7ddbd2500951be940356a2", "6431c4a4508205d9d43015fe"
@@ -28,7 +26,6 @@
   {
     "_id": "bc5120543373ac88f9fee961",
     "name": "Zero QPU",
-    "ext_id": "zero-qpu",
     "admin_id": "8154077d9cb952b92453d575",
     "user_ids": ["de7ddbd2500951be940356a2", "8154077d9cb952b92453d575", "6431c4a4508205d9d43015fe"],
     "qpu_seconds": 0,
@@ -40,7 +37,6 @@
   {
     "_id": "377c83700975c99b370adfb8",
     "name": "Some Project",
-    "ext_id": "some-project",
     "admin_id": "6431c4a4508205d9d43015fe",
     "user_ids": [ "8154077d9cb952b92453d575", "6431c4a4508205d9d43015fe"],
     "qpu_seconds": 54000,

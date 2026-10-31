@@ -1,22 +1,22 @@
 [
   {
     "id": "653a81b2e736d76276597a6b",
-    "version": 2,
     "name": "Test 1",
-    "ext_id": "test1",
     "admin_id": "5ddc8d9fb69602723cd3c38f",
-    "user_ids": ["5ddc8d9fb69602723cd3c38f", "40fbb5de7422a04fabd8d22a"],
+    "user_ids": [
+      "5ddc8d9fb69602723cd3c38f",
+      "40fbb5de7422a04fabd8d22a"
+    ],
     "qpu_seconds": 54000,
     "is_active": true,
     "description": "This is a test project by the International Group of Other Testers",
     "created_at": "2024-06-20T09:12:00.733Z",
-    "updated_at": "2024-06-20T09:12:00.733Z"
+    "updated_at": "2024-06-20T09:12:00.733Z",
+    "is_personal": false
   },
   {
     "id": "653a8f19e736d76276597a6c",
-    "version": 2,
     "name": "ATest 2",
-    "ext_id": "atest2",
     "admin_id": "5ddc8d9fb69602723cd3c38f",
     "user_ids": [
       "5ddc8d9fb69602723cd3c38f",
@@ -26,32 +26,37 @@
     "qpu_seconds": 54000,
     "is_active": true,
     "created_at": "2024-06-20T09:12:00.733Z",
-    "updated_at": "2024-08-20T09:12:00.733Z"
+    "updated_at": "2024-08-20T09:12:00.733Z",
+    "is_personal": false
   },
   {
     "id": "653aabd880cd1f9fab6196d2",
-    "version": 2,
     "name": "BTest 3",
-    "ext_id": "btest3",
     "admin_id": "858877267fe722a38619fa2e",
-    "user_ids": ["858877267fe722a38619fa2e", "40fbb5de7422a04fabd8d22a"],
+    "user_ids": [
+      "858877267fe722a38619fa2e",
+      "40fbb5de7422a04fabd8d22a"
+    ],
     "qpu_seconds": 54000,
     "is_active": true,
     "description": "This is a test project by the International Group of Testers",
     "created_at": "2024-09-20T09:12:00.733Z",
-    "updated_at": "2024-06-20T09:12:00.733Z"
+    "updated_at": "2024-06-20T09:12:00.733Z",
+    "is_personal": false
   },
   {
     "id": "67c86e891c7d5e0b2a43733d",
-    "version": 2,
     "name": "Test 4",
-    "ext_id": "test4",
     "admin_id": "858877267fe722a38619fa2e",
-    "user_ids": ["858877267fe722a38619fa2e", "40fbb5de7422a04fabd8d22a"],
+    "user_ids": [
+      "858877267fe722a38619fa2e",
+      "40fbb5de7422a04fabd8d22a"
+    ],
     "qpu_seconds": 54000,
     "is_active": false,
     "description": "This is a test project by the International Group of Testers 4",
     "created_at": "2024-07-20T09:12:00.733Z",
-    "updated_at": "2024-06-20T09:12:00.733Z"
+    "updated_at": "2024-06-20T09:12:00.733Z",
+    "is_personal": false
   }
 ]

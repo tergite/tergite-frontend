@@ -9,6 +9,10 @@ import {
   ChevronDown,
   ChevronRight,
   SlidersHorizontal,
+  KeyRound,
+  ClipboardList,
+  KeySquare,
+  FolderKanban,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Button, IconButton } from "@/components/ui/button";
@@ -17,16 +21,20 @@ import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CollapsibleContent } from "@radix-ui/react-collapsible";
 import { NavItem } from "@/components/ui/nav-item";
 import { Badge } from "@/components/ui/badge";
+import { Project } from "types";
+import { QpuMeter } from "./qpu-meter";
 
 export function Sidebar({
   isExpanded,
   onIsExpandedChange,
   isUserAdmin,
   pendingRequestsCount,
+  personalProject,
 }: Props) {
   const widthClass = isExpanded ? "w-56" : "w-18";
-  const adminNavClass = isExpanded ? "ml-4" : "";
+  const subNavClass = isExpanded ? "ml-4" : "";
   const [isAdminOpen, setIsAdminOpen] = useState(true);
+  const [isAccessOpen, setIsAccessOpen] = useState(true);
 
   return (
     <aside
@@ -34,7 +42,7 @@ export function Sidebar({
       className={`fixed inset-y-0 left-0 z-10 hidden sm:pt-1 ${widthClass} flex-col border-r bg-background sm:flex`}
     >
       <Logo isExpanded={isExpanded} />
-      <nav className="flex flex-col gap-4 px-6 sm:py-4">
+      <nav className="flex flex-col gap-4 px-6 sm:py-4 overflow-y-auto max-h-[75vh]">
         <NavItem
           to="/"
           Icon={HomeIcon}
@@ -47,11 +55,57 @@ export function Sidebar({
           isExpanded={isExpanded}
           text="Devices"
         />
+        <Collapsible
+          open={isAccessOpen}
+          onOpenChange={setIsAccessOpen}
+          className="w-full"
+          data-testid="access-submenu"
+        >
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              className={`flex text-sm gap-2 h-9 px-2 justify-start rounded-sm  transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
+            >
+              <KeyRound className="h-4 w-4" />
+              {isExpanded ? <span>Access</span> : null}
+              {isExpanded && !isAccessOpen && (
+                <ChevronRight className="ml-auto h-4 w-4" />
+              )}
+              {isExpanded && isAccessOpen && (
+                <ChevronDown className="ml-auto h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent
+            className={`flex flex-col gap-4 my-2 border-l ${subNavClass}`}
+          >
+            <NavItem
+              Icon={FolderKanban}
+              to="/projects"
+              isExpanded={isExpanded}
+              text="Projects"
+            />
+            <NavItem
+              Icon={KeySquare}
+              to="/tokens"
+              isExpanded={isExpanded}
+              text="Tokens"
+            />
+            <NavItem
+              Icon={ClipboardList}
+              to="/requests"
+              isExpanded={isExpanded}
+              text="Requests"
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
         {isUserAdmin && (
           <Collapsible
             open={isAdminOpen}
             onOpenChange={setIsAdminOpen}
             className="w-full"
+            data-testid="admin-submenu"
           >
             <CollapsibleTrigger asChild>
               <Button
@@ -69,7 +123,7 @@ export function Sidebar({
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent
-              className={`flex flex-col gap-4 my-2 border-l ${adminNavClass}`}
+              className={`flex flex-col gap-4 my-2 border-l ${subNavClass}`}
             >
               <NavItem
                 Icon={HelpingHand}
@@ -99,21 +153,25 @@ export function Sidebar({
         )}
       </nav>
 
-      <div className="mx-auto mt-auto py-4">
-        {isExpanded && (
-          <IconButton
-            variant="outline"
-            Icon={PanelLeftClose}
-            onClick={() => onIsExpandedChange()}
-          />
-        )}
-        {!isExpanded && (
-          <IconButton
-            variant="outline"
-            Icon={PanelRightClose}
-            onClick={() => onIsExpandedChange()}
-          />
-        )}
+      <div className="mt-auto grid gap-3 justify-items-center py-4">
+        <QpuMeter project={personalProject} isExpanded={isExpanded} />
+        {/* the toggle keeps its own wrapper: tests click the button's parent */}
+        <div className="mx-auto">
+          {isExpanded && (
+            <IconButton
+              variant="outline"
+              Icon={PanelLeftClose}
+              onClick={() => onIsExpandedChange()}
+            />
+          )}
+          {!isExpanded && (
+            <IconButton
+              variant="outline"
+              Icon={PanelRightClose}
+              onClick={() => onIsExpandedChange()}
+            />
+          )}
+        </div>
       </div>
     </aside>
   );
@@ -124,4 +182,5 @@ interface Props {
   onIsExpandedChange: () => void;
   pendingRequestsCount: number;
   isUserAdmin: boolean;
+  personalProject?: Project;
 }

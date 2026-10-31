@@ -11,11 +11,42 @@
 # that they have been altered from the originals.
 #
 
-from .service import (
-    count_many_notices,
-    delete_notice,
-    dismiss_notice,
-    find_many_notices,
-    get_one_notice,
-    publish_notice,
+from .dtos import (
+    EmailStatus,
+    Notice,
+    NoticePreferences,
+    NoticeSeverity,
+    NoticeType,
 )
+from .service import (
+    clear_notices_by_reference,
+    count_many,
+    create_system_notice,
+    delete_notice,
+    find_many,
+    get_email_preferences,
+    get_one,
+    on_startup,
+    publish_custom_notice,
+    set_email_preferences,
+    toggle_read_status,
+    toggle_read_status_many,
+)
+
+__all__ = [
+    "EmailStatus",
+    "Notice",
+    "NoticePreferences",
+    "NoticeSeverity",
+    "NoticeType",
+    "count_many",
+    "find_many",
+    "get_email_preferences",
+    "clear_notices_by_reference",
+    "create_system_notice",
+    "publish_custom_notice",
+    "on_startup",
+    "toggle_read_status_many",
+    "set_email_preferences",
+    "toggle_read_status",
+]

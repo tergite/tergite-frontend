@@ -24,10 +24,11 @@ def stub_pydantic_match_type_for_freezegun():
     https://github.com/pydantic/pydantic/discussions/9343#discussioncomment-10723743
     """
 
-    def match_type(self, obj):
+    # *args: pydantic>=2.14 also passes the origin of obj
+    def match_type(self, obj, *args):
         if getattr(obj, "__name__", None) == "datetime":
             return core_schema.datetime_schema()
-        return _ORIGINAL_GENERATE_SCHEMA_MATCH_TYPE(self, obj)
+        return _ORIGINAL_GENERATE_SCHEMA_MATCH_TYPE(self, obj, *args)
 
     GenerateSchema.match_type = match_type
 

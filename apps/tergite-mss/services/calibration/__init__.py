@@ -16,18 +16,21 @@
 #
 # Refactored by Martin Ahindura on 2023-11-08
 """Service that handles calibration functionality"""
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-import pymongo
-from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
 from utils import mongodb as mongodb_utils
+from utils.mongodb import init_strict_beanie
 
-from .dtos import DeviceCalibration, DeviceCalibrationCreate
-
-_LOGS_COLLECTION = "calibrations_logs"
-_MAIN_COLLECTION = "calibrations"
+from .dtos import (
+    CALIBRATION_LOGS_COLLECTION,
+    CALIBRATIONS_COLLECTION,
+    DeviceCalibration,
+    DeviceCalibrationCreate,
+    DeviceCalibrationLog,
+)
 
 
 async def on_startup(db: AsyncIOMotorDatabase):
@@ -36,12 +39,12 @@ async def on_startup(db: AsyncIOMotorDatabase):
     Args:
         db: the mongodb database instance
     """
-    calibrations: AsyncIOMotorCollection = db[_MAIN_COLLECTION]
-    calibrations_log: AsyncIOMotorCollection = db[_LOGS_COLLECTION]
-
-    await calibrations.create_index([("name", pymongo.ASCENDING)])
-    await calibrations_log.create_index(
-        [("name", pymongo.ASCENDING), ("last_calibrated", pymongo.DESCENDING)]
+    await init_strict_beanie(
+        database=db,
+        document_models=[
+            DeviceCalibration,
+            DeviceCalibrationLog,
+        ],
     )
 
 
@@ -61,14 +64,14 @@ async def insert_one(
     # Save historical calibrations
     # We use insert_one_if_not_exists to ensure idempotency
     await mongodb_utils.insert_one_if_not_exists(
-        collection=db[_LOGS_COLLECTION],
+        collection=db[CALIBRATION_LOGS_COLLECTION],
         document={**document},
         unique_fields=("name", "last_calibrated"),
     )
 
     # Save current calibration
     record = await mongodb_utils.update_one(
-        collection=db[_MAIN_COLLECTION],
+        collection=db[CALIBRATIONS_COLLECTION],
         _filter={"name": document["name"]},
         payload=document,
         return_document=ReturnDocument.AFTER,
@@ -98,7 +101,7 @@ async def get_latest_many(
         the list of calibration results
     """
     return await mongodb_utils.find(
-        db[_MAIN_COLLECTION],
+        db[CALIBRATIONS_COLLECTION],
         filters=filters,
         limit=limit,
         skip=skip,
@@ -127,7 +130,7 @@ async def get_historical_many(
         the list of calibration results
     """
     return await mongodb_utils.find(
-        db[_LOGS_COLLECTION],
+        db[CALIBRATION_LOGS_COLLECTION],
         filters=filters,
         limit=limit,
         skip=skip,
@@ -147,7 +150,7 @@ async def get_one(db: AsyncIOMotorDatabase, name: str) -> DeviceCalibration:
         the dict of the calibration results
     """
     return await mongodb_utils.find_one(
-        db[_MAIN_COLLECTION],
+        db[CALIBRATIONS_COLLECTION],
         {"name": name},
         schema=DeviceCalibration,
     )

@@ -76,7 +76,7 @@ const formSchema = z.object({
 type FormInput = z.input<typeof formSchema>;
 type FormOutput = z.output<typeof formSchema>;
 
-export default function NoticeForm() {
+export default function NoticeForm({ onPost }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const now = DateTime.now();
@@ -118,9 +118,11 @@ export default function NoticeForm() {
       );
     },
     async onSuccess(data) {
+      onPost();
       await refreshAllNotices(queryClient);
       await refreshAllNoticeCounts(queryClient);
-      const description = `Visible to ${data.target_user_ids?.length ?? "all"} users.`;
+      const isBroadcast = data.length === 1 && !data[0].user_id;
+      const description = `Visible to ${isBroadcast ? "all" : data.length} users.`;
       toast({ title: "Notice posted", description });
     },
     throwOnError: true,
@@ -270,4 +272,8 @@ export default function NoticeForm() {
       </form>
     </Form>
   );
+}
+
+interface Props {
+  onPost: () => void;
 }

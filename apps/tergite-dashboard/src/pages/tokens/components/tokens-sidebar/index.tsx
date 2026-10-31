@@ -60,9 +60,7 @@ function TokenSummary({ token, className = "", onDelete }: TokenSummaryProps) {
               {toRelative(token.expires_at)}
             </DetailItem>
 
-            <DetailItem label="Project external ID">
-              {token.project_ext_id}
-            </DetailItem>
+            <DetailItem label="Project">{token.project_name}</DetailItem>
           </ul>
         </div>
       </CardContent>

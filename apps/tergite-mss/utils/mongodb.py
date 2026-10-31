@@ -9,9 +9,12 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Type
+import asyncio
+from contextlib import suppress
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type
 
 import pymongo
+from beanie import Document, SortDirection, init_beanie
 from loguru import logger
 from motor.motor_asyncio import (
     AsyncIOMotorClient,
@@ -20,12 +23,91 @@ from motor.motor_asyncio import (
 )
 from pydantic import ValidationError
 from pymongo import ReturnDocument
+from pymongo.errors import CollectionInvalid
 
 from .date_time import get_current_timestamp
 from .exc import NotFoundError
 from .models import ModelOrDict, parse_record
 
 _CONNECTIONS = {}
+# the keywords that mongodb's draft-4 dialect of JSON schema understands
+_MONGO_JSON_SCHEMA_KEYWORDS = {
+    "additionalItems",
+    "additionalProperties",
+    "allOf",
+    "anyOf",
+    "bsonType",
+    "dependencies",
+    "description",
+    "enum",
+    "exclusiveMaximum",
+    "exclusiveMinimum",
+    "items",
+    "maxItems",
+    "maxLength",
+    "maxProperties",
+    "maximum",
+    "minItems",
+    "minLength",
+    "minProperties",
+    "minimum",
+    "not",
+    "oneOf",
+    "pattern",
+    "patternProperties",
+    "properties",
+    "required",
+    "title",
+    "uniqueItems",
+}
+_JSON_TO_BSON_TYPES = {
+    "array": "array",
+    "boolean": "bool",
+    "integer": ["int", "long"],
+    "null": "null",
+    "number": "number",
+    "object": "object",
+    "string": "string",
+}
+# the pattern beanie gives PydanticObjectId in its JSON schema
+_OBJECT_ID_PATTERN = "^[0-9a-f]{24}$"
+
+
+async def init_strict_beanie(
+    database: AsyncIOMotorDatabase | None = None,
+    connection_string: str | None = None,
+    document_models: Sequence[type[Document]] = (),
+    allow_index_dropping: bool = False,
+    recreate_views: bool = False,
+    multiprocessing_mode: bool = False,
+    skip_indexes: bool = False,
+):
+    """Initializes beanie with strict mongodb schemas.
+
+    This ensures the best of both worlds i.e. flexibility in development
+    and predictability in operation
+
+    Args:
+        database: motor database instance
+        connection_string: MongoDB connection string
+        document_models: model classes
+        allow_index_dropping: if index dropping is allowed. Default False
+        recreate_views: if views should be recreated. Default False
+        multiprocessing_mode: if multiprocessing mode is on it will patch the motor client to use process's event loop. Default False
+        skip_indexes: if you want to skip working with the indexes. Default False
+    """
+    await init_beanie(
+        database=database,
+        connection_string=connection_string,
+        document_models=document_models,
+        allow_index_dropping=allow_index_dropping,
+        recreate_views=recreate_views,
+        multiprocessing_mode=multiprocessing_mode,
+        skip_indexes=skip_indexes,
+    )
+    await asyncio.gather(
+        *(_set_jsonschema_validator(database, model) for model in document_models)
+    )
 
 
 def get_mongodb(url: str, name: str) -> AsyncIOMotorDatabase:
@@ -96,7 +178,7 @@ async def find(
     exclude: Tuple[str] = (),
     limit: Optional[int] = None,
     skip: int = 0,
-    sort: Optional[List[str]] = None,
+    sort: Optional[Sequence[str]] = None,
     schema: Type[ModelOrDict] = dict,
     skip_validation: bool = False,
 ) -> List[ModelOrDict]:
@@ -129,7 +211,7 @@ async def find(
 
     db_cursor = collection.find(filters, projection).skip(skip)
     if sort:
-        sort_config = _extract_sort_config(sort)
+        sort_config = extract_sort_config(sort)
         db_cursor.sort(sort_config)
 
     if limit and limit >= 0:
@@ -286,6 +368,29 @@ async def delete_many(collection: AsyncIOMotorCollection, _filter: dict):
     return result.deleted_count
 
 
+def extract_sort_config(sort_fields: Sequence[str]) -> List[Tuple[str, SortDirection]]:
+    """Gets the configuration for sorting basing on sort_fields passed
+
+    Sort fields are passed as prefixed with a "-" if a descending sort is required,
+    otherwise, their names are just listed.
+
+    Args:
+        sort_fields: the fields to sort by, prefixed with "-" if descending sort is needed
+
+    Returns:
+        The list of tuples of field and direction
+    """
+    sort_config: List[Tuple[str, SortDirection]] = []
+
+    for sort_field in sort_fields:
+        if sort_field.startswith("-"):
+            sort_config.append((sort_field[1:], SortDirection.DESCENDING))
+        else:
+            sort_config.append((sort_field, SortDirection.ASCENDING))
+
+    return sort_config
+
+
 def _extract_filter_obj(document: Dict[str, Any], unique_fields: Tuple[str, ...]):
     """Extracts a filter object from a document, given a set of unique fields
 
@@ -305,24 +410,108 @@ def _extract_filter_obj(document: Dict[str, Any], unique_fields: Tuple[str, ...]
         raise ValueError(f"property '{exp}' is required")
 
 
-def _extract_sort_config(sort_fields: List[str]) -> List[Tuple[str, int]]:
-    """Gets the configuration for sorting basing on sort_fields passed
-
-    Sort fields are passed as prefixed with a "-" if a descending sort is required,
-    otherwise, their names are just listed.
+async def _set_jsonschema_validator(
+    database: AsyncIOMotorDatabase, model: type[Document]
+):
+    """Makes the collection of the given model reject documents that violate its schema
 
     Args:
-        sort_fields: the fields to sort by, prefixed with "-" if descending sort is needed
+        database: motor database instance
+        model: model class
+    """
+    name = model.get_settings().name
+    # collMod fails on a collection that does not exist yet e.g. one without indexes
+    if name not in await database.list_collection_names(filter={"name": name}):
+        with suppress(CollectionInvalid):
+            await database.create_collection(name)
+
+    await database.command(
+        {
+            "collMod": name,
+            "validator": _get_jsonschema_validator(model),
+            "validationLevel": "strict",
+            "validationAction": "error",
+        }
+    )
+
+
+def _get_jsonschema_validator(model: type[Document]) -> dict:
+    """Gets the JSONSchema validator for the given model.
+
+    It cleans up the JSONSchema to be mongoDB validator-ready
+
+    Args:
+        model: model class
 
     Returns:
-        The list of tuples of field and direction
+        the JSONSchema for mongodb collection
     """
-    sort_config: List[Tuple[str, int]] = []
+    json_schema = model.model_json_schema()
+    definitions = json_schema.get("$defs", {})
+    is_extra_allow = model.model_config.get("extra") == "allow"
 
-    for sort_field in sort_fields:
-        if sort_field.startswith("-"):
-            sort_config.append((sort_field[1:], pymongo.DESCENDING))
+    return {
+        "$jsonSchema": {
+            **_to_mongo_json_schema(json_schema, definitions=definitions),
+            "additionalProperties": is_extra_allow,
+        }
+    }
+
+
+def _to_mongo_json_schema(value: Any, definitions: Dict[str, Any]) -> Any:
+    """Converts a pydantic JSON schema to mongodb's dialect of JSON schema
+
+    Mongodb supports neither references nor annotations like 'default' and 'format',
+    and it validates BSON types, so dates and ObjectIds are not the strings JSON sees.
+
+    Args:
+        value: the JSON schema or a part of it
+        definitions: the '$defs' of the root JSON schema, which '$ref's point to
+
+    Returns:
+        the mongodb-ready JSON schema
+    """
+    if isinstance(value, list):
+        return [_to_mongo_json_schema(item, definitions) for item in value]
+
+    if not isinstance(value, dict):
+        return value
+
+    schema = dict(value)
+    ref = schema.pop("$ref", None)
+    if ref is not None:
+        schema = {**definitions[ref.split("/")[-1]], **schema}
+
+    if "const" in schema:
+        schema["enum"] = [schema["const"]]
+
+    if "prefixItems" in schema:
+        schema["items"] = schema["prefixItems"]
+        schema["additionalItems"] = False
+
+    for bound in ("exclusiveMinimum", "exclusiveMaximum"):
+        if not isinstance(schema.get(bound, True), bool):
+            schema[bound.replace("exclusiveM", "m")] = schema[bound]
+            schema[bound] = True
+
+    json_type = schema.get("type")
+    if json_type == "string" and schema.get("format") == "date-time":
+        schema = {"bsonType": "date"}
+    elif json_type == "string" and schema.get("pattern") == _OBJECT_ID_PATTERN:
+        schema = {"bsonType": "objectId"}
+    elif json_type is not None:
+        schema["bsonType"] = _JSON_TO_BSON_TYPES[json_type]
+
+    result = {}
+    for key, item in schema.items():
+        if key not in _MONGO_JSON_SCHEMA_KEYWORDS:
+            continue
+
+        if key in ("properties", "patternProperties"):
+            result[key] = {
+                k: _to_mongo_json_schema(v, definitions) for k, v in item.items()
+            }
         else:
-            sort_config.append((sort_field, pymongo.ASCENDING))
+            result[key] = _to_mongo_json_schema(item, definitions)
 
-    return sort_config
+    return result

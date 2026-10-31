@@ -6,14 +6,56 @@
 const toDoc = ({ id, ...props }) => ({ _id: ObjectId(id), ...props });
 
 /**
+ * Converts an ID into an ObjectId, leaving a missing one missing
+ * @param {string | null | undefined} id - the ID to convert
+ * @returns {ObjectId | null} - the ObjectId, or null if there was no ID
+ */
+const toObjectId = (id) => (id == null ? null : ObjectId(id));
+
+/**
+ * Converts a JS object into a BSON-like object for projects
+ * @param {Object} obj - the object to convert to document
+ * @returns {Object} - a BSON-like document
+ */
+const toProjectDoc = ({ id, admin_id, user_ids, ...props }) => ({
+  _id: ObjectId(id),
+  admin_id: ObjectId(admin_id),
+  user_ids: user_ids.map(toObjectId),
+  ...props,
+});
+
+/**
  * Converts a JS object into a BSON-like object for tokens
  * @param {Object} obj - the object to convert to document
  * @returns {Object} - a BSON-like document
  */
-const toTokenDoc = ({ id, user_id, created_at, ...props }) => ({
+const toTokenDoc = ({ id, user_id, project_id, created_at, ...props }) => ({
   _id: ObjectId(id),
   user_id: ObjectId(user_id),
+  project_id: ObjectId(project_id),
   created_at: ISODate(),
+  ...props,
+});
+
+/**
+ * Converts a JS object into a BSON-like object for user requests
+ * @param {Object} obj - the object to convert to document
+ * @returns {Object} - a BSON-like document
+ */
+const toUserRequestDoc = ({
+  id,
+  target, // dropped — the API computes it from the type
+  resource_id,
+  requester_id,
+  target_user_ids,
+  approver_id,
+  ...props
+}) => ({
+  _id: ObjectId(id),
+  resource_id: ObjectId(resource_id),
+  requester_id: ObjectId(requester_id),
+  target_user_ids: target_user_ids.map(toObjectId),
+  approver_id: toObjectId(approver_id),
   ...props,
 });
 
@@ -33,32 +75,31 @@ const toNoticeDoc = ({
   id, // dropped — let MongoDB assign ObjectId
   starts_at_offset_hours,
   expires_at_offset_hours,
+  created_at_offset_hours,
+  severity_number, // dropped — the API computes it from the severity
+  user_id,
   created_by,
-  target_user_ids,
+  ref_id,
   dismissed_by,
   ...rest
 }) => {
-  const currentDateStr = process.env.CURRENT_DATE;
-  const now = currentDateStr ? new Date(currentDateStr) : new Date();
-  
-  const starts_at = new Date(
-    now.getTime() + starts_at_offset_hours * 3_600_000
-  );
-  const expires_at = new Date(
-    now.getTime() + expires_at_offset_hours * 3_600_000
-  );
+  const now = new Date();
+  const toOffsetDate = (hours) =>
+    hours == null
+      ? null
+      : ISODate(new Date(now.getTime() + hours * 3_600_000).toISOString());
+  const created_at = toOffsetDate(created_at_offset_hours).toISOString();
 
   return {
     ...rest,
-    starts_at: ISODate(starts_at.toISOString()),
-    expires_at: ISODate(expires_at.toISOString()),
-    created_by: ObjectId(created_by),
-    target_user_ids: target_user_ids
-      ? target_user_ids.map((uid) => ObjectId(uid))
-      : null,
-    dismissed_by: dismissed_by.map((uid) => ObjectId(uid)),
-    created_at: starts_at.toISOString(),
-    updated_at: starts_at.toISOString(),
+    user_id: toObjectId(user_id),
+    created_by: toObjectId(created_by),
+    ref_id: toObjectId(ref_id),
+    dismissed_by: dismissed_by.map(toObjectId),
+    starts_at: toOffsetDate(starts_at_offset_hours),
+    expires_at: toOffsetDate(expires_at_offset_hours),
+    created_at,
+    updated_at: created_at,
   };
 };
 
@@ -67,7 +108,15 @@ const toNoticeDoc = ({
  * @param {Object} obj - the object to convert to document
  * @returns {Object} - a Job object
  */
-const toJob = ({ device, status, duration_in_secs, id, ...props }) => {
+const toJob = ({
+  device,
+  status,
+  duration_in_secs,
+  id,
+  project_id,
+  user_id,
+  ...props
+}) => {
   let result = null;
   let download_url = null;
 
@@ -104,15 +153,31 @@ const toJob = ({ device, status, duration_in_secs, id, ...props }) => {
     timestamps,
     result,
     download_url,
+    project_id: toObjectId(project_id),
+    user_id: toObjectId(user_id),
     ...props,
   };
 };
 
 db = db.getSiblingDB("testing"); // Create/use database
 
-// Drop the database
-db.dropDatabase();
-console.log("Database 'testing' dropped successfully.");
+// Clear the data rather than drop the database, which would also drop the
+// indexes and notice templates MSS creates only at startup
+const dataCollections = [
+  "auth_app_tokens",
+  "auth_projects",
+  "auth_users",
+  "calibrations",
+  "calibrations_logs",
+  "deleted_auth_projects",
+  "devices",
+  "jobs",
+  "notice_preferences",
+  "notices",
+  "requests",
+];
+dataCollections.forEach((name) => db.getCollection(name).deleteMany({}));
+console.log("Database 'testing' cleared successfully.");
 
 console.log("Inserting initial data in mongo...");
 
@@ -137,11 +202,11 @@ const jobs = JSON.parse(rawJobs).map(toJob).map(toDoc);
 console.log({ jobs });
 const notices = JSON.parse(rawNotices).map(toNoticeDoc);
 console.log({ notices });
-const projects = JSON.parse(rawProjects).map(toDoc);
+const projects = JSON.parse(rawProjects).map(toProjectDoc);
 console.log({ projects });
 const tokens = JSON.parse(rawTokens).map(toTokenDoc);
 console.log({ tokens });
-const userRequests = JSON.parse(rawUserRequests).map(toDoc);
+const userRequests = JSON.parse(rawUserRequests).map(toUserRequestDoc);
 console.log({ userRequests });
 const users = JSON.parse(rawUsers).map(toDoc);
 console.log({ users });
@@ -150,13 +215,15 @@ const botUser = users.find((v) => v.roles.includes("system"));
 console.log({ botUser });
 const botProject = projects.find(
   (v) =>
-    v.user_ids.includes(`${botUser["_id"]}`) && v.qpu_seconds > 1 && v.is_active
+    v.user_ids.some((id) => id.equals(botUser["_id"])) &&
+    v.qpu_seconds > 1 &&
+    v.is_active
 );
 console.log({ botProject });
 const botToken = {
   _id: ObjectId("67bdc2aacd991c8e1cf16ffc"),
   title: "some-token-test",
-  project_ext_id: botProject["ext_id"],
+  project_id: botProject["_id"],
   lifespan_seconds: 7200000,
   token: "W0imS_n_J5ZwP8wFYvbBCiDkJVhQcEROEfyTPvFko1E",
   user_id: botUser["_id"],
@@ -178,5 +245,5 @@ db.jobs.insertMany(jobs);
 console.log("Inserted jobs");
 db.notices.insertMany(notices);
 console.log("Inserted notices");
-db.auth_user_requests.insertMany(userRequests);
+db.requests.insertMany(userRequests);
 console.log("Inserted user requests");

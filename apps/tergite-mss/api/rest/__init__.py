@@ -16,29 +16,25 @@
 # that they have been altered from the originals.
 
 from fastapi import FastAPI
-from fastapi.requests import Request
-from loguru import logger
 
 import settings
-from api.rest.middleware import TergiteCORSMiddleware
+from api.rest.middleware import RequestIDMiddleware, TergiteCORSMiddleware
 from services.auth.utils import TooManyListQueryParams
-from utils.api import WebsocketRequestLog, get_request_logs_store, to_http_error
-from utils.crypto import get_uuid4_str
+from utils.api import to_http_error, unwrap_exception_group
 from utils.exc import (
+    ConflictError,
     DbValidationError,
     ForbiddenError,
     NotFoundError,
     ServiceUnavailableError,
+    TooManyRequestsError,
     UnknownBccError,
 )
 from utils.logging import setup_logging
 
 from . import app_kwargs
 from .app_kwargs import get_app_kwargs
-from .dependencies import (
-    CurrentProjectDep,
-    CurrentStrictProjectDep,
-)
+from .dependencies import CurrentProjectDep, CurrentStrictProjectDep
 from .routers.admin import router as admin_router
 from .routers.auth import include_auth_router
 from .routers.booking import router as booking_router
@@ -55,8 +51,7 @@ setup_logging(settings.CONFIG.environment)
 # application
 app = FastAPI(**get_app_kwargs())
 
-
-# middleware
+app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     TergiteCORSMiddleware,
     allow_origins=["*"],
@@ -64,59 +59,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.middleware("http")
-async def request_logging_middleware(request: Request, call_next):
-    """Generates request ID, contextualizes logging, logs requests, and records them in requests_store."""
-    import time
-
-    # Resolve request ID (reuse x-request-id header if sent, or generate new)
-    request_id = (
-        request.headers.get("x-request-id")
-        or request.headers.get("X-Request-ID")
-        or get_uuid4_str()
-    )
-    request.state.request_id = request_id
-
-    # Wrap request processing in Loguru context
-    with logger.contextualize(request_id=request_id):
-        logger.debug(
-            f"Incoming request: {request.method} {request.url.path} "
-            f"from {request.client.host if request.client else 'unknown'}"
-        )
-
-        start_time = time.time()
-        try:
-            response = await call_next(request)
-            duration = (time.time() - start_time) * 1000
-
-            # Log response based on status code
-            log_msg = f"Completed request: {request.method} {request.url.path} - Status: {response.status_code} - Duration: {duration:.2f}ms"
-            if response.status_code >= 500:
-                logger.error(log_msg)
-            elif response.status_code >= 400:
-                logger.warning(log_msg)
-            else:
-                logger.info(log_msg)
-
-        except Exception as exc:
-            duration = (time.time() - start_time) * 1000
-            logger.exception(
-                f"Request crashed: {request.method} {request.url.path} - Duration: {duration:.2f}ms"
-            )
-            raise exc
-
-        # Handle requests store recording
-        requests_store = get_request_logs_store()
-        if not requests_store.exists(request_id):
-            requests_store.insert(WebsocketRequestLog.from_request(request))
-
-        # Attach request ID to response headers
-        response.headers["x-request-id"] = request_id
-        response.headers["X-Request-ID"] = request_id
-        return response
-
 
 # exception handlers
 app.add_exception_handler(NotFoundError, to_http_error(404))
@@ -130,7 +72,12 @@ app.add_exception_handler(ServiceUnavailableError, to_http_error(503))
 app.add_exception_handler(UnknownBccError, to_http_error(400))
 app.add_exception_handler(TooManyListQueryParams, to_http_error(400))
 app.add_exception_handler(ForbiddenError, to_http_error(403))
+app.add_exception_handler(ConflictError, to_http_error(409))
+app.add_exception_handler(TooManyRequestsError, to_http_error(429))
 app.add_exception_handler(Exception, to_http_error(500, "Unexpected server error"))
+app.add_exception_handler(
+    ExceptionGroup, unwrap_exception_group(app.exception_handlers)
+)
 
 # routes
 include_auth_router(app)
@@ -143,6 +90,11 @@ app.include_router(booking_router)
 app.include_router(counts_router)
 
 
-@app.get("/")
-async def home(current_project: CurrentStrictProjectDep):
-    return "Welcome to the MSS machine"
+@app.get("/health", include_in_schema=False)
+async def health():
+    """Liveness probe for the container healthcheck.
+
+    Deliberately public, trivial and unlogged: the probe runs every ten seconds and
+    drowned the request log when it went through a real endpoint.
+    """
+    return {"status": "ok"}

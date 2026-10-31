@@ -55,6 +55,7 @@ dependencies = [
     "hiredis~=3.2.1",
     "redis[hiredis]~=7.1.0",
     "loguru~=0.7.2",
+    "aiosmtplib~=3.0.2",
 ]
 
 [project.optional-dependencies]
@@ -66,6 +67,7 @@ dev = [
     "pytest-freezegun>=0.4.2",
     "pytest-asyncio>=0.21.1,<0.23.0",
     "pytest-mock>=3.11.1",
+    "pytest-cov>=4.1.0",
     "respx>=0.20.2",
     "filelock>=3.12.2",
     "setuptools",
@@ -83,6 +85,8 @@ exclude = ["docs*", "tests*"]
 
 [tool.isort]
 skip_gitignore = true
+# keeps isort from fighting the pinned black, which reformats its default style
+profile = "black"
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

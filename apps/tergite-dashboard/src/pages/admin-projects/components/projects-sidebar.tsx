@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiInput } from "@/components/ui/multi-input";
+import { UserEmailInput } from "./user-email-input";
 import { useToast } from "@/hooks/use-toast";
 import { SidebarPlaceholder } from "@/components/ui/sidebar-placeholder";
 import { X } from "lucide-react";
@@ -151,8 +152,8 @@ function AdminProjectSummary({
                   )}
                 />
 
-                <DetailItem label="External ID" className="flex-col">
-                  {project.ext_id}
+                <DetailItem label="ID" className="flex-col">
+                  {project.id}
                 </DetailItem>
 
                 <FormField
@@ -241,7 +242,8 @@ function AdminProjectSummary({
                           >
                             Admin
                           </Label>
-                          <Input id="admin_email" {...field} />
+                          <UserEmailInput id="admin_email" {...field}
+                          />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -266,6 +268,7 @@ function AdminProjectSummary({
                             id="user_emails"
                             type="email"
                             {...field}
+                            InputComponent={UserEmailInput}
                           />
                         </div>
                       </FormControl>

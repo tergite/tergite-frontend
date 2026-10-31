@@ -19,6 +19,8 @@ from fastapi_users.models import ID
 from fastapi_users.types import DependencyCallable
 from fastapi_users_db_beanie import ObjectIDIDMixin
 
+from utils.exc import ForbiddenError
+
 from ..app_tokens.database import AppTokenDatabase
 from ..app_tokens.dtos import AppToken, AppTokenCreate
 from ..users.database import UserDatabase
@@ -70,16 +72,16 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
 
         return project
 
-    async def get_pair_by_ext_and_user_id(
-        self, ext_id: str, user_id: str
+    async def get_project_user_pair(
+        self, project_id: PydanticObjectId, user_id: PydanticObjectId
     ) -> Tuple[Project, User]:
         """
-        Get a tuple of project and user for the given by ext_id and user_id.
+        Get a tuple of project and user for the given by project_id and user_id.
 
         The user_id must be attached to this project.
 
         Args:
-            ext_id: external id of the project to retrieve.
+            project_id: id of the project to retrieve.
             user_id: user_id of the project to retrieve.
 
         Raises:
@@ -94,9 +96,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         if user is None:
             raise UserNotExists()
 
-        project = await self.project_db.get_by_ext_and_user_email_or_id(
-            ext_id=ext_id, user_email=user.email, user_id=user_id
-        )
+        project = await self.project_db.get_if_member(pk=project_id, user_id=user_id)
 
         if project is None:
             raise exc.ProjectNotExists()
@@ -147,7 +147,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
 
     async def create(
         self,
-        project: Project,
+        project: ProjectPartial,
         request: Optional[Request] = None,
         **kwargs,
     ) -> Project:
@@ -158,19 +158,10 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             project: The Project model to create.
             request: Optional FastAPI request that triggered the operation, defaults to None.
 
-        Raises:
-            ProjectExists: A project already exists with the same ext_id.
-
         Returns:
             a new project.
         """
-
-        existing_project = await self.project_db.get_by_ext_id(project.ext_id)
-        if existing_project is not None:
-            raise exc.ProjectExists()
-
-        created_project = await self.project_db.create(project.model_dump())
-        return created_project
+        return await self.project_db.create(project.model_dump())
 
     async def update(
         self,
@@ -194,8 +185,8 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         Returns:
             the updated project.
         """
+        await self.on_before_update(project, project_partial)
         update_dict = project_partial.model_dump(exclude_none=True)
-        await self.on_before_update(project, update_dict)
         updated_project = await self.project_db.update(project, update_dict)
         return updated_project
 
@@ -203,6 +194,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         self,
         project: Project,
         request: Optional[Request] = None,
+        is_superuser: bool = False,
     ) -> None:
         """Delete a project.
 
@@ -210,7 +202,18 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             project: The user to delete.
             request: Optional FastAPI request that
                 triggered the operation, defaults to None.
+            is_superuser: whether the caller is acting as a superuser; defaults to False
+                so a caller that does not say is treated as not.
+
+        Raises:
+            ForbiddenError: you cannot delete your own personal project
         """
+        if project.is_personal and not is_superuser:
+            # a personal project is recreated on next login with a fresh allowance, so
+            # its owner deleting it would be an allowance farm. Superusers may, for
+            # offboarding and erasure.
+            raise ForbiddenError("you cannot delete your own personal project")
+
         await self.on_before_delete(project, request)
         await self.project_db.delete(project)
         deleted_project = DeletedProject(
@@ -219,7 +222,7 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
         await deleted_project.create()
 
     async def on_before_update(
-        self, original: Project, update_dict: Dict[str, Any]
+        self, original: Project, new_updates: ProjectPartial
     ) -> None:
         """Perform logic before the project is updated.
 
@@ -228,23 +231,12 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
 
         Args:
             original: the project to be updated
-            update_dict: the new updates
+            new_updates: the new updates
         """
-        if "user_emails" in update_dict:
-            user_ids = await self.user_db.get_many(
-                {"email": {"$in": update_dict["user_emails"]}}
-            )
-
+        if new_updates.user_ids:
             filter_obj = {
-                "user_id": {"$nin": user_ids},
-                "project_ext_id": original.ext_id,
-            }
-            await self.app_token_db.delete_many(filter_obj)
-
-        if "user_ids" in update_dict:
-            filter_obj = {
-                "user_id": {"$nin": update_dict["user_ids"]},
-                "project_ext_id": original.ext_id,
+                "user_id": {"$nin": new_updates.user_ids},
+                "project_id": original.id,
             }
             await self.app_token_db.delete_many(filter_obj)
 
@@ -259,15 +251,15 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             project: the project to be deleted
             request: Optional FastAPI request that triggered the operation
         """
-        await self.app_token_db.delete_many({"project_ext_id": project.ext_id})
+        await self.app_token_db.delete_many({"project_id": project.id})
 
     async def authenticate(
         self,
         details: AppTokenCreate,
-        user_id: str,
+        user_id: PydanticObjectId,
     ) -> Optional[Project]:
         """
-        Authenticate and return a project following an ext_id and a current_user.
+        Authenticate and return a project for the project_id of token and user_id.
 
         Args:
             details: The app token details to use to generate an app token.
@@ -277,11 +269,11 @@ class ProjectAppTokenManager(ObjectIDIDMixin):
             ProjectNotExists: if project does not exist or user does not have access.
 
         Returns:
-            the project of the given project_ext_id in details, and id in current_user
+            the project of the given project_id in details, and id in current_user
         """
         try:
-            project, _ = await self.get_pair_by_ext_and_user_id(
-                details.project_ext_id, user_id=user_id
+            project, _ = await self.get_project_user_pair(
+                details.project_id, user_id=user_id
             )
             return project
         except exc.ProjectNotExists:

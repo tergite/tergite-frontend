@@ -14,6 +14,9 @@ from typing import Sequence
 from fastapi import APIRouter, Depends
 from fastapi_users.authentication import BearerTransport
 
+import settings
+from utils.config import ProjectsConfig
+
 from ..app_tokens.auth_backend import AppTokenAuthenticationBackend
 from ..app_tokens.authenticator import AppTokenAuthenticator
 from ..app_tokens.database import AppTokenDatabase
@@ -25,14 +28,23 @@ from ..users.dtos import CurrentUserDependency
 from ..users.manager import UserManagerDependency
 from . import routers
 from .database import ProjectDatabase
-from .dtos import Project, ProjectAdminView, ProjectCreate, ProjectRead, ProjectUpdate
+from .dtos import (
+    Project,
+    ProjectAdminView,
+    ProjectCreate,
+    ProjectRead,
+    ProjectUpdate,
+)
 from .manager import ProjectAppTokenManager, ProjectManagerDependency
 from .routers import CurrentSuperUserDependency, CurrentUserIdDependency
 
 
 async def get_project_db():
     """Dependency injector of the projects database"""
-    yield ProjectDatabase()
+    # Using a global variable here because this is a dependency injector,
+    #   and it would be easier to test if the settings is used directly in the code
+    #   as opposed to used as a default parameter.
+    return ProjectDatabase(conf=settings.CONFIG.projects)
 
 
 def get_app_token_backend(

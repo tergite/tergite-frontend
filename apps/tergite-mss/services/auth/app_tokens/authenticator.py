@@ -172,7 +172,9 @@ class AppTokenAuthenticator:
             elif not ignore_qpu_seconds and project.qpu_seconds <= 0:
                 # tokens for projects with no qpu allocation
                 # are not allowed except if optional is True
-                error_msg = f"{project.qpu_seconds} QPU seconds left on project {project.ext_id}"
+                error_msg = (
+                    f"{project.qpu_seconds} QPU seconds left on project {project.name}"
+                )
                 project_user_pair = None
             elif user_roles and not any(role in user.roles for role in user_roles):
                 # restrict access to only tokens of users with any of the given roles

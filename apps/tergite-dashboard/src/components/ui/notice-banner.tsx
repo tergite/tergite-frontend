@@ -1,11 +1,6 @@
 import { IconButton } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import {
-  apiBaseUrl,
-  dismissNotice,
-  refreshAllNoticeCounts,
-  refreshAllNotices,
-} from "@/lib/api-client";
+import { apiBaseUrl, dismissNotice, refreshMyNotices } from "@/lib/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useMemo } from "react";
@@ -26,18 +21,17 @@ export function NoticeBanner({ notice }: Props) {
   const queryClient = useQueryClient();
   const severityClass = SEVERITY_BADGE_CLASSES[notice.severity];
   const title = useMemo(
-    () => (notice.target_user_ids ? "" : " · All users"),
-    [notice.target_user_ids],
+    () => (notice.user_id ? "" : " · All users"),
+    [notice.user_id],
   );
 
   const noticeDismissal = useMutation({
-    mutationKey: [apiBaseUrl, "admin", "notices", "dismiss", notice.id],
+    mutationKey: [apiBaseUrl, "me", "notices", "dismiss", notice.id],
     async mutationFn(id: string) {
       return await dismissNotice(id, { baseUrl: apiBaseUrl });
     },
     async onSuccess(data) {
-      await refreshAllNotices(queryClient);
-      await refreshAllNoticeCounts(queryClient);
+      await refreshMyNotices(queryClient);
       toast({ title: `Notice dismissal: ${data.status}` });
     },
     throwOnError: true,
@@ -60,7 +54,7 @@ export function NoticeBanner({ notice }: Props) {
               onClick={() => noticeDismissal.mutate(notice.id)}
             />
           </div>
-          <p className="text-sm">{notice.message}</p>
+          <p className="text-sm">{notice.body}</p>
         </div>
       </div>
     </div>

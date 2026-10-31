@@ -67,6 +67,43 @@ public_key_path = "data/simulator-kampala-pub-key.pem"
 # the public url for the backend; defaults to the 'url' if not set but can be set to say a reverse proxy
 public_url = ""
 
+[projects]
+# QPU seconds a personal project is created with. Default 0 keeps an unconfigured
+# deployment behaving as it did before personal projects existed; set a non-zero
+# value to let every new user start with usable time.
+personal_qpu_seconds = 0
+# notify the project admin when remaining QPU seconds fall below this; default = 600
+qpu_seconds_low_threshold = 600
+
+
+[notices]
+# days a notice is kept before the TTL index removes it; default = 90
+retention_days = 90
+# base URL of the dashboard, used for the deep links in notice emails.
+# Required whenever [email] is set, since a mail with a dead link is worse than no mail.
+dashboard_url = "https://dashboard.example.com"
+# seconds between sweeps of the pending-email outbox; default = 60
+email_sweep_interval = 60
+# attempts per notice email before it is marked failed; default = 3
+email_retry_limit = 3
+# the name of the application as will be seen in the email notices; default = Tergite
+app_name = "WACQT"
+
+# Outbound SMTP. Omit this whole section to leave notices in-app only:
+# emails are then never queued, and per-user email preferences have no effect.
+[email]
+hostname = "smtp.example.com"
+port = 587
+username = "mss@example.com"
+password = "some hidden secret"
+# whether to upgrade the connection with STARTTLS; default = true
+use_tls = true
+from_address = "no-reply@example.com"
+# display name on the From header; default = "Tergite"
+from_name = "Tergite"
+# seconds to wait on the SMTP server before giving up; default = 10
+timeout = 10
+
 [auth]
 # Secret for signing JWT tokens. https://jwt.io/introduction
 jwt_secret = "some hidden secret"

@@ -20,8 +20,16 @@ from beanie import PydanticObjectId
 from pytest_lazyfixture import lazy_fixture
 from pytest_mock import MockerFixture
 
+import settings
 from services.auth import Project
-from tests._utils.auth import TEST_PROJECT_EXT_ID, TEST_USER_ID, get_db_record
+from services.notices import NoticeType
+from tests._utils.auth import (
+    TEST_PROJECT_ID,
+    TEST_PROJECT_NAME,
+    TEST_SYSTEM_USER_ID,
+    TEST_USER_ID,
+    get_db_record,
+)
 from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import (
     get_current_timestamp_str,
@@ -29,6 +37,7 @@ from tests._utils.date_time import (
 from tests._utils.env import TEST_BACKENDS_MAP
 from tests._utils.fixtures import load_json_fixture
 from tests._utils.mongodb import find_in_collection, insert_in_collection
+from tests._utils.notices import get_user_notices
 from tests._utils.records import (
     filter_by_equality,
     order_by_many,
@@ -95,6 +104,12 @@ _DEVICES_AND_JOB_TIMESTAMPED_UPDATES = [
     for device in _DEVICES[:2]
     for job_update in _JOB_TIMESTAMPED_UPDATES
 ]
+_BILLED_JOB_UPDATE = _JOB_TIMESTAMPED_UPDATES[0]
+_BILLED_JOB_COST = (
+    datetime.fromisoformat(_BILLED_JOB_UPDATE["timestamps"]["execution"]["finished"])
+    - datetime.fromisoformat(_BILLED_JOB_UPDATE["timestamps"]["execution"]["started"])
+).total_seconds()
+_QPU_THRESHOLD = settings.CONFIG.projects.qpu_seconds_low_threshold
 
 
 @pytest.mark.parametrize("job_id", _JOB_IDS)
@@ -167,9 +182,9 @@ def test_create_job(
         mocker.stop(base64_b64encode_spy)
 
         expected_job = {
-            "project_id": str(project_id),
+            "project_id": project_id,
             "job_id": new_job_id,
-            "user_id": str(current_user_id),
+            "user_id": current_user_id,
             "device": device,
             "status": "pending",
             "calibration_date": payload["calibration_date"],
@@ -337,7 +352,7 @@ def test_update_job_resource_usage(
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
 
     project_before_update = get_db_record(
-        db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
     )
 
     url = f"/devices/ws/{device}"
@@ -358,7 +373,7 @@ def test_update_job_resource_usage(
             assert response["status"] == "success"
 
     project_after_update = get_db_record(
-        db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
     )
     expected_resource_usage = _get_resource_usage(raw_payload["timestamps"])
     actual_resource_usage = round(
@@ -381,7 +396,7 @@ def test_update_job_resource_usage_advanced(
     insert_in_collection(database=db, collection_name=_COLLECTION, data=job_list)
 
     project_before_update = get_db_record(
-        db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
     )
 
     url = f"/devices/ws/{device}"
@@ -402,7 +417,7 @@ def test_update_job_resource_usage_advanced(
             assert response["status"] == "success"
 
     project_after_update = get_db_record(
-        db, schema=Project, _filter={"ext_id": TEST_PROJECT_EXT_ID}
+        db, schema=Project, _filter={"_id": PydanticObjectId(TEST_PROJECT_ID)}
     )
     expected_resource_usage = _get_resource_usage(payload["timestamps"])
     actual_resource_usage = round(
@@ -540,6 +555,122 @@ def test_unauthenticated_remove_job(db, client, idx: int, mock_bcc, freezer):
         response = client.delete(f"/jobs/{job_id}", headers=invalid_headers)
         assert response.status_code == 401
         assert response.json() == {"detail": "Unauthorized"}
+
+
+def test_dropping_below_the_qpu_threshold_warns_the_project_admin(client, db):
+    """The person who can request more QPU time is the one told the project runs low"""
+    start = _QPU_THRESHOLD + _BILLED_JOB_COST - 1
+
+    _bill_a_job(client, db, starting_seconds=start)
+    admin_notices = get_user_notices(db, TEST_USER_ID)
+
+    assert get_db_record(db, Project, TEST_PROJECT_ID)["qpu_seconds"] == (
+        pytest.approx(start - _BILLED_JOB_COST)
+    )
+    assert [item["type"] for item in admin_notices] == [NoticeType.QPU_SECONDS_LOW.id]
+    assert admin_notices[0]["title"] == (
+        f"{TEST_PROJECT_NAME} is running low on QPU time"
+    )
+    assert admin_notices[0]["body"] == (
+        f"{TEST_PROJECT_NAME} has {_QPU_THRESHOLD - 1:.0f}s of QPU time left. "
+        "Request more before it runs out."
+    )
+    assert admin_notices[0]["severity"] == "warning"
+    assert get_user_notices(db, TEST_SYSTEM_USER_ID) == []
+
+
+def test_staying_above_the_qpu_threshold_warns_nobody(client, db):
+    """A project with plenty of QPU time left is not worth interrupting anyone over"""
+    _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD + _BILLED_JOB_COST * 10)
+
+    assert db["notices"].count_documents({}) == 0
+
+
+def test_a_second_job_below_the_qpu_threshold_does_not_warn_again(client, db):
+    """Only the job that crosses the threshold warns, not every job after it"""
+    _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD + _BILLED_JOB_COST - 1)
+    db[_COLLECTION].delete_many({})
+
+    _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD - 1)
+
+    assert [item["type"] for item in get_user_notices(db, TEST_USER_ID)] == [
+        NoticeType.QPU_SECONDS_LOW.id
+    ]
+
+
+def test_running_out_of_qpu_time_tells_all_members(client, db):
+    """Members cannot request more time, but they need to know why their jobs stopped"""
+    _bill_a_job(client, db, starting_seconds=1)
+    depleted_notices = list(
+        db["notices"].find({"type": NoticeType.QPU_SECONDS_DEPLETED.id})
+    )
+
+    assert {item["user_id"] for item in depleted_notices} == {
+        PydanticObjectId(TEST_USER_ID),
+        PydanticObjectId(TEST_SYSTEM_USER_ID),
+    }
+    assert {item["severity"] for item in depleted_notices} == {"critical"}
+
+
+def test_running_out_of_qpu_time_after_running_low(client, db):
+    """Running out is reported even when running low was reported before"""
+    _bill_a_job(client, db, starting_seconds=_QPU_THRESHOLD + _BILLED_JOB_COST - 1)
+    db[_COLLECTION].delete_many({})
+
+    _bill_a_job(client, db, starting_seconds=1)
+
+    assert [item["type"] for item in get_user_notices(db, TEST_USER_ID)] == [
+        NoticeType.QPU_SECONDS_LOW.id,
+        NoticeType.QPU_SECONDS_DEPLETED.id,
+    ]
+
+
+def test_an_already_empty_project_does_not_warn_again(client, db):
+    """Only the job that uses up the last QPU time reports it"""
+    _bill_a_job(client, db, starting_seconds=-5)
+
+    assert db["notices"].count_documents({}) == 0
+
+
+def _bill_a_job(client, db, starting_seconds: Optional[float] = None):
+    """Runs a job of the test project to completion, optionally setting its QPU time first
+
+    Args:
+        client: the test client
+        db: the mongo database
+        starting_seconds: the QPU seconds to start from; None leaves them as they are
+    """
+    raw_jobs = with_incremental_timestamps(
+        _JOBS_LIST, fields=["created_at", "calibration_date"]
+    )
+    raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
+    insert_in_collection(
+        database=db,
+        collection_name=_COLLECTION,
+        data=[
+            {**item, "project_id": PydanticObjectId(TEST_PROJECT_ID)}
+            for item in raw_jobs
+        ],
+    )
+    if starting_seconds is not None:
+        db["auth_projects"].update_one(
+            {"_id": PydanticObjectId(TEST_PROJECT_ID)},
+            {"$set": {"qpu_seconds": starting_seconds}},
+        )
+
+    device = _DEVICES[0]
+    with client as client:
+        with client.websocket_connect(
+            f"/devices/ws/{device}", headers=create_bcc_headers(device)
+        ) as socket:
+            socket.send_json(
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "job_updated",
+                    "data": _BILLED_JOB_UPDATE,
+                }
+            )
+            assert socket.receive_json()["status"] == "success"
 
 
 def _get_resource_usage(timestamps: Dict[str, Dict[str, str]]) -> Optional[float]:

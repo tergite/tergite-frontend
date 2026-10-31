@@ -151,7 +151,7 @@ export function loader(appState: AppState, queryClient: QueryClient) {
     const projects = await queryClient.ensureQueryData(myProjectsQuery);
 
     const currentProject = projects.filter(
-      (v) => v.ext_id === appState.currentProjectExtId
+      (v) => v.id === appState.currentProjectId
     )[0];
 
     // jobs

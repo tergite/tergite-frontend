@@ -64,6 +64,51 @@ public_key_path = "bcc_certs/simulator-kampala-pub-key.pem"
 # the public url for the backend; defaults to the 'url' if not set but can be set to say a reverse proxy
 public_url = "http://proxy.example.com/simulator-stockholm"
 
+[projects]
+# QPU seconds a personal project is created with. Default 0 keeps an unconfigured
+# deployment behaving as it did before personal projects existed; set a non-zero
+# value to let every new user start with usable time.
+personal_qpu_seconds = 0
+# whether personal projects are auto-created when a user logs in; default = true
+personal_projects_enabled = true
+# notify the project admin when remaining QPU seconds fall below this; default = 600
+qpu_seconds_low_threshold = 600
+# maximum pending user requests one user may hold at a time; default = 5
+max_pending_requests_per_user = 5
+# maximum failed project lookups per user per hour before 429; default = 20
+max_failed_lookups_per_hour = 20
+# upper bound on a single bulk QPU-seconds grant, so a mistyped figure cannot hand out
+# a decade of machine time; default = 2592000 (30 days)
+max_grant_seconds = 2592000
+
+[notifications]
+# days a notification is kept before the TTL index removes it; default = 90
+retention_days = 90
+# base URL of the dashboard, used for the deep links in notification emails.
+# Required whenever [email] is set, since a mail with a dead link is worse than no mail.
+dashboard_url = "https://dashboard.example.com"
+# seconds between sweeps of the pending-email outbox; default = 60
+email_sweep_interval = 60
+# attempts per notification email before it is marked failed; default = 3
+email_retry_limit = 3
+
+# Outbound SMTP. Omit this whole section to leave notifications in-app only:
+# emails are then never queued, and per-user email preferences have no effect.
+[email]
+# host = "smtp.example.com"
+host = "mailpit"
+# port = 587
+port = 1025
+username = "mss@example.com"
+password = "some hidden secret"
+# whether to upgrade the connection with STARTTLS; default = true
+use_tls = false
+from_address = "no-reply@tergite.com"
+# display name on the From header; default = "Tergite"
+from_name = "Tergite"
+# seconds to wait on the SMTP server before giving up; default = 10
+timeout = 10
+
 [auth]
 # Secret for signing JWT tokens. https://jwt.io/introduction
 jwt_secret = "some hidden secret"

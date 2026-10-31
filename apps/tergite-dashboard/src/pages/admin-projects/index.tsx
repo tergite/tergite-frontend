@@ -29,7 +29,9 @@ import { CreateProjectForm } from "./components/create-project-form";
 
 export function AdminProjects() {
   const queryClient = useQueryClient();
-  const [isCreating, setIsCreating] = useState(false);
+  const [mode, setMode] = useState<OperationMode>(OperationMode.EDIT);
+  // const [isCreating, setIsCreating] = useState(false);
+  // const [isEditing, setIsEditing] = useState(false);
   const { currentUser } = useLoaderData() as AdminProjectsData;
   const { data: projects = [] } = useQuery(
     allAdminProjectsQuery({
@@ -49,13 +51,13 @@ export function AdminProjects() {
 
   const handleRowClick = useCallback(
     (row: Row<AdminProject>) => {
-      setIsCreating(false);
+      setMode(OperationMode.EDIT);
       if (!row.getIsSelected()) {
         row.toggleSelected();
         setRowSelection({ [row.id]: true });
       }
     },
-    [setRowSelection, setIsCreating]
+    [setRowSelection, setMode]
   );
 
   const handleProjectDelete = useCallback(async () => {
@@ -66,21 +68,22 @@ export function AdminProjects() {
   }, [queryClient, setRowSelection]);
 
   const handleProjectEdit = useCallback(async () => {
+    setMode(OperationMode.EDIT);
     await refreshMyProjectsQueries(queryClient);
     await refreshAllAdminQueries(queryClient);
-  }, [queryClient]);
+  }, [queryClient, setMode]);
 
   const handleProjectCreate = useCallback(async () => {
-    setIsCreating(false);
+    setMode(OperationMode.EDIT);
     await refreshMyProjectsQueries(queryClient);
     await refreshAllAdminQueries(queryClient);
     setRowSelection({});
-  }, [queryClient, setIsCreating, setRowSelection]);
+  }, [queryClient, setMode, setRowSelection]);
 
   const handleSidebarClose = useCallback(async () => {
-    setIsCreating(false);
+    setMode(OperationMode.EDIT);
     setRowSelection({});
-  }, [setIsCreating, setRowSelection]);
+  }, [setMode, setRowSelection]);
 
   return (
     <main className="grid flex-1 items-start gap-4 grid-cols-1 p-4 sm:px-6 sm:py-0 xl:grid-cols-4">
@@ -88,9 +91,16 @@ export function AdminProjects() {
         <CardHeader>
           <div className="flex justify-between">
             <CardDescription>Projects</CardDescription>
-            <Button variant="default" onClick={() => setIsCreating(true)}>
-              New
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="default"
+                onClick={() => {
+                  setMode(OperationMode.CREATE);
+                }}
+              >
+                New
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -104,7 +114,7 @@ export function AdminProjects() {
         </CardContent>
       </Card>
 
-      {!isCreating && (
+      {mode === OperationMode.EDIT && (
         <AdminProjectsSidebar
           project={projects[selectedProjectIdx]}
           className="order-first xl:order-none col-span-1"
@@ -114,7 +124,7 @@ export function AdminProjects() {
         />
       )}
 
-      {isCreating && (
+      {mode === OperationMode.CREATE && (
         <CreateProjectForm
           className="order-first xl:order-none col-span-1"
           onCreate={handleProjectCreate}
@@ -147,4 +157,9 @@ export function loader(_appState: AppState, queryClient: QueryClient) {
 
 interface AdminProjectsData {
   currentUser: User;
+}
+
+enum OperationMode {
+  EDIT = "edit",
+  CREATE = "create",
 }

@@ -56,3 +56,11 @@ class InvalidWebsocketDataTypeError(BaseMssException):
 
 class ForbiddenError(BaseMssException):
     """Exception when a request is forbidden"""
+
+
+class ConflictError(BaseMssException):
+    """Exception when a request conflicts with the current state of a resource"""
+
+
+class TooManyRequestsError(BaseMssException):
+    """Exception when a client has exceeded a rate limit"""

@@ -26,8 +26,13 @@ class AppTokenCreate(BaseModel):
     """The payload passed when generating an app token"""
 
     title: str
-    project_ext_id: str
+    project_id: PydanticObjectId
     lifespan_seconds: float
+
+    @field_serializer("project_id", when_used="json")
+    def serialize_object_id(self, value: PydanticObjectId):
+        """Convert object ID to string when working with JSON"""
+        return str(value)
 
 
 class AppTokenRead(AppTokenCreate):
@@ -66,7 +71,7 @@ class AppToken(BeanieBaseAccessToken, AppTokenCreate, Document):
         name = "auth_app_tokens"
         indexes = BeanieBaseAccessToken.Settings.indexes + [
             IndexModel(
-                [("project_ext_id", pymongo.ASCENDING), ("user_id", pymongo.ASCENDING)],
+                [("project_id", pymongo.ASCENDING), ("user_id", pymongo.ASCENDING)],
             ),
         ]
 

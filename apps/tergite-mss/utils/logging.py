@@ -14,7 +14,7 @@ import json
 import logging
 import sys
 import traceback
-from typing import Any, Coroutine, TypeVar
+from typing import Any, Collection, Coroutine, TypeVar
 
 from loguru import logger
 
@@ -22,6 +22,30 @@ T = TypeVar("T")
 
 # error logger wrapper to preserve backward compatibility
 err_logger = logger
+
+
+UNLOGGED_PATHS = frozenset({"/health"})
+"""Paths polled by machines rather than requested by people.
+
+The container healthcheck hits these every few seconds, which buries real traffic in
+both the request log and uvicorn's access log.
+"""
+
+
+class EndpointFilter(logging.Filter):
+    """Drops uvicorn access-log records for the given paths"""
+
+    def __init__(self, paths: Collection[str]):
+        super().__init__()
+        self._paths = tuple(paths)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args or ()
+        # uvicorn.access logs (client_addr, method, full_path, http_version, status)
+        path = args[2] if len(args) > 2 and isinstance(args[2], str) else None
+        if path is None:
+            return True
+        return not any(path.startswith(item) for item in self._paths)
 
 
 class InterceptHandler(logging.Handler):
@@ -147,6 +171,13 @@ def setup_logging(environment: str):
         std_logger = logging.getLogger(logger_name)
         std_logger.handlers = []
         std_logger.propagate = True
+
+    # a logger's filter runs before propagation, so this drops the record outright
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.filters = [
+        item for item in access_logger.filters if not isinstance(item, EndpointFilter)
+    ]
+    access_logger.addFilter(EndpointFilter(UNLOGGED_PATHS))
 
 
 async def log_if_err(

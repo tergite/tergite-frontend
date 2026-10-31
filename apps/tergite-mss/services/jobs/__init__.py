@@ -23,6 +23,8 @@ from loguru import logger
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+import settings
+from services import notices
 from services.external.bcc import BccClient
 from settings import PRIVATE_KEY_FILE, PRIVATE_KEY_PASSWORD
 from utils import mongodb as mongodb_utils
@@ -30,10 +32,15 @@ from utils.crypto import decrypt_message
 from utils.exc import NotFoundError
 
 from ..auth import Project
-from .dtos import CreatedJobResponse, Job, JobCreate, JobTimestamps, JobUpdate
+from ..notices import NoticeType
+from ..notices.dtos import ProjectRequestContext, RefType
+from .dtos import CreatedJobResponse, Job, JobUpdate
 
 if TYPE_CHECKING:
     from ..auth.projects.database import ProjectDatabase
+
+
+# FIXME: Add init_strict_beanie and an on_startup function
 
 
 async def get_one(
@@ -180,6 +187,7 @@ async def update_qpu_usage(
     project_db: "ProjectDatabase",
     job_id: UUID,
     qpu_usage: float,
+    qpu_threshold: float = settings.CONFIG.projects.qpu_seconds_low_threshold,
 ) -> Optional[Project]:
     """Updates the resource usage for the job of the given job_id
 
@@ -188,6 +196,7 @@ async def update_qpu_usage(
         project_db: the ProjectDatabase instance where projects are found
         job_id: the job id of the job
         qpu_usage: the resource usage in seconds
+        qpu_threshold: the project qpu threshold below which a project is seen as running out
 
     Return:
         the updated project if the job was attached to a project, else None
@@ -202,8 +211,41 @@ async def update_qpu_usage(
     project = await project_db.increment_qpu_seconds(
         project_id=project_id, qpu_seconds=-qpu_usage
     )
-    if project is None and project_id is not None:
-        raise NotFoundError(f"project '{project_id}' for job '{job_id}' not found")
+    if project is None:
+        if project_id is not None:
+            raise NotFoundError(f"project '{project_id}' for job '{job_id}' not found")
+        return project
+
+    # alert only on crossing the threshold or zero, or every later job would alert again
+    qpu_seconds_before = project.qpu_seconds + qpu_usage
+    was_above_threshold = qpu_seconds_before > qpu_threshold
+    is_running_low = project.qpu_seconds < qpu_threshold
+    is_depleted = project.qpu_seconds <= 0 < qpu_seconds_before
+
+    if is_depleted:
+        await notices.create_system_notice(
+            user_ids=project.user_ids,
+            notice_type=NoticeType.QPU_SECONDS_DEPLETED.id,
+            context=ProjectRequestContext(
+                project_id=str(project.id), project_name=project.name
+            ),
+            ref_type=RefType.PROJECT,
+            ref_id=project.id,
+        )
+
+    elif is_running_low and was_above_threshold:
+        await notices.create_system_notice(
+            user_ids=[project.admin_id],
+            notice_type=NoticeType.QPU_SECONDS_LOW.id,
+            context=ProjectRequestContext(
+                project_id=str(project.id),
+                project_name=project.name,
+                seconds=round(project.qpu_seconds),
+            ),
+            ref_type=RefType.PROJECT,
+            ref_id=project.id,
+        )
+
     return project
 
 

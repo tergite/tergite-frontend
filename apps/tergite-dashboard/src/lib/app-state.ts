@@ -10,14 +10,14 @@ export const AppStateContext = createContext<AppState>(newAppState());
  */
 export function newAppState(): AppState {
   const state: AppState = {
-    currentProjectExtId: undefined,
-    setCurrentProjectExtId: () => {},
+    currentProjectId: undefined,
+    setCurrentProjectId: () => {},
     apiToken: undefined,
     isDark: false,
     setApiToken: () => {},
     toggleIsDark: () => {},
     clear: () => {
-      state.setCurrentProjectExtId(undefined);
+      state.setCurrentProjectId(undefined);
       state.setApiToken(undefined);
     },
   };

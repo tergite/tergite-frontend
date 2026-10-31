@@ -185,40 +185,63 @@ export enum UserRequestType {
   CLOSE_PROJECT = "close-project",
   TRANSFER_PROJECT = "transfer-project",
   PROJECT_QPU_SECONDS = "project-qpu-seconds",
+  PROJECT_ACCESS = "project-access",
 }
 
-// the type for all requests made by users to be approved by an admin
+// what a request asks for, beyond its type and the project it concerns
+export interface UserRequestMetadata {
+  resource: NoticeRefType;
+  // for project-qpu-seconds
+  seconds?: number;
+  // for transfer-project, and the admin of the project in create-project
+  admin_email?: string;
+  // for create-project
+  name?: string;
+  description?: string;
+  qpu_seconds?: number;
+  user_emails?: string[];
+}
+
+// the HTTP request body sent when making any kind of request
+export interface UserRequestPostBody {
+  type: UserRequestType;
+  // the project the request concerns; the requester for create-project
+  resource_id: string;
+  reason: string;
+  metadata?: Partial<UserRequestMetadata>;
+}
+
+// the type for all requests made by users, decided by the users they target
 export interface UserRequest extends DbRecord {
   created_at: string;
   updated_at: string;
   status: UserRequestStatus;
   type: UserRequestType;
+  resource_id: string;
+  reason: string;
+  metadata: UserRequestMetadata;
   requester_id: string;
   requester_name?: string;
-  approver_id?: string; // id of admin who has handled it
-  approver_name?: string;
-  rejection_reason?: string;
-  request: unknown;
+  // the users who may decide the request
+  target_user_ids: string[];
+  target: "system" | "project";
+  approver_id?: string | null; // id of the user who has decided it
+  approver_name?: string | null;
+  rejection_reason?: string | null;
+}
+
+// a request with the name of its project, where the viewer can see that project
+export interface ExtendedUserRequest extends UserRequest {
+  project_name?: string;
 }
 
 // the HTTP request body sent when creating a project.
 // it ends up as a new Project
 export interface CreateProjectPostBody {
   name: string;
-  ext_id: string;
   description?: string;
   user_emails: string[];
   qpu_seconds: number;
-}
-
-// An approval is created in the database with given data
-// but a new project is only created in the database using this data
-// after approval is given.
-//
-// the type below is of that request
-export interface CreateProjectUserRequest extends UserRequest {
-  type: UserRequestType.CREATE_PROJECT;
-  request: CreateProjectPostBody;
 }
 
 // the HTTP response body got when a project is got from API
@@ -227,6 +250,8 @@ export interface Project
   user_ids: string[];
   admin_id: string;
   is_active: boolean;
+  // auto-created, undeletable, one per user
+  is_personal: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -238,9 +263,7 @@ export interface AdminProject extends Project {
 }
 
 // the HTTP request body when updating a project
-export interface UpdateProjectPutBody extends Partial<
-  Omit<CreateProjectPostBody, "ext_id">
-> {
+export interface UpdateProjectPutBody extends Partial<CreateProjectPostBody> {
   admin_email?: string;
   is_active?: boolean;
 }
@@ -250,18 +273,11 @@ export interface AdminCreateProjectBody extends CreateProjectPostBody {
   admin_email: string;
 }
 
-// the HTTP request body when requesting for a time extension
+// what is asked for when requesting for a time extension
 export interface QpuTimeExtensionPostBody {
   project_id: string;
-  project_name?: string;
   seconds: number;
   reason: string;
-}
-
-// the record saved in the database for QPU time extension
-export interface QpuTimeExtensionUserRequest extends UserRequest {
-  type: UserRequestType.PROJECT_QPU_SECONDS;
-  request: QpuTimeExtensionPostBody;
 }
 
 export interface Job extends DbRecord {
@@ -289,10 +305,10 @@ export interface User extends DbRecord {
   organization?: string;
 }
 
+// the token as the API shows it, which never names its user
 export interface AppToken extends DbRecord {
   title: string;
-  user_id: string;
-  project_ext_id: string;
+  project_id: string;
   lifespan_seconds: number;
   created_at: string;
 }
@@ -307,7 +323,7 @@ export interface ExtendedAppToken extends AppToken {
 // the HTTP request body for creating an app token
 export interface AppTokenCreationRequest {
   title: string;
-  project_ext_id: string;
+  project_id: string;
   lifespan_seconds: number;
 }
 
@@ -340,8 +356,8 @@ export interface AuthProviderResponse {
 }
 
 export interface AppState {
-  currentProjectExtId?: string;
-  setCurrentProjectExtId: (value?: string) => void;
+  currentProjectId?: string;
+  setCurrentProjectId: (value?: string) => void;
   apiToken?: string;
   setApiToken: (value?: string) => void;
   clear: () => void;
@@ -419,13 +435,62 @@ export interface NoticePostRequest {
   starts_at: string;
 }
 
-export interface Notice
-  extends DbRecord, Omit<NoticePostRequest, "target_user_emails"> {
-  created_by: string;
-  severity_number: number;
-  target_user_ids?: string[];
-  dismissed_by: string[];
+export enum NoticeType {
+  PROJECT_ACCESS_REQUESTED = "project-access-requested",
+  PROJECT_ACCESS_APPROVED = "project-access-approved",
+  PROJECT_ACCESS_REJECTED = "project-access-rejected",
+  PROJECT_CREATE_REQUESTED = "project-create-requested",
+  PROJECT_CREATE_APPROVED = "project-create-approved",
+  PROJECT_CREATE_REJECTED = "project-create-rejected",
+  PROJECT_CLOSE_REQUESTED = "project-close-requested",
+  PROJECT_CLOSE_APPROVED = "project-close-approved",
+  PROJECT_CLOSE_REJECTED = "project-close-rejected",
+  PROJECT_TRANSFER_REQUESTED = "project-transfer-requested",
+  PROJECT_TRANSFER_APPROVED = "project-transfer-approved",
+  PROJECT_TRANSFER_REJECTED = "project-transfer-rejected",
+  QPU_SECONDS_REQUESTED = "qpu-seconds-requested",
+  QPU_SECONDS_GRANTED = "qpu-seconds-granted",
+  QPU_SECONDS_DENIED = "qpu-seconds-denied",
+  QPU_SECONDS_LOW = "qpu-seconds-low",
+  QPU_SECONDS_DEPLETED = "qpu-seconds-depleted",
+  PROJECT_MEMBERSHIP_GRANTED = "project-membership-granted",
+  PROJECT_MEMBERSHIP_REVOKED = "project-membership-revoked",
+  PROJECT_ADMIN_ASSIGNED = "project-admin-assigned",
+  CUSTOM = "custom",
+  CUSTOM_BROADCAST = "custom-broadcast",
 }
+
+// the admin-authored notices, as opposed to those the system emits on events
+export const CUSTOM_NOTICE_TYPES = [NoticeType.CUSTOM, NoticeType.CUSTOM_BROADCAST];
+
+// what a notice refers to, e.g. the request it asks the reader to decide
+export enum NoticeRefType {
+  USER_REQUEST = "user_request",
+  PROJECT = "project",
+}
+
+// a message to one user, or to every user when user_id is null
+export interface Notice extends DbRecord {
+  type: NoticeType;
+  title: string;
+  body: string;
+  severity: NoticeSeverity;
+  severity_number: number;
+  user_id?: string | null;
+  created_by?: string | null;
+  ref_type?: NoticeRefType | null;
+  ref_id?: string | null;
+  // set on reading a notice addressed to one user; never set on a broadcast
+  read_at?: string | null;
+  // the users who read the notice
+  dismissed_by: string[];
+  starts_at?: string | null;
+  expires_at?: string | null;
+  created_at: string;
+}
+
+// whether each notice type is also emailed to the user
+export type NoticePreferences = Record<NoticeType, boolean>;
 
 export interface CountResponse {
   count: number;

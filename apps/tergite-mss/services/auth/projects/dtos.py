@@ -10,16 +10,11 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Data Transfer Objects for the projects submodule in the auth service"""
-import enum
-from typing import List, Optional
+
+from typing import List, Optional, Set
 
 from beanie import Document, PydanticObjectId
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_serializer,
-)
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from pymongo import IndexModel
 
 from utils.date_time import get_current_timestamp
@@ -29,54 +24,48 @@ PROJECT_DB_COLLECTION = "auth_projects"
 DELETED_PROJECT_DB_COLLECTION = "deleted_auth_projects"
 
 
-class ProjectSource(str, enum.Enum):
-    """Enumeration for all possible origins of projects"""
+class ProjectBase(BaseModel):
+    """The base schema for Project schemas"""
 
-    PUHURI = "puhuri"
-    INTERNAL = "internal"
+    name: str
+    qpu_seconds: float = 0
+    description: str = ""
 
 
-class ProjectCreate(BaseModel):
+class ProjectCreate(ProjectBase):
     """The schema for creating a project"""
 
-    ext_id: str
-    """ext_id is the id in an external project allocation service"""
-
     name: str
-    admin_email: Optional[str] = None
-    user_emails: Optional[List[str]] = None
-    qpu_seconds: float = 0
-    source: ProjectSource = ProjectSource.INTERNAL
-    resource_ids: List[str] = []
-    description: Optional[str] = None
+    admin_email: str
+    user_emails: List[str] = ()
 
 
-class ProjectRead(BaseModel):
+class ProjectRead(ProjectBase):
     """The schema for viewing a project as non admin"""
 
-    model_config = ConfigDict(
-        from_attributes=True,
-    )
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
 
     id: PydanticObjectId
-    name: str
-    ext_id: str
-    qpu_seconds: float = 0
-    is_active: bool = True
-    description: Optional[str] = None
-    user_ids: List[str]
-    admin_id: str
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    is_active: bool
+    user_ids: List[PydanticObjectId]
+    admin_id: PydanticObjectId
+    is_personal: bool
+    created_at: str
+    updated_at: str
 
     def model_dump(self, *args, **kwargs):
         # get rid of the default None's
         return super().model_dump(*args, **{**kwargs, "exclude_none": True})
 
-    @field_serializer("id", when_used="json")
-    def serialize_id(self, _id: PydanticObjectId):
+    @field_serializer("id", "admin_id", when_used="json")
+    def serialize_id(self, value: PydanticObjectId):
         """Convert id to string when working with JSON"""
-        return str(_id)
+        return str(value)
+
+    @field_serializer("user_ids", when_used="json")
+    def serialize_user_ids(self, value: List[PydanticObjectId]):
+        """Convert list of ids to list of strings when working with JSON"""
+        return [str(v) for v in value]
 
 
 class ProjectAdminView(ProjectRead):
@@ -84,12 +73,14 @@ class ProjectAdminView(ProjectRead):
 
     model_config = ConfigDict(from_attributes=True)
 
-    admin_email: Optional[str] = None
-    user_emails: Optional[List[str]] = None
+    admin_email: str
+    user_emails: List[str] = ()
 
 
-class ProjectUpdate(BaseModel):
+class ProjectUpdate(ProjectCreate):
     """The schema for updating a project"""
+
+    model_config = ConfigDict(extra="ignore")
 
     name: Optional[str] = None
     is_active: Optional[bool] = None
@@ -100,18 +91,27 @@ class ProjectUpdate(BaseModel):
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
 
-class Project(ProjectCreate, Document):
+class Project(ProjectRead, Document):
+    model_config = ConfigDict(extra="ignore")
+
+    # optional like any document's, or no project could be made before inserting it
+    id: Optional[PydanticObjectId] = None
     is_active: bool = True
-    admin_id: Optional[str] = None
-    user_ids: Optional[List[str]] = None
-    created_at: Optional[str] = Field(default_factory=get_current_timestamp)
-    updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
+    user_ids: List[PydanticObjectId] = ()
+    is_personal: bool = False
+    created_at: str = Field(default_factory=get_current_timestamp)
+    updated_at: str = Field(default_factory=get_current_timestamp)
 
     class Settings:
         name = PROJECT_DB_COLLECTION
         indexes = [
-            IndexModel("ext_id", unique=True),
+            IndexModel("name", unique=True),
         ]
+
+    @property
+    def members(self) -> Set[PydanticObjectId]:
+        """All IDs of the users who are members of the project"""
+        return {self.admin_id, *(self.user_ids or [])}
 
 
 class DeletedProject(Project):
@@ -121,5 +121,5 @@ class DeletedProject(Project):
         name = DELETED_PROJECT_DB_COLLECTION
 
 
-ProjectPartial = create_partial_model("ProjectPartial", Project)
+ProjectPartial = create_partial_model("ProjectPartial", Project, exclude=("id",))
 """The partial project to be used when updating the database"""
