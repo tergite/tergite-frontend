@@ -10,6 +10,10 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.1] - 2026-10-31
+
+This is part of the tergite release v2026.11.0-rc.1.
+
 ### Added
 
 - Added GitLab jobs that, on a `v*` tag, build the deb and macOS installer, upload them to the package registry and
