@@ -1,6 +1,6 @@
 [Unit]
 Description=Tergite Main Service Server (MSS)
-After=network-online.target postgresql.service mongod.service redis-server.service redis.service
+After=network-online.target postgresql.service mongod.service
 Wants=network-online.target
 # not until there is a config, or debconf's answers to write one from
 ConditionPathExists=|/etc/tergite-mss/mss-config.toml

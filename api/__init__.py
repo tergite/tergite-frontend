@@ -34,7 +34,6 @@ from utils.exc import (
     ConflictError,
     ForbiddenError,
     InvalidInputError,
-    InvalidRequestIDError,
     NotFoundError,
     ServiceUnavailableError,
     UnauthorizedError,
@@ -85,7 +84,6 @@ app.add_exception_handler(
 app.add_exception_handler(ServiceUnavailableError, make_http_error_handler(503))
 app.add_exception_handler(UnknownBccError, make_http_error_handler(400))
 app.add_exception_handler(BccHttpError, handle_bcc_http_error)
-app.add_exception_handler(InvalidRequestIDError, make_http_error_handler(400))
 app.add_exception_handler(InvalidInputError, make_http_error_handler(400))
 app.add_exception_handler(UnauthorizedError, make_http_error_handler(401))
 app.add_exception_handler(ForbiddenError, make_http_error_handler(403))
@@ -115,6 +113,6 @@ async def health():
     """Liveness probe for the container healthcheck.
 
     Deliberately public, trivial and unlogged: the probe runs every ten seconds and
-    drowned the request log when it went through a real endpoint.
+    drowned the access log when it went through a real endpoint.
     """
     return {"status": "ok"}

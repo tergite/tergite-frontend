@@ -21,7 +21,6 @@ from utils.api import GeneralMessage, PaginatedListResponse
 from ....dependencies import (
     BccClientDep,
     CurrentSuperuserDep,
-    RequestIdDep,
 )
 
 router = APIRouter()
@@ -31,7 +30,6 @@ router = APIRouter()
 async def create_bcc_user(
     bcc_client: BccClientDep,
     data: NewBCCUserInfo,
-    request_id: RequestIdDep,
     requester: CurrentSuperuserDep,
 ) -> dict:
     """Creates a user in the given backend for info
@@ -41,7 +39,6 @@ async def create_bcc_user(
     Args:
         data: the information about the new user
         bcc_client: the BCC client for the given backend
-        request_id: the unique identifier of the request
         requester: the admin user requesting this operation
 
     Returns:
@@ -52,7 +49,6 @@ async def create_bcc_user(
     """
     return await bcc_client.create_user(
         user_id=requester.id,
-        request_id=request_id,
         data=data,
         is_admin=requester.is_superuser,
     )
@@ -62,7 +58,6 @@ async def create_bcc_user(
 async def remove_bcc_user(
     bcc_client: BccClientDep,
     user_id: str,
-    request_id: RequestIdDep,
     requester: CurrentSuperuserDep,
 ) -> GeneralMessage:
     """Deletes the user of the given user_id
@@ -72,7 +67,6 @@ async def remove_bcc_user(
     Args:
         user_id: the unique identifier of the user
         bcc_client: the BCC client for the given backend
-        request_id: the unique identifier of the request
         requester: the admin user requesting this operation
 
     Raises:
@@ -85,7 +79,6 @@ async def remove_bcc_user(
     response = await bcc_client.delete_user(
         bcc_user_id=user_id,
         user_id=requester.id,
-        request_id=request_id,
         is_admin=requester.is_superuser,
     )
     return response
@@ -94,7 +87,6 @@ async def remove_bcc_user(
 @router.get("/{backend}", response_model=PaginatedListResponse[BCCUserProfile])
 async def view_bcc_users(
     bcc_client: BccClientDep,
-    request_id: RequestIdDep,
     requester: CurrentSuperuserDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
@@ -105,7 +97,6 @@ async def view_bcc_users(
 
     Args:
         bcc_client: the BCC client for the given backend
-        request_id: the unique identifier of the request
         skip: number of records to ignore at the top of the returned results; default is 0
         limit: maximum number of records to return; default is None.
         requester: the admin user requesting this operation
@@ -118,7 +109,6 @@ async def view_bcc_users(
     """
     return await bcc_client.view_users(
         user_id=requester.id,
-        request_id=request_id,
         skip=skip,
         limit=limit,
         is_admin=requester.is_superuser,

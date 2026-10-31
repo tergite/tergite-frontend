@@ -12,7 +12,7 @@ export PRIVATE_KEY_FILE=/etc/tergite-mss/private-mss-key.pem
 
 depend() {
 	need net
-	after postgresql mongodb redis firewall
+	after postgresql mongodb firewall
 }
 
 start_pre() {

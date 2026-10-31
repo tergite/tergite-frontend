@@ -21,7 +21,7 @@ UNLOGGED_PATHS = frozenset({"/health"})
 """Paths polled by machines rather than requested by people.
 
 The container healthcheck hits these every few seconds, which buries real traffic in
-both the request log and uvicorn's access log.
+uvicorn's access log.
 """
 
 

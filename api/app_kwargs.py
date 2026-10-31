@@ -27,17 +27,12 @@ from libs.storage import Database
 from services import jobs as jobs_service
 from services import notices
 from services.auth import service as auth_service
-from services.devices import service as devices_service
 from services.external import bcc
 from services.external.email import Emailer
 from utils.config import NoticesConfig
 from utils.crypto import load_private_key
 
-from .database import (
-    close_database,
-    open_database,
-    open_request_log_database,
-)
+from .database import close_database, open_database
 from .routers.devices import ws_manager as devices_ws_manager
 
 
@@ -46,7 +41,7 @@ def get_app_kwargs() -> Dict[str, Any]:
     kwargs = dict(
         title="Main Service Server",
         description="A frontend to all our quantum backends",
-        version="2026.06.0",
+        version="2026.11.0-rc.1",
         lifespan=lifespan,
     )
 
@@ -68,7 +63,7 @@ async def lifespan(app: FastAPI):
     )
     await bcc.create_clients(settings.CONFIG.backends, private_key=private_key)
     database = await open_database(app, settings.CONFIG.database)
-    await open_request_log_database(app, settings.CONFIG.database)
+    devices_ws_manager.start_refreshing(database)
     await auth_service.on_startup(database, conf=settings.CONFIG.auth)
     await jobs_service.on_startup(
         private_key=private_key,
@@ -86,8 +81,8 @@ async def lifespan(app: FastAPI):
         "Tergite MSS shutting down. Closing active connections and cleaning up..."
     )
     await bcc.close_clients()
+    # each socket's handler forgets its connection; those it cannot, lapse
     await devices_ws_manager.close_all(reason="server shutting down")
-    await devices_service.disconnect_all(database)
     if emailer is not None:
         emailer.close()
     await close_database(app)

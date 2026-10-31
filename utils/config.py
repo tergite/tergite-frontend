@@ -53,9 +53,6 @@ class DatabaseConfig(BaseModel):
     name: str
     # any URL a storage backend supports, e.g. mongodb://host:27017
     url: AnyUrl
-    # the database of the request log, read and written on every request, so a cache
-    # suits it; default=redis://tergite-redis:6379/0
-    redis_url: AnyUrl = "redis://tergite-redis:6379/0"
 
     @property
     def full_url(self) -> str:
@@ -285,10 +282,6 @@ class AppConfig(BaseModel, extra="allow"):
 
     # time-to-live for the nonce; defaults to 5 minutes
     bcc_nonce_ttl: float = 300
-
-    # how long, in seconds, a request id or websocket nonce is remembered to reject a replay
-    # default: 1209600 (two weeks)
-    request_log_ttl: float = 1209600
 
     # configuration for one database; it might become possible to add multiple databases
     database: DatabaseConfig

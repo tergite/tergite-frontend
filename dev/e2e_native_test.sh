@@ -12,11 +12,11 @@
 # that they have been altered from the originals.
 #
 # Runs the dashboard's Playwright suite against the whole stack, each service running natively:
-# MongoDB seeded from the dashboard's fixtures/, Redis, MSS from this checkout serving the
+# MongoDB seeded from the dashboard's fixtures/, MSS from this checkout serving the
 # dashboard's test build at /ui, and the backends from a tergite-backend checkout, one process
 # serving them all, each under its own path, all from fresh data in temp-native/. Its arguments
 # go to `playwright test`, e.g. a spec to run or --update-snapshots.
-# Needs mongod, mongosh, redis-server 7.4 or later, sqlite3, uv, npm and curl.
+# Needs mongod, mongosh, sqlite3, uv, npm and curl.
 #
 # Usage
 # =====
@@ -59,7 +59,6 @@ OPENID_AUTH_URL="${OPENID_AUTH_URL:-https://samples.auth0.com/authorize}"
 MSS_PORT=8002
 RESET_PORT=3001
 MONGO_PORT=27018
-REDIS_PORT=6380
 BACKEND_PORT=8101
 LOKI_JWT_SECRET="e9fae9efa7c3ff10348acde323baa5273db8021712ecb1f59fdf0e8336240fb7d70c6d8d"
 # name|executor|app settings|JWT secret|max slot|min slot|slots a day|idle time; empty fields
@@ -91,7 +90,7 @@ exit_with_err() {
   exit 1;
 }
 
-for tool in mongod mongosh redis-server sqlite3 uv npm curl; do
+for tool in mongod mongosh sqlite3 uv npm curl; do
   command -v "$tool" &> /dev/null || exit_with_err "$tool is not available"
 done
 
@@ -157,7 +156,7 @@ stop_stack() {
   find "$WORK_PATH" -mindepth 1 -maxdepth 1 ! -name venvs ! -name logs -exec rm -rf {} +;
 }
 
-for port in $MSS_PORT $RESET_PORT $MONGO_PORT $REDIS_PORT $BACKEND_PORT; do
+for port in $MSS_PORT $RESET_PORT $MONGO_PORT $BACKEND_PORT; do
   ! (exec 3<> "/dev/tcp/127.0.0.1/$port") 2> /dev/null || exit_with_err "port $port is in use"
 done
 
@@ -188,12 +187,11 @@ echo "Installing MSS and the backend"
 UV_PROJECT_ENVIRONMENT="$WORK_PATH/venvs/mss" uv sync -q --frozen --no-dev --project "$MSS_PATH"
 UV_PROJECT_ENVIRONMENT="$WORK_PATH/venvs/backend" uv sync -q --frozen --no-dev --project "$BACKEND_PATH"
 
-echo "Starting MongoDB and Redis"
+echo "Starting MongoDB"
 # The TTL monitor runs every second, not every minute, so that the expired notices
 # are gone before a test asks for them
 start_service mongod mongod --dbpath "$WORK_PATH/mongo" --port $MONGO_PORT --bind_ip 127.0.0.1 \
   --setParameter ttlMonitorSleepSecs=1
-start_service redis redis-server --port $REDIS_PORT --bind 127.0.0.1 --save "" --appendonly no
 until mongosh --quiet --port $MONGO_PORT --eval "db.runCommand('ping').ok" &> /dev/null; do sleep 0.5; done
 
 echo "Building the dashboard, which MSS serves"
@@ -203,7 +201,6 @@ echo "Building the dashboard, which MSS serves"
 echo "Starting MSS"
 cp "$FIXTURES_PATH/mss-config.toml" "$WORK_PATH/mss-config.toml"
 replace_str "$WORK_PATH/mss-config.toml" "mongodb://tergite-mongo:27017" "mongodb://127.0.0.1:$MONGO_PORT"
-replace_str "$WORK_PATH/mss-config.toml" "redis://tergite-redis:6379" "redis://127.0.0.1:$REDIS_PORT"
 replace_str "$WORK_PATH/mss-config.toml" "bcc_certs/" "$FIXTURES_PATH/"
 replace_str "$WORK_PATH/mss-config.toml" "OPENID_CLIENT_ID" "$OPENID_CLIENT_ID"
 replace_str "$WORK_PATH/mss-config.toml" "OPENID_CLIENT_SECRET" "$OPENID_CLIENT_SECRET"
@@ -239,8 +236,6 @@ for backend in "${BACKENDS[@]}"; do
     echo "BCC_CORS_ORIGINS=127.0.0.1,localhost"
     echo "BCC_MACHINE_ROOT_URL=http://127.0.0.1:$BACKEND_PORT/$name"
     echo "BCC_MSS_MACHINE_ROOT_URL=http://127.0.0.1:$MSS_PORT"
-    echo "BCC_REDIS_HOST=127.0.0.1"
-    echo "BCC_REDIS_PORT=$REDIS_PORT"
     echo "BCC_STORAGE_ROOT=$dir/storage"
     echo "BCC_BOOKING_DB_URL=sqlite:///$dir/booking_db.db"
     echo "BCC_BACKEND_SETTINGS=$FIXTURES_PATH/$stem.toml"

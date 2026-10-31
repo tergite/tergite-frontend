@@ -49,7 +49,8 @@ def read_measures(path: Path) -> dict[str, float]:
 
 def is_worse(name: str, baseline: float, run: float | None) -> bool:
     if run is None:
-        return True
+        # a process or database the run no longer has costs nothing
+        return not name.startswith("peak ")
     rise = run - baseline
     unit = name.split(":")[0].split()[-1]
     return rise > NOISE_FLOORS[unit] and rise > baseline * ALLOWED_WORSENING

@@ -319,7 +319,7 @@ npm run visual-e2e   # same, in playwright's UI mode
 ```
 
 [dev/e2e_native_test.sh](../dev/e2e_native_test.sh) starts MongoDB, seeded from `fixtures/`
-by `dev/seed.py`, Redis, the backends, and MSS serving this dashboard's test build at `/ui`; it sets
+by `dev/seed.py`, the backends, and MSS serving this dashboard's test build at `/ui`; it sets
 `DASHBOARD_URL`, which `playwright.config.ts` requires, and passes its arguments to
 `playwright test`. The specs run on one worker, as they share the stack's data.
 

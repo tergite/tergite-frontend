@@ -7,7 +7,6 @@ private_key_password = "Some-pass-phrase"
 [database]
 name = "testdb"
 url = "mongodb://localhost:27017"
-redis_url = "redis://localhost:6379/0"
 
 [[backends]]
 name = "Loke"

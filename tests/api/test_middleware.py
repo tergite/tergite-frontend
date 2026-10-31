@@ -10,25 +10,31 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-import json
 import uuid
 
+from services.bcc_nonces import BccNonce
 
-def test_a_request_is_recorded_with_its_id(client, request_log_db):
+
+def test_a_request_keeps_the_id_it_was_sent_with(client):
     request_id = str(uuid.uuid4())
 
     with client as client:
         response = client.get("/devices/", headers={"x-request-id": request_id})
 
-    log = json.loads(request_log_db.hget("request_logs", request_id))
     assert response.headers["x-request-id"] == request_id
-    assert log["expires_at"] > log["created_at"]
-    assert request_log_db.hpttl("request_logs", request_id)[0] > 0
 
 
-def test_a_request_without_an_id_gets_one(client, request_log_db):
+def test_a_request_without_an_id_gets_a_new_one(client):
     with client as client:
-        response = client.get("/devices/")
+        first = client.get("/devices/").headers["x-request-id"]
+        second = client.get("/devices/").headers["x-request-id"]
 
-    request_id = response.headers["x-request-id"]
-    assert request_log_db.hexists("request_logs", request_id)
+    assert uuid.UUID(first).version == 4 and first != second
+
+
+def test_an_http_request_is_not_recorded(client, db):
+    """Only a backend's websocket nonce is, as nothing would read an HTTP request's back"""
+    with client as client:
+        client.get("/devices/", headers={"x-request-id": str(uuid.uuid4())})
+
+    assert db.count(BccNonce) == 0

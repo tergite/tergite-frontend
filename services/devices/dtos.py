@@ -13,7 +13,7 @@
 # that they have been altered from the originals.
 #
 # Refactored by Martin Ahindura 2023-11-08
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -31,9 +31,9 @@ from typing import (
 )
 
 from fastapi import Query
-from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
-from libs.storage import Id, Schema, StorageSpec
+from libs.storage import Id, Schema, StorageSpec, generate_id
 from utils.api import GeneralMessage
 from utils.models import create_partial_model
 
@@ -102,6 +102,30 @@ class Device(Schema, DeviceUpsert):
     id: Id
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+class DeviceConnection(Schema):
+    """A websocket that a process of the device's backend holds open to a process of MSS, until
+    it closes, or lapses at expires_at, which the MSS process pushes on while it holds it
+    """
+
+    __storage__ = StorageSpec(
+        table="device_connections", indexes=("device_name",), expires="expires_at"
+    )
+
+    id: Id = Field(default_factory=generate_id)
+    device_name: str
+    connected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime
+
+
+class SwitchedOffDevice(Schema):
+    """A device switched off, until it is switched on"""
+
+    __storage__ = StorageSpec(table="switched_off_devices", key="name")
+
+    name: str
+    switched_off_at: datetime
 
 
 type DeviceEventData = Union[

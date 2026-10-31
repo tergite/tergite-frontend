@@ -13,53 +13,26 @@
 
 """Miscellaneous utility functions for the routers"""
 
-import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
 from cryptography.exceptions import InvalidSignature
 from fastapi import Depends, WebSocketException
 from loguru import logger
-from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocket
 
 import settings
 from libs.storage import Database
-from services import request_log
+from services.bcc_nonces import claim_bcc_nonce
 from utils.config import BccConfig, get_ip_addr
 from utils.crypto import verify_ws_signature
-from utils.exc import InvalidRequestIDError
 
-from .database import get_request_log_database
-
-
-async def get_request_id(request: Request) -> str:
-    """Extracts value of the X-Request-ID header
-
-    Args:
-        request: the FastAPI request object
-
-    Returns:
-        the string in the X-Request-ID
-
-    Raises:
-        InvalidRequestIDError: "No request ID provided"
-        InvalidRequestIDError: "The request ID '{request_id}' is not a valid UUID4"
-    """
-    try:
-        request_id = request.state.request_id
-        if not _is_valid_uuid4(request_id):
-            raise InvalidRequestIDError(
-                f"The request ID '{request_id}' is not a valid UUID4"
-            )
-        return request_id
-    except AttributeError:
-        raise InvalidRequestIDError("The request ID '' is not a valid UUID4")
+from .database import get_database
 
 
 async def get_verified_device_name(
-    websocket: WebSocket, database: Database = Depends(get_request_log_database)
+    websocket: WebSocket, database: Database = Depends(get_database)
 ) -> str:
     """Returns the device name as got from BCC passed through special headers
 
@@ -83,7 +56,7 @@ async def get_verified_device_name(
     try:
         headers = _read_signed_headers(websocket)
         backend_conf = settings.CONFIG.backends_dict[headers.name]
-        client_ip = _check_client_ip(websocket, backend_conf)
+        _check_client_ip(websocket, backend_conf)
         verify_ws_signature(
             signature=headers.signature,
             message=f"{headers.name}-{headers.nonce}-{headers.timestamp}",
@@ -94,29 +67,12 @@ async def get_verified_device_name(
             now=datetime.now().timestamp(),
             ttl=settings.CONFIG.bcc_nonce_ttl,
         )
-        await _check_nonce_unused(
-            database, headers, client_ip, ttl=settings.CONFIG.request_log_ttl
-        )
+        # kept while its timestamp is fresh, after which _check_nonce_age refuses a replay
+        await _check_nonce_unused(database, headers, ttl=settings.CONFIG.bcc_nonce_ttl)
         return headers.name
     except (KeyError, InvalidSignature, ValueError, AttributeError) as exp:
         logger.warning(f"WebSocket signature/nonce validation failed: {exp}")
         raise WebSocketException(code=WS_1008_POLICY_VIOLATION, reason="unauthorized")
-
-
-def _is_valid_uuid4(value):
-    """Validates the given string is a valid UUID4
-
-    Args:
-        value: the value to validate
-
-    Returns:
-        True if the value is a valid UUID4 string else false
-    """
-    try:
-        temp_uuid = uuid.UUID(value, version=4)
-    except (ValueError, TypeError):
-        return False
-    return str(temp_uuid) == value
 
 
 @dataclass(frozen=True)
@@ -169,15 +125,13 @@ def _check_nonce_age(timestamp: float, now: float, ttl: float) -> None:
 
 
 async def _check_nonce_unused(
-    database: Database, headers: _SignedHeaders, client_ip: str, ttl: float
+    database: Database, headers: _SignedHeaders, ttl: float
 ) -> None:
-    """Records the nonce, checking it was not used before
+    """Claims the nonce, checking it was not used before
 
     Raises:
         ValueError: duplicate request nonce
     """
-    is_new_nonce = await request_log.record_request(
-        database, headers.nonce, ttl=ttl, client_name=headers.name, ip_address=client_ip
-    )
+    is_new_nonce = await claim_bcc_nonce(database, headers.name, headers.nonce, ttl=ttl)
     if not is_new_nonce:
         raise ValueError(f"duplicate request nonce: '{headers.nonce}'")

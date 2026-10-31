@@ -1,5 +1,5 @@
 #!/bin/sh
-# Asks where MSS's database and Redis are, until a config exists; postinstall saves the answers
+# Asks where MSS's database is, until a config exists; postinstall saves the answers
 
 set -e
 
@@ -13,14 +13,5 @@ db_get tergite-mss/database
 if [ "$RET" = url ]; then
 	db_input high tergite-mss/database_url || true
 	db_input high tergite-mss/database_password || true
-	db_go || true
-fi
-
-db_input high tergite-mss/redis || true
-db_go || true
-db_get tergite-mss/redis
-if [ "$RET" = url ]; then
-	db_input high tergite-mss/redis_url || true
-	db_input high tergite-mss/redis_password || true
 	db_go || true
 fi

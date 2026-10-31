@@ -159,7 +159,7 @@ def test_create_device(db, client, payload: Dict[str, Any]):
             updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
 
             assert original_data_in_db == []
-            assert final_data_in_db == [payload]
+            assert final_data_in_db == [_get_connected(payload)]
             assert all(
                 [is_not_older_than(x, seconds=30) for x in created_at_timestamps]
             )
@@ -183,6 +183,23 @@ def test_a_replayed_nonce_is_refused(client):
                 pass
 
     assert exp.value.code == 1008
+
+
+def test_a_device_stays_online_while_any_of_its_sockets_is_open(db, client):
+    """A BCC opens a socket per process, so one of them closing leaves its device online"""
+    device = _DEVICE_LIST[0]
+    db.insert(Device, to_record(Device, {**device, "id": generate_id()}))
+    name = device["name"]
+    url = f"/devices/ws/{name}"
+
+    with client as client:
+        with client.websocket_connect(url, headers=create_bcc_headers(name)):
+            with client.websocket_connect(url, headers=create_bcc_headers(name)):
+                pass
+            [is_online_with_one_open] = _get_online_flags(db)
+        [is_online_with_none_open] = _get_online_flags(db)
+
+    assert (is_online_with_one_open, is_online_with_none_open) == (True, False)
 
 
 @pytest.mark.parametrize("payload", _SAMPLE_DEVICES[:1])
@@ -302,10 +319,7 @@ def test_update_pre_existing_device(
             assert json_response["data"] == final_data_in_db[0]
 
             updated_at_timestamps = pop_field(final_data_in_db, "updated_at")
-            expected = {
-                **original_data_in_db[0],
-                **payload,
-            }
+            expected = _get_connected({**original_data_in_db[0], **payload})
 
             assert original_data_in_db == [backend_dict]
             assert final_data_in_db[0] == expected
@@ -320,3 +334,14 @@ def _get_stored_devices(db) -> List[Dict[str, Any]]:
         device.model_dump(mode="json", exclude={"id"}, exclude_none=True)
         for device in db.find(Device)
     ]
+
+
+def _get_online_flags(db) -> List[bool]:
+    return [device.is_online for device in db.find(Device)]
+
+
+def _get_connected(device: Dict[str, Any]) -> Dict[str, Any]:
+    """Gets the device as stored once its socket marked it online, which clears last_online"""
+    connected = {**device, "is_online": True}
+    connected.pop("last_online", None)
+    return connected

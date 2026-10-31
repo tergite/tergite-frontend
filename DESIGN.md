@@ -19,7 +19,7 @@ serves at `/ui`, and the two are released together under one version and one cha
 
 | Part | Path | Stack | Role |
 | --- | --- | --- | --- |
-| **MSS** (Main Service Server) | `.` | Python 3.13+, FastAPI, MongoDB or PostgreSQL, Redis | The public REST API. Owns all persistence, authn/authz, and all traffic to the quantum backends (BCC instances). |
+| **MSS** (Main Service Server) | `.` | Python 3.13+, FastAPI, MongoDB or PostgreSQL, SQLite | The public REST API. Owns all persistence, authn/authz, and all traffic to the quantum backends (BCC instances). |
 | **Dashboard** | `ui/` | Node 20, Vite, React 18, TypeScript, Tailwind + shadcn/ui | The browser client for MSS. No backend of its own — a static bundle MSS serves at `/ui`. |
 
 Everything the dashboard shows comes from MSS, which knows the dashboard only as the files
@@ -37,7 +37,6 @@ flowchart LR
     subgraph frontend ["tergite-frontend (this repo)"]
       MSS["tergite-mss<br/>uvicorn :80 → :8002"]
       Mongo[("MongoDB")]
-      Redis[("Redis<br/>request-log store")]
     end
 
     subgraph backends ["Quantum backends (separate repos)"]
@@ -51,7 +50,6 @@ flowchart LR
     Browser -->|"/ui, REST + cookie"| MSS
     SDK -->|"REST + Bearer app token"| MSS
     MSS --> Mongo
-    MSS --> Redis
     MSS <-->|"signed HTTP"| BCC1
     MSS <-->|"signed HTTP"| BCC2
     BCC1 -->|"websocket events"| MSS
@@ -60,8 +58,8 @@ flowchart LR
     frontend -.->|"journal, via Grafana Alloy"| Loki
 ```
 
-MongoDB, or PostgreSQL, and Redis are reached via `database.url` and `database.redis_url` in
-`mss-config.toml`; MSS's deb installs and provisions them alongside it on Debian and Ubuntu.
+MongoDB or PostgreSQL is reached via `database.url` in `mss-config.toml`; MSS's deb installs
+and provisions it alongside MSS on Debian and Ubuntu.
 
 ## 3. MSS and the dashboard: the seam between them
 
@@ -110,13 +108,15 @@ sequenceDiagram
 
 Two distinct trust directions, both asymmetric-key based:
 
-- **MSS → BCC**: MSS signs `"{user_id}-{request_id}-{timestamp}"` with its private key
-  (`PRIVATE_KEY_FILE`) and sends `x-mss-*` headers. See `_create_headers` in
+- **MSS → BCC**: MSS signs `"{user_id}|{nonce}|{timestamp}|{is_admin}|{method}|{path}"` with
+  its private key (`PRIVATE_KEY_FILE`) and sends `x-mss-*` headers, the nonce a new UUID for
+  every call, never a client's `x-request-id`; BCC refuses a nonce used before (its
+  `mss_nonce` table). See `_create_headers` in
   [services/external/bcc/service.py](services/external/bcc/service.py).
 - **BCC → MSS**: on the websocket handshake BCC sends `x-id`, `x-request-id`, `x-timestamp`,
   `x-signature`; MSS verifies against that backend's `public_key_path`, checks the source IP
   (unless `is_strict_ip = false`), rejects stale nonces (`bcc_nonce_ttl`) and replayed ones
-  (the request log in Redis, where a nonce is the key). See `get_verified_device_name` in
+  (`bcc_nonces`, where a nonce is the key). See `get_verified_device_name` in
   [api/utils.py](api/utils.py).
 
 ## 4. MSS's architecture: service-oriented
@@ -159,7 +159,7 @@ It should hold no business logic.
 │   ├── jobs/
 │   ├── notices/             # notices, their templates and their emails
 │   ├── requests/            # user requests and the actions their approval runs
-│   ├── request_log/         # request ids and nonces, on Redis
+│   ├── bcc_nonces/          # the backends' websocket nonces, so that none is replayed
 │   └── external/            # outbound clients: bcc/ to the quantum backends, email/ to SMTP
 ├── libs/storage/            # Database, Schema and the stores behind them; imports no app code
 ├── libs/authlib/            # users and sessions, from fastapi-users 14.0.2 (MIT); imports no app code
@@ -220,12 +220,12 @@ SOPS-decrypting `MSS_CONFIG_FILE` (default `mss-config.toml`) into `MSS_CONFIG_J
 exists. Any config error is a startup crash, not a runtime surprise.
 
 The FastAPI `lifespan` in `app_kwargs.py` creates the BCC httpx clients, opens the
-`Database` (whose `setup` creates every schema's collection, validator and indexes) and the
-request log's, then runs the `on_startup` of `auth` (which stores the roles users may hold),
-`jobs` and `notices`, and, when `[email]` is configured, starts the only background loop in
-the app: the `Emailer` sending the notices' pending emails. On shutdown it stops the emailer,
-closes the BCC clients, closes all device websockets, marks every device disconnected, and
-closes both databases.
+`Database` (whose `setup` creates every schema's collection, validator and indexes), then runs the `on_startup` of `auth` (which stores the roles users may hold),
+`jobs` and `notices`, and starts the app's background loops: the device websockets'
+`WebsocketConnectionManager`, keeping this process's connections from lapsing (§7), and, when
+`[email]` is configured, the `Emailer` sending the notices' pending emails. On shutdown it
+stops the emailer, closes the BCC clients, closes all device websockets, each of which forgets
+its connection, and closes both databases.
 
 `docs_url` / `redoc_url` / `openapi_url` are set to `None` unless
 `general.environment == "development"` — there are no interactive docs in production.
@@ -235,18 +235,16 @@ closes both databases.
 1. **`CORSMiddleware`** — Starlette's, with `allow_origin_regex=".*"`, so that it mirrors the
    request `Origin` back instead of `*`, because the auth cookie requires credentialed CORS.
 2. **`RequestIDMiddleware`** — resolves or generates a request ID (reusing an incoming
-   `x-request-id`), records it with `request_log.record_request`, and echoes `x-request-id`
-   back on the response; `UNLOGGED_PATHS` such as `/health` skip it.
+   `x-request-id`), which only the logs and the echoed `x-request-id` on the response use: it
+   records nothing, and MSS signs each call to BCC with a nonce of its own (§3).
 3. **Dependencies** — everything injectable is a named `Annotated` alias in
-   `api/dependencies.py` (`DatabaseDep`, `CurrentUserDep`, `BccClientDep`,
-   `RequestIdDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
+   `api/dependencies.py` (`DatabaseDep`, `CurrentUserDep`, `BccClientDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
    parameters (`user: CurrentUserDep`), never the raw `Depends(...)` expression, and a route
    that only needs the check still names the parameter (`requester: CurrentSuperuserDep`).
    Add new injectables there.
 4. **Exception handlers** — domain exceptions from `utils/exc.py` are mapped to status codes
    centrally in `api/__init__.py`, with the handlers `api/errors.py` makes:
-   `InvalidInputError` (and its `TooManyListQueryParams`) / `UnknownBccError` /
-   `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,
+   `InvalidInputError` (and its `TooManyListQueryParams`) / `UnknownBccError` → 400, `UnauthorizedError` → 401,
    `ForbiddenError` → 403, `NotFoundError` → 404, `ConflictError` → 409,
    `ServiceUnavailableError` → 503, `BccHttpError` → the BCC's
    own status, and `ValueError` / `TypeError` / `RuntimeError` / bare `Exception` → 500
@@ -330,7 +328,23 @@ devices, calibrations, notices and the auth entities live in MongoDB.
 `WS /devices/ws/{name}` is how a backend pushes state. The handshake is verified by
 `get_verified_device_name` (signature, source IP, nonce freshness, nonce replay) and the
 socket is registered with the router's `WebsocketConnectionManager` (`connections.py` beside
-it). Each JSON frame is a `DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
+it). A BCC opens a socket per process (its API, heavy worker and light workers), and each may
+reach a different MSS process, so whether a device is online is kept in the database, not in a
+process:
+
+- Each socket is a `device_connections` record from when it is accepted until it closes, or is
+  cancelled as MSS stops (`add_connection`, `remove_connection`). The MSS process holding it
+  pushes its `expires_at` on every `CONNECTION_REFRESH_SECONDS` (30 s) to
+  `CONNECTION_TTL_SECONDS` (90 s) ahead, so that the records of a process that died lapse.
+- A device is online while it has a live connection and is not in `switched_off_devices`,
+  which `switched_off` and `switched_on` events add it to and remove it from. Its stored
+  `is_online`, which the device routes filter on, and `last_online` are set from them on each
+  change (`sync_online_flags`), and for every device on each refresh, which puts right a
+  change two processes raced on and a dead process's lapsed connections.
+- An `initialized` event's own `is_online` is the backend's view, so the upsert sets the flag
+  from the connections after it.
+
+Each JSON frame is a `DeviceEvent` dispatched through `EVENT_HANDLERS` in `services/devices/events.py` to the
 handler for its name:
 
 | Event | Handler effect |
@@ -350,10 +364,9 @@ enum member in `services/devices/dtos.py`, and a handler and its entry in `EVENT
 ## 8. Data
 
 MSS reaches its data through `libs/storage`: one `Database`, opened in the lifespan with
-every service's `SCHEMAS`, which `services/schemas.py` gathers, and handed to routes as `DatabaseDep`, beside the request log's
-own on Redis (below). The `Database` picks its store from the URL's scheme: `MongoStore`
+every service's `SCHEMAS`, which `services/schemas.py` gathers, and handed to routes as `DatabaseDep`. The `Database` picks its store from the URL's scheme: `MongoStore`
 for `mongodb://`, `SqlStore` for a SQLAlchemy URL with an async driver
-(`postgresql+asyncpg://`, `sqlite+aiosqlite://`), `RedisStore` for `redis://`. Nothing
+(`postgresql+asyncpg://`, `sqlite+aiosqlite://`). Nothing
 outside `libs/storage/<store>` names a database technology.
 
 A schema is a Pydantic `Schema` whose `__storage__` names its table, key, unique fields,
@@ -392,15 +405,17 @@ Users are records like any other: `auth_users`, keeping the documents fastapi-us
 field for field, with roles referencing `auth_roles` and OAuth accounts in a list of models.
 
 Notable tables: `jobs`, `devices`, `calibrations`, `calibrations_logs` (historical,
-indexed on `(name, last_calibrated desc)`), `notices` (expiring at `expires_at`).
+indexed on `(name, last_calibrated desc)`), `notices` (expiring at `expires_at`),
+`device_connections` (expiring at `expires_at`) and `switched_off_devices` (§7).
 Deleting a project moves it to `deleted_auth_projects` rather than dropping it.
 
-**Request logs** (`services/request_log`) remember each request id and websocket nonce for
-`request_log_ttl` seconds. They are written on every request, so they live in a cache: a
-`Database` of their own on `database.redis_url`, whose `RedisStore` keeps them in the
-`request_logs` hash keyed by `request_id`, each expiring with its `expires_at`.
-`record_request` returns False for an id already recorded: that is how a replayed nonce is
-refused, in one write.
+**BCC nonces** (`services/bcc_nonces`) are the nonces of the backends' signed websocket
+handshakes, each kept in `bcc_nonces` (unique on `nonce`) for `bcc_nonce_ttl` seconds, past
+which the handshake's timestamp is refused as too old anyway. One is written per connection,
+as the handshake is verified, never per message or per HTTP request. `claim_bcc_nonce`
+returns False for a nonce already claimed: that is how a replay is refused, in one write,
+across every MSS process and host sharing the database. The backend keeps MSS's nonces the
+same way, in its `mss_nonce` table.
 
 ## 9. REST conventions
 
@@ -468,7 +483,7 @@ build MSS serves calls its own origin. `.env.test` also carries the `JWT_SECRET`
 
 MSS installs from its release's deb (amd64, Debian 13 and Ubuntu 24.04 onwards) or macOS arm64
 installer, Nuitka's standalone build running as the `tergite-mss` systemd service or launchd daemon on
-`8002`. The deb asks debconf where the database and Redis are, and its provisioning writes
+`8002`. The deb asks debconf where the database is, and its provisioning writes
 `/etc/tergite-mss/mss-config.toml` and the private key; on macOS the config is written by hand
 to `/usr/local/etc/tergite-mss/`. See the [README](README.md#deployment).
 
@@ -477,8 +492,8 @@ includes it from `ui/dist`, and MSS serves it at `/ui`
 ([api/dashboard.py](api/dashboard.py)), sending the paths no file
 has to `index.html` and redirecting `/` to `/ui/`.
 
-MSS answers `GET /health` with 200 outside the request log, as `RequestIDMiddleware`
-skips it, so that a frequent probe does not bury real traffic.
+MSS answers `GET /health` with 200, left out of uvicorn's access log (`UNLOGGED_PATHS`), so
+that a frequent probe does not bury real traffic.
 
 Logs reach Loki through Grafana Alloy installed beside MSS, whose [config.alloy](config.alloy)
 reads `tergite-mss.service`'s journal and pushes it with `GRAFANA_LOKI_URL` and `LOKI_LOGGER_ID`.
@@ -487,14 +502,14 @@ reads `tergite-mss.service`'s journal and pushes it with `GRAFANA_LOKI_URL` and 
 
 | Level | Where | Command |
 | --- | --- | --- |
-| MSS unit/integration | `tests` — pytest against real MongoDB, PostgreSQL, SQLite and Redis | `uv run pytest` |
+| MSS unit/integration | `tests` — pytest against real MongoDB, PostgreSQL and SQLite | `uv run pytest` |
 | Dashboard component | `ui/src/**/__tests__` — vitest + happy-dom | `npm run test` |
-| e2e | `ui/playwright` — the Playwright specs, through [dev/e2e_native_test.sh](dev/e2e_native_test.sh), against real MSS + real backends, with MongoDB and Redis, all running natively | `BACKEND_PATH=../tergite-backend ./dev/e2e_native_test.sh` |
+| e2e | `ui/playwright` — the Playwright specs, through [dev/e2e_native_test.sh](dev/e2e_native_test.sh), against real MSS + real backends, with MongoDB, all running natively | `BACKEND_PATH=../tergite-backend ./dev/e2e_native_test.sh` |
 
 The e2e runs against the whole stack, so it catches contract drift: from a local
 `tergite-backend` checkout or a clone, it runs one `main.py serve` for all the backends, each
 under its own path, from the base dependencies, MSS from this checkout serving the dashboard's
-test build at `/ui`, and a MongoDB, a Redis and a reset service (`dev/e2e_reset_server.py`) of
+test build at `/ui`, and a MongoDB and a reset service (`dev/e2e_reset_server.py`) of
 its own, all from fresh data in `temp-native/`. It seeds MSS's database from
 `ui/fixtures/*.json` with `dev/seed.py`, stands in for the OpenID provider, and runs the
 Playwright specs against that stack, on one worker, as they share its data; a test that wrote
@@ -507,7 +522,7 @@ platform, so make the Linux ones through `ui/Dockerfile.playwright` (see
 
 ### MSS's tests
 
-`pytest` with a real MongoDB, PostgreSQL, SQLite and Redis — no database mocking. `tests/conftest.py`
+`pytest` with a real MongoDB, PostgreSQL and SQLite — no database mocking. `tests/conftest.py`
 calls `setup_test_env()` **before any app import**, because `settings.py` reads config at
 import time; keep that ordering when adding fixtures.
 
@@ -543,10 +558,10 @@ a mirror — see §14).
 On every pull or merge request, on `main` and on `v*` tags, GitHub's `ci.yml` and GitLab run:
 
 - `mss` / `lint mss`, `test mss` — with uv, from `uv.lock`: `black --check .`, `isort`,
-  `pyflakes`, then `pytest` on Python 3.13, the oldest MSS supports, against MongoDB,
-  PostgreSQL and Redis.
+  `pyflakes`, then `pytest` on Python 3.13, the oldest MSS supports, against MongoDB and
+  PostgreSQL.
 - `dashboard` / `lint dashboard`, `test dashboard` — eslint and `npm run check:api`, vitest.
-- `e2e` — `dev/e2e_native_test.sh`, after installing MongoDB, Redis, SQLite and uv.
+- `e2e` — `dev/e2e_native_test.sh`, after installing MongoDB, SQLite and uv.
 
 On a `v*` tag, `release.yml` / `build dashboard`, `package mss linux`, `package mss macos`
 and `release` build the dashboard, then MSS's deb and macOS installer with it, and attach
@@ -661,9 +676,9 @@ rules, and code a change touches is brought in line with them.
     None]}}`, `update={"$set": {...}}`, `sort=["-created_at"]`, `skip`, `limit`, never structs
     that wrap each operator. A service function takes its query's arguments or its query model
     and gets its filter privately; a route never makes one.
-13. **What every request reads or writes lives in a cache.** The request log is in Redis,
-    behind a `Database` of its own; records stay in the records' database. Putting per-request
-    data in MongoDB doubled p95 latency.
+13. **No request writes what nothing reads.** An HTTP request is not recorded: its id is
+    only echoed and signed into calls to BCC, whose own nonce table refuses a replay. Writing
+    every request to MongoDB doubled p95 latency.
 14. **A value that is only defined stays where it is used.** A function that does no more than
     return a literal (a dict, a filter, an update, a range) makes the reader jump to it and
     back for nothing; write the literal at its use, in an `if`/`else` where it varies.
@@ -736,9 +751,10 @@ On top of the [style guide](#style-guide):
 
 Worth knowing before you are surprised by them:
 
-- **No realtime backend liveness.** A device is "online" because it said so over the
-  websocket; if BCC dies without disconnecting cleanly, MSS keeps showing it online until
-  the socket drops. Called out in
-  [docs/backends.md](docs/backends.md) and the README's TODO.
+- **Liveness is the websockets'.** A device is online while a process of its backend holds a
+  websocket open; a backend that is up but whose processes all lost their sockets shows
+  offline until one sends an event and reconnects. If MSS dies, its processes' connections
+  lapse within `CONNECTION_TTL_SECONDS`, and another process, or MSS restarted, marks the
+  device offline at its next refresh.
 - **503 handling in the dashboard is incomplete** (the README's TODO).
 - **`GET /counts/job-submitters` raises `NotImplementedError`.**

@@ -3089,13 +3089,13 @@
   "info": {
     "description": "A frontend to all our quantum backends",
     "title": "Main Service Server",
-    "version": "2026.06.0"
+    "version": "2026.11.0-rc.1"
   },
   "openapi": "3.1.0",
   "paths": {
     "/admin/bcc/recalibration/{backend}/cancel": {
       "post": {
-        "description": "Cancels recalibration on this device\n\nOnly MSS admin users can cancel recalibration\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    request_id: the unique identifier of the request\n    ignore_errors: whether to ignore errors during recalibration\n    requester: the admin user requesting this operation\n\nReturns:\n    general information on the status of the request",
+        "description": "Cancels recalibration on this device\n\nOnly MSS admin users can cancel recalibration\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    ignore_errors: whether to ignore errors during recalibration\n    requester: the admin user requesting this operation\n\nReturns:\n    general information on the status of the request",
         "operationId": "cancel_recalibration_admin_bcc_recalibration__backend__cancel_post",
         "parameters": [
           {
@@ -3157,7 +3157,7 @@
     },
     "/admin/bcc/recalibration/{backend}/info": {
       "get": {
-        "description": "Gets the current information about the recalibration of the given backend\n\nOnly MSS admin users can get recalibration info\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    request_id: the unique identifier of the request\n    requester: the admin user requesting this operation\n\nReturns:\n    the information about the recalibration",
+        "description": "Gets the current information about the recalibration of the given backend\n\nOnly MSS admin users can get recalibration info\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    requester: the admin user requesting this operation\n\nReturns:\n    the information about the recalibration",
         "operationId": "get_recalibration_info_admin_bcc_recalibration__backend__info_get",
         "parameters": [
           {
@@ -3209,7 +3209,7 @@
     },
     "/admin/bcc/recalibration/{backend}/init": {
       "post": {
-        "description": "Initializes recalibration of the given backend\n\nOnly MSS admin users can initialize recalibration\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    request_id: the unique identifier of the request\n    start_timestamp: the start time of the recalibration; default = None i.e. straight away\n    interval: the recalibration interval; default = None i.e. no repeat\n    requester: the admin user requesting this operation\n\nReturns:\n    the status of the recalibration",
+        "description": "Initializes recalibration of the given backend\n\nOnly MSS admin users can initialize recalibration\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    start_timestamp: the start time of the recalibration; default = None i.e. straight away\n    interval: the recalibration interval; default = None i.e. no repeat\n    requester: the admin user requesting this operation\n\nReturns:\n    the status of the recalibration",
         "operationId": "initialize_recalibration_admin_bcc_recalibration__backend__init_post",
         "parameters": [
           {
@@ -3294,7 +3294,7 @@
     },
     "/admin/bcc/switch/{backend}/off": {
       "post": {
-        "description": "Switches off the backend\n\nOnly MSS admin users can switch off the device\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    request_id: the unique identifier of the request\n    requester: the admin user requesting this operation\n\nReturns:\n    general information on the status of the request",
+        "description": "Switches off the backend\n\nOnly MSS admin users can switch off the device\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    requester: the admin user requesting this operation\n\nReturns:\n    general information on the status of the request",
         "operationId": "switch_backend_off_admin_bcc_switch__backend__off_post",
         "parameters": [
           {
@@ -3346,7 +3346,7 @@
     },
     "/admin/bcc/switch/{backend}/on": {
       "post": {
-        "description": "Switches on the backend\n\nOnly MSS admin users can switch off the device\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    request_id: the unique identifier of the request\n    requester: the admin user requesting this operation\n\nReturns:\n    general information on the status of the request",
+        "description": "Switches on the backend\n\nOnly MSS admin users can switch off the device\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    requester: the admin user requesting this operation\n\nReturns:\n    general information on the status of the request",
         "operationId": "switch_backend_on_admin_bcc_switch__backend__on_post",
         "parameters": [
           {
@@ -3398,7 +3398,7 @@
     },
     "/admin/bcc/users/{backend}": {
       "get": {
-        "description": "Views all users\n\nOnly MSS admin users can view this\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    request_id: the unique identifier of the request\n    skip: number of records to ignore at the top of the returned results; default is 0\n    limit: maximum number of records to return; default is None.\n    requester: the admin user requesting this operation\n\nReturns:\n    the paginated list of the available bookings\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
+        "description": "Views all users\n\nOnly MSS admin users can view this\n\nArgs:\n    bcc_client: the BCC client for the given backend\n    skip: number of records to ignore at the top of the returned results; default is 0\n    limit: maximum number of records to return; default is None.\n    requester: the admin user requesting this operation\n\nReturns:\n    the paginated list of the available bookings\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
         "operationId": "view_bcc_users_admin_bcc_users__backend__get",
         "parameters": [
           {
@@ -3474,7 +3474,7 @@
         ]
       },
       "post": {
-        "description": "Creates a user in the given backend for info\n\nOnly MSS admin users can create users here\n\nArgs:\n    data: the information about the new user\n    bcc_client: the BCC client for the given backend\n    request_id: the unique identifier of the request\n    requester: the admin user requesting this operation\n\nReturns:\n    the created user\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
+        "description": "Creates a user in the given backend for info\n\nOnly MSS admin users can create users here\n\nArgs:\n    data: the information about the new user\n    bcc_client: the BCC client for the given backend\n    requester: the admin user requesting this operation\n\nReturns:\n    the created user\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
         "operationId": "create_bcc_user_admin_bcc_users__backend__post",
         "parameters": [
           {
@@ -3536,7 +3536,7 @@
     },
     "/admin/bcc/users/{backend}/{user_id}": {
       "delete": {
-        "description": "Deletes the user of the given user_id\n\nOnly admins are allowed to remove users\n\nArgs:\n    user_id: the unique identifier of the user\n    bcc_client: the BCC client for the given backend\n    request_id: the unique identifier of the request\n    requester: the admin user requesting this operation\n\nRaises:\n    ItemNotFoundError: user not found\n    UnknownBccError: Unknown backend '{backend}'\n\nReturns:\n    A general message object with status",
+        "description": "Deletes the user of the given user_id\n\nOnly admins are allowed to remove users\n\nArgs:\n    user_id: the unique identifier of the user\n    bcc_client: the BCC client for the given backend\n    requester: the admin user requesting this operation\n\nRaises:\n    ItemNotFoundError: user not found\n    UnknownBccError: Unknown backend '{backend}'\n\nReturns:\n    A general message object with status",
         "operationId": "remove_bcc_user_admin_bcc_users__backend___user_id__delete",
         "parameters": [
           {
@@ -4967,7 +4967,7 @@
     },
     "/bookings/{backend}": {
       "get": {
-        "description": "Views all available bookings of the given backend\n\nArgs:\n    bcc_client: BccClient for the given backend\n    database: the database where the users are kept, to name them\n    request_id: the unique identifier of the request\n    requester: the current signed-in user\n    skip: number of records to ignore at the top of the returned results; default is 0\n    limit: maximum number of records to return; default is None.\n    sort: fields to sort by; prepending a \"-\" returns the items in descending order of that field\n    user_id: the id of the owner of the bookings\n    min_start_utc: the earliest start timestamp to include in the returned results; default is None\n    max_start_utc: the latest end timestamp to include in the returned results; default is None\n\nReturns:\n    the paginated list of the available bookings filtered accordingly\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
+        "description": "Views all available bookings of the given backend\n\nArgs:\n    bcc_client: BccClient for the given backend\n    database: the database where the users are kept, to name them\n    requester: the current signed-in user\n    skip: number of records to ignore at the top of the returned results; default is 0\n    limit: maximum number of records to return; default is None.\n    sort: fields to sort by; prepending a \"-\" returns the items in descending order of that field\n    user_id: the id of the owner of the bookings\n    min_start_utc: the earliest start timestamp to include in the returned results; default is None\n    max_start_utc: the latest end timestamp to include in the returned results; default is None\n\nReturns:\n    the paginated list of the available bookings filtered accordingly\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
         "operationId": "view_bookings_bookings__backend__get",
         "parameters": [
           {
@@ -5098,7 +5098,7 @@
         ]
       },
       "post": {
-        "description": "Creates a booking for the user of the given token\n\nArgs:\n    bcc_client: BccClient for the given backend\n    database: the database where the users are kept, to name them\n    data: the information about the new booking\n    request_id: the unique identifier of the request\n    user_id: the ID of the current signed-in user\n\nReturns:\n    the newly created booking\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
+        "description": "Creates a booking for the user of the given token\n\nArgs:\n    bcc_client: BccClient for the given backend\n    database: the database where the users are kept, to name them\n    data: the information about the new booking\n    user_id: the ID of the current signed-in user\n\nReturns:\n    the newly created booking\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
         "operationId": "create_booking_bookings__backend__post",
         "parameters": [
           {
@@ -5159,7 +5159,7 @@
     },
     "/bookings/{backend}/config": {
       "get": {
-        "description": "Views bookings configuration for the given backend\n\nArgs:\n    bcc_client: BccClient for the given backend\n    request_id: the unique identifier of the request\n    requester: the current signed-in user\n\nReturns:\n    the dict of configuration values for the booking service of the given backend\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
+        "description": "Views bookings configuration for the given backend\n\nArgs:\n    bcc_client: BccClient for the given backend\n    requester: the current signed-in user\n\nReturns:\n    the dict of configuration values for the booking service of the given backend\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
         "operationId": "view_bookings_configs_bookings__backend__config_get",
         "parameters": [
           {
@@ -5210,7 +5210,7 @@
     },
     "/bookings/{backend}/{booking_id}/cancel": {
       "post": {
-        "description": "Cancels a booking of given id for the user of the given token\n\nArgs:\n    bcc_client: BccClient for the given backend\n    booking_id: the unique identifier of the booking to cancel\n    request_id: the unique identifier of the request\n    user_id: the id of the current signed-in user\n\nReturns:\n    the general message object with the status\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
+        "description": "Cancels a booking of given id for the user of the given token\n\nArgs:\n    bcc_client: BccClient for the given backend\n    booking_id: the unique identifier of the booking to cancel\n    user_id: the id of the current signed-in user\n\nReturns:\n    the general message object with the status\n\nRaises:\n    UnknownBccError: Unknown backend '{backend}'",
         "operationId": "cancel_booking_bookings__backend___booking_id__cancel_post",
         "parameters": [
           {
@@ -6437,7 +6437,7 @@
     },
     "/jobs/{job_id}": {
       "delete": {
-        "description": "Deletes the job of given job_id if job belongs to current user or if user is admin\n\nArgs:\n    database: the database where the jobs are stored\n    job_id: the unique identifier of the job\n    request_id: the request id associated with this request\n    user: the logged-in user\n\nReturns:\n    a general message showing status\nRaises:\n    401: user not found\n    404: Job {job_id} not found\n    404: no matches for {job_id: job_id}",
+        "description": "Deletes the job of given job_id if job belongs to current user or if user is admin\n\nArgs:\n    database: the database where the jobs are stored\n    job_id: the unique identifier of the job\n    user: the logged-in user\n\nReturns:\n    a general message showing status\nRaises:\n    401: user not found\n    404: Job {job_id} not found\n    404: no matches for {job_id: job_id}",
         "operationId": "remove_job_jobs__job_id__delete",
         "parameters": [
           {
@@ -6536,7 +6536,7 @@
     },
     "/jobs/{job_id}/cancel": {
       "post": {
-        "description": "Cancels the job of given job_id if job belongs to current user or if user is admin\n\nArgs:\n    database: the database where the jobs are stored\n    job_id: the unique identifier of the job\n    details: the extra information passed when canceling the job\n    request_id: the request id associated with this request\n    user: the current logged-in user\n\nReturns:\n    a general message showing status\nRaises:\n    401: user not found\n    404: Job {job_id} not found\n    404: no matches for {job_id: job_id}\n    406: if the job has already been cancelled",
+        "description": "Cancels the job of given job_id if job belongs to current user or if user is admin\n\nArgs:\n    database: the database where the jobs are stored\n    job_id: the unique identifier of the job\n    details: the extra information passed when canceling the job\n    user: the current logged-in user\n\nReturns:\n    a general message showing status\nRaises:\n    401: user not found\n    404: Job {job_id} not found\n    404: no matches for {job_id: job_id}\n    406: if the job has already been cancelled",
         "operationId": "cancel_job_jobs__job_id__cancel_post",
         "parameters": [
           {

@@ -21,7 +21,6 @@ export interface paths {
          *
          *     Args:
          *         bcc_client: the BCC client for the given backend
-         *         request_id: the unique identifier of the request
          *         ignore_errors: whether to ignore errors during recalibration
          *         requester: the admin user requesting this operation
          *
@@ -50,7 +49,6 @@ export interface paths {
          *
          *     Args:
          *         bcc_client: the BCC client for the given backend
-         *         request_id: the unique identifier of the request
          *         requester: the admin user requesting this operation
          *
          *     Returns:
@@ -82,7 +80,6 @@ export interface paths {
          *
          *     Args:
          *         bcc_client: the BCC client for the given backend
-         *         request_id: the unique identifier of the request
          *         start_timestamp: the start time of the recalibration; default = None i.e. straight away
          *         interval: the recalibration interval; default = None i.e. no repeat
          *         requester: the admin user requesting this operation
@@ -114,7 +111,6 @@ export interface paths {
          *
          *     Args:
          *         bcc_client: the BCC client for the given backend
-         *         request_id: the unique identifier of the request
          *         requester: the admin user requesting this operation
          *
          *     Returns:
@@ -144,7 +140,6 @@ export interface paths {
          *
          *     Args:
          *         bcc_client: the BCC client for the given backend
-         *         request_id: the unique identifier of the request
          *         requester: the admin user requesting this operation
          *
          *     Returns:
@@ -172,7 +167,6 @@ export interface paths {
          *
          *     Args:
          *         bcc_client: the BCC client for the given backend
-         *         request_id: the unique identifier of the request
          *         skip: number of records to ignore at the top of the returned results; default is 0
          *         limit: maximum number of records to return; default is None.
          *         requester: the admin user requesting this operation
@@ -194,7 +188,6 @@ export interface paths {
          *     Args:
          *         data: the information about the new user
          *         bcc_client: the BCC client for the given backend
-         *         request_id: the unique identifier of the request
          *         requester: the admin user requesting this operation
          *
          *     Returns:
@@ -229,7 +222,6 @@ export interface paths {
          *     Args:
          *         user_id: the unique identifier of the user
          *         bcc_client: the BCC client for the given backend
-         *         request_id: the unique identifier of the request
          *         requester: the admin user requesting this operation
          *
          *     Raises:
@@ -576,7 +568,6 @@ export interface paths {
          *     Args:
          *         bcc_client: BccClient for the given backend
          *         database: the database where the users are kept, to name them
-         *         request_id: the unique identifier of the request
          *         requester: the current signed-in user
          *         skip: number of records to ignore at the top of the returned results; default is 0
          *         limit: maximum number of records to return; default is None.
@@ -601,7 +592,6 @@ export interface paths {
          *         bcc_client: BccClient for the given backend
          *         database: the database where the users are kept, to name them
          *         data: the information about the new booking
-         *         request_id: the unique identifier of the request
          *         user_id: the ID of the current signed-in user
          *
          *     Returns:
@@ -630,7 +620,6 @@ export interface paths {
          *
          *     Args:
          *         bcc_client: BccClient for the given backend
-         *         request_id: the unique identifier of the request
          *         requester: the current signed-in user
          *
          *     Returns:
@@ -664,7 +653,6 @@ export interface paths {
          *     Args:
          *         bcc_client: BccClient for the given backend
          *         booking_id: the unique identifier of the booking to cancel
-         *         request_id: the unique identifier of the request
          *         user_id: the id of the current signed-in user
          *
          *     Returns:
@@ -894,7 +882,6 @@ export interface paths {
          *     Args:
          *         database: the database where the jobs are stored
          *         job_id: the unique identifier of the job
-         *         request_id: the request id associated with this request
          *         user: the logged-in user
          *
          *     Returns:
@@ -927,7 +914,6 @@ export interface paths {
          *         database: the database where the jobs are stored
          *         job_id: the unique identifier of the job
          *         details: the extra information passed when canceling the job
-         *         request_id: the request id associated with this request
          *         user: the current logged-in user
          *
          *     Returns:

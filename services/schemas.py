@@ -13,10 +13,11 @@
 from typing import Tuple, Type
 
 from libs.storage import Schema
-from services import auth, calibration, devices, jobs, notices, requests
+from services import auth, bcc_nonces, calibration, devices, jobs, notices, requests
 
 SCHEMAS: Tuple[Type[Schema], ...] = (
     *auth.SCHEMAS,
+    *bcc_nonces.SCHEMAS,
     *calibration.SCHEMAS,
     *devices.SCHEMAS,
     *jobs.SCHEMAS,

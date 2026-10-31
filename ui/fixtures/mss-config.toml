@@ -17,8 +17,6 @@ mss_host = "127.0.0.1"
 name = "testing"
 # database URI
 url = "mongodb://tergite-mongo:27017"
-# the redis URL
-redis_url = "redis://tergite-redis:6379/8"
 
 [[backends]]
 name = "qiskit_pulse_2q"

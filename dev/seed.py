@@ -25,13 +25,15 @@ import settings
 from libs.storage import Database
 from services.auth import AppToken, DeletedProject, Project, User, ensure_roles
 from services.calibration import DeviceCalibration, DeviceCalibrationLog
-from services.devices import Device
+from services.devices import Device, DeviceConnection, SwitchedOffDevice
 from services.jobs import Job
 from services.notices import Notice, NoticePreferences
 from services.requests import Request
 from services.schemas import SCHEMAS
 
 FIXTURES_DIR = Path(__file__).parents[1] / "ui" / "fixtures"
+# far enough off for any e2e run
+_NEVER = timedelta(days=3650)
 # the system user's token, with which the e2e stack's backends call MSS
 BOT_TOKEN = {
     "id": "67bdc2aacd991c8e1cf16ffc",
@@ -64,6 +66,7 @@ async def _clear(database: Database) -> None:
         AppToken,
         DeletedProject,
         Device,
+        DeviceConnection,
         DeviceCalibration,
         DeviceCalibrationLog,
         Job,
@@ -71,6 +74,7 @@ async def _clear(database: Database) -> None:
         NoticePreferences,
         Project,
         Request,
+        SwitchedOffDevice,
         User,
     ):
         await database.delete_many(schema, {})
@@ -90,8 +94,26 @@ async def _insert_fixtures(database: Database) -> None:
         DeviceCalibration,
         [DeviceCalibration.model_validate(v) for v in _read("calibrations")],
     )
+    devices = _read("device-list")
+    await database.insert_many(Device, [Device.model_validate(v) for v in devices])
+    # the e2e runs each backend's API alone, which opens no websocket until it sends an
+    # event, so the devices the fixtures show online get a connection that does not lapse,
+    # as their workers' would be, and those shown offline are switched off
     await database.insert_many(
-        Device, [Device.model_validate(v) for v in _read("device-list")]
+        DeviceConnection,
+        [
+            DeviceConnection(device_name=v["name"], expires_at=now + _NEVER)
+            for v in devices
+            if v["is_online"]
+        ],
+    )
+    await database.insert_many(
+        SwitchedOffDevice,
+        [
+            SwitchedOffDevice(name=v["name"], switched_off_at=v["last_online"])
+            for v in devices
+            if not v["is_online"]
+        ],
     )
     await database.insert_many(Job, [_get_job(v, now=now) for v in _read("jobs")])
     await database.insert_many(

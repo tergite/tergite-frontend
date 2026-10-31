@@ -30,7 +30,6 @@ TEST_MSS_PRIVATE_KEY_PATH = get_fixture_path("mss_private_key.pem")
 
 TEST_DB_NAME: str = TEST_APP_CONFIG["database"]["name"]
 TEST_MONGODB_URL: str = TEST_APP_CONFIG["database"]["url"]
-TEST_REDIS_URL: str = TEST_APP_CONFIG["database"]["redis_url"]
 # the conformance tests' PostgreSQL, which no app test uses yet
 TEST_POSTGRES_URL: str = environ.get(
     "TEST_POSTGRES_URL",

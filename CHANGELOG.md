@@ -10,6 +10,10 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.1] - 2026-10-31
+
+This is part of the tergite release v2026.11.0-rc.1.
+
 ### Added
 
 - Added GitLab jobs that, on a `v*` tag, build the deb and macOS installer, upload them to the package registry and
@@ -17,7 +21,7 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - Added the dashboard at `/ui`, with `/` redirecting to it, when its build is in the `ui` folder beside `main.py`, as
   the packages ship it.
 - Added a deb for amd64, for Debian 13 and Ubuntu 24.04 onwards, and a macOS arm64 installer of Nuitka's standalone
-  build, built and attached to the GitHub release of each tag; the deb asks where the database and Redis are and provisions them.
+  build, built and attached to the GitHub release of each tag; the deb asks where the database is and provisions it.
 - Added `mss start`, the default command, which runs the Alembic or MongoDB migrations and then
   serves, and `mss migrate` and `mss serve`, which do one alone, so a compiled MSS needs no Python checkout.
 - Added `--workers` to `mss start` and `mss serve`, defaulting as uvicorn does to `$WEB_CONCURRENCY` or 1. Several
@@ -66,8 +70,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - Added smart traceback capture in exception handlers 
   (logs full tracebacks for `500+` server errors, logs `4xx` client errors as warnings without tracebacks).
 - Added lifecycle process start/shutdown messages and OAuth2 client provider registration logs.
-- Repository: `dev/e2e_native_test.sh` runs the full-stack e2e, with MongoDB, Redis, MSS and the backends
-  running natively, in about 6 minutes; it needs mongod, mongosh, redis-server, sqlite3 and uv.
+- Repository: `dev/e2e_native_test.sh` runs the full-stack e2e, with MongoDB, MSS and the backends
+  running natively, in about 6 minutes; it needs mongod, mongosh, sqlite3 and uv.
 - Dashboard: Added address completion to the "Admin email" and "Member emails" inputs of the admin
   project forms, so a superuser no longer has to recall an address exactly. It is a
   combobox rather than a `<datalist>`, which Firefox and iOS Safari render only partially,
@@ -97,6 +101,10 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Changed
 
+- Changed MSS's SQLite databases to write ahead to a log, synced at checkpoints, so a commit no longer waits on the disk.
+- Changed the request log to `bcc_nonces` in MSS's own database, holding only the backends' websocket nonces, one per
+  connection, for `bcc_nonce_ttl`, instead of every request in Redis, which MSS no longer needs; `database.redis_url`
+  and `request_log_ttl` are ignored.
 - MSS needs Python 3.13 or later, and its deb and macOS installer are built with 3.13: built by Nuitka on 3.12, it
   failed about half of many concurrent requests, as CPython 3.12 refuses the compiled functions anyio sorts exception groups with.
 - Moved the `api.rest` package into `api`, so the ASGI app is `api:app`.
@@ -110,7 +118,7 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
   converts stored ones; `python -m migrations.mongodb rollback b109440758fe` undoes it on MongoDB.
 - Notices that no longer fit MSS's schema, such as those `v2026.06.0` stored, are left out
   of listings with a warning in the log, where they failed the whole listing; jobs already were.
-- `request_log_clean_interval` is ignored, as Redis now expires each request-log entry itself.
+- `request_log_clean_interval` is ignored, as the request log sweeps its expired entries itself.
 - The low and depleted QPU warnings come only from the job that crosses the threshold or zero,
   so the jobs after it do not repeat them.
 - A superuser can delete a personal project, for offboarding or an erasure request; only the
@@ -124,6 +132,9 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - [BREAKING]: Changed `/admin/bcc-users` to `/admin/bcc/users` endpoints
 - [BREAKING]: Changed `/admin/recalibration` to `/admin/bcc/recalibration` endpoints
 - [BREAKING]: Changed `/admin/switch` to `/admin/bcc/switch` endpoints
+- [BREAKING]: MSS signs a BCC request's `x-mss-is-admin`, method and path as well as its user, nonce and
+  timestamp, so they cannot be changed in transit; it needs a BCC that checks the same message, and an older BCC
+  refuses its requests with 401.
 - [BREAKING]: Changed GET `/me` profile endpoint to GET `/me/profile`
 - [BREAKING]: Remove `ext_id`, `source` and `resource_ids` from project schema
 - [BREAKING]: Changed the schema of beanie mongodb's strict even at the database level.
@@ -160,6 +171,14 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Fixed
 
+- Fixed MSS signing its calls to BCC with the client's own `x-request-id`, which let a client choose, or reuse, the
+  nonce BCC refuses replays by; each call now has a nonce of MSS's own, and any `x-request-id` is only echoed back.
+- Fixed a read of a SQLite database waiting for another connection's write to finish, as every transaction took the
+  write lock.
+- A device stays online while any of its backend's websockets is open, whichever MSS process holds it; one of them
+  closing, as a backend opens one per process, marked the device offline though the others were open.
+- A device whose backend, or the MSS process holding its websocket, died without closing it is shown offline within
+  90 s, and a switched-off device stays offline when its backend reconnects, until switched on.
 - Expired notifications are no longer shown for up to a minute past their `expires_at`, while
   MongoDB's TTL monitor had yet to delete them.
 - GET `/jobs/`, `/jobs/{id}` and `/jobs/{id}/status` now show a job only to the user who
@@ -184,8 +203,6 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - Fixed approving a project access request failing with "Cannot apply $addToSet to non-array
   field" on any project whose member lists were stored as null rather than empty.
 - Fixed error OAUTH_USER_ALREADY_EXISTS when a user signs in with a different Oauth provider but same email.
-- MSS now refuses to start on a Redis older than 7.4, which lacks per-field expiry; every request
-  failed with a 500 (`unknown command 'HPEXPIREAT'`) instead.
 - Dashboard: Logging out now forgets the selected project and API token; they survived the logout, so
   the next user in the same tab started out on the previous user's project.
 - Dashboard: Switching project or theme no longer rebuilds the router and remounts every page, which

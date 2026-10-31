@@ -22,7 +22,7 @@ from utils.api import GeneralMessage
 from utils.exc import ForbiddenError
 
 from .dtos import DeviceEventHandler, DeviceEventName, DeviceSwitchData, DeviceUpsert
-from .service import mark_device_offline, mark_device_online, upsert_device
+from .service import switch_off_device, switch_on_device, upsert_device
 
 
 async def on_job_updated_event(
@@ -110,9 +110,7 @@ async def on_device_switched_off_event(
         NotFoundError: device {device} not found
         ValidationError: if the final object is not validated
     """
-    patched_record = await mark_device_offline(
-        database, name=device, last_online=data.date.isoformat()
-    )
+    patched_record = await switch_off_device(database, name=device, date=data.date)
     return {
         "status": "success",
         "data": patched_record.model_dump(mode="json", exclude_none=True),
@@ -136,7 +134,7 @@ async def on_device_switched_on_event(
         NotFoundError: device {device} not found
         ValidationError: if the final object is not validated
     """
-    patched_record = await mark_device_online(database, name=device)
+    patched_record = await switch_on_device(database, name=device)
     return {
         "status": "success",
         "data": patched_record.model_dump(mode="json", exclude_none=True),
