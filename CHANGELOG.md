@@ -12,16 +12,12 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [2026.11.0-rc.3] - 2026-10-31
 
-This is part of the tergite release v2026.11.0-rc.3.
-
 ### Changed
 
 - Changed a tag's GitHub release notes, which only said "See CHANGELOG.md.", to its CHANGELOG.md section; a tag
   without one now fails the release workflow before it builds anything.
 
 ## [2026.11.0-rc.2] - 2026-10-31
-
-This is part of the tergite release v2026.11.0-rc.2.
 
 ### Changed
 
@@ -35,8 +31,6 @@ This is part of the tergite release v2026.11.0-rc.2.
 - Fixed a release candidate's GitHub release being published as the latest release; it is now a pre-release.
 
 ## [2026.11.0-rc.1] - 2026-10-31
-
-This is part of the tergite release v2026.11.0-rc.1.
 
 ### Added
 
