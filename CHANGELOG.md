@@ -10,6 +10,15 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.2] - 2026-10-31
+
+This is part of the tergite release v2026.11.0-rc.2.
+
+### Changed
+
+- Gave every public function and class a Google-style docstring, saying what it does for the caller, its arguments,
+  what it returns and what it raises; the OpenAPI schema's descriptions follow them.
+
 ## [2026.11.0-rc.1] - 2026-10-31
 
 This is part of the tergite release v2026.11.0-rc.1.
