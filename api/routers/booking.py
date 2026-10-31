@@ -24,7 +24,6 @@ from api.dependencies import (
     CurrentUserDep,
     CurrentUserIdDep,
     DatabaseDep,
-    RequestIdDep,
 )
 from services.external.bcc import (
     Booking,
@@ -41,7 +40,6 @@ async def create_booking(
     bcc_client: BccClientDep,
     database: DatabaseDep,
     data: NewBookingInfo,
-    request_id: RequestIdDep,
     user_id: CurrentUserIdDep,
 ) -> Booking:
     """Creates a booking for the user of the given token
@@ -50,7 +48,6 @@ async def create_booking(
         bcc_client: BccClient for the given backend
         database: the database where the users are kept, to name them
         data: the information about the new booking
-        request_id: the unique identifier of the request
         user_id: the ID of the current signed-in user
 
     Returns:
@@ -60,7 +57,7 @@ async def create_booking(
         UnknownBccError: Unknown backend '{backend}'
     """
     return await bcc_client.create_booking(
-        database=database, user_id=user_id, request_id=request_id, data=data
+        database=database, user_id=user_id, data=data
     )
 
 
@@ -68,7 +65,6 @@ async def create_booking(
 async def cancel_booking(
     bcc_client: BccClientDep,
     booking_id: str,
-    request_id: RequestIdDep,
     user_id: CurrentUserIdDep,
 ) -> GeneralMessage:
     """Cancels a booking of given id for the user of the given token
@@ -76,7 +72,6 @@ async def cancel_booking(
     Args:
         bcc_client: BccClient for the given backend
         booking_id: the unique identifier of the booking to cancel
-        request_id: the unique identifier of the request
         user_id: the id of the current signed-in user
 
     Returns:
@@ -85,9 +80,7 @@ async def cancel_booking(
     Raises:
         UnknownBccError: Unknown backend '{backend}'
     """
-    return await bcc_client.cancel_booking(
-        user_id=user_id, request_id=request_id, booking_id=booking_id
-    )
+    return await bcc_client.cancel_booking(user_id=user_id, booking_id=booking_id)
 
 
 @router.get(
@@ -97,7 +90,6 @@ async def cancel_booking(
 async def view_bookings(
     bcc_client: BccClientDep,
     database: DatabaseDep,
-    request_id: RequestIdDep,
     requester: CurrentUserDep,
     skip: int = Query(default=0),
     limit: Optional[int] = Query(default=None),
@@ -111,7 +103,6 @@ async def view_bookings(
     Args:
         bcc_client: BccClient for the given backend
         database: the database where the users are kept, to name them
-        request_id: the unique identifier of the request
         requester: the current signed-in user
         skip: number of records to ignore at the top of the returned results; default is 0
         limit: maximum number of records to return; default is None.
@@ -129,7 +120,6 @@ async def view_bookings(
     return await bcc_client.view_bookings(
         database=database,
         requester_id=requester.id,
-        request_id=request_id,
         is_admin=requester.is_superuser,
         skip=skip,
         limit=limit,
@@ -146,14 +136,12 @@ async def view_bookings(
 )
 async def view_bookings_configs(
     bcc_client: BccClientDep,
-    request_id: RequestIdDep,
     requester: CurrentUserDep,
 ):
     """Views bookings configuration for the given backend
 
     Args:
         bcc_client: BccClient for the given backend
-        request_id: the unique identifier of the request
         requester: the current signed-in user
 
     Returns:
@@ -164,6 +152,5 @@ async def view_bookings_configs(
     """
     return await bcc_client.view_bookings_configs(
         user_id=requester.id,
-        request_id=request_id,
         is_admin=requester.is_superuser,
     )

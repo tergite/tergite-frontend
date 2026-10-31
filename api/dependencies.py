@@ -34,7 +34,6 @@ from .auth import (
     get_current_project_user_ids,
 )
 from .database import get_database
-from .utils import get_request_id
 
 CurrentUserDep = Annotated[User, Depends(GET_CURRENT_USER)]
 CurrentSuperuserDep = Annotated[User, Depends(GET_CURRENT_SUPERUSER)]
@@ -45,7 +44,6 @@ CurrentStrictProjectUserIdsDep = Annotated[
 ]
 DatabaseDep = Annotated[Database, Depends(get_database)]
 BccClientDep = Annotated[bcc.BccClient, Depends(bcc.get_client)]
-RequestIdDep = Annotated[str, Depends(get_request_id)]
 
 
 def get_project_query(

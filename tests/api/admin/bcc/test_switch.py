@@ -10,6 +10,8 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
+import uuid
+
 import httpx
 import pytest
 
@@ -75,3 +77,26 @@ def test_admin_switch_on(client, admin_jwt_cookie, user_jwt_cookie, backend, moc
 
         assert response.status_code == 200
         assert actual_output == {"status": "success"}
+
+
+def test_each_call_to_bcc_is_signed_with_a_nonce_of_mss_own(
+    client, admin_jwt_cookie, mock_bcc
+):
+    """So that no client can choose, or reuse, the nonce BCC refuses replays by"""
+    client_request_id = str(uuid.uuid4())
+    backend = BACKEND_SLUGS[0]
+
+    with client as client:
+        for _ in range(2):
+            client.post(
+                f"/admin/bcc/switch/{backend}/off",
+                cookies=admin_jwt_cookie,
+                headers={"x-request-id": client_request_id},
+            )
+    nonces = [
+        call.request.headers["x-mss-request-id"]
+        for call in mock_bcc.calls
+        if call.request.url.path.endswith("/switch/off")
+    ]
+
+    assert len(set(nonces)) == 2 and client_request_id not in nonces

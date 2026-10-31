@@ -19,7 +19,6 @@ from utils.api import GeneralMessage
 from ....dependencies import (
     BccClientDep,
     CurrentSuperuserDep,
-    RequestIdDep,
 )
 
 router = APIRouter()
@@ -28,7 +27,6 @@ router = APIRouter()
 @router.post("/{backend}/off")
 async def switch_backend_off(
     bcc_client: BccClientDep,
-    request_id: RequestIdDep,
     requester: CurrentSuperuserDep,
 ) -> GeneralMessage:
     """Switches off the backend
@@ -37,7 +35,6 @@ async def switch_backend_off(
 
     Args:
         bcc_client: the BCC client for the given backend
-        request_id: the unique identifier of the request
         requester: the admin user requesting this operation
 
     Returns:
@@ -45,7 +42,6 @@ async def switch_backend_off(
     """
     response = await bcc_client.switch_off(
         user_id=requester.id,
-        request_id=request_id,
         is_admin=requester.is_superuser,
     )
     return response
@@ -54,7 +50,6 @@ async def switch_backend_off(
 @router.post("/{backend}/on")
 async def switch_backend_on(
     bcc_client: BccClientDep,
-    request_id: RequestIdDep,
     requester: CurrentSuperuserDep,
 ) -> GeneralMessage:
     """Switches on the backend
@@ -63,7 +58,6 @@ async def switch_backend_on(
 
     Args:
         bcc_client: the BCC client for the given backend
-        request_id: the unique identifier of the request
         requester: the admin user requesting this operation
 
     Returns:
@@ -71,7 +65,6 @@ async def switch_backend_on(
     """
     response = await bcc_client.switch_on(
         user_id=requester.id,
-        request_id=request_id,
         is_admin=requester.is_superuser,
     )
     return response

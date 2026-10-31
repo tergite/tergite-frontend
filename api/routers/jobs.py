@@ -26,7 +26,6 @@ from api.dependencies import (
     CurrentStrictProjectUserIdsDep,
     CurrentUserDep,
     DatabaseDep,
-    RequestIdDep,
 )
 from services import jobs as jobs_service
 from services.external import bcc
@@ -112,7 +111,6 @@ async def create_one(
     database: DatabaseDep,
     project_user_id_pair: CurrentStrictProjectUserIdsDep,
     payload: JobCreate,
-    request_id: RequestIdDep,
 ) -> CreatedJobResponse:
     """Creates a job in the given backend and given calibration_date in the body"""
     project_id, user_id = project_user_id_pair
@@ -122,7 +120,6 @@ async def create_one(
         payload=payload,
         project_id=project_id,
         user_id=user_id,
-        request_id=request_id,
     )
 
 
@@ -131,7 +128,6 @@ async def cancel_job(
     database: DatabaseDep,
     job_id: UUID,
     details: CancellationDetails,
-    request_id: RequestIdDep,
     user: CurrentUserDep,
 ) -> GeneralMessage:
     """Cancels the job of given job_id if job belongs to current user or if user is admin
@@ -140,7 +136,6 @@ async def cancel_job(
         database: the database where the jobs are stored
         job_id: the unique identifier of the job
         details: the extra information passed when canceling the job
-        request_id: the request id associated with this request
         user: the current logged-in user
 
     Returns:
@@ -157,7 +152,6 @@ async def cancel_job(
         bcc_client=bcc.get_client(job.device),
         job_id=job_id,
         user_id=user.id,
-        request_id=request_id,
         details=details,
     )
 
@@ -166,7 +160,6 @@ async def cancel_job(
 async def remove_job(
     database: DatabaseDep,
     job_id: UUID,
-    request_id: RequestIdDep,
     user: CurrentUserDep,
 ) -> GeneralMessage:
     """Deletes the job of given job_id if job belongs to current user or if user is admin
@@ -174,7 +167,6 @@ async def remove_job(
     Args:
         database: the database where the jobs are stored
         job_id: the unique identifier of the job
-        request_id: the request id associated with this request
         user: the logged-in user
 
     Returns:
@@ -190,5 +182,4 @@ async def remove_job(
         bcc_client=bcc.get_client(job.device),
         job_id=job_id,
         user_id=user.id,
-        request_id=request_id,
     )

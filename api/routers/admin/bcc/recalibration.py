@@ -22,7 +22,6 @@ from utils.api import GeneralMessage
 from ....dependencies import (
     BccClientDep,
     CurrentSuperuserDep,
-    RequestIdDep,
 )
 
 router = APIRouter()
@@ -31,7 +30,6 @@ router = APIRouter()
 @router.post("/{backend}/init")
 async def initialize_recalibration(
     bcc_client: BccClientDep,
-    request_id: RequestIdDep,
     requester: CurrentSuperuserDep,
     start_timestamp: Optional[datetime] = Query(None),
     interval: Optional[float] = Query(None),
@@ -42,7 +40,6 @@ async def initialize_recalibration(
 
     Args:
         bcc_client: the BCC client for the given backend
-        request_id: the unique identifier of the request
         start_timestamp: the start time of the recalibration; default = None i.e. straight away
         interval: the recalibration interval; default = None i.e. no repeat
         requester: the admin user requesting this operation
@@ -52,7 +49,6 @@ async def initialize_recalibration(
     """
     response = await bcc_client.init_recalibration(
         user_id=requester.id,
-        request_id=request_id,
         start_timestamp=start_timestamp,
         interval=interval,
         is_admin=requester.is_superuser,
@@ -63,7 +59,6 @@ async def initialize_recalibration(
 @router.get("/{backend}/info")
 async def get_recalibration_info(
     bcc_client: BccClientDep,
-    request_id: RequestIdDep,
     requester: CurrentSuperuserDep,
 ) -> RecalibrationInfo:
     """Gets the current information about the recalibration of the given backend
@@ -72,7 +67,6 @@ async def get_recalibration_info(
 
     Args:
         bcc_client: the BCC client for the given backend
-        request_id: the unique identifier of the request
         requester: the admin user requesting this operation
 
     Returns:
@@ -80,7 +74,6 @@ async def get_recalibration_info(
     """
     response = await bcc_client.get_recalibration_info(
         user_id=requester.id,
-        request_id=request_id,
         is_admin=requester.is_superuser,
     )
     return response
@@ -89,7 +82,6 @@ async def get_recalibration_info(
 @router.post("/{backend}/cancel")
 async def cancel_recalibration(
     bcc_client: BccClientDep,
-    request_id: RequestIdDep,
     requester: CurrentSuperuserDep,
     ignore_errors: bool = Query(False),
 ) -> GeneralMessage:
@@ -99,7 +91,6 @@ async def cancel_recalibration(
 
     Args:
         bcc_client: the BCC client for the given backend
-        request_id: the unique identifier of the request
         ignore_errors: whether to ignore errors during recalibration
         requester: the admin user requesting this operation
 
@@ -108,7 +99,6 @@ async def cancel_recalibration(
     """
     response = await bcc_client.stop_recalibration(
         user_id=requester.id,
-        request_id=request_id,
         is_admin=requester.is_superuser,
         ignore_errors=ignore_errors,
     )

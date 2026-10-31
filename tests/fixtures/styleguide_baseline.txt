@@ -73,7 +73,6 @@ type-hints: api/routers/me/jobs.py::get_my_jobs
 type-hints: api/routers/me/notices/notices.py::get_my_notices
 type-hints: api/routers/me/profile.py::get_my_user_profile
 type-hints: api/routers/me/requests.py::get_many
-type-hints: api/utils.py::_is_valid_uuid4
 type-hints: services/auth/app_tokens/dtos.py::AppTokenRead.serialize_created_at
 type-hints: services/auth/app_tokens/dtos.py::AppTokenUpdate.serialize_expires_at
 type-hints: services/auth/providers/__init__.py::_order_by_many.get_key

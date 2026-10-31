@@ -75,7 +75,6 @@ async def create_job(
     payload: JobCreate,
     project_id: Optional[str],
     user_id: Optional[str],
-    request_id: str,
 ) -> CreatedJobResponse:
     """Creates a new job for the given backend
 
@@ -85,7 +84,6 @@ async def create_job(
         payload: the job to create
         project_id: the unique identifier of the project the job is billed to
         user_id: the unique identifier of the user
-        request_id: the unique identifier of the current request
 
     Returns:
         the created job details
@@ -103,7 +101,7 @@ async def create_job(
     )
     logger.info(f"Creating new job with id: {job.job_id} for user: {user_id}")
     encrypted_token, token = await bcc_client.get_token(
-        job_id=job.job_id, user_id=user_id, request_id=request_id
+        job_id=job.job_id, user_id=user_id
     )
     job.access_token = encrypted_token
     await database.insert(Job, job)
@@ -233,7 +231,6 @@ async def cancel_job(
     bcc_client: BccClient,
     job_id: UUID,
     user_id: str,
-    request_id: str,
     details: CancellationDetails,
 ) -> GeneralMessage:
     """Cancels the job in its BCC, then marks it cancelled if the BCC succeeded
@@ -243,15 +240,12 @@ async def cancel_job(
         bcc_client: the client of the BCC running the job
         job_id: the unique identifier of the job
         user_id: the unique identifier of the user cancelling it
-        request_id: the unique identifier of the current request
         details: the extra information passed when cancelling the job
 
     Returns:
         the BCC's answer
     """
-    response = await bcc_client.cancel_job(
-        job_id, user_id=user_id, request_id=request_id, body=details
-    )
+    response = await bcc_client.cancel_job(job_id, user_id=user_id, body=details)
     if response["status"] == "success":
         await update_job(
             database,
@@ -269,7 +263,6 @@ async def delete_job(
     bcc_client: BccClient,
     job_id: UUID,
     user_id: str,
-    request_id: str,
 ) -> GeneralMessage:
     """Deletes the job from its BCC, then from the database if the BCC succeeded
 
@@ -278,7 +271,6 @@ async def delete_job(
         bcc_client: the client of the BCC running the job
         job_id: the unique identifier of the job
         user_id: the unique identifier of the user deleting it
-        request_id: the unique identifier of the current request
 
     Returns:
         the BCC's answer
@@ -286,9 +278,7 @@ async def delete_job(
     Raises:
         NotFoundError: no matches for {filter}
     """
-    response = await bcc_client.delete_job(
-        job_id, user_id=user_id, request_id=request_id
-    )
+    response = await bcc_client.delete_job(job_id, user_id=user_id)
     if response["status"] == "success":
         count = await database.delete_many(Job, filter={"job_id": str(job_id)})
         if count == 0:

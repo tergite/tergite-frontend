@@ -13,14 +13,12 @@
 
 """Miscellaneous utility functions for the routers"""
 
-import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
 from cryptography.exceptions import InvalidSignature
 from fastapi import Depends, WebSocketException
 from loguru import logger
-from starlette.requests import Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.websockets import WebSocket
 
@@ -29,33 +27,8 @@ from libs.storage import Database
 from services.bcc_nonces import claim_bcc_nonce
 from utils.config import BccConfig, get_ip_addr
 from utils.crypto import verify_ws_signature
-from utils.exc import InvalidRequestIDError
 
 from .database import get_database
-
-
-async def get_request_id(request: Request) -> str:
-    """Extracts value of the X-Request-ID header
-
-    Args:
-        request: the FastAPI request object
-
-    Returns:
-        the string in the X-Request-ID
-
-    Raises:
-        InvalidRequestIDError: "No request ID provided"
-        InvalidRequestIDError: "The request ID '{request_id}' is not a valid UUID4"
-    """
-    try:
-        request_id = request.state.request_id
-        if not _is_valid_uuid4(request_id):
-            raise InvalidRequestIDError(
-                f"The request ID '{request_id}' is not a valid UUID4"
-            )
-        return request_id
-    except AttributeError:
-        raise InvalidRequestIDError("The request ID '' is not a valid UUID4")
 
 
 async def get_verified_device_name(
@@ -100,22 +73,6 @@ async def get_verified_device_name(
     except (KeyError, InvalidSignature, ValueError, AttributeError) as exp:
         logger.warning(f"WebSocket signature/nonce validation failed: {exp}")
         raise WebSocketException(code=WS_1008_POLICY_VIOLATION, reason="unauthorized")
-
-
-def _is_valid_uuid4(value):
-    """Validates the given string is a valid UUID4
-
-    Args:
-        value: the value to validate
-
-    Returns:
-        True if the value is a valid UUID4 string else false
-    """
-    try:
-        temp_uuid = uuid.UUID(value, version=4)
-    except (ValueError, TypeError):
-        return False
-    return str(temp_uuid) == value
 
 
 @dataclass(frozen=True)

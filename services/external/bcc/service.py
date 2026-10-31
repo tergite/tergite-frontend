@@ -32,7 +32,7 @@ from services.external.bcc.dtos import (
 )
 from utils.api import GeneralMessage
 from utils.config import BccConfig
-from utils.crypto import decrypt_message, sign_message
+from utils.crypto import decrypt_message, get_uuid4_str, sign_message
 from utils.exc import BccHttpError, ServiceUnavailableError, UnknownBccError
 
 _BCC_CLIENTS: Dict[str, "BccClient"] = {}
@@ -121,14 +121,12 @@ class BccClient:
         self,
         job_id: str,
         user_id: str,
-        request_id: str,
     ) -> Tuple[str, str]:
         """Retrieves the JWT for the given job_id and user_id from BCC
 
         Args:
             job_id: the id of the job
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
 
         Returns:
             the pair of the encrypted JWT and the plain JWT
@@ -141,7 +139,6 @@ class BccClient:
             "POST",
             "/token",
             user_id=user_id,
-            request_id=request_id,
             json={"job_id": job_id, "user_id": user_id},
         )
         encrypted_token = response["access_token"]
@@ -152,7 +149,6 @@ class BccClient:
         self,
         job_id: str | UUID,
         user_id: str,
-        request_id: str,
         body: CancellationDetails,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
@@ -161,7 +157,6 @@ class BccClient:
         Args:
             job_id: the id of the job
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             body: the payload to post when cancelling
             is_admin: whether the user is an admin
 
@@ -177,7 +172,6 @@ class BccClient:
             "POST",
             f"/jobs/{job_id}/cancel",
             user_id=user_id,
-            request_id=request_id,
             json=payload,
             is_admin=is_admin,
         )
@@ -186,7 +180,6 @@ class BccClient:
         self,
         job_id: str | UUID,
         user_id: str,
-        request_id: str,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Attempts to delete the job
@@ -194,7 +187,6 @@ class BccClient:
         Args:
             job_id: the id of the job
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             is_admin: whether the user is an admin
 
         Returns:
@@ -208,14 +200,12 @@ class BccClient:
             "DELETE",
             f"/jobs/{job_id}",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
         )
 
     async def view_users(
         self,
         user_id: str,
-        request_id: str,
         is_admin: Optional[bool] = None,
         skip: int = 0,
         limit: Optional[int] = None,
@@ -224,7 +214,6 @@ class BccClient:
 
         Args:
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             is_admin: whether the current user is an admin
             skip: the number of records to skip
             limit: the maximum number of records to return
@@ -243,7 +232,6 @@ class BccClient:
             "GET",
             "/users",
             user_id=user_id,
-            request_id=request_id,
             params=params,
             is_admin=is_admin,
         )
@@ -251,7 +239,6 @@ class BccClient:
     async def create_user(
         self,
         user_id: str,
-        request_id: str,
         data: NewBCCUserInfo,
         is_admin: Optional[bool] = None,
     ) -> dict:
@@ -261,7 +248,6 @@ class BccClient:
 
         Args:
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             data: the information about the new user
             is_admin: whether the current user is an admin
 
@@ -276,7 +262,6 @@ class BccClient:
             "POST",
             "/users",
             user_id=user_id,
-            request_id=request_id,
             json=data.model_dump(mode="json"),
             is_admin=is_admin,
         )
@@ -285,7 +270,6 @@ class BccClient:
         self,
         bcc_user_id: str | UUID,
         user_id: str,
-        request_id: str,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
         """Attempts to delete the user
@@ -293,7 +277,6 @@ class BccClient:
         Args:
             bcc_user_id: the id of the user
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             is_admin: whether the current user is an admin
 
         Returns:
@@ -307,7 +290,6 @@ class BccClient:
             "DELETE",
             f"/users/{bcc_user_id}",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
         )
 
@@ -315,7 +297,6 @@ class BccClient:
         self,
         database: Database,
         user_id: str,
-        request_id: str,
         data: NewBookingInfo,
         is_admin: Optional[bool] = None,
     ) -> Booking:
@@ -324,7 +305,6 @@ class BccClient:
         Args:
             database: the database where the users are kept, to name them
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             data: the information about the new booking
             is_admin: whether the current user is an admin
 
@@ -339,7 +319,6 @@ class BccClient:
             "POST",
             "/bookings",
             user_id=user_id,
-            request_id=request_id,
             json=data.model_dump(mode="json"),
             is_admin=is_admin,
         )
@@ -351,7 +330,6 @@ class BccClient:
     async def cancel_booking(
         self,
         user_id: str,
-        request_id: str,
         booking_id: str,
         is_admin: Optional[bool] = None,
     ) -> GeneralMessage:
@@ -359,7 +337,6 @@ class BccClient:
 
         Args:
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             booking_id: the unique identifier of the booking to cancel
             is_admin: whether the current user is an admin
 
@@ -374,7 +351,6 @@ class BccClient:
             "POST",
             f"/bookings/{booking_id}/cancel",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
         )
 
@@ -382,7 +358,6 @@ class BccClient:
         self,
         database: Database,
         requester_id: str,
-        request_id: str,
         is_admin: Optional[bool] = None,
         skip: int = 0,
         limit: Optional[int] = None,
@@ -396,7 +371,6 @@ class BccClient:
         Args:
             database: the database where the users are kept, to name them
             requester_id: the unique identifier of the user making this request
-            request_id: the unique identifier of the current request
             is_admin: whether the current user is an admin
             skip: the number of records to skip
             limit: the maximum number of records to return
@@ -426,7 +400,6 @@ class BccClient:
             "GET",
             "/bookings",
             user_id=requester_id,
-            request_id=request_id,
             params=params,
             is_admin=is_admin,
         )
@@ -443,14 +416,12 @@ class BccClient:
     async def view_bookings_configs(
         self,
         user_id: str,
-        request_id: str,
         is_admin: Optional[bool] = None,
     ) -> BookingsConfig:
         """Views the configuration for the booking service in the backend
 
         Args:
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             is_admin: whether the current user is an admin
 
         Returns:
@@ -464,7 +435,6 @@ class BccClient:
             "GET",
             "/bookings/config",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
         )
         return BookingsConfig.model_validate({**response, "backend": self.name})
@@ -472,7 +442,6 @@ class BccClient:
     async def init_recalibration(
         self,
         user_id: str,
-        request_id: str,
         is_admin: bool,
         start_timestamp: Optional[datetime] = None,
         interval: Optional[float] = None,
@@ -483,7 +452,6 @@ class BccClient:
 
         Args:
             user_id: the ID of the user requesting this operation
-            request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
             start_timestamp: the start time of the recalibration; default = None i.e. straight away
             interval: the recalibration interval; default = None i.e. no repeat
@@ -501,7 +469,6 @@ class BccClient:
             "POST",
             "/recalibration/init",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
             params=params,
         )
@@ -510,7 +477,6 @@ class BccClient:
     async def get_recalibration_info(
         self,
         user_id: str,
-        request_id: str,
         is_admin: bool,
     ) -> RecalibrationInfo:
         """Gets the current information about the recalibration of the given backend
@@ -519,7 +485,6 @@ class BccClient:
 
         Args:
             user_id: the ID of the user requesting this operation
-            request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
 
         Returns:
@@ -529,7 +494,6 @@ class BccClient:
             "GET",
             "/recalibration/info",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
         )
         return response
@@ -537,7 +501,6 @@ class BccClient:
     async def stop_recalibration(
         self,
         user_id: str,
-        request_id: str,
         is_admin: bool,
         ignore_errors: Optional[bool] = None,
     ) -> GeneralMessage:
@@ -547,7 +510,6 @@ class BccClient:
 
         Args:
             user_id: the ID of the user requesting this operation
-            request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
             ignore_errors: whether to ignore errors during recalibration
 
@@ -562,7 +524,6 @@ class BccClient:
             "POST",
             "/recalibration/cancel",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
             params=params,
         )
@@ -571,7 +532,6 @@ class BccClient:
     async def switch_off(
         self,
         user_id: str,
-        request_id: str,
         is_admin: bool,
     ) -> GeneralMessage:
         """Switches off this BCC device
@@ -580,7 +540,6 @@ class BccClient:
 
         Args:
             user_id: the ID of the user requesting this operation
-            request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
 
         Returns:
@@ -591,7 +550,6 @@ class BccClient:
             "POST",
             "/switch/off",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
         )
         return response
@@ -599,7 +557,6 @@ class BccClient:
     async def switch_on(
         self,
         user_id: str,
-        request_id: str,
         is_admin: bool,
     ) -> GeneralMessage:
         """Switches on this BCC device
@@ -608,7 +565,6 @@ class BccClient:
 
         Args:
             user_id: the ID of the user requesting this operation
-            request_id: the unique identifier of the request
             is_admin: whether the current user is an admin
 
         Returns:
@@ -619,7 +575,6 @@ class BccClient:
             "POST",
             "/switch/on",
             user_id=user_id,
-            request_id=request_id,
             is_admin=is_admin,
         )
         return response
@@ -629,7 +584,6 @@ class BccClient:
         method: Literal["POST", "GET", "PUT", "DELETE", "PATCH"],
         url: str,
         user_id: str,
-        request_id: str,
         json: Optional[dict] = None,
         params: Optional[Dict[str, Any]] = None,
         is_admin: Optional[bool] = None,
@@ -640,7 +594,6 @@ class BccClient:
             method: the method to use when hitting the given URL.
             url: the route to hit
             user_id: the app token associated with the job id
-            request_id: the unique identifier of the current request
             json: the payload to send
             params: the query params to add to the request
             is_admin: whether the request is from an admin user
@@ -656,7 +609,6 @@ class BccClient:
             method,
             url,
             user_id=user_id,
-            request_id=request_id,
             json=json,
             params=params,
             is_admin=is_admin,
@@ -669,7 +621,6 @@ class BccClient:
         method: str,
         url: str,
         user_id: str,
-        request_id: str,
         json: Optional[dict],
         params: Optional[Dict[str, Any]],
         is_admin: Optional[bool],
@@ -683,7 +634,6 @@ class BccClient:
         request.headers.update(
             _create_headers(
                 self._private_key,
-                request_id=request_id,
                 method=request.method,
                 path=request.url.path,
                 user_id=f"{user_id}",
@@ -732,7 +682,6 @@ def _extract_error_message(response: httpx.Response) -> str:
 
 def _create_headers(
     private_key: RSAPrivateKey,
-    request_id: str,
     method: str,
     path: str,
     user_id: str = "",
@@ -745,7 +694,6 @@ def _create_headers(
 
     Args:
         private_key: the MSS private key
-        request_id: the unique identifier of the current request
         method: the HTTP method of the request
         path: the path of the request's URL, as the BCC receives it
         user_id: the unique identifier of the user
@@ -754,12 +702,14 @@ def _create_headers(
     Returns:
         The dictionary of headers that show a given request is from MSS
     """
+    # a nonce of MSS's own for every call, never one a client chose
+    nonce = get_uuid4_str()
     timestamp = time.time()
     is_admin_header = "" if is_admin is None else f"{is_admin}"
-    message = f"{user_id}|{request_id}|{timestamp}|{is_admin_header}|{method}|{path}"
+    message = f"{user_id}|{nonce}|{timestamp}|{is_admin_header}|{method}|{path}"
     signature = sign_message(private_key, message=message)
     headers = {
-        "x-mss-request-id": request_id,
+        "x-mss-request-id": nonce,
         "x-mss-timestamp": f"{timestamp}",
         "x-mss-signature": signature,
         "x-mss-user-id": user_id,

@@ -108,8 +108,10 @@ sequenceDiagram
 
 Two distinct trust directions, both asymmetric-key based:
 
-- **MSS → BCC**: MSS signs `"{user_id}-{request_id}-{timestamp}"` with its private key
-  (`PRIVATE_KEY_FILE`) and sends `x-mss-*` headers. See `_create_headers` in
+- **MSS → BCC**: MSS signs `"{user_id}|{nonce}|{timestamp}|{is_admin}|{method}|{path}"` with
+  its private key (`PRIVATE_KEY_FILE`) and sends `x-mss-*` headers, the nonce a new UUID for
+  every call, never a client's `x-request-id`; BCC refuses a nonce used before (its
+  `mss_nonce` table). See `_create_headers` in
   [services/external/bcc/service.py](services/external/bcc/service.py).
 - **BCC → MSS**: on the websocket handshake BCC sends `x-id`, `x-request-id`, `x-timestamp`,
   `x-signature`; MSS verifies against that backend's `public_key_path`, checks the source IP
@@ -233,18 +235,16 @@ its connection, and closes both databases.
 1. **`CORSMiddleware`** — Starlette's, with `allow_origin_regex=".*"`, so that it mirrors the
    request `Origin` back instead of `*`, because the auth cookie requires credentialed CORS.
 2. **`RequestIDMiddleware`** — resolves or generates a request ID (reusing an incoming
-   `x-request-id`), which the request signs its calls to BCC with, and echoes `x-request-id`
-   back on the response. It records nothing.
+   `x-request-id`), which only the logs and the echoed `x-request-id` on the response use: it
+   records nothing, and MSS signs each call to BCC with a nonce of its own (§3).
 3. **Dependencies** — everything injectable is a named `Annotated` alias in
-   `api/dependencies.py` (`DatabaseDep`, `CurrentUserDep`, `BccClientDep`,
-   `RequestIdDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
+   `api/dependencies.py` (`DatabaseDep`, `CurrentUserDep`, `BccClientDep`, …), one name per dependency, each ending in `Dep`. Routers take them as
    parameters (`user: CurrentUserDep`), never the raw `Depends(...)` expression, and a route
    that only needs the check still names the parameter (`requester: CurrentSuperuserDep`).
    Add new injectables there.
 4. **Exception handlers** — domain exceptions from `utils/exc.py` are mapped to status codes
    centrally in `api/__init__.py`, with the handlers `api/errors.py` makes:
-   `InvalidInputError` (and its `TooManyListQueryParams`) / `UnknownBccError` /
-   `InvalidRequestIDError` → 400, `UnauthorizedError` → 401,
+   `InvalidInputError` (and its `TooManyListQueryParams`) / `UnknownBccError` → 400, `UnauthorizedError` → 401,
    `ForbiddenError` → 403, `NotFoundError` → 404, `ConflictError` → 409,
    `ServiceUnavailableError` → 503, `BccHttpError` → the BCC's
    own status, and `ValueError` / `TypeError` / `RuntimeError` / bare `Exception` → 500

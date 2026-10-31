@@ -167,6 +167,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Fixed
 
+- Fixed MSS signing its calls to BCC with the client's own `x-request-id`, which let a client choose, or reuse, the
+  nonce BCC refuses replays by; each call now has a nonce of MSS's own, and any `x-request-id` is only echoed back.
 - Fixed a read of a SQLite database waiting for another connection's write to finish, as every transaction took the
   write lock.
 - A device stays online while any of its backend's websockets is open, whichever MSS process holds it; one of them
