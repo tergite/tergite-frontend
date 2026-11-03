@@ -2211,6 +2211,12 @@ export interface components {
          * @description The results of the job
          */
         JobResult: {
+            /** Circuits */
+            circuits?: components["schemas"]["JobResultCircuit"][] | null;
+            /** Meas Level */
+            meas_level?: (1 | 2) | null;
+            /** Meas Return */
+            meas_return?: ("single" | "avg") | null;
             /**
              * Memory
              * @default []
@@ -2219,8 +2225,20 @@ export interface components {
                 number,
                 number
             ][][][];
+            /** Shots */
+            shots?: number | null;
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * JobResultCircuit
+         * @description What a job's result needs of one of its circuits
+         */
+        JobResultCircuit: {
+            /** Name */
+            name: string;
+            /** Num Clbits */
+            num_clbits: number;
         };
         /**
          * JobStatus

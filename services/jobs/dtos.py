@@ -14,6 +14,7 @@ import enum
 from datetime import datetime
 from typing import (
     List,
+    Literal,
     Optional,
     Self,
     Tuple,
@@ -116,6 +117,13 @@ class JobCreate(BaseModel):
     calibration_date: str
 
 
+class JobResultCircuit(BaseModel):
+    """What a job's result needs of one of its circuits"""
+
+    name: str
+    num_clbits: int
+
+
 class JobResult(BaseModel):
     """The results of the job"""
 
@@ -124,6 +132,12 @@ class JobResult(BaseModel):
     )
 
     memory: Union[HexMemory, IQMemory] = []
+    # how the job ran, which the backend sends with its memory, so that a client can read
+    # the memory back without the job's payload; none from an older backend
+    shots: Optional[int] = None
+    meas_level: Optional[Literal[1, 2]] = None
+    meas_return: Optional[Literal["single", "avg"]] = None
+    circuits: Optional[List[JobResultCircuit]] = None
 
 
 class Job(Schema, JobCreate):

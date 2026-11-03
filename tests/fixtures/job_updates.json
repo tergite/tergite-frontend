@@ -7,7 +7,11 @@
     "job_id": "cee16be6-5869-4820-8686-98c761c8a0e1",
     "status": "successful",
     "result": {
-      "memory": [["0x0", "0x0", "0x1", "0x0", "0x0", "0x0", "0x1"]]
+      "memory": [["0x0", "0x0", "0x1", "0x0", "0x0", "0x0", "0x1"]],
+      "shots": 7,
+      "meas_level": 2,
+      "meas_return": "single",
+      "circuits": [{"name": "bell", "num_clbits": 2}]
     },
     "download_url": "http://example.com/logfiles/cee16be6-5869-4820-8686-98c761c8a0e1"
   },
