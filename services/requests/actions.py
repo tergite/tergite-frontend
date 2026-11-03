@@ -76,6 +76,7 @@ async def _do_action(database: Database, request: Request, approver: User) -> No
         RequestType.CLOSE_PROJECT: _close_project,
         RequestType.TRANSFER_PROJECT: _transfer_project,
         RequestType.PROJECT_QPU_SECONDS: _add_qpu_seconds,
+        RequestType.PROJECT_PULSE_ACCESS: _set_pulse_allowed,
         RequestType.PROJECT_ACCESS: _add_project_member,
     }
 
@@ -160,6 +161,23 @@ async def _add_qpu_seconds(
     metadata = cast(ProjectQpuSecondsMetadata, request.metadata)
     project = await _get_project(database, request.resource_id)
     await auth.increment_qpu_seconds(database, project.id, metadata.seconds)
+
+
+async def _set_pulse_allowed(
+    database: Database, request: Request, approver: User
+) -> None:
+    """Lets the project of a project-pulse-access request send pulse-level jobs
+
+    Args:
+        database: the database where the projects are stored
+        request: the project-pulse-access request
+        approver: the user approving the request
+
+    Raises:
+        NotFoundError: project {id} not found
+    """
+    project = await _get_project(database, request.resource_id)
+    await auth.set_pulse_allowed(database, project.id)
 
 
 async def _add_project_member(

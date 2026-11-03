@@ -89,6 +89,7 @@ export enum UserRequestType {
   TRANSFER_PROJECT = "transfer-project",
   PROJECT_QPU_SECONDS = "project-qpu-seconds",
   PROJECT_ACCESS = "project-access",
+  PROJECT_PULSE_ACCESS = "project-pulse-access",
 }
 
 export enum UserRole {
@@ -136,6 +137,9 @@ export enum NoticeType {
   QPU_SECONDS_DENIED = "qpu-seconds-denied",
   QPU_SECONDS_LOW = "qpu-seconds-low",
   QPU_SECONDS_DEPLETED = "qpu-seconds-depleted",
+  PULSE_ACCESS_REQUESTED = "pulse-access-requested",
+  PULSE_ACCESS_GRANTED = "pulse-access-granted",
+  PULSE_ACCESS_DENIED = "pulse-access-denied",
   PROJECT_MEMBERSHIP_GRANTED = "project-membership-granted",
   PROJECT_MEMBERSHIP_REVOKED = "project-membership-revoked",
   PROJECT_ADMIN_ASSIGNED = "project-admin-assigned",

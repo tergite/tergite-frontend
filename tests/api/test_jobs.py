@@ -269,6 +269,28 @@ def test_create_job_without_bcc(db, client, payload, app_token_header, bcc):
         assert jobs_after_creation == []
 
 
+@pytest.mark.parametrize("is_pulse_allowed", [False, True])
+@pytest.mark.parametrize("payload", _CREATE_JOB_PAYLOADS[:1])
+def test_job_token_says_whether_its_project_allows_pulse_level_jobs(
+    mock_bcc, db, client, payload, project_id: str, app_token_header, is_pulse_allowed
+):
+    """MSS asks BCC for each job's token saying whether the job's project may send
+    pulse-level jobs, which BCC signs into the token"""
+    import jwt
+
+    db.update_one(
+        Project, {"id": project_id}, {"$set": {"is_pulse_allowed": is_pulse_allowed}}
+    )
+
+    with client as client:
+        response = client.post("/jobs/", json=payload, headers=app_token_header)
+
+    claims = jwt.decode(
+        response.json()["access_token"], options={"verify_signature": False}
+    )
+    assert claims["pulse"] is is_pulse_allowed
+
+
 @pytest.mark.parametrize("payload", _CREATE_JOB_PAYLOADS[:1])
 def test_create_job_with_any_request_id(
     mock_bcc, db, client, payload, app_token_header

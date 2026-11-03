@@ -2,15 +2,16 @@ import { SortHeader } from "@/components/ui/data-table";
 import { HealthStatus } from "@/components/ui/health-status";
 import { ColumnDef } from "@tanstack/table-core";
 import type { UserRequest, User, Project } from "@/lib/api/types";
+import { PulseAccessRequestDialog } from "./pulse-access-request-dialog";
 import { QpuTimeRequestDialog } from "./qpu-time-request-dialog";
 import { Duration } from "luxon";
 
 export function getColumns({
   currentUser,
-  qpuTimeRequests,
+  requests,
 }: {
   currentUser: User;
-  qpuTimeRequests: UserRequest[];
+  requests: UserRequest[];
 }): ColumnDef<Project>[] {
   return [
     {
@@ -49,11 +50,25 @@ export function getColumns({
       cell: ({ row }) =>
         row.original.admin_id === currentUser.id ? (
           <QpuTimeRequestDialog
-            qpuTimeRequests={qpuTimeRequests}
+            requests={requests}
             project={row.original}
           />
         ) : (
           <div>N/A</div>
+        ),
+    },
+    {
+      id: "is_pulse_allowed",
+      accessorFn: (row) => row.is_pulse_allowed,
+      header: "Pulse-level jobs",
+      cell: ({ row }) =>
+        row.original.is_pulse_allowed ? (
+          <div>Allowed</div>
+        ) : (
+          <PulseAccessRequestDialog
+            requests={requests}
+            project={row.original}
+          />
         ),
     },
   ];

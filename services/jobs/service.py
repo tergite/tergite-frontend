@@ -100,8 +100,11 @@ async def create_job(
         user_id=None if user_id is None else str(user_id),
     )
     logger.info(f"Creating new job with id: {job.job_id} for user: {user_id}")
+    project = None if project_id is None else await database.get(Project, project_id)
     encrypted_token, token = await bcc_client.get_token(
-        job_id=job.job_id, user_id=user_id
+        job_id=job.job_id,
+        user_id=user_id,
+        is_pulse_allowed=project is not None and project.is_pulse_allowed,
     )
     job.access_token = encrypted_token
     await database.insert(Job, job)

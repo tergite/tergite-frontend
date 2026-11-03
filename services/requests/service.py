@@ -208,7 +208,10 @@ async def _has_resource_access(
             {"id": request.resource_id, "admin_id": str(user.id)},
         )
         return project is not None
-    elif request.type == RequestType.PROJECT_QPU_SECONDS:
+    elif request.type in (
+        RequestType.PROJECT_QPU_SECONDS,
+        RequestType.PROJECT_PULSE_ACCESS,
+    ):
         project = await database.find_one(
             Project,
             {"id": request.resource_id, "user_ids": str(user.id)},

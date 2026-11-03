@@ -104,6 +104,9 @@ class NoticeTypeId(StrEnum):
     QPU_SECONDS_DENIED = "qpu-seconds-denied"
     QPU_SECONDS_LOW = "qpu-seconds-low"
     QPU_SECONDS_DEPLETED = "qpu-seconds-depleted"
+    PULSE_ACCESS_REQUESTED = "pulse-access-requested"
+    PULSE_ACCESS_GRANTED = "pulse-access-granted"
+    PULSE_ACCESS_DENIED = "pulse-access-denied"
     PROJECT_MEMBERSHIP_GRANTED = "project-membership-granted"
     PROJECT_MEMBERSHIP_REVOKED = "project-membership-revoked"
     PROJECT_ADMIN_ASSIGNED = "project-admin-assigned"
@@ -204,6 +207,21 @@ NOTICE_TYPE_INFO: Dict[NoticeTypeId, NoticeTypeInfo] = {
         title="{project_name} is out of QPU time",
         body="{project_name} has no QPU time left, so its jobs will be rejected until more is granted.",
         severity=NoticeSeverity.CRITICAL,
+    ),
+    NoticeTypeId.PULSE_ACCESS_REQUESTED: NoticeTypeInfo(
+        title="Pulse-level jobs request for {project_name}",
+        body="{requester_name} is asking for pulse-level jobs on {project_name}: {reason}",
+        severity=NoticeSeverity.INFO,
+    ),
+    NoticeTypeId.PULSE_ACCESS_GRANTED: NoticeTypeInfo(
+        title="Pulse-level jobs allowed on {project_name}",
+        body="{approver_name} allowed pulse-level jobs on {project_name}. Each device runs them within its own limits.",
+        severity=NoticeSeverity.INFO,
+    ),
+    NoticeTypeId.PULSE_ACCESS_DENIED: NoticeTypeInfo(
+        title="Pulse-level jobs for {project_name} were declined",
+        body="{approver_name} declined the request for pulse-level jobs on {project_name}. {reason}",
+        severity=NoticeSeverity.WARNING,
     ),
     NoticeTypeId.PROJECT_MEMBERSHIP_GRANTED: NoticeTypeInfo(
         title="You were added to {project_name}",

@@ -20,6 +20,11 @@ export const columns: ColumnDef<AdminProject>[] = [
     header: ({ column }) => <SortHeader label="QPU seconds" column={column} />,
   },
   {
+    accessorKey: "is_pulse_allowed",
+    header: "Pulse-level",
+    cell: ({ row }) => (row.original.is_pulse_allowed ? "Allowed" : ""),
+  },
+  {
     accessorKey: "is_active",
     header: "Status",
     cell: ({ row }) => (

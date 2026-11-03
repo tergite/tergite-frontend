@@ -10,6 +10,17 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Added
+
+- Added a project's `is_pulse_allowed`, which only a superuser sets, and which MSS sends the backend on asking
+  for each job's token, so that the backend lets the project's pulse-level jobs in, within its own limits
+- Added the `project-pulse-access` request, by which a project's member asks the superusers to allow its
+  pulse-level jobs, with its `pulse-access-requested`, `-granted` and `-denied` notices
+- Added a "Pulse-level jobs" column to the dashboard's projects page, from which a member asks for a project's
+  pulse-level jobs, or sees that they are allowed
+- Added a calibration's optional `frames` and `defcals`: the frames a device's pulse-level jobs may play on, at
+  their calibrated frequencies, and its gates' pulses as OpenPulse `defcal`s, which a job may override
+
 ## [2026.11.0-rc.3] - 2026-10-31
 
 ### Changed

@@ -360,5 +360,6 @@ function getTitle(userRequest: UserRequest): string {
     [UserRequestType.PROJECT_QPU_SECONDS]: `Add QPU time on project: '${projectName}'`,
     [UserRequestType.TRANSFER_PROJECT]: `Transfer project '${projectName}'`,
     [UserRequestType.PROJECT_ACCESS]: `Join project '${projectName}'`,
+    [UserRequestType.PROJECT_PULSE_ACCESS]: `Allow pulse-level jobs on project: '${projectName}'`,
   }[userRequest.type];
 }

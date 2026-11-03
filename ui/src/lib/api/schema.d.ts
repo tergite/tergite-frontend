@@ -2079,10 +2079,14 @@ export interface components {
         DeviceCalibration: {
             /** Couplers */
             couplers?: components["schemas"]["CouplersCalibration"][] | null;
+            /** Defcals */
+            defcals?: components["schemas"]["GateDefcal"][] | null;
             /** Discriminators */
             discriminators?: {
                 [key: string]: unknown;
             } | null;
+            /** Frames */
+            frames?: components["schemas"]["PulseFrame"][] | null;
             /** Id */
             id?: string;
             /** Last Calibrated */
@@ -2106,6 +2110,27 @@ export interface components {
          * @enum {string}
          */
         EmailStatus: "not-applicable" | "pending" | "sending" | "sent" | "failed";
+        /**
+         * GateDefcal
+         * @description A gate's calibrated pulses, as an OpenPulse defcal, which a job may override
+         */
+        GateDefcal: {
+            /**
+             * Gate
+             * @description e.g. x, sx, cz or measure
+             */
+            gate: string;
+            /**
+             * Program
+             * @description the defcal, e.g. 'defcal x $0 { ... }'
+             */
+            program: string;
+            /**
+             * Qubits
+             * @description the physical qubits it is calibrated on
+             */
+            qubits: number[];
+        };
         /**
          * GeneralMessage
          * @description A general message object sent on the API
@@ -2312,7 +2337,7 @@ export interface components {
          * @description The kinds of notices
          * @enum {string}
          */
-        NoticeTypeId: "project-access-requested" | "project-access-approved" | "project-access-rejected" | "project-create-requested" | "project-create-approved" | "project-create-rejected" | "project-close-requested" | "project-close-approved" | "project-close-rejected" | "project-transfer-requested" | "project-transfer-approved" | "project-transfer-rejected" | "qpu-seconds-requested" | "qpu-seconds-granted" | "qpu-seconds-denied" | "qpu-seconds-low" | "qpu-seconds-depleted" | "project-membership-granted" | "project-membership-revoked" | "project-admin-assigned" | "custom" | "custom-broadcast";
+        NoticeTypeId: "project-access-requested" | "project-access-approved" | "project-access-rejected" | "project-create-requested" | "project-create-approved" | "project-create-rejected" | "project-close-requested" | "project-close-approved" | "project-close-rejected" | "project-transfer-requested" | "project-transfer-approved" | "project-transfer-rejected" | "qpu-seconds-requested" | "qpu-seconds-granted" | "qpu-seconds-denied" | "qpu-seconds-low" | "qpu-seconds-depleted" | "pulse-access-requested" | "pulse-access-granted" | "pulse-access-denied" | "project-membership-granted" | "project-membership-revoked" | "project-admin-assigned" | "custom" | "custom-broadcast";
         /**
          * OAuth2AuthorizeResponse
          * @description The URL to send the user to, to sign in with the provider
@@ -2493,6 +2518,11 @@ export interface components {
             is_active: boolean;
             /** Is Personal */
             is_personal: boolean;
+            /**
+             * Is Pulse Allowed
+             * @default false
+             */
+            is_pulse_allowed: boolean;
             /** Name */
             name: string;
             /**
@@ -2522,6 +2552,11 @@ export interface components {
              * @default
              */
             description: string;
+            /**
+             * Is Pulse Allowed
+             * @default false
+             */
+            is_pulse_allowed: boolean;
             /** Name */
             name: string;
             /**
@@ -2555,6 +2590,11 @@ export interface components {
             is_active: boolean;
             /** Is Personal */
             is_personal: boolean;
+            /**
+             * Is Pulse Allowed
+             * @default false
+             */
+            is_pulse_allowed: boolean;
             /** Name */
             name: string;
             /**
@@ -2578,6 +2618,8 @@ export interface components {
             description?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Is Pulse Allowed */
+            is_pulse_allowed?: boolean | null;
             /** Name */
             name?: string | null;
             /** Qpu Seconds */
@@ -2587,6 +2629,34 @@ export interface components {
             /** User Emails */
             user_emails?: string[] | null;
         };
+        /**
+         * PulseFrame
+         * @description A frame a pulse-level job may play on, at its calibrated frequency
+         */
+        PulseFrame: {
+            /**
+             * Frequency
+             * @description its calibrated frequency in hertz
+             */
+            frequency: number;
+            kind: components["schemas"]["PulseFrameKind"];
+            /**
+             * Name
+             * @description as a job names it, e.g. q12_drive or q12_q13_coupler
+             */
+            name: string;
+            /**
+             * Qubits
+             * @description the physical qubits it acts on, as a job numbers them, e.g. 0 for $0
+             */
+            qubits: number[];
+        };
+        /**
+         * PulseFrameKind
+         * @description What a frame plays on: a qubit's drive or readout line, or a coupler's flux line
+         * @enum {string}
+         */
+        PulseFrameKind: "drive" | "readout" | "coupler";
         /**
          * QubitCalibration
          * @description Schema for the calibration data of the qubit
@@ -2718,7 +2788,7 @@ export interface components {
          * @description The types of user requests
          * @enum {string}
          */
-        RequestType: "create-project" | "close-project" | "transfer-project" | "project-qpu-seconds" | "project-access";
+        RequestType: "create-project" | "close-project" | "transfer-project" | "project-qpu-seconds" | "project-pulse-access" | "project-access";
         /**
          * RequestUpdate
          * @description The schema for updating requests.

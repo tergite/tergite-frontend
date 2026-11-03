@@ -121,12 +121,15 @@ class BccClient:
         self,
         job_id: str,
         user_id: str,
+        is_pulse_allowed: bool = False,
     ) -> Tuple[str, str]:
         """Retrieves the JWT for the given job_id and user_id from BCC
 
         Args:
             job_id: the id of the job
             user_id: the app token associated with the job id
+            is_pulse_allowed: whether the job may be pulse-level, as its project may, which
+                BCC signs into the token
 
         Returns:
             the pair of the encrypted JWT and the plain JWT
@@ -139,7 +142,11 @@ class BccClient:
             "POST",
             "/token",
             user_id=user_id,
-            json={"job_id": job_id, "user_id": user_id},
+            json={
+                "job_id": job_id,
+                "user_id": user_id,
+                "is_pulse_allowed": is_pulse_allowed,
+            },
         )
         encrypted_token = response["access_token"]
         token = decrypt_message(self._private_key, msg=encrypted_token)

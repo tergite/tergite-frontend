@@ -15,6 +15,7 @@ import {
 const ORDERED_TYPES: NoticeType[] = [
   "project-access-requested",
   "qpu-seconds-requested",
+  "pulse-access-requested",
   "project-create-requested",
   "project-close-requested",
   "project-transfer-requested",
@@ -22,6 +23,8 @@ const ORDERED_TYPES: NoticeType[] = [
   "project-access-rejected",
   "qpu-seconds-granted",
   "qpu-seconds-denied",
+  "pulse-access-granted",
+  "pulse-access-denied",
   "project-create-approved",
   "project-create-rejected",
   "project-close-approved",

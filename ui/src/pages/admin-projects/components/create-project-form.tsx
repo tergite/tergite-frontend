@@ -31,6 +31,7 @@ const formSchema = z.object({
   user_emails: z.string().email().min(1).array().default([]),
   qpu_seconds: z.number().min(0).default(0),
   is_active: z.boolean().default(true),
+  is_pulse_allowed: z.boolean().default(false),
 });
 
 export function CreateProjectForm({
@@ -49,6 +50,7 @@ export function CreateProjectForm({
       name: `${now.toLocaleString()} project`,
       description: `Project created on ${now.toLocaleString()}`,
       is_active: true,
+      is_pulse_allowed: false,
       qpu_seconds: 0,
       admin_email: "",
       user_emails: [],

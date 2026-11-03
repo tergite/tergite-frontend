@@ -9,7 +9,14 @@ import {
   UserRequestType,
 } from "./types";
 
-const TABLE_HEADERS = ["Name", "ID", "Status", "Available QPU time", "Requests"];
+const TABLE_HEADERS = [
+  "Name",
+  "ID",
+  "Status",
+  "Available QPU time",
+  "Requests",
+  "Pulse-level jobs",
+];
 // '1 day' or '2 days 2 hours'
 const DURATION =
   /(\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?),?)+/i;
@@ -75,6 +82,15 @@ for (const user of users) {
           await expect(requests.locator("button", { hasText: asked })).toBeVisible();
         } else {
           await expect(requests.locator("button", { hasText: /more qpu time/i })).toBeEnabled();
+        }
+
+        const pulseLevel = cells.nth(5);
+        if (project.is_pulse_allowed) {
+          await expect(pulseLevel).toHaveText("Allowed");
+        } else {
+          await expect(
+            pulseLevel.locator("button", { hasText: /ask for pulse-level jobs/i }),
+          ).toBeEnabled();
         }
       }
     });

@@ -11,7 +11,14 @@ import {
 // Pick, not Omit: AdminProject's index signature would leave Omit with unknown values
 type ProjectFormData = Pick<
   AdminProject,
-  "name" | "description" | "is_active" | "qpu_seconds" | "user_emails" | "created_at" | "updated_at"
+  | "name"
+  | "description"
+  | "is_active"
+  | "is_pulse_allowed"
+  | "qpu_seconds"
+  | "user_emails"
+  | "created_at"
+  | "updated_at"
 >;
 
 const userList = readFixture<User[]>("users");
@@ -27,7 +34,7 @@ const projects = readFixture<Project[]>("projects").map((v) => ({
   description: v.description ?? "",
 })) as AdminProject[];
 
-const projectsTableHeaders = ["Name", "Admin", "QPU seconds", "Status"];
+const projectsTableHeaders = ["Name", "Admin", "QPU seconds", "Pulse-level", "Status"];
 const relativeTime =
   /(\d+ (seconds?)|(minutes?)|(hours?)|(days?)|(weeks?)|(months?)|(years?),?)+( ago)?/i;
 const secondsAgo = /\d+ (seconds?)( ago)?/i;
@@ -86,6 +93,7 @@ for (const user of users) {
             project.name,
             project.admin_email,
             `${project.qpu_seconds}`,
+            project.is_pulse_allowed ? "Allowed" : "",
             project.is_active ? /live/i : /expired/i,
           ]);
         }
@@ -300,6 +308,9 @@ for (const user of users) {
           await expect(
             row.locator("td[data-header='qpu_seconds']", { hasText: `${expected.qpu_seconds}` }),
           ).toBeVisible();
+          await expect(row.locator("td[data-header='is_pulse_allowed']")).toHaveText(
+            expected.is_pulse_allowed ? "Allowed" : "",
+          );
           await expect(
             row.locator("td[data-header='is_active']", {
               hasText: expected.is_active ? /live/i : /expired/i,
@@ -316,6 +327,7 @@ for (const user of users) {
           name: `${today} project`,
           description: `Project created on ${today}`,
           is_active: true,
+          is_pulse_allowed: false,
           qpu_seconds: 0,
           user_emails: [],
           created_at: now.toISOString(),
@@ -645,13 +657,20 @@ async function expectSummaryOf(page: Page, project: AdminProject) {
 /** Checks the fields that the edit form and the create form show alike */
 async function expectEditableFields(
   form: Locator,
-  project: Pick<AdminProject, "is_active" | "qpu_seconds" | "admin_email" | "user_emails">,
+  project: Pick<
+    AdminProject,
+    "is_active" | "is_pulse_allowed" | "qpu_seconds" | "admin_email" | "user_emails"
+  >,
 ) {
   await expect(
     innermost(form, "div", /live/i).locator(
       `button[role="switch"][data-state="${project.is_active ? "checked" : "unchecked"}"]`,
     ),
   ).toBeVisible();
+  await expect(form.locator("button#is_pulse_allowed[role='switch']")).toHaveAttribute(
+    "data-state",
+    project.is_pulse_allowed ? "checked" : "unchecked",
+  );
   await expect(innermost(form, "div", /qpu seconds/i).locator("input")).toHaveValue(
     `${project.qpu_seconds}`,
   );

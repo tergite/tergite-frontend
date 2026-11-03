@@ -29,6 +29,9 @@ class ProjectBase(BaseModel):
     name: str
     qpu_seconds: float = 0
     description: str = ""
+    # whether its jobs may be pulse-level, OpenPulse played on a device's frames, within the
+    # device's own limits; only a superuser may grant it
+    is_pulse_allowed: bool = False
 
 
 class ProjectCreate(ProjectBase):
@@ -73,6 +76,7 @@ class ProjectUpdate(ProjectCreate):
     admin_email: Optional[str] = None
     user_emails: Optional[List[str]] = None
     qpu_seconds: Optional[float] = None
+    is_pulse_allowed: Optional[bool] = None
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
 
 

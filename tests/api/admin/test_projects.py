@@ -74,6 +74,7 @@ def test_admin_create_project(db, project, client, admin_jwt_cookie, freezer):
             "id": got["id"],
             "is_active": True,
             "qpu_seconds": project.get("qpu_seconds", 0),
+            "is_pulse_allowed": project.get("is_pulse_allowed", False),
             "name": project["name"],
             "description": project["description"],
             "user_ids": user_ids,
@@ -155,6 +156,9 @@ def test_admin_update_project(db, payload, client, admin_jwt_cookie, freezer):
             "id": _id,
             "is_active": payload.get("is_active", project["is_active"]),
             "qpu_seconds": payload.get("qpu_seconds", project["qpu_seconds"]),
+            "is_pulse_allowed": payload.get(
+                "is_pulse_allowed", project.get("is_pulse_allowed", False)
+            ),
             "name": payload.get("name", project["name"]),
             "description": payload.get("description", project["description"]),
             "user_ids": user_ids,
@@ -199,6 +203,7 @@ def test_admin_view_all_projects_in_detail(
             {
                 "id": str(item["_id"]),
                 "qpu_seconds": item["qpu_seconds"],
+                "is_pulse_allowed": item.get("is_pulse_allowed", False),
                 "is_active": item.get("is_active", True),
                 "user_ids": [str(v) for v in item["user_ids"]],
                 "admin_id": str(item["admin_id"]),
@@ -265,6 +270,7 @@ def test_admin_view_single_project_in_detail(
         expected = {
             "id": _id,
             "qpu_seconds": project["qpu_seconds"],
+            "is_pulse_allowed": project.get("is_pulse_allowed", False),
             "is_active": project["is_active"],
             "user_ids": project.get(
                 "user_ids",

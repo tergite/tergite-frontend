@@ -325,6 +325,31 @@ def test_create_wrong_payload(db, client, payload: Dict[str, Any], user_jwt_cook
             assert final_data_in_db == []
 
 
+@pytest.mark.parametrize(
+    "frame",
+    [
+        {"name": "q00_flux", "kind": "flux", "qubits": [0], "frequency": 4.6e9},
+        {"name": "q00_drive", "kind": "drive", "qubits": [0]},
+    ],
+    ids=["unknown-kind", "no-frequency"],
+)
+def test_create_with_a_malformed_frame_is_refused(db, client, frame):
+    payload = {**_CALIBRATIONS_LIST[0], "frames": [frame]}
+    name = payload["name"]
+    headers = create_bcc_headers(name)
+
+    with client as client:
+        with client.websocket_connect(f"/devices/ws/{name}", headers=headers) as ws:
+            ws.send_json({"id": "1", "name": "recalibrated", "data": payload})
+            response = ws.receive_json()
+
+    assert response["status"] == "error"
+    assert response["detail"].startswith(
+        "invalid data: 1 validation error for DeviceEvent"
+    )
+    assert _get_stored_values(db, DeviceCalibration) == []
+
+
 @pytest.mark.parametrize("payload", _CALIBRATIONS_LIST[:1])
 def test_create_wrong_url(db, client, payload: Dict[str, Any], user_jwt_cookie):
     """BCC devices can only push to their own urls /ws/devices/{name}/ and not those of others"""

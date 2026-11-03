@@ -310,6 +310,21 @@ async def increment_qpu_seconds(
     )
 
 
+async def set_pulse_allowed(database: Database, project_id: str) -> Project:
+    """Lets the project's jobs be pulse-level, within each device's own limits
+
+    Args:
+        database: the database where the projects are stored
+        project_id: the ID of the project
+
+    Returns:
+        the updated project
+    """
+    return await database.update_one(
+        Project, {"id": project_id}, {"$set": {"is_pulse_allowed": True}}
+    )
+
+
 async def add_member(database: Database, project_id: str, user_id: str) -> Project:
     """Adds the user to the project's members, if not one already
 

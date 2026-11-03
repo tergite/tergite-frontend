@@ -40,6 +40,11 @@ _QPU_SECONDS_REQUEST = {
     "reason": "more please",
     "metadata": {"seconds": 120},
 }
+_PULSE_ACCESS_REQUEST = {
+    "type": "project-pulse-access",
+    "resource_id": TEST_PROJECT_ID,
+    "reason": "to calibrate my own gates",
+}
 _CREATE_PROJECT_REQUEST = {
     "type": "create-project",
     "resource_id": TEST_OUTSIDER_ID,
@@ -425,6 +430,72 @@ def test_approve_qpu_seconds(client, user_jwt_cookie, admin_jwt_cookie, db):
         assert requester_notices[0].title == (
             f"120.0s of QPU time added to {TEST_PROJECT_NAME}"
         )
+
+
+def test_request_pulse_access(client, user_jwt_cookie, db):
+    """A project member's request for pulse-level jobs goes to the superusers"""
+    with client as client:
+        response = client.post(
+            "/me/requests/", cookies=user_jwt_cookie, json=_PULSE_ACCESS_REQUEST
+        )
+        superuser_notices = get_user_notices(db, TEST_SUPERUSER_ID)
+
+        assert response.status_code == 201
+        assert response.json()["target_user_ids"] == [TEST_SUPERUSER_ID]
+        assert [item.type for item in superuser_notices] == [
+            NoticeTypeId.PULSE_ACCESS_REQUESTED
+        ]
+        assert "to calibrate my own gates" in superuser_notices[0].body
+
+
+def test_non_member_request_pulse_access(client, outsider_jwt_cookie, db):
+    """Only members of a project can ask that its jobs be pulse-level"""
+    with client as client:
+        response = client.post(
+            "/me/requests/", cookies=outsider_jwt_cookie, json=_PULSE_ACCESS_REQUEST
+        )
+
+        assert response.status_code == 403
+        assert db.count(Request) == 0
+
+
+@pytest.mark.parametrize(
+    "decision, is_pulse_allowed, notice_type",
+    [
+        ({"status": "approved"}, True, NoticeTypeId.PULSE_ACCESS_GRANTED),
+        (
+            {"status": "rejected", "rejection_reason": "not yet"},
+            False,
+            NoticeTypeId.PULSE_ACCESS_DENIED,
+        ),
+    ],
+    ids=["approved", "rejected"],
+)
+def test_decide_pulse_access(
+    client,
+    user_jwt_cookie,
+    admin_jwt_cookie,
+    db,
+    decision,
+    is_pulse_allowed,
+    notice_type,
+):
+    """Approving a request for pulse-level jobs allows them on its project, and either
+    decision tells the requester"""
+    with client as client:
+        request_id = client.post(
+            "/me/requests/", cookies=user_jwt_cookie, json=_PULSE_ACCESS_REQUEST
+        ).json()["id"]
+        response = client.put(
+            f"/me/requests/{request_id}", cookies=admin_jwt_cookie, json=decision
+        )
+        project = db.get(Project, TEST_PROJECT_ID)
+        requester_notices = get_user_notices(db, TEST_USER_ID)
+
+        assert response.status_code == 200
+        assert project.is_pulse_allowed is is_pulse_allowed
+        assert [item.type for item in requester_notices] == [notice_type]
+        assert TEST_PROJECT_NAME in requester_notices[0].title
 
 
 def test_approve_project_creation(client, admin_jwt_cookie, db, inserted_requests):

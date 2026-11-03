@@ -4,7 +4,8 @@
     "is_active": true,
     "name": "fooo bar",
     "description": "fancy description",
-    "qpu_seconds": 36000
+    "qpu_seconds": 36000,
+    "is_pulse_allowed": true
   },
   {
     "user_emails": ["tom.doe@example.com", "jane.doe@example.com"],

@@ -47,7 +47,7 @@ const DURATION_FIELDS = [
 
 export function QpuTimeRequestDialog({
   project,
-  qpuTimeRequests,
+  requests,
   className = "",
 }: Props) {
   const queryClient = useQueryClient();
@@ -64,10 +64,13 @@ export function QpuTimeRequestDialog({
   });
   const pendingRequest = useMemo(
     () =>
-      qpuTimeRequests.find(
-        (v) => v.resource_id === project.id && v.status === "pending"
+      requests.find(
+        (v) =>
+          v.type === "project-qpu-seconds" &&
+          v.resource_id === project.id &&
+          v.status === "pending"
       ),
-    [qpuTimeRequests, project]
+    [requests, project]
   );
 
   const qpuExtension = useMutation({
@@ -197,5 +200,6 @@ export function QpuTimeRequestDialog({
 interface Props {
   project: Project;
   className?: string;
-  qpuTimeRequests: UserRequest[];
+  /** the user's requests, of which the pending QPU-time one on the project is shown */
+  requests: UserRequest[];
 }

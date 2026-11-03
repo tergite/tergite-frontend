@@ -66,14 +66,14 @@ export function getAllUserRequestsQuery(options: {
   });
 }
 
-/** The current user's QPU-time requests on the given projects */
-export function getMyProjectsQpuTimeRequestsQuery(options: {
+/** The current user's requests of the given types on the given projects */
+export function getMyProjectsRequestsQuery(options: {
   status?: UserRequestStatus;
   projects: Project[];
+  types: UserRequestType[];
 }) {
-  const { status, projects } = options;
+  const { status, projects, types } = options;
   const projectIds = projects.map((v) => v.id).sort();
-  const types: UserRequestType[] = ["project-qpu-seconds"];
   return queryOptions({
     queryKey: ["me", "requests", "requester", status, types, projectIds],
     queryFn: async () => {
@@ -95,6 +95,21 @@ export async function requestQpuTimeExtension(
       resource_id: project_id,
       reason,
       metadata,
+    },
+  });
+  return data! as UserRequest;
+}
+
+export async function requestPulseAccess(payload: {
+  project_id: string;
+  reason: string;
+}): Promise<UserRequest> {
+  const { data } = await client.POST("/me/requests/", {
+    body: {
+      type: "project-pulse-access",
+      resource_id: payload.project_id,
+      reason: payload.reason,
+      metadata: { resource: "project" },
     },
   });
   return data! as UserRequest;
