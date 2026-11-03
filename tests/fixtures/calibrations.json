@@ -529,6 +529,17 @@
     ],
     "couplers": null,
     "discriminators": null, 
+    "frames": [
+      {"name": "q00_drive", "kind": "drive", "qubits": [0], "frequency": 4635664671.787873},
+      {"name": "q01_drive", "kind": "drive", "qubits": [1], "frequency": 4736284620.626751}
+    ],
+    "defcals": [
+      {
+        "gate": "x",
+        "qubits": [0],
+        "program": "defcal x $0 {\n    play(q00_drive, drag(0.25, 56ns, 14ns, 0.1));\n}"
+      }
+    ],
     "resonators": null
   },
   {
@@ -829,6 +840,8 @@
     ],
     "couplers": null,
     "discriminators": null, 
+    "frames": null,
+    "defcals": null,
     "resonators": null
   },
   {
@@ -1999,6 +2012,8 @@
     ],
     "couplers": null,
     "discriminators": null, 
+    "frames": null,
+    "defcals": null,
     "resonators": null
   }
 ]

@@ -102,6 +102,35 @@ class CouplersCalibration(BaseModel, extra="allow"):
     id: Optional[int] = None
 
 
+class PulseFrameKind(str, enum.Enum):
+    """What a frame plays on: a qubit's drive or readout line, or a coupler's flux line"""
+
+    DRIVE = "drive"
+    READOUT = "readout"
+    COUPLER = "coupler"
+
+
+class PulseFrame(BaseModel):
+    """A frame a pulse-level job may play on, at its calibrated frequency"""
+
+    name: str = Field(
+        description="as a job names it, e.g. q12_drive or q12_q13_coupler"
+    )
+    kind: PulseFrameKind
+    qubits: List[int] = Field(
+        description="the physical qubits it acts on, as a job numbers them, e.g. 0 for $0"
+    )
+    frequency: float = Field(description="its calibrated frequency in hertz")
+
+
+class GateDefcal(BaseModel):
+    """A gate's calibrated pulses, as an OpenPulse defcal, which a job may override"""
+
+    gate: str = Field(description="e.g. x, sx, cz or measure")
+    qubits: List[int] = Field(description="the physical qubits it is calibrated on")
+    program: str = Field(description="the defcal, e.g. 'defcal x $0 { ... }'")
+
+
 class DeviceCalibrationCreate(BaseModel):
     """The model used when creating device calibrations in the API"""
 
@@ -113,6 +142,8 @@ class DeviceCalibrationCreate(BaseModel):
     resonators: Optional[List[ResonatorCalibration]] = None
     couplers: Optional[List[CouplersCalibration]] = None
     discriminators: Optional[Dict[str, Any]] = None
+    frames: Optional[List[PulseFrame]] = None
+    defcals: Optional[List[GateDefcal]] = None
     last_calibrated: Optional[str] = Field(default_factory=get_current_timestamp)
 
 
@@ -128,6 +159,8 @@ class DeviceCalibration(Schema):
     resonators: Optional[List[ResonatorCalibration]] = None
     couplers: Optional[List[CouplersCalibration]] = None
     discriminators: Optional[Dict[str, Any]] = None
+    frames: Optional[List[PulseFrame]] = None
+    defcals: Optional[List[GateDefcal]] = None
     last_calibrated: Optional[str] = Field(default_factory=get_current_timestamp)
     id: Id = Field(default_factory=generate_id)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
@@ -147,6 +180,8 @@ class DeviceCalibrationLog(Schema):
     resonators: Optional[List[ResonatorCalibration]] = None
     couplers: Optional[List[CouplersCalibration]] = None
     discriminators: Optional[Dict[str, Any]] = None
+    frames: Optional[List[PulseFrame]] = None
+    defcals: Optional[List[GateDefcal]] = None
     last_calibrated: Optional[str] = Field(default_factory=get_current_timestamp)
     id: Id = Field(default_factory=generate_id)
     updated_at: Optional[str] = Field(default_factory=get_current_timestamp)
@@ -156,5 +191,12 @@ DeviceCalibrationQuery = create_partial_model(
     "DeviceCalibrationQuery",
     original=DeviceCalibration,
     default=Query(None),
-    exclude=("qubits", "resonators", "couplers", "discriminators"),
+    exclude=(
+        "qubits",
+        "resonators",
+        "couplers",
+        "discriminators",
+        "frames",
+        "defcals",
+    ),
 )
