@@ -43,8 +43,10 @@ _BCC_PRIVATE_KEY_PATHS: Dict[str, str] = {
 }
 
 
-def create_bcc_client_jwt_token(user_id: str, job_id: str) -> str:
-    """Creates a JWT token that works for jobs submitted via MSS
+def create_bcc_client_jwt_token(
+    user_id: str, job_id: str, is_pulse_allowed: bool = False
+) -> str:
+    """Creates a JWT token that works for jobs submitted via MSS, as BCC signs it
 
     Note that extra claims `exp` and `sub` get overridden
     so don't set them directly
@@ -52,12 +54,13 @@ def create_bcc_client_jwt_token(user_id: str, job_id: str) -> str:
     Args:
         user_id: the unique identifier of the user for whom the token is to be created
         job_id: the unique identifier fo the job from MSS
+        is_pulse_allowed: whether the job may be pulse-level, as MSS asked
 
     Returns:
         the JWT token
     """
     exp = datetime.now(timezone.utc) + timedelta(seconds=45)
-    payload = dict(job=job_id, exp=exp, sub=user_id)
+    payload = dict(job=job_id, exp=exp, sub=user_id, pulse=is_pulse_allowed)
     return jwt.encode(payload, TEST_JWT_SECRET, algorithm="HS256")
 
 

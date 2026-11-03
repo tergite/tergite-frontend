@@ -2493,6 +2493,11 @@ export interface components {
             is_active: boolean;
             /** Is Personal */
             is_personal: boolean;
+            /**
+             * Is Pulse Allowed
+             * @default false
+             */
+            is_pulse_allowed: boolean;
             /** Name */
             name: string;
             /**
@@ -2522,6 +2527,11 @@ export interface components {
              * @default
              */
             description: string;
+            /**
+             * Is Pulse Allowed
+             * @default false
+             */
+            is_pulse_allowed: boolean;
             /** Name */
             name: string;
             /**
@@ -2555,6 +2565,11 @@ export interface components {
             is_active: boolean;
             /** Is Personal */
             is_personal: boolean;
+            /**
+             * Is Pulse Allowed
+             * @default false
+             */
+            is_pulse_allowed: boolean;
             /** Name */
             name: string;
             /**
@@ -2578,6 +2593,8 @@ export interface components {
             description?: string | null;
             /** Is Active */
             is_active?: boolean | null;
+            /** Is Pulse Allowed */
+            is_pulse_allowed?: boolean | null;
             /** Name */
             name?: string | null;
             /** Qpu Seconds */

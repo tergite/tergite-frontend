@@ -1,6 +1,7 @@
 import { useFormContext } from "react-hook-form";
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormMessage,
@@ -86,6 +87,34 @@ export function ProjectFields({ isActiveDisabled = false }: Props) {
 
       <FormField
         control={control}
+        name="is_pulse_allowed"
+        render={({ field }) => (
+          <FormItem>
+            <FormControl>
+              <div className="flex justify-between">
+                <Label
+                  className="mr-2 text-muted-foreground"
+                  htmlFor="is_pulse_allowed"
+                >
+                  Pulse-level jobs
+                </Label>
+                <Switch
+                  id="is_pulse_allowed"
+                  onCheckedChange={field.onChange}
+                  checked={field.value}
+                />
+              </div>
+            </FormControl>
+            <FormDescription>
+              OpenPulse on the devices&apos; frames, within each device&apos;s own limits
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
         name="qpu_seconds"
         render={() => (
           <FormItem>
@@ -161,6 +190,7 @@ interface ProjectFieldValues {
   name?: string;
   description?: string;
   is_active?: boolean;
+  is_pulse_allowed?: boolean;
   qpu_seconds?: number;
   admin_email?: string;
   user_emails?: string[];

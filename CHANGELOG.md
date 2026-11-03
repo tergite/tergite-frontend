@@ -10,6 +10,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Added
+
+- Added a project's `is_pulse_allowed`, which only a superuser sets, and which MSS sends the backend on asking
+  for each job's token, so that the backend lets the project's pulse-level jobs in, within its own limits
+
 ## [2026.11.0-rc.3] - 2026-10-31
 
 ### Changed

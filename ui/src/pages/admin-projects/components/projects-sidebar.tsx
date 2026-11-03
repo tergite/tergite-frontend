@@ -34,6 +34,7 @@ const formSchema = z.object({
   user_emails: z.string().email().min(1).array().optional(),
   qpu_seconds: z.number().min(0).optional(),
   is_active: z.boolean().optional(),
+  is_pulse_allowed: z.boolean().optional(),
 });
 
 export function AdminProjectSummary({

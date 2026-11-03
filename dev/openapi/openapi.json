@@ -1997,6 +1997,11 @@
             "title": "Is Personal",
             "type": "boolean"
           },
+          "is_pulse_allowed": {
+            "default": false,
+            "title": "Is Pulse Allowed",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -2053,6 +2058,11 @@
             "title": "Description",
             "type": "string"
           },
+          "is_pulse_allowed": {
+            "default": false,
+            "title": "Is Pulse Allowed",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -2106,6 +2116,11 @@
           },
           "is_personal": {
             "title": "Is Personal",
+            "type": "boolean"
+          },
+          "is_pulse_allowed": {
+            "default": false,
+            "title": "Is Pulse Allowed",
             "type": "boolean"
           },
           "name": {
@@ -2178,6 +2193,17 @@
               }
             ],
             "title": "Is Active"
+          },
+          "is_pulse_allowed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Pulse Allowed"
           },
           "name": {
             "anyOf": [
