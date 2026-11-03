@@ -20,6 +20,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
   pulse-level jobs, or sees that they are allowed
 - Added a calibration's optional `frames` and `defcals`: the frames a device's pulse-level jobs may play on, at
   their calibrated frequencies, and its gates' pulses as OpenPulse `defcal`s, which a job may override
+- Added a job result's optional `shots`, `meas_level`, `meas_return` and `circuits` (each one's name and number of
+  classical bits), which the backend sends with the memory, so the SDK reads a job's result back without its payload
 
 ## [2026.11.0-rc.3] - 2026-10-31
 

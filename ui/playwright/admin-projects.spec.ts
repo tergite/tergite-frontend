@@ -239,7 +239,12 @@ for (const user of users) {
         await expect(page.locator("#projects-table tbody tr")).toHaveCount(projects.length || 1);
 
         for (const [idx, project] of projects.entries()) {
-          const updates = testData[idx % 4];
+          // names are unique, so a project that reuses another's edits gets a name of its own
+          const reused = testData[idx % testData.length];
+          const updates =
+            idx < testData.length || reused.name === undefined
+              ? reused
+              : { ...reused, name: `${reused.name} ${idx}` };
           const expected = Object.fromEntries(
             Object.entries(project).map(([k, v]) => [k, updates[k as keyof AdminProject] ?? v]),
           ) as AdminProject;
