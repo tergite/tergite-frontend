@@ -11,6 +11,8 @@ export function getUserRequestTitle(request: ExtendedUserRequest): string {
       return `Create new project '${request.metadata?.name}'`;
     case "project-qpu-seconds":
       return `Add QPU time on project: '${projectName}'`;
+    case "project-pulse-access":
+      return `Allow pulse-level jobs on project: '${projectName}'`;
     case "project-access":
       return `Join project '${projectName}'`;
     case "transfer-project":

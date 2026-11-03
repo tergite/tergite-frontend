@@ -35,6 +35,7 @@ export const filterFormProps: DataTableFormConfig = {
       "create-project",
       "project-access",
       "project-qpu-seconds",
+      "project-pulse-access",
       "transfer-project",
       "",
     ]),
@@ -61,6 +62,9 @@ export const filterFormProps: DataTableFormConfig = {
           </SelectItem>
           <SelectItem value="project-qpu-seconds">
             project-qpu-seconds
+          </SelectItem>
+          <SelectItem value="project-pulse-access">
+            project-pulse-access
           </SelectItem>
           <SelectItem value="transfer-project">
             transfer-project

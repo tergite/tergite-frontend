@@ -2312,7 +2312,7 @@ export interface components {
          * @description The kinds of notices
          * @enum {string}
          */
-        NoticeTypeId: "project-access-requested" | "project-access-approved" | "project-access-rejected" | "project-create-requested" | "project-create-approved" | "project-create-rejected" | "project-close-requested" | "project-close-approved" | "project-close-rejected" | "project-transfer-requested" | "project-transfer-approved" | "project-transfer-rejected" | "qpu-seconds-requested" | "qpu-seconds-granted" | "qpu-seconds-denied" | "qpu-seconds-low" | "qpu-seconds-depleted" | "project-membership-granted" | "project-membership-revoked" | "project-admin-assigned" | "custom" | "custom-broadcast";
+        NoticeTypeId: "project-access-requested" | "project-access-approved" | "project-access-rejected" | "project-create-requested" | "project-create-approved" | "project-create-rejected" | "project-close-requested" | "project-close-approved" | "project-close-rejected" | "project-transfer-requested" | "project-transfer-approved" | "project-transfer-rejected" | "qpu-seconds-requested" | "qpu-seconds-granted" | "qpu-seconds-denied" | "qpu-seconds-low" | "qpu-seconds-depleted" | "pulse-access-requested" | "pulse-access-granted" | "pulse-access-denied" | "project-membership-granted" | "project-membership-revoked" | "project-admin-assigned" | "custom" | "custom-broadcast";
         /**
          * OAuth2AuthorizeResponse
          * @description The URL to send the user to, to sign in with the provider
@@ -2735,7 +2735,7 @@ export interface components {
          * @description The types of user requests
          * @enum {string}
          */
-        RequestType: "create-project" | "close-project" | "transfer-project" | "project-qpu-seconds" | "project-access";
+        RequestType: "create-project" | "close-project" | "transfer-project" | "project-qpu-seconds" | "project-pulse-access" | "project-access";
         /**
          * RequestUpdate
          * @description The schema for updating requests.

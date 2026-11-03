@@ -14,6 +14,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 - Added a project's `is_pulse_allowed`, which only a superuser sets, and which MSS sends the backend on asking
   for each job's token, so that the backend lets the project's pulse-level jobs in, within its own limits
+- Added the `project-pulse-access` request, by which a project's member asks the superusers to allow its
+  pulse-level jobs, with its `pulse-access-requested`, `-granted` and `-denied` notices
 
 ## [2026.11.0-rc.3] - 2026-10-31
 

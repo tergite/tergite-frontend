@@ -53,6 +53,7 @@ from .projects.service import (
     increment_qpu_seconds,
     remove_member,
     set_admin,
+    set_pulse_allowed,
     update_project,
 )
 from .providers.dtos import AuthProvider
@@ -115,6 +116,7 @@ __all__ = [
     "get_project",
     "get_project_if_member",
     "increment_qpu_seconds",
+    "set_pulse_allowed",
     "remove_member",
     "set_admin",
     "update_project",

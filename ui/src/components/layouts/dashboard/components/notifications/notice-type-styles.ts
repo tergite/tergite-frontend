@@ -123,6 +123,24 @@ export const NOTIFICATION_TYPE_META: Record<NoticeType, NotificationMeta> = {
     iconClassName: "text-destructive",
     isActionable: false,
   },
+  "pulse-access-requested": {
+    Icon: Clock,
+    label: "Pulse-level jobs request",
+    iconClassName: "text-primary",
+    isActionable: true,
+  },
+  "pulse-access-granted": {
+    Icon: CheckCircle2,
+    label: "Pulse-level jobs allowed",
+    iconClassName: "text-green-600",
+    isActionable: false,
+  },
+  "pulse-access-denied": {
+    Icon: XCircle,
+    label: "Pulse-level jobs declined",
+    iconClassName: "text-destructive",
+    isActionable: false,
+  },
   "qpu-seconds-low": {
     Icon: BatteryLow,
     label: "QPU time low",

@@ -1640,6 +1640,9 @@
           "qpu-seconds-denied",
           "qpu-seconds-low",
           "qpu-seconds-depleted",
+          "pulse-access-requested",
+          "pulse-access-granted",
+          "pulse-access-denied",
           "project-membership-granted",
           "project-membership-revoked",
           "project-admin-assigned",
@@ -2783,6 +2786,7 @@
           "close-project",
           "transfer-project",
           "project-qpu-seconds",
+          "project-pulse-access",
           "project-access"
         ],
         "title": "RequestType",
@@ -7784,6 +7788,7 @@
                 "close-project",
                 "transfer-project",
                 "project-qpu-seconds",
+                "project-pulse-access",
                 "project-access"
               ],
               "items": {

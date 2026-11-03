@@ -77,6 +77,7 @@ class RequestType(str, enum.Enum):
     CLOSE_PROJECT = "close-project"
     TRANSFER_PROJECT = "transfer-project"
     PROJECT_QPU_SECONDS = "project-qpu-seconds"
+    PROJECT_PULSE_ACCESS = "project-pulse-access"
     PROJECT_ACCESS = "project-access"
 
 
@@ -85,6 +86,7 @@ REQUEST_TARGETS: Dict[RequestType, RequestTarget] = {
     RequestType.CLOSE_PROJECT: RequestTarget.SYSTEM,
     RequestType.TRANSFER_PROJECT: RequestTarget.SYSTEM,
     RequestType.PROJECT_QPU_SECONDS: RequestTarget.SYSTEM,
+    RequestType.PROJECT_PULSE_ACCESS: RequestTarget.SYSTEM,
     RequestType.PROJECT_ACCESS: RequestTarget.PROJECT,
 }
 
@@ -121,6 +123,10 @@ class ProjectQpuSecondsMetadata(RequestMetadata):
     seconds: float = Field(gt=0)
 
 
+class ProjectPulseAccessMetadata(RequestMetadata):
+    """Metadata for requesting that a project's jobs may be pulse-level"""
+
+
 class ProjectAccessMetadata(RequestMetadata):
     """Metadata for requesting access to a project"""
 
@@ -130,6 +136,7 @@ _METADATA_CLASSES: Dict[RequestType, Type[RequestMetadata]] = {
     RequestType.CLOSE_PROJECT: CloseProjectMetadata,
     RequestType.TRANSFER_PROJECT: TransferProjectMetadata,
     RequestType.PROJECT_QPU_SECONDS: ProjectQpuSecondsMetadata,
+    RequestType.PROJECT_PULSE_ACCESS: ProjectPulseAccessMetadata,
     RequestType.PROJECT_ACCESS: ProjectAccessMetadata,
 }
 
@@ -183,6 +190,18 @@ _NOTICE_TYPES: Dict[Tuple[RequestType, RequestStatus], NoticeTypeId] = {
         RequestType.PROJECT_QPU_SECONDS,
         RequestStatus.APPROVED,
     ): NoticeTypeId.QPU_SECONDS_GRANTED,
+    (
+        RequestType.PROJECT_PULSE_ACCESS,
+        RequestStatus.PENDING,
+    ): NoticeTypeId.PULSE_ACCESS_REQUESTED,
+    (
+        RequestType.PROJECT_PULSE_ACCESS,
+        RequestStatus.REJECTED,
+    ): NoticeTypeId.PULSE_ACCESS_DENIED,
+    (
+        RequestType.PROJECT_PULSE_ACCESS,
+        RequestStatus.APPROVED,
+    ): NoticeTypeId.PULSE_ACCESS_GRANTED,
     (
         RequestType.PROJECT_ACCESS,
         RequestStatus.PENDING,
