@@ -64,8 +64,8 @@ LOKI_JWT_SECRET="e9fae9efa7c3ff10348acde323baa5273db8021712ecb1f59fdf0e8336240fb
 # name|executor|app settings|JWT secret|max slot|min slot|slots a day|idle time; empty fields
 # keep the backend's defaults
 BACKENDS=(
-  "qiskit_pulse_2q|qiskit_pulse_2q|production|$LOKI_JWT_SECRET||||"
-  "qiskit_pulse_1q|qiskit_pulse_1q|production|dd94de9017e976973769aaf5d426fdb95cab46feda584dbdbc5f3f02bbf8ae8ce77211d7||||"
+  "qiskit_pulse_2q|quantify|production|$LOKI_JWT_SECRET||||"
+  "qiskit_pulse_1q|quantify|production|dd94de9017e976973769aaf5d426fdb95cab46feda584dbdbc5f3f02bbf8ae8ce77211d7||||"
   "Loke|quantify|staging|$LOKI_JWT_SECRET|7200|1200|20|100"
   "Thor|quantify|staging|$LOKI_JWT_SECRET|7200|600|20|100"
   "Pingu|quantify|staging|$LOKI_JWT_SECRET|9600|300|25|100"
@@ -181,8 +181,7 @@ else
   BACKEND_PATH="$WORK_PATH/tergite-backend"
 fi
 
-# environments of their own, so that a checkout's .venv stays as it is; the backends' API needs
-# neither executor's extra
+# environments of their own, so that a checkout's .venv stays as it is
 echo "Installing MSS and the backend"
 UV_PROJECT_ENVIRONMENT="$WORK_PATH/venvs/mss" uv sync -q --frozen --no-dev --project "$MSS_PATH"
 UV_PROJECT_ENVIRONMENT="$WORK_PATH/venvs/backend" uv sync -q --frozen --no-dev --project "$BACKEND_PATH"
