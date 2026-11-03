@@ -4,7 +4,7 @@ import "@testing-library/jest-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { QpuTimeRequestDialog } from "../qpu-time-request-dialog";
-import type { Project } from "@/lib/api/types";
+import type { Project, UserRequest } from "@/lib/api/types";
 
 const requestQpuTimeExtension = vi.fn();
 
@@ -27,7 +27,7 @@ async function openDialog() {
   });
   render(
     <QueryClientProvider client={client}>
-      <QpuTimeRequestDialog project={project} qpuTimeRequests={[]} />
+      <QpuTimeRequestDialog project={project} requests={[]} />
     </QueryClientProvider>
   );
   await user.click(screen.getByRole("button", { name: /more qpu time/i }));
@@ -82,5 +82,24 @@ describe("QpuTimeRequestDialog", () => {
         expect.objectContaining({ seconds: 2 * 86_400 })
       )
     );
+  });
+
+  it("ignores a pending request of another kind", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <QpuTimeRequestDialog
+          project={project}
+          requests={[
+            {
+              type: "project-pulse-access",
+              resource_id: "project-1",
+              status: "pending",
+            } as UserRequest,
+          ]}
+        />
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByRole("button", { name: /more qpu time/i })).toBeEnabled();
   });
 });

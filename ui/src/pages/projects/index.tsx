@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/card";
 import { currentUserQuery } from "@/lib/api/auth";
 import {
-  getMyProjectsQpuTimeRequestsQuery,
+  getMyProjectsRequestsQuery,
   getMyRequestsQuery,
 } from "@/lib/api/requests";
 import { myProjectsQuery } from "@/lib/api/projects";
@@ -25,8 +25,9 @@ import { findSelectedRow } from "@/components/ui/data-table/selection";
 export function Projects() {
   const { currentUser } = useLoaderData() as ProjectsPageData;
   const { data: projects = [] } = useQuery(myProjectsQuery);
-  const { data: qpuTimeRequests = [] } = useQuery(
-    getMyProjectsQpuTimeRequestsQuery({
+  const { data: requests = [] } = useQuery(
+    getMyProjectsRequestsQuery({
+      types: ["project-qpu-seconds", "project-pulse-access"],
       status: "pending",
       projects,
     })
@@ -78,7 +79,7 @@ export function Projects() {
             rowSelection={rowSelection}
             onRowClick={handleRowClick}
             currentUser={currentUser}
-            qpuTimeRequests={qpuTimeRequests}
+            requests={requests}
           />
         </CardContent>
       </Card>

@@ -13,11 +13,11 @@ export function ProjectsTable({
   rowSelection,
   onRowClick,
   currentUser,
-  qpuTimeRequests = [],
+  requests = [],
 }: Props) {
   const columns = useMemo(
-    () => getColumns({ currentUser, qpuTimeRequests }),
-    [currentUser, qpuTimeRequests]
+    () => getColumns({ currentUser, requests }),
+    [currentUser, requests]
   );
   return (
     <DataTable
@@ -37,7 +37,7 @@ export function ProjectsTable({
 interface Props {
   data: Project[];
   currentUser: User;
-  qpuTimeRequests: UserRequest[];
+  requests: UserRequest[];
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   rowSelection?: RowSelectionState;
   onRowClick: (row: Row<Project>) => void;
