@@ -1,7 +1,7 @@
 {
   "name": "tergite-dashboard",
   "private": true,
-  "version": "2026.11.0-rc.5",
+  "version": "2026.11.0-rc.6",
   "type": "module",
   "scripts": {
     "dev": "uv run --directory .. python -m dev.seed && start-server-and-test mss http://127.0.0.1:8002/health \"vite --host 0.0.0.0\"",

@@ -10,6 +10,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.6] - 2026-11-04
+
 ### Added
 
 - Repository: Added CI jobs running the API tests with MSS on SQLite and on PostgreSQL, beside the MongoDB run, which
