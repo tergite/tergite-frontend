@@ -121,7 +121,7 @@ LOKI_LOGGER_ID=<some-id>
 ## Development
 
 - Ensure you have [uv](https://docs.astral.sh/uv/getting-started/installation/) installed,
-  [Nodejs +20.12](https://nodejs.org/) for the dashboard, and a
+  [Node.js 26.12.1 or later](https://nodejs.org/) for the dashboard, and a
   [tergite backend](https://github.com/tergite/tergite-backend) running.
 - Clone the repo and install the dependencies, which uv puts in `.venv`, with Python 3.13 or
   later, as `uv.lock` pins them

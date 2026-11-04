@@ -23,6 +23,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
   be read from the folder MSS starts in, where before they were read from beside MSS's code
 - Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and
   finds what pyflakes did; contributors run `ruff format` and `ruff check` where they ran the three
+- Repository: Changed the dashboard's Node to 26, its LTS, from 20, which is past its end of life and was never fixed
+  for October 2026's compromised eMudhra intermediates; CI, the release and the Playwright image (1.64.1) use it
 
 ### Fixed
 
