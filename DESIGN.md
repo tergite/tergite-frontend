@@ -494,6 +494,13 @@ has to `index.html` and redirecting `/` to `/ui/`. `MSS_DASHBOARD_DIR` names ano
 serve it from, which an MSS installed without its build needs; as the build calls the API on its
 own origin, one build serves any MSS of its release.
 
+The package's wheel, which `uv tool install` installs from the repository, runs the same `mss`
+with no service around it and without the dashboard: `main.py` and `settings.py` as top-level
+modules, the migrations as a namespace package with their MongoDB JSONs, which
+`utils/migrations.py` points Alembic at without `alembic.ini`, and the config and key read from
+the folder it starts in. `tests/test_packaging.py` builds the wheel and runs it outside the
+checkout. See the [README](README.md#run-or-install-with-uv).
+
 MSS answers `GET /health` with 200, left out of uvicorn's access log (`UNLOGGED_PATHS`), so
 that a frequent probe does not bury real traffic.
 

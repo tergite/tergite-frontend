@@ -78,11 +78,22 @@ config must be the host you open it at.
 MSS serves the build it ships with; `MSS_DASHBOARD_DIR` may name another folder holding the
 dashboard's build of the same release, and MSS fails to start when that folder does not exist.
 
-### Install as a uv tool
+### Run or install with uv
 
-To run MSS without its packages or a checkout, install it from its repository as a
-[uv tool](https://docs.astral.sh/uv/guides/tools/), and give it the dashboard's build of the
-same release in `MSS_DASHBOARD_DIR`; without one, MSS serves its API alone.
+MSS is the package's `mss` command, so [uv](https://docs.astral.sh/uv/) also runs it from its
+repository without installing it, or installs it as a [tool](https://docs.astral.sh/uv/guides/tools/)
+on the `PATH`, with the Python 3.13 it needs. A tool runs where it is started rather than as a
+service, and comes without the dashboard: give it the dashboard's build of the same release in
+`MSS_DASHBOARD_DIR`, or it serves its API alone.
+
+- Once, without installing it:
+
+```shell
+uvx --from git+https://github.com/tergite/tergite-frontend@v<version> mss start
+```
+
+- Installed as a tool; to change version, install the other tag with `--force`, and
+  `uv tool uninstall tergite-mss` removes it:
 
 ```shell
 uv tool install git+https://github.com/tergite/tergite-frontend@v<version>
@@ -91,7 +102,8 @@ MSS_DASHBOARD_DIR=/srv/tergite-mss/dashboard mss start
 
 It reads `mss-config.toml` and `private-mss-key.pem` in the folder it starts in, or the files
 `MSS_CONFIG_FILE` and `PRIVATE_KEY_FILE` name; a backend's relative `public_key_path` is in that
-folder too.
+folder too. From a checkout, `uv run mss start` runs it as `./start_mss.sh` does, but without
+decrypting a SOPS-encrypted config.
 
 ### Logs
 
