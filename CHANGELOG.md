@@ -24,6 +24,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and
   finds what pyflakes did; contributors run `ruff format` and `ruff check` where they ran the three
 
+### Fixed
+
+- Dashboard: Fixed three of the dashboard's tests failing on Node 25 and later, whose own `localStorage` shadowed
+  happy-dom's; they now run with Node's switched off where Node has one
+
 ## [2026.11.0-rc.5] - 2026-11-04
 
 ### Changed
