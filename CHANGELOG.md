@@ -10,6 +10,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Changed
+
+- Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and
+  finds what pyflakes did; contributors run `ruff format` and `ruff check` where they ran the three
+
 ## [2026.11.0-rc.5] - 2026-11-04
 
 ### Changed

@@ -56,9 +56,8 @@ jobs:
           UV_PYTHON: ${{ matrix.python-version }}
         run: |
           uv sync --frozen --extra dev
-          uv run black --check .
-          uv run isort --check-only .
-          uv run pyflakes api services utils libs migrations settings.py main.py tests dev
+          uv run ruff format --check
+          uv run ruff check
       - name: Run tests
         run: uv run pytest
 

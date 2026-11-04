@@ -559,8 +559,8 @@ a mirror — see §14).
 
 On every pull or merge request, on `main` and on `v*` tags, GitHub's `ci.yml` and GitLab run:
 
-- `mss` / `lint mss`, `test mss` — with uv, from `uv.lock`: `black --check .`, `isort`,
-  `pyflakes`, then `pytest` on Python 3.13, the oldest MSS supports, against MongoDB and
+- `mss` / `lint mss`, `test mss` — with uv, from `uv.lock`: `ruff format --check` and
+  `ruff check`, then `pytest` on Python 3.13, the oldest MSS supports, against MongoDB and
   PostgreSQL.
 - `dashboard` / `lint dashboard`, `test dashboard` — eslint and `npm run check:api`, vitest.
 - `e2e` — `dev/e2e_native_test.sh`, after installing MongoDB, SQLite and uv.
@@ -704,11 +704,10 @@ grep found nothing; confirm from the summary line or the recorded status.
 
 On top of the [style guide](#style-guide):
 
-- **`black` is authoritative** for formatting (pinned `black==23.11.0`, a CI gate); `isort` for imports, configured with `profile = "black"` so the two agree —
-  without it isort emits a style black then reformats, churning unrelated files. Run both
-  before committing; neither needs flags.
-- **`pyflakes`** finds unused imports and variables; CI runs it over `api services utils
-  libs migrations settings.py main.py tests dev` and fails on any finding.
+- **`ruff format` is authoritative** for formatting, a CI gate; `ruff check` sorts the imports
+  (`I`) and finds unused imports and variables and undefined names (`F`, pyflakes' checks), and
+  CI fails on any finding. Neither needs flags; `ruff format` and `ruff check --fix` fix what
+  they find.
 - **Constants go at the top of the file**, after imports — not buried between functions. The
   exception is a constant built from a function or class defined in the same file, which
   stays after it (e.g. `EVENT_HANDLERS` after the handlers, `ProjectPartial`
