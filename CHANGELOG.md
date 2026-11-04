@@ -25,12 +25,16 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
   be read from the folder MSS starts in, where before they were read from beside MSS's code
 - Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and
   finds what pyflakes did; contributors run `ruff format` and `ruff check` where they ran the three
+- Repository: Changed the dashboard's Node to 26, its LTS, from 20, which is past its end of life and was never fixed
+  for October 2026's compromised eMudhra intermediates; CI, the release and the Playwright image (1.64.1) use it
 - Changed the devices, calibrations and jobs MSS keeps to hold only the fields their schemas declare, where before
   they also kept whatever else they were sent; a calibration's qubits and resonators now declare their `name`, and
   its couplers their `short_name`, `full_name`, `control_qubit` and `target_qubit`, which the backend sends
 
 ### Fixed
 
+- Dashboard: Fixed three of the dashboard's tests failing on Node 25 and later, whose own `localStorage` shadowed
+  happy-dom's; they now run with Node's switched off where Node has one
 - Fixed MSS on PostgreSQL or SQLite never registering a backend's device, whose event carried fields MSS does not
   declare; MSS now reads each event as tergite-backend's OpenAPI spec declares it, dropping anything else
 

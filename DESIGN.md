@@ -20,7 +20,7 @@ serves at `/ui`, and the two are released together under one version and one cha
 | Part | Path | Stack | Role |
 | --- | --- | --- | --- |
 | **MSS** (Main Service Server) | `.` | Python 3.13+, FastAPI, MongoDB or PostgreSQL, SQLite | The public REST API. Owns all persistence, authn/authz, and all traffic to the quantum backends (BCC instances). |
-| **Dashboard** | `ui/` | Node 20, Vite, React 18, TypeScript, Tailwind + shadcn/ui | The browser client for MSS. No backend of its own — a static bundle MSS serves at `/ui`. |
+| **Dashboard** | `ui/` | Node 26, Vite, React 18, TypeScript, Tailwind + shadcn/ui | The browser client for MSS. No backend of its own — a static bundle MSS serves at `/ui`. |
 
 Everything the dashboard shows comes from MSS, which knows the dashboard only as the files
 it serves at `/ui`.

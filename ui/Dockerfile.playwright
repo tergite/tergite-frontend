@@ -1,6 +1,6 @@
 # Makes the linux screenshot baselines: the e2e stack, MongoDB, MSS and the backends, in
 # Playwright's linux image, with the repository root as the context; see CONTRIBUTING.md
-FROM mcr.microsoft.com/playwright:v1.64.0-noble
+FROM mcr.microsoft.com/playwright:v1.64.1-noble
 
 RUN apt-get update -qq \
   && apt-get install -y -qq curl gnupg git jq sqlite3 \

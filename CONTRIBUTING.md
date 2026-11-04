@@ -89,7 +89,7 @@ All signed CLAs are emails to us at <contact.quantum@chalmersnextlabs.se>.
 ## How to Test
 
 - Make sure you have [uv](https://docs.astral.sh/uv/getting-started/installation/) installed, and
-  [nodejs +20.12](https://nodejs.org/) for the dashboard in `ui/`.
+  [Node.js 26.12.1 or later](https://nodejs.org/) for the dashboard in `ui/`.
 - Clone the repo and enter its root folder
 
 ```shell
