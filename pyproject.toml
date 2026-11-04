@@ -59,6 +59,8 @@ dependencies = [
 dev = [
     # formats, sorts the imports and finds what pyflakes did
     "ruff==0.15.1",
+    # writes MSS's models of a backend's events from its spec, in dev/openapi
+    "datamodel-code-generator>=0.34",
     "pytest>=7.4.0,<8.0.0",
     "pytest-lazy-fixture>=0.6.3",
     "pytest-freezegun>=0.4.2",

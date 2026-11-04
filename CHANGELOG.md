@@ -24,6 +24,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and
   finds what pyflakes did; contributors run `ruff format` and `ruff check` where they ran the three
 
+### Fixed
+
+- Fixed MSS on PostgreSQL or SQLite never registering a backend's device, whose event carried fields MSS does not
+  declare; MSS now reads each event as tergite-backend's OpenAPI spec declares it, dropping anything else
+
 ## [2026.11.0-rc.5] - 2026-11-04
 
 ### Changed
