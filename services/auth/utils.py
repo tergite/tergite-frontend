@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Common utility functions for the auth service"""
+
 from typing import Any, Dict, List, Sequence, Type
 
 from httpx_oauth.clients.github import GitHubOAuth2

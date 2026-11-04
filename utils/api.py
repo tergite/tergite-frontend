@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Utility functions for API related code"""
+
 from typing import (
     Any,
     Dict,

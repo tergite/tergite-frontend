@@ -14,6 +14,7 @@
 
 It began as a copy of fastapi-users 14.0.2, stripped to what tergite uses.
 """
+
 from .auth import Auth
 from .cookies import SessionCookie
 from .errors import (

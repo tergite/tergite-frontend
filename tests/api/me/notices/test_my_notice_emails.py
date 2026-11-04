@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the email copies of notices"""
+
 import time
 from typing import Callable
 
@@ -85,8 +86,9 @@ def test_sweeper_sends_a_queued_email(client, outsider_jwt_cookie, db, smtp):
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
         _wait_for(
-            lambda: get_user_notices(db, TEST_USER_ID)[0].email_status
-            == EmailStatus.SENT
+            lambda: (
+                get_user_notices(db, TEST_USER_ID)[0].email_status == EmailStatus.SENT
+            )
         )
 
     message = smtp.call_args.args[0]
@@ -133,8 +135,9 @@ def test_sending_gives_up_at_the_retry_limit(client, outsider_jwt_cookie, db, sm
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
         _wait_for(
-            lambda: get_user_notices(db, TEST_USER_ID)[0].email_status
-            == EmailStatus.FAILED
+            lambda: (
+                get_user_notices(db, TEST_USER_ID)[0].email_status == EmailStatus.FAILED
+            )
         )
 
         assert get_user_notices(db, TEST_USER_ID)[0].email_attempts == (
@@ -184,8 +187,9 @@ def test_sweeper_survives_a_failing_sweep(
     with client as client:
         client.post("/me/requests/", cookies=outsider_jwt_cookie, json=_ACCESS_REQUEST)
         _wait_for(
-            lambda: get_user_notices(db, TEST_USER_ID)[0].email_status
-            == EmailStatus.SENT
+            lambda: (
+                get_user_notices(db, TEST_USER_ID)[0].email_status == EmailStatus.SENT
+            )
         )
 
         assert len(calls) > 1

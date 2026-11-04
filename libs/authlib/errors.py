@@ -15,6 +15,7 @@
 The app registers their handler with `add_exception_handlers`, so authlib raises no
 HTTPException of its own.
 """
+
 from typing import Optional
 
 from fastapi import FastAPI, Request, status

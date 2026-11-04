@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Module containing event handlers"""
+
 from typing import Dict
 
 from libs.storage import Database

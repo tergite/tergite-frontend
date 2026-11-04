@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the devices router"""
+
 import copy
 import uuid
 from typing import Any, Dict, List, Optional

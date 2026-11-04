@@ -12,6 +12,7 @@
 """Migrates the MongoDB of the MSS config, from the repository root:
 `python -m migrations.mongodb upgrade`, or `python -m migrations.mongodb rollback <revision>`
 """
+
 import argparse
 
 from pymongo import MongoClient

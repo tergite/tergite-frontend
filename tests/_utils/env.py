@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Test utilities for environment variables"""
+
 import json
 import tomllib
 from os import environ

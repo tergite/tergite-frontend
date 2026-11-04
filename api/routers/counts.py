@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Routes for getting counts of different records"""
+
 from datetime import datetime
 from typing import List, Optional
 

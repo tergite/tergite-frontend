@@ -15,6 +15,6 @@ from dev.openapi.export import SCHEMA_FILE, render_schema
 
 
 def test_committed_schema_matches_the_app():
-    assert SCHEMA_FILE.read_text() == render_schema(
-        app.openapi()
-    ), f"{SCHEMA_FILE.name} is stale: run python -m dev.openapi.export"
+    assert SCHEMA_FILE.read_text() == render_schema(app.openapi()), (
+        f"{SCHEMA_FILE.name} is stale: run python -m dev.openapi.export"
+    )

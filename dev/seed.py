@@ -14,6 +14,7 @@
 Run from the repository root: `python -m dev.seed`. The e2e stack, its resets, the performance
 checks and `npm run dev` all seed this way. It refuses a production config.
 """
+
 import asyncio
 import json
 import sys

@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """App tokens: the tokens a user generates to act on one of their projects"""
+
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence

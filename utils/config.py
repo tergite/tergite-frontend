@@ -30,8 +30,6 @@ from pydantic import (
     model_validator,
 )
 
-_PROJECT_FOLDER = Path(__file__).parent.parent
-
 
 class DatetimePrecision(str, enum.Enum):
     """Possible datetime precision values: additional components of the time to include when isoformat is called
@@ -82,22 +80,20 @@ class BccConfig(BaseModel):
     @field_validator("public_key_path", mode="before")
     @classmethod
     def validate_public_key_path(cls, v: Any):
-        """Validate the public key path to ensure all relative paths are relative to the app root
+        """Validate the public key path to ensure all relative paths are relative to the
+        folder MSS starts in
 
         Args:
             v: the configured public key path
 
         Returns:
-            the path, made absolute against the app root if relative
+            the path, made absolute against the folder MSS starts in if relative
 
         Raises:
             ValueError: the value is not a path or a string
         """
         try:
-            value_path = Path(v)
-            if not value_path.is_absolute():
-                return _PROJECT_FOLDER / value_path
-            return value_path
+            return Path(v).absolute()
         except TypeError:
             raise ValueError("public_key_path must be a Path or str")
 

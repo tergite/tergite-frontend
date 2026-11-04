@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Router for auth related operations"""
+
 from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, FastAPI, Query

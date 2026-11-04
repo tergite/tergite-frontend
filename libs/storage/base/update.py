@@ -15,6 +15,7 @@
 when an upsert creates the record), `$inc`, `$addToSet` and `$pull` (an equal value). A list
 of models is only set whole.
 """
+
 import enum
 from numbers import Number
 from typing import Any, Mapping, Optional, Type

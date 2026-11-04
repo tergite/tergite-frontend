@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """DbStore: what every database backend implements"""
+
 import abc
 from typing import Any, List, Optional, Sequence, Type, TypeVar
 

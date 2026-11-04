@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """The app's one Database: opened in the lifespan, handed to routes through DatabaseDep"""
+
 from fastapi import FastAPI
 from starlette.requests import HTTPConnection
 

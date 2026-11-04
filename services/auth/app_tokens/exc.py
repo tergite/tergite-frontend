@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Exceptions for auth with respect to the app_tokens submodule"""
+
 from enum import Enum
 
 from utils.exc import ForbiddenError

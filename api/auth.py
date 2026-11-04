@@ -12,6 +12,7 @@
 
 """The app's auth, built from the auth config, and the current user and project
 dependencies"""
+
 from functools import partial
 from typing import Optional, Tuple
 

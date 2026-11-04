@@ -11,6 +11,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The dependencies that get a request's user from its session token"""
+
 from typing import Optional
 
 import pytest

@@ -13,6 +13,7 @@
 #
 # Refactored by Martin Ahindura 2023-11-08
 """Utilities specific to models"""
+
 import sys
 from typing import Any, Optional, Sequence, TypeVar, get_args
 

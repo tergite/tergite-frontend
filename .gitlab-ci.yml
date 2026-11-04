@@ -108,9 +108,8 @@ lint mss:
   stage: lint
   <<: *setup_mss
   script:
-    - uv run black --check .
-    - uv run isort --check-only .
-    - uv run pyflakes api services utils libs migrations settings.py main.py tests dev
+    - uv run ruff format --check
+    - uv run ruff check
 
 test mss:
   needs: []

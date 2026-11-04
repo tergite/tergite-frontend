@@ -20,6 +20,7 @@ meets every condition: `{"accounts": {"$elemMatch": {"name": "github", "id": "42
 `{"email": {"$regex": re.escape(text), "$options": "i"}}`. A sort lists fields; a leading
 '-' sorts descending.
 """
+
 import re
 from typing import Any, Iterator, List, Mapping, Optional, Sequence, Tuple, Type
 

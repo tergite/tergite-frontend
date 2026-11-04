@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Clients for accessing certain HTTP services"""
+
 import time
 from datetime import datetime
 from json import JSONDecodeError

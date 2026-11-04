@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The auth behaviour clients rely on, one test per contract row"""
+
 import time
 from http.cookies import SimpleCookie
 from urllib.parse import parse_qs, urlparse

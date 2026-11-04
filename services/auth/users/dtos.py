@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """The users: who they are, the roles they hold, and the OAuth accounts they sign in with"""
+
 from typing import List, Optional, Set
 
 from pydantic import Field

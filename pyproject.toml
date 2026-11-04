@@ -57,8 +57,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "isort>=5.12.0",
-    "black==23.11.0",
+    # formats, sorts the imports and finds what pyflakes did
+    "ruff==0.15.1",
     "pytest>=7.4.0,<8.0.0",
     "pytest-lazy-fixture>=0.6.3",
     "pytest-freezegun>=0.4.2",
@@ -68,7 +68,6 @@ dev = [
     "respx>=0.20.2",
     "filelock>=3.12.2",
     "setuptools",
-    "pyflakes>=3.2",
     "asgi-lifespan>=2.1.0",
     "nuitka>=4.3.1",
     # compresses Nuitka's onefile binaries; nuitka's sdist does not declare its onefile extra
@@ -82,18 +81,30 @@ Documentation = "https://github.com/tergite/tergite-frontend/tree/main/docs"
 Issues = "https://github.com/tergite/tergite-frontend/issues"
 Changelog = "https://github.com/tergite/tergite-frontend/blob/main/CHANGELOG.md"
 
+[project.scripts]
+mss = "main:main"
+
+[tool.setuptools]
+# the mss command's, beside the packages, as in the Nuitka build
+py-modules = ["main", "settings"]
+
 [tool.setuptools.packages.find]
-exclude = ["docs*", "tests*", "ui*"]
+# migrations has no __init__.py, which Alembic loads by path; its mongodb JSONs come as the
+# files git tracks in it
+include = ["api*", "libs*", "services*", "utils*", "migrations*"]
 
-[tool.black]
+[tool.ruff]
+target-version = "py313"
 # the dashboard
-extend-exclude = "^/ui/"
+extend-exclude = ["ui"]
 
-[tool.isort]
-skip_gitignore = true
-extend_skip = ["ui"]
-# keeps isort from fighting the pinned black, which reformats its default style
-profile = "black"
+[tool.ruff.lint]
+# pyflakes' findings and isort's order, as black, isort and pyflakes checked before
+select = ["F", "I"]
+
+[tool.ruff.lint.isort]
+# the top-level packages' names are generic, so ruff cannot tell them from third parties'
+known-first-party = ["api", "libs", "services", "utils", "migrations", "main", "settings", "tests", "dev"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 """Serves GET /refreshed-db, which reseeds the e2e stack's MSS and backend databases from
 the fixtures: see dev/e2e_native_test.sh, which runs it in MSS's environment and config"""
+
 import argparse
 import subprocess
 import sys

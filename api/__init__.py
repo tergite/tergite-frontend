@@ -15,8 +15,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -51,9 +49,6 @@ from .routers.counts import router as counts_router
 from .routers.devices import router as devices_router
 from .routers.jobs import router as jobs_router
 from .routers.me import router as my_router
-
-# the dashboard's build, which a checkout lacks until `npm run build` in ui/
-DASHBOARD_DIR = Path(__file__).parents[1] / "ui" / "dist"
 
 setup_logging(settings.CONFIG.environment)
 
@@ -104,8 +99,8 @@ app.include_router(admin_router)
 app.include_router(jobs_router)
 app.include_router(booking_router)
 app.include_router(counts_router)
-if DASHBOARD_DIR.is_dir():
-    include_dashboard(app, DASHBOARD_DIR)
+if settings.DASHBOARD_DIR.is_dir():
+    include_dashboard(app, settings.DASHBOARD_DIR)
 
 
 @app.get("/health", include_in_schema=False)

@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Who belongs to a project: telling users their standing changed, and naming them"""
+
 from typing import Dict, List, Optional
 
 from libs.storage import Database

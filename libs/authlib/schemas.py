@@ -11,6 +11,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Pydantic bases for the app's user models: how a user is shown, and an OAuth account"""
+
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field

@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """MongoStore: the DbStore for MongoDB, on PyMongo's async client"""
+
 from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 from functools import partial
@@ -298,8 +299,9 @@ class MongoStore(DbStore):
         name = schema.__storage__.table
         # collMod fails on a collection that does not exist yet; another process may
         # create it first
-        with suppress(pymongo.errors.CollectionInvalid), _ignore_code(
-            _NAMESPACE_EXISTS_CODE
+        with (
+            suppress(pymongo.errors.CollectionInvalid),
+            _ignore_code(_NAMESPACE_EXISTS_CODE),
         ):
             await self._database.create_collection(name)
 

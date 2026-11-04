@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Integration tests for the /counts routes"""
+
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from uuid import uuid4

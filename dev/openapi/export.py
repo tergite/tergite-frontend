@@ -16,6 +16,7 @@ Run from the repository root: `python -m dev.openapi.export`. It works although 
 serves no docs, since app.openapi() needs no route. The schema is built with the test config,
 whose auth clients decide which /auth/{name} routes it lists.
 """
+
 import json
 from pathlib import Path
 

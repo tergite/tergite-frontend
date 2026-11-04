@@ -490,7 +490,16 @@ to `/usr/local/etc/tergite-mss/`. See the [README](README.md#deployment).
 The dashboard ships inside MSS's packages: the release builds it with the base `/ui/`, Nuitka
 includes it from `ui/dist`, and MSS serves it at `/ui`
 ([api/dashboard.py](api/dashboard.py)), sending the paths no file
-has to `index.html` and redirecting `/` to `/ui/`.
+has to `index.html` and redirecting `/` to `/ui/`. `MSS_DASHBOARD_DIR` names another folder to
+serve it from, which an MSS installed without its build needs; as the build calls the API on its
+own origin, one build serves any MSS of its release.
+
+The package's wheel, which `uv tool install` installs from the repository, runs the same `mss`
+with no service around it and without the dashboard: `main.py` and `settings.py` as top-level
+modules, the migrations as a namespace package with their MongoDB JSONs, which
+`utils/migrations.py` points Alembic at without `alembic.ini`, and the config and key read from
+the folder it starts in. `tests/test_packaging.py` builds the wheel and runs it outside the
+checkout. See the [README](README.md#run-or-install-with-uv).
 
 MSS answers `GET /health` with 200, left out of uvicorn's access log (`UNLOGGED_PATHS`), so
 that a frequent probe does not bury real traffic.
@@ -559,8 +568,8 @@ a mirror — see §14).
 
 On every pull or merge request, on `main` and on `v*` tags, GitHub's `ci.yml` and GitLab run:
 
-- `mss` / `lint mss`, `test mss` — with uv, from `uv.lock`: `black --check .`, `isort`,
-  `pyflakes`, then `pytest` on Python 3.13, the oldest MSS supports, against MongoDB and
+- `mss` / `lint mss`, `test mss` — with uv, from `uv.lock`: `ruff format --check` and
+  `ruff check`, then `pytest` on Python 3.13, the oldest MSS supports, against MongoDB and
   PostgreSQL.
 - `dashboard` / `lint dashboard`, `test dashboard` — eslint and `npm run check:api`, vitest.
 - `e2e` — `dev/e2e_native_test.sh`, after installing MongoDB, SQLite and uv.
@@ -704,11 +713,10 @@ grep found nothing; confirm from the summary line or the recorded status.
 
 On top of the [style guide](#style-guide):
 
-- **`black` is authoritative** for formatting (pinned `black==23.11.0`, a CI gate); `isort` for imports, configured with `profile = "black"` so the two agree —
-  without it isort emits a style black then reformats, churning unrelated files. Run both
-  before committing; neither needs flags.
-- **`pyflakes`** finds unused imports and variables; CI runs it over `api services utils
-  libs migrations settings.py main.py tests dev` and fails on any finding.
+- **`ruff format` is authoritative** for formatting, a CI gate; `ruff check` sorts the imports
+  (`I`) and finds unused imports and variables and undefined names (`F`, pyflakes' checks), and
+  CI fails on any finding. Neither needs flags; `ruff format` and `ruff check --fix` fix what
+  they find.
 - **Constants go at the top of the file**, after imports — not buried between functions. The
   exception is a constant built from a function or class defined in the same file, which
   stays after it (e.g. `EVENT_HANDLERS` after the handlers, `ProjectPartial`

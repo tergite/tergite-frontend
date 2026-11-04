@@ -16,6 +16,7 @@ The app's user schema is a storage Schema whose `email` is listed in `case_insen
 users are found by email whatever its case. An OAuth user's schema holds
 `oauth_accounts: List[<account model>]` in `indexed_lists`, which is set whole on each change.
 """
+
 import re
 from typing import Any, Dict, List, Optional, Set, Type, get_args
 

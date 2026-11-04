@@ -19,17 +19,26 @@ from utils.logging import get_log_level
 
 _ROOT = Path(__file__).parent
 
+# the config and the key, when relative, are in the folder MSS starts in, as an installed
+# MSS has no checkout to find them in
 _MSS_CONFIG_JSON_STR = os.environ.get("MSS_CONFIG_JSON_STR")
 _MSS_CONFIG_FILE = Path(
-    os.environ.get("MSS_CONFIG_FILE", default=_ROOT / "mss-config.toml")
+    os.environ.get("MSS_CONFIG_FILE", default="mss-config.toml")
 ).resolve()
 
 # the private key for authentication between MSS and BCC
 PRIVATE_KEY_FILE = Path(
-    os.getenv("PRIVATE_KEY_FILE", default=_ROOT / "private-mss-key.pem")
+    os.getenv("PRIVATE_KEY_FILE", default="private-mss-key.pem")
 ).resolve()
 if not PRIVATE_KEY_FILE.exists():
     raise ValueError(f"private key file '{PRIVATE_KEY_FILE}' does not exist")
+
+# the dashboard's build, which MSS serves at /ui when the folder exists; a checkout lacks
+# the default one until `npm run build` in ui/
+_MSS_DASHBOARD_DIR = os.environ.get("MSS_DASHBOARD_DIR")
+DASHBOARD_DIR = Path(_MSS_DASHBOARD_DIR or _ROOT / "ui" / "dist").resolve()
+if _MSS_DASHBOARD_DIR and not DASHBOARD_DIR.is_dir():
+    raise ValueError(f"dashboard folder '{DASHBOARD_DIR}' does not exist")
 
 if _MSS_CONFIG_JSON_STR:
     CONFIG: AppConfig = AppConfig.from_json_str(_MSS_CONFIG_JSON_STR)

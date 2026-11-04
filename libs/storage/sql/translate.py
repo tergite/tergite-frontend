@@ -17,6 +17,7 @@ matched with an EXISTS on that table, and `$elemMatch` on a list of models with 
 one row matching every condition. JSON columns are read and written whole, so a filter,
 sort or update that reaches into one is refused.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Sequence, Tuple
