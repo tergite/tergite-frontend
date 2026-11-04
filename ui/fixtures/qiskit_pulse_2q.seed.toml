@@ -89,9 +89,8 @@ cz_pulse_phase_offset = 0
 cz_pulse_duration_before = 88e-9
 cz_pulse_duration_rise = 25e-9
 cz_pulse_duration_constant = 370e-9
-# none, as the simulator's CZ adds a phase of pi to |11> and nothing else
-control_rz_lambda = 0
-target_rz_lambda = 0
+control_rz_lambda = 0.6
+target_rz_lambda = 0.3
 pulse_type = "wacqt_cz_gate_pulse"
 
 [calibration_config.discriminators.lda.q0]
