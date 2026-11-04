@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The jobs service on each database: JSON timestamps and results, finds and counts"""
+
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 

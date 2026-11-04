@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Routes for the current user's notices"""
+
 from typing import List, Optional
 
 from fastapi import APIRouter, Query

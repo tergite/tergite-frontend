@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Fixtures that stand in for the OAuth2 providers and their state tokens"""
+
 from typing import Any, Generator
 
 import httpx

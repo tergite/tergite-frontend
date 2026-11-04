@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Routes for BCC users related operations"""
+
 from typing import Optional
 
 from fastapi import APIRouter, Query

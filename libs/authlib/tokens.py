@@ -14,6 +14,7 @@
 
 Their audiences are fastapi-users' own, which live cookies depend on.
 """
+
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Union
 

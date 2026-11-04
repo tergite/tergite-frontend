@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The MSS load scenario of the performance baselines, over the e2e fixtures; dev/perf/record.sh runs it"""
+
 import time
 import tomllib
 import uuid

@@ -15,6 +15,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Collection of key-word args for the FastAPI app"""
+
 from contextlib import asynccontextmanager
 from functools import partial
 from typing import Any, Dict

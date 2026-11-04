@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Utilities for mocking requests to BCC"""
+
 import json
 import re
 from datetime import datetime

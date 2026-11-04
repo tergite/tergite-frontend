@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """A nonce of a backend's signed websocket handshake, kept as long as its timestamp is fresh"""
+
 from datetime import datetime
 
 from libs.storage import Schema, StorageSpec

@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Claims the backends' websocket nonces, so that none is replayed"""
+
 from datetime import timedelta
 
 from libs.storage import Database, DuplicateKeyError

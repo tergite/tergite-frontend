@@ -11,6 +11,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The auth routes: OAuth sign-in through each provider, and logout"""
+
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status

@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Who may act on a project through an app token: the rules and their check"""
+
 from dataclasses import dataclass
 from typing import Optional, Tuple
 

@@ -16,6 +16,7 @@
 #
 # Refactored by Martin Ahindura on 2023-11-08
 """Service that handles calibration functionality"""
+
 from typing import List, Optional, Sequence
 
 from libs.storage import Database

@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Routes for the current user's notice delivery preferences"""
+
 from typing import Dict
 
 from fastapi import APIRouter

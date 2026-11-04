@@ -15,6 +15,7 @@
 Ids are strings above the storage layer and ObjectIds in MongoDB, so every value bound for an
 Id field becomes an ObjectId here, and every ObjectId read becomes a string.
 """
+
 import enum
 import uuid
 from functools import lru_cache

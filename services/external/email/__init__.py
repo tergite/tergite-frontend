@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Outbound SMTP client"""
+
 from .dtos import BatchEmailCallback, BatchEmailGenerator, EmailDetails, EmailResult
 from .service import Emailer
 

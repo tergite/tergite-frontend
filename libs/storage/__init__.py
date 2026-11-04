@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Storage that names no database technology: one Database, many backends"""
+
 from .base.exc import (
     DuplicateKeyError,
     QueryError,

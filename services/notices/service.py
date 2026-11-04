@@ -560,7 +560,7 @@ def _get_notice_filter(query: NoticeQuery) -> Filter:
 
 
 def _with_default_email_preferences(
-    prefs: Dict[NoticeTypeId, bool]
+    prefs: Dict[NoticeTypeId, bool],
 ) -> Dict[NoticeTypeId, bool]:
     """Fills in the default email preference for every notice type missing in prefs"""
     return {type_id: prefs.get(type_id, True) for type_id in NoticeTypeId}

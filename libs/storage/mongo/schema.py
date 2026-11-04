@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """What each schema's storage facts become in MongoDB: a $jsonSchema validator and indexes"""
+
 from typing import Any, Dict, List, Tuple, Type
 
 import pymongo

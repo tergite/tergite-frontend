@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Data Transfer Objects for the quantum jobs service"""
+
 import enum
 from datetime import datetime
 from typing import (

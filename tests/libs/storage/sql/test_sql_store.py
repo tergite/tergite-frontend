@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """What only SqlStore does: expiry without a TTL index, on each SQL database, and SQLite's journal"""
+
 import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional

@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Data Transfer Objects for the BCC service"""
+
 import enum
 from datetime import datetime
 from typing import Optional

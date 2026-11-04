@@ -11,6 +11,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Users in a real Database, an OAuth provider, and the Auth they make up"""
+
 from collections.abc import AsyncGenerator
 from typing import List, Set
 

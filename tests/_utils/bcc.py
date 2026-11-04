@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Utilities for mocking requests to BCC"""
+
 import base64
 import time
 import uuid

@@ -18,6 +18,7 @@ be queried and written one at a time. An element that is a model gets a column p
 Each table also has a `row_id` that orders rows as they were inserted, as MongoDB orders
 documents.
 """
+
 import enum
 import uuid
 from dataclasses import dataclass

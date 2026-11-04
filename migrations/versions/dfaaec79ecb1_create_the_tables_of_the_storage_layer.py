@@ -1,10 +1,11 @@
 """Create the tables of the storage layer
 
 Revision ID: dfaaec79ecb1
-Revises: 
+Revises:
 Create Date: 2026-10-24 01:46:21.217623
 
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa

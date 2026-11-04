@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Tests for the booking endpoints"""
+
 from typing import Dict, List
 
 import pytest

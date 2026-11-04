@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """MongoDB's migrations apply once, in Alembic's order, and roll back"""
+
 import shutil
 
 import pytest

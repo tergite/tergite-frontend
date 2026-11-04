@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Record ids: strings of 24 lowercase hex characters, ordered by creation time"""
+
 import hashlib
 import re
 from typing import Annotated, Any, Optional, Sequence, get_args, get_origin

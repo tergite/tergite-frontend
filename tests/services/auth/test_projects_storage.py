@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The projects service on each database: projects, their members and deletions"""
+
 from types import SimpleNamespace
 
 import pytest

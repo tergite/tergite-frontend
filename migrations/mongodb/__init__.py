@@ -17,6 +17,7 @@ MSS's start script applies the pending ones, in the order of Alembic's revisions
 `mongodb_migrations`, and both bypass document validation, as the validator in place
 belongs to the MSS before the change.
 """
+
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List

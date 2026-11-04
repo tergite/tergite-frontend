@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """The auth service's startup, and what it tells about users"""
+
 import re
 from typing import List, Optional
 

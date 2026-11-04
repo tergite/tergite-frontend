@@ -14,6 +14,7 @@
 
 These query the BCC on behalf of the user, thus they use the BCC client.
 """
+
 from datetime import datetime
 from typing import Optional, Tuple
 

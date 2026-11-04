@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The calibration service on each database: the current calibration and its log"""
+
 import pytest
 
 from libs.storage import Database

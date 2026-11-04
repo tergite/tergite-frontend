@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """The MongoDB backend of the storage layer"""
+
 from .store import MongoStore
 
 __all__ = ["MongoStore"]

@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Data Transfer Objects for app tokens submodule in the auth service"""
+
 from datetime import datetime, timezone
 from typing import List, Optional
 

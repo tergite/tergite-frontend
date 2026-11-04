@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The OAuth providers users sign in with: each one's client, rules and what it grants"""
+
 from dataclasses import dataclass
 from typing import Optional, Tuple
 

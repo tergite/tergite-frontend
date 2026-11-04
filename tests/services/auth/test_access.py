@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The access rules app tokens are checked against, one row per outcome"""
+
 from typing import Optional, Set, Type
 
 import pytest

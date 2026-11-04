@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The SQL backend of the storage layer"""
+
 from .store import SqlStore
 from .tables import get_metadata
 

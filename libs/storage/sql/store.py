@@ -16,6 +16,7 @@ Any SQLAlchemy URL with an async driver works, e.g. `postgresql+asyncpg://` or
 SQLite, foreign keys are switched on and every transaction begins immediately, so a read
 that precedes a write already holds the write lock.
 """
+
 import asyncio
 import contextlib
 from collections import defaultdict

@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 
 """Database: the one object every read and write goes through"""
+
 from typing import Any, Iterator, List, Optional, Sequence, Type, TypeVar
 from urllib.parse import urlsplit
 

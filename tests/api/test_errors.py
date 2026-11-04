@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Tests for the exception handlers of the REST API"""
+
 from typing import List
 
 import pytest

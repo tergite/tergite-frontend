@@ -11,6 +11,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """What authlib needs of the app's user schema"""
+
 from typing import List, Optional, Protocol, Set, TypeVar
 
 

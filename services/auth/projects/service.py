@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Projects: their members, their QPU seconds, and their deletion"""
+
 from typing import Any, Dict, List, Optional
 
 from libs.storage import Database, DuplicateKeyError, derive_id

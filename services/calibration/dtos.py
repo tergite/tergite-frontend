@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Data Transfer Objects for calibration"""
+
 import enum
 from typing import Any, Dict, List, Optional, Union
 

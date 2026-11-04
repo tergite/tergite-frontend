@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The service for sending emails"""
+
 import asyncio
 from contextlib import aclosing
 from typing import List, Optional, Sequence

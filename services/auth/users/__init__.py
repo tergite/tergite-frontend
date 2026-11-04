@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """The users of MSS, kept in the Database and signed in through libs.authlib"""
+
 from .dtos import OAuthAccount, Role, User, UserRead
 
 __all__ = ["OAuthAccount", "Role", "User", "UserRead"]

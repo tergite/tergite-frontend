@@ -10,6 +10,7 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 """Dependencies to be injected"""
+
 from typing import List, Optional, Tuple
 
 from fastapi import Depends, Query
