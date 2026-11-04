@@ -21,6 +21,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Changed
 
+- Changed the debs and macOS packages to install uv's own build of Python with the dependencies `uv.lock` pins, MSS
+  and the dashboard's build, where before they installed Nuitka's standalone build; a release builds them in a minute
+  or two rather than in up to half an hour
+- Repository: Changed the packages' smoke test to serve MSS and fail unless it answers `/health` and serves the
+  dashboard at `/ui/`, where before it only migrated a database, which a package that cannot serve passes
 - Changed the default `mss-config.toml` and `private-mss-key.pem`, and a backend's relative `public_key_path`, to
   be read from the folder MSS starts in, where before they were read from beside MSS's code
 - Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and

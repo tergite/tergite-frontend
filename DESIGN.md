@@ -501,13 +501,16 @@ build MSS serves calls its own origin. `.env.test` also carries the `JWT_SECRET`
 ## 11. Deployment
 
 MSS installs from its release's deb (amd64, Debian 13 and Ubuntu 24.04 onwards) or macOS arm64
-installer, Nuitka's standalone build running as the `tergite-mss` systemd service or launchd daemon on
+installer, `pkg/build.sh`'s `build/mss`, uv's own build of Python with the dependencies `uv.lock`
+pins and MSS's wheel installed into it, and `mss`, which runs `python -I -m main` on it, running as
+the `tergite-mss` systemd service or launchd daemon on
 `8002`. The deb asks debconf where the database is, and its provisioning writes
 `/etc/tergite-mss/mss-config.toml` and the private key; on macOS the config is written by hand
 to `/usr/local/etc/tergite-mss/`. See the [README](README.md#deployment).
 
-The dashboard ships inside MSS's packages: the release builds it with the base `/ui/`, Nuitka
-includes it from `ui/dist`, and MSS serves it at `/ui`
+The dashboard ships inside MSS's packages: the release builds it with the base `/ui/`,
+`pkg/build.sh` copies it from `ui/dist` to `build/mss/dashboard`, which `mss` names in
+`MSS_DASHBOARD_DIR`, and MSS serves it at `/ui`
 ([api/dashboard.py](api/dashboard.py)), sending the paths no file
 has to `index.html` and redirecting `/` to `/ui/`. `MSS_DASHBOARD_DIR` names another folder to
 serve it from, which an MSS installed without its build needs; as the build calls the API on its
