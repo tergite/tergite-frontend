@@ -23,7 +23,8 @@
 #
 # BACKEND_PATH="../tergite-backend" \ # a tergite-backend checkout to run; or else BACKEND_REPO is cloned
 #   BACKEND_REPO="https://github.com/tergite/tergite-backend.git" \
-#   BACKEND_BRANCH="main" \ # the branch or tag of BACKEND_REPO to clone, or main where it has none;
+#   BACKEND_BRANCH="main" \ # the branch or tag of BACKEND_REPO to clone, else the newest
+#     release of its minor one, else main;
 #     default is 'main'
 #   DEBUG="True" \ # Set 'True' to keep the services running and temp-native/ after the tests, default: ''
 #   VISUAL="True" \ # Set 'True' to run the e2e in Playwright's UI mode, default: ''
@@ -105,6 +106,19 @@ replace_str() {
   fi
 }
 
+# prints the repository's newest release of the minor release the given tag is of, e.g.
+# v2026.11.3 for v2026.11.1, as every release of a minor one works with the others; a final
+# release before any candidate, and nothing for a ref of no minor release
+# usage:
+#   get_minor_tag repo tag
+get_minor_tag() {
+  local tags;
+  [[ "$2" =~ ^(v[0-9]{4}\.[0-9]{2})\. ]] || return 0;
+  tags="$(git ls-remote --tags --refs -q "$1" "refs/tags/${BASH_REMATCH[1]}.*" | sed 's|.*refs/tags/||')";
+  { grep -v -- "-rc" <<< "$tags" | sort -V | tail -n 1 | grep .; } \
+    || { grep -- "-rc" <<< "$tags" | sort -V | tail -n 1; } || true;
+}
+
 # starts a command in the background, logging to temp-native/logs/<name>.log, and sets
 # SERVICE_PID to its process ID
 # usage:
@@ -173,8 +187,9 @@ elif [[ -z "$BACKEND_REPO" ]]; then
 else
   # CI names this repository's branch, whose changes may need the backend's of the same name
   if ! git ls-remote --exit-code -q "$BACKEND_REPO" "refs/heads/$BACKEND_BRANCH" "refs/tags/$BACKEND_BRANCH" > /dev/null; then
-    echo "The backend has no branch or tag $BACKEND_BRANCH; cloning main"
-    BACKEND_BRANCH=main
+    minor_tag="$(get_minor_tag "$BACKEND_REPO" "$BACKEND_BRANCH")"
+    echo "The backend has no branch or tag $BACKEND_BRANCH; cloning ${minor_tag:-main}"
+    BACKEND_BRANCH="${minor_tag:-main}"
   fi
   echo "Cloning the backend's $BACKEND_BRANCH..."
   git clone -q --single-branch --branch "$BACKEND_BRANCH" "$BACKEND_REPO" "$WORK_PATH/tergite-backend"

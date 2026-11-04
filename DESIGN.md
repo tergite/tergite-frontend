@@ -507,7 +507,9 @@ reads `tergite-mss.service`'s journal and pushes it with `GRAFANA_LOKI_URL` and 
 | e2e | `ui/playwright` — the Playwright specs, through [dev/e2e_native_test.sh](dev/e2e_native_test.sh), against real MSS + real backends, with MongoDB, all running natively | `BACKEND_PATH=../tergite-backend ./dev/e2e_native_test.sh` |
 
 The e2e runs against the whole stack, so it catches contract drift: from a local
-`tergite-backend` checkout or a clone, it runs one `main.py serve` for all the backends, each
+`tergite-backend` checkout or a clone (of the branch or tag of this one's name, else its newest
+release of the same minor one, as every `v{year}.{month}.x` of the stack works with every
+other, else its `main`), it runs one `main.py serve` for all the backends, each
 under its own path, from the base dependencies, MSS from this checkout serving the dashboard's
 test build at `/ui`, and a MongoDB and a reset service (`dev/e2e_reset_server.py`) of
 its own, all from fresh data in `temp-native/`. It seeds MSS's database from
