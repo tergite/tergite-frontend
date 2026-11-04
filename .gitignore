@@ -148,7 +148,7 @@ mss-config.toml
 # sequencial tests
 .semaphore.lock
 
-# nuitka builds
+# the Nuitka builds of earlier releases, which a checkout may still hold
 main.dist/
 main.build/
 main.onefile-build/

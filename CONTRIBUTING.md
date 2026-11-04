@@ -157,15 +157,15 @@ BACKEND_PATH="../tergite-backend" ./dev/e2e_native_test.sh playwright/home.spec.
 (cd ui && npm ci && npm run build)
 ```
 
-- Build the main.py file with [Nuitka](https://nuitka.net/), on uv's own Python, as Nuitka
-  refuses some others, e.g. Homebrew's
+- Build the folder the packages install, `build/mss`: uv's own build of Python, with the
+  dependencies `uv.lock` pins and MSS installed into it, the dashboard's build, and the `mss`
+  that runs them, for this machine's OS and architecture, in a minute or two
 
 ```shell
-UV_MANAGED_PYTHON=1 uv sync --extra dev
-uv run nuitka main.py
+pkg/build.sh
 ```
 
-- After the build, the app will be at `main.dist/mss`, a folder that must stay whole. You can run it.
+- After the build, the app is `build/mss/mss`, which runs the Python beside it. You can run it.
 
 ```shell
 # create the mss-config.toml
@@ -173,8 +173,8 @@ cp mss-config.example.toml mss-config.toml
 # create the mss private key
 openssl genpkey -algorithm RSA -out private-mss-key.pem -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc
 # migrate the database, MongoDB or SQL, and run the app, with any of `--port`, `--host`,
-# `--forwarded-allow-ips`, `--workers` and `--reload`; `main.dist/mss migrate` or `main.dist/mss serve` does one alone
-MSS_CONFIG_FILE="$PWD/mss-config.toml" PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" main.dist/mss start --port 8002
+# `--forwarded-allow-ips`, `--workers` and `--reload`; `build/mss/mss migrate` or `build/mss/mss serve` does one alone
+MSS_CONFIG_FILE="$PWD/mss-config.toml" PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" build/mss/mss start --port 8002
 ```
 
 ## How to Generate Snapshots for CI

@@ -5,4 +5,5 @@ if not exist "%MSS_CONFIG_FILE%" (
   echo %MSS_CONFIG_FILE% does not exist yet
   exit /b 0
 )
-"%~dp0mss.exe" start --port 8002
+if not defined MSS_DASHBOARD_DIR set "MSS_DASHBOARD_DIR=%~dp0dashboard"
+"%~dp0python\python.exe" -I -m main start --port 8002

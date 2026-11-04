@@ -10,35 +10,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-# a folder the packages install whole, as a onefile binary would unpack itself on every start
-# nuitka-project: --standalone
-# nuitka-project: --output-filename=mss
-# nuitka-project: --include-package=fastapi
-# nuitka-project: --include-package=uvicorn
-# nuitka-project: --include-package=python_multipart
-# nuitka-project: --include-package=httpx
-# nuitka-project: --include-package=httpx_oauth
-# nuitka-project: --include-package=email_validator
-# nuitka-project: --include-package=cryptography
-# nuitka-project: --include-package=websockets
-# nuitka-project: --include-package=aiosmtplib
-# nuitka-project: --include-package=loguru
-# nuitka-project: --include-package=sqlalchemy
-# nuitka-project: --include-package=pymongo
-# nuitka-project: --include-package=aiosqlite
-# nuitka-project: --include-package=jwt
-# nuitka-project: --include-package=asyncpg
-# nuitka-project: --include-package=pydantic
-# nuitka-project: --include-package=alembic
-# uvicorn imports the app by name, which Nuitka cannot follow
-# nuitka-project: --include-module=api
-# nuitka-project: --include-data-files={MAIN_DIRECTORY}/alembic.ini=alembic.ini
-# nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/env.py=migrations/env.py
-# nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/versions/*.py=migrations/versions/
-# nuitka-project: --include-data-files={MAIN_DIRECTORY}/migrations/mongodb/*.json=migrations/mongodb/
-# the dashboard's build, made in ui/ before this one, which MSS serves at /ui
-# nuitka-project: --include-data-dir={MAIN_DIRECTORY}/ui/dist=ui/dist
-
 import argparse
 import logging
 import multiprocessing

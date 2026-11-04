@@ -16,7 +16,7 @@ from typing import Optional
 
 from alembic.config import Config
 
-# beside main.py, in a checkout, a wheel and the Nuitka build
+# beside main.py, in a checkout and in the wheel the packages install
 _MIGRATIONS_DIR = Path(__file__).parents[1] / "migrations"
 
 

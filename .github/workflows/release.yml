@@ -1,6 +1,7 @@
 name: Release
-# Builds MSS's deb for amd64 and pkg for macOS arm64, with the dashboard it serves at /ui, each on that platform since Nuitka
-# cannot cross-compile, smoke-tests them, and attaches them to the GitHub release of a v* tag.
+# Builds MSS's deb for amd64 and pkg for macOS arm64, with the dashboard it serves at /ui, each on
+# that platform, as the Python they ship and some wheels are the platform's, smoke-tests them,
+# and attaches them to the GitHub release of a v* tag.
 # Run by hand, it leaves them as the run's artifacts instead. The rpm, apk and Windows
 # packaging in pkg/ is kept but not built.
 
@@ -15,11 +16,9 @@ on:
         required: true
 
 env:
-  # the Python the binary is built and tested with; uv would otherwise take the newest it can
-  # download, whose wheels may not exist yet
+  # the Python the packages ship; uv would otherwise take the newest it can download, whose
+  # wheels may not exist yet
   UV_PYTHON: "3.13"
-  # uv's own build of it, as Nuitka refuses e.g. Homebrew's on the macOS runners
-  UV_MANAGED_PYTHON: "1"
 
 jobs:
   version:
@@ -84,33 +83,18 @@ jobs:
         with:
           name: dashboard
           path: ui/dist
-      # the runner's apt lists can be out of date, for these and the deb's dependencies alike
-      - run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ccache patchelf
-      - uses: actions/cache/restore@v4
-        with:
-          path: ~/.cache/Nuitka
-          key: mss-nuitka-linux-${{ github.sha }}
-          restore-keys: mss-nuitka-linux-
-      - name: Build the binary
-        run: |
-          uv sync --frozen --extra dev
-          uv run nuitka --assume-yes-for-downloads main.py
-      # also after a failed or timed-out build, so that the next one picks up where it stopped
-      - if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.cache/Nuitka
-          key: mss-nuitka-linux-${{ github.sha }}
+      - name: Build the folder it installs
+        run: pkg/build.sh
       - name: Package it
         run: |
           # nfpm takes a -t that does not exist yet for a file to write
           mkdir -p dist
           docker run --rm -e VERSION -e ARCH -v "$PWD":/src -w /src \
             goreleaser/nfpm:v2.48.0 package -f pkg/nfpm.yaml -p deb -t dist/
-      - name: Install the package and migrate with it
+      - name: Install the package, then migrate and serve with it
+        # the runner's apt lists can be out of date for the deb's dependencies
         run: |
+          sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends ./dist/*.deb
           pkg/smoke-test.sh /usr/bin/tergite-mss
       - uses: actions/upload-artifact@v4
@@ -131,24 +115,10 @@ jobs:
         with:
           name: dashboard
           path: ui/dist
-      # Nuitka's own download of ccache is Intel-only, and its clang then fails under Rosetta
-      - run: brew install ccache
-      - uses: actions/cache/restore@v4
-        with:
-          path: ~/Library/Caches/Nuitka
-          key: mss-nuitka-macos-${{ github.sha }}
-          restore-keys: mss-nuitka-macos-
-      - name: Build the binary
-        run: |
-          uv sync --frozen --extra dev
-          uv run nuitka --assume-yes-for-downloads main.py
-      - if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ~/Library/Caches/Nuitka
-          key: mss-nuitka-macos-${{ github.sha }}
+      - name: Build the folder it installs
+        run: pkg/build.sh
       - run: pkg/macos/build.sh
-      - name: Install the package and migrate with it
+      - name: Install the package, then migrate and serve with it
         run: |
           sudo installer -pkg "dist/tergite-mss-$VERSION-macos-arm64.pkg" -target /
           dscl . -read /Users/_tergite-mss UniqueID

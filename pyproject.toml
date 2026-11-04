@@ -71,9 +71,6 @@ dev = [
     "filelock>=3.12.2",
     "setuptools",
     "asgi-lifespan>=2.1.0",
-    "nuitka>=4.3.1",
-    # compresses Nuitka's onefile binaries; nuitka's sdist does not declare its onefile extra
-    "zstandard>=0.15",
 ]
 
 [project.urls]
@@ -87,7 +84,7 @@ Changelog = "https://github.com/tergite/tergite-frontend/blob/main/CHANGELOG.md"
 mss = "main:main"
 
 [tool.setuptools]
-# the mss command's, beside the packages, as in the Nuitka build
+# the mss command's, beside the packages
 py-modules = ["main", "settings"]
 
 [tool.setuptools.packages.find]
