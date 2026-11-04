@@ -19,16 +19,16 @@ name = "testing"
 url = "mongodb://tergite-mongo:27017"
 
 [[backends]]
-name = "qiskit_pulse_2q"
+name = "sim_2q"
 # the URL where this backend is running
-url = "http://qiskit_pulse_2q:8000"
-public_key_path = "bcc_certs/public-qiskit-pulse-2q-key.pem"
+url = "http://sim_2q:8000"
+public_key_path = "bcc_certs/public-sim-2q-key.pem"
 
 [[backends]]
-name = "qiskit_pulse_1q"
+name = "sim_1q"
 # the URL where this backend is running
-url = "http://qiskit_pulse_1q:8000"
-public_key_path = "bcc_certs/public-qiskit-pulse-1q-key.pem"
+url = "http://sim_1q:8000"
+public_key_path = "bcc_certs/public-sim-1q-key.pem"
 
 [[backends]]
 name = "Loke"

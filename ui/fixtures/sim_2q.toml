@@ -1,6 +1,6 @@
 # backend_config.toml
 [general_config]
-name = "qiskit_pulse_2q"
+name = "sim_2q"
 is_active = true
 characterized = true
 open_pulse = true
