@@ -73,27 +73,27 @@ We no longer support disabling authentication.
 
 #### - How do we allow other Tergite components (e.g. tergite backend) to access MSS, without user intervention?
 
-[//]: # (In future, we could change to using asymmetric keys &#40;public, private&#41; but that would mean MSS keeping public keys for each BCC)
+With key pairs, not app tokens: MSS and each backend (BCC) sign what they send each other with
+their private keys, and check what they receive against the other's public key, as
+[DESIGN.md §3.2](../DESIGN.md#32-job-submission--the-one-flow-that-crosses-everything) details.
 
-Use app tokens created by any user who had the 'system' role. These app (API) token are created in the tergite dashboard.
-Any such token is saved in the `MSS_TOKEN` environment variable in the backend's `.env` file.
-The advantage of using app tokens is that they are more secure because they can easily be revoked and scoped.
-Since they won't be used to run jobs, their project QPU seconds are expected not to run out.
+- MSS signs every request it sends a backend with its private key, `PRIVATE_KEY_FILE`; the
+  backend checks it against its copy of MSS's public key, `BCC_MSS_PUBLIC_KEY_PATH`.
+- A backend signs its websocket handshake to MSS with its own private key,
+  `BCC_PRIVATE_KEY_FILE`; MSS checks it against that backend's `public_key_path` in its
+  `[[backends]]` entry of `mss-config.toml`, whose `name` must be the backend's
+  `BCC_DEFAULT_PREFIX`, and, unless `is_strict_ip = false`, that it comes from the host of the
+  entry's `url`.
 
-If you are in development mode, you can just switch off authentication altogether.
-
-**Note: One must set the `MSS_TOKEN` environment variable in Tergite backend or else it will not be able to communicate with the Tergite frontend**
-
-#### - What happens when the `MSS_TOKEN` in Tergite backend or the project it belongs to expires or is deleted.
-
-Unfortunately, currently, the backend will fail with 'Unauthorized' errors in its logs when it attempts to send results to MSS.
-The admin must therefore find a way of keeping the `MSS_TOKEN` active.
+The backend keeps no token of MSS's, so nothing expires: replacing either side's key pair
+means giving the other side its new public key.
 
 #### - How do I log in?
 
-- You need to run both [MSS](../) and the [dashboard](../ui/).
-- **Make sure that your `mss-config.toml` files have all variables filled appropriately** for example, both applications should have the same `jwt_secret`.
-- The dashboard, when running will redirect you to the login page if you are not already logged in.
+- Open the dashboard, which MSS serves at `/ui`, e.g. http://127.0.0.1:8002/ui; it builds into
+  `ui/dist` for MSS to serve, as the [README](../README.md) describes.
+- **Make sure that your `mss-config.toml` file has all variables filled appropriately**.
+- The dashboard redirects you to the login page if you are not already logged in.
 - However, you can also log in without running the dashboard first. See the next FAQ.
 
 #### - How do I log in without having to run the dashboard?
@@ -117,10 +117,9 @@ The admin must therefore find a way of keeping the `MSS_TOKEN` active.
 
 #### - Why do I keep being redirected back to the login page even after successful login?
 
-The likely cause is the `cookie_domain` variable in the `mss_config.toml`. It needs to be the same as the domain you visit the dashboard on in the web browser.  
-It also needs to be the same domain that your `MSS_URL` environment variable is in the `.env` file.
+The likely cause is the `cookie_domain` variable in the `[auth]` of `mss-config.toml`. It needs to be the same as the domain you visit the dashboard on in the web browser.
 
-**A big culprit is the localhost vs 127.0.0.1. Make sure you use 127.0.0.1 in all both your `.env` and `mss_config.toml`. Visit the browser also at 127.0.0.1:3000**
+**A big culprit is localhost vs 127.0.0.1: if `cookie_domain` is 127.0.0.1, open the dashboard at http://127.0.0.1:8002/ui, not at localhost.**
 
 #### - How does BCC (backend) get authenticated?
 
