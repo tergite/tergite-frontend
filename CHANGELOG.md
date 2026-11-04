@@ -10,6 +10,13 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.5] - 2026-11-04
+
+### Changed
+
+- Repository: Changed the e2e to run against the backend's newest release of the same minor where it has no branch or
+  tag of this one's name, where before it ran against the backend's `main`
+
 ## [2026.11.0-rc.4] - 2026-11-04
 
 ### Added
