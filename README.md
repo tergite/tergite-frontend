@@ -78,6 +78,21 @@ config must be the host you open it at.
 MSS serves the build it ships with; `MSS_DASHBOARD_DIR` may name another folder holding the
 dashboard's build of the same release, and MSS fails to start when that folder does not exist.
 
+### Install as a uv tool
+
+To run MSS without its packages or a checkout, install it from its repository as a
+[uv tool](https://docs.astral.sh/uv/guides/tools/), and give it the dashboard's build of the
+same release in `MSS_DASHBOARD_DIR`; without one, MSS serves its API alone.
+
+```shell
+uv tool install git+https://github.com/tergite/tergite-frontend@v<version>
+MSS_DASHBOARD_DIR=/srv/tergite-mss/dashboard mss start
+```
+
+It reads `mss-config.toml` and `private-mss-key.pem` in the folder it starts in, or the files
+`MSS_CONFIG_FILE` and `PRIVATE_KEY_FILE` name; a backend's relative `public_key_path` is in that
+folder too.
+
 ### Logs
 
 To ship MSS's journal to Grafana Loki, install [Grafana Alloy](https://grafana.com/docs/alloy/latest/set-up/install/)

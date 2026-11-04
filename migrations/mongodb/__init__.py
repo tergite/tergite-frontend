@@ -22,15 +22,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
-from alembic.config import Config
 from alembic.script import ScriptDirectory
 from bson import json_util
 from pymongo.database import Database
 
+from utils.migrations import get_alembic_config
+
 RECORDS_COLLECTION = "mongodb_migrations"
 
 _MIGRATIONS_DIR = Path(__file__).parent
-_APP_ROOT = _MIGRATIONS_DIR.parent.parent
 
 
 def upgrade(database: Database) -> List[str]:
@@ -76,9 +76,7 @@ def _get_migration_files() -> Dict[str, Path]:
 
 def _get_revisions() -> List[str]:
     """Alembic's revisions, oldest first"""
-    config = Config(str(_APP_ROOT / "alembic.ini"))
-    config.set_main_option("script_location", str(_APP_ROOT / "migrations"))
-    scripts = list(ScriptDirectory.from_config(config).walk_revisions())
+    scripts = list(ScriptDirectory.from_config(get_alembic_config()).walk_revisions())
     return [script.revision for script in reversed(scripts)]
 
 

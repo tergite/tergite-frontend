@@ -40,15 +40,13 @@
 # nuitka-project: --include-data-dir={MAIN_DIRECTORY}/ui/dist=ui/dist
 
 import argparse
+import logging
 import multiprocessing
 import sys
-from pathlib import Path
 
 import uvicorn
 
 import settings
-
-_ROOT = Path(__file__).parent
 
 
 def main() -> None:
@@ -110,10 +108,10 @@ def _migrate() -> None:
     """Brings the configured database to the latest schemas"""
     # here, as importing them costs the server some 20 MiB
     from alembic import command
-    from alembic.config import Config
     from pymongo import MongoClient
 
     import migrations.mongodb
+    from utils.migrations import get_alembic_config
 
     database_url = settings.CONFIG.database.full_url
     if database_url.startswith("mongodb"):
@@ -121,7 +119,10 @@ def _migrate() -> None:
             applied = migrations.mongodb.upgrade(client.get_default_database())
         print(f"MongoDB migrations applied: {applied or 'none pending'}")
     else:
-        command.upgrade(Config(str(_ROOT / "alembic.ini")), "head")
+        # Alembic's progress, as alembic.ini's loggers print it when run by hand
+        logging.basicConfig(format="%(levelname)-5.5s [%(name)s] %(message)s")
+        logging.getLogger("alembic").setLevel(logging.INFO)
+        command.upgrade(get_alembic_config(), "head")
 
 
 def _serve(

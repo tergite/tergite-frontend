@@ -81,8 +81,17 @@ Documentation = "https://github.com/tergite/tergite-frontend/tree/main/docs"
 Issues = "https://github.com/tergite/tergite-frontend/issues"
 Changelog = "https://github.com/tergite/tergite-frontend/blob/main/CHANGELOG.md"
 
+[project.scripts]
+mss = "main:main"
+
+[tool.setuptools]
+# the mss command's, beside the packages, as in the Nuitka build
+py-modules = ["main", "settings"]
+
 [tool.setuptools.packages.find]
-exclude = ["docs*", "tests*", "ui*"]
+# migrations has no __init__.py, which Alembic loads by path; its mongodb JSONs come as the
+# files git tracks in it
+include = ["api*", "libs*", "services*", "utils*", "migrations*"]
 
 [tool.ruff]
 target-version = "py313"

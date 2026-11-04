@@ -14,9 +14,13 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 - Added `MSS_DASHBOARD_DIR`, the folder of the dashboard's build MSS serves at `/ui`, where before
   MSS could only serve the build in `ui/dist` beside its code
+- Added the `mss` command to the package, so `uv tool install` installs MSS from its repository with its
+  migrations, where before only the deb and macOS installers ran it outside a checkout
 
 ### Changed
 
+- Changed the default `mss-config.toml` and `private-mss-key.pem`, and a backend's relative `public_key_path`, to
+  be read from the folder MSS starts in, where before they were read from beside MSS's code
 - Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and
   finds what pyflakes did; contributors run `ruff format` and `ruff check` where they ran the three
 
