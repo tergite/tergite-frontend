@@ -75,6 +75,9 @@ MSS serves the dashboard at `/ui`, to which `/` redirects: open
 [http://localhost:8002/ui](http://localhost:8002/ui). The `cookie_domain` of `[auth]` in MSS's
 config must be the host you open it at.
 
+MSS serves the build it ships with; `MSS_DASHBOARD_DIR` may name another folder holding the
+dashboard's build of the same release, and MSS fails to start when that folder does not exist.
+
 ### Logs
 
 To ship MSS's journal to Grafana Loki, install [Grafana Alloy](https://grafana.com/docs/alloy/latest/set-up/install/)

@@ -490,7 +490,9 @@ to `/usr/local/etc/tergite-mss/`. See the [README](README.md#deployment).
 The dashboard ships inside MSS's packages: the release builds it with the base `/ui/`, Nuitka
 includes it from `ui/dist`, and MSS serves it at `/ui`
 ([api/dashboard.py](api/dashboard.py)), sending the paths no file
-has to `index.html` and redirecting `/` to `/ui/`.
+has to `index.html` and redirecting `/` to `/ui/`. `MSS_DASHBOARD_DIR` names another folder to
+serve it from, which an MSS installed without its build needs; as the build calls the API on its
+own origin, one build serves any MSS of its release.
 
 MSS answers `GET /health` with 200, left out of uvicorn's access log (`UNLOGGED_PATHS`), so
 that a frequent probe does not bury real traffic.

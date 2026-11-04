@@ -10,6 +10,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Added
+
+- Added `MSS_DASHBOARD_DIR`, the folder of the dashboard's build MSS serves at `/ui`, where before
+  MSS could only serve the build in `ui/dist` beside its code
+
 ### Changed
 
 - Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and
