@@ -10,6 +10,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.4] - 2026-11-04
+
 ### Added
 
 - Added a project's `is_pulse_allowed`, which only a superuser sets, and which MSS sends the backend on asking

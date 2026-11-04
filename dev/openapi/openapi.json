@@ -3299,7 +3299,7 @@
   "info": {
     "description": "A frontend to all our quantum backends",
     "title": "Main Service Server",
-    "version": "2026.11.0-rc.3"
+    "version": "2026.11.0-rc.4"
   },
   "openapi": "3.1.0",
   "paths": {
