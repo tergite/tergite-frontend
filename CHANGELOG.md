@@ -12,6 +12,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Added
 
+- Repository: Added CI jobs running the API tests with MSS on SQLite and on PostgreSQL, beside the MongoDB run, which
+  alone let a backend's device fail to register on SQL go unnoticed
 - Added `MSS_DASHBOARD_DIR`, the folder of the dashboard's build MSS serves at `/ui`, where before
   MSS could only serve the build in `ui/dist` beside its code
 - Added the `mss` command to the package, so `uv tool install` installs MSS from its repository with its

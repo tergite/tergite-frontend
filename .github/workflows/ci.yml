@@ -61,6 +61,42 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
+  # the API tests again with the app on each SQL database, a job each, beside the one above,
+  # which runs it on MongoDB only, where the packages set up PostgreSQL
+  mss-api-on-sql:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        database-url:
+          - "sqlite+aiosqlite:////tmp/mss-api.db"
+          - "postgresql+asyncpg://tergite:tergite@localhost:5432/tergite_test"
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: tergite
+          POSTGRES_PASSWORD: tergite
+          POSTGRES_DB: tergite_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tergite"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Run the API tests
+        env:
+          UV_PYTHON: "3.13"
+          TEST_DATABASE_URL: ${{ matrix.database-url }}
+        run: |
+          uv sync --frozen --extra dev
+          uv run pytest tests/api
+
   dashboard:
     runs-on: ubuntu-latest
     env:
