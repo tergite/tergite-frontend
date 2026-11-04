@@ -21,6 +21,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ### Changed
 
+- Repository: Changed the packages' smoke test to serve MSS and fail unless it answers `/health` and serves the
+  dashboard at `/ui/`, where before it only migrated a database, which a package that cannot serve passes
 - Changed the default `mss-config.toml` and `private-mss-key.pem`, and a backend's relative `public_key_path`, to
   be read from the folder MSS starts in, where before they were read from beside MSS's code
 - Repository: Changed MSS's linting from black, isort and pyflakes to ruff, which formats, sorts the imports and
