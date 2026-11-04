@@ -34,6 +34,7 @@ from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from libs.storage import Id, Schema, StorageSpec, generate_id
+from services.external.bcc import events as bcc_events
 from utils.api import GeneralMessage
 from utils.models import create_partial_model
 
@@ -66,8 +67,6 @@ class DeviceSwitchData(BaseModel):
 class DeviceUpsert(BaseModel):
     """The schema for upserting device"""
 
-    model_config = ConfigDict(extra="allow")
-
     name: str
     version: str
     number_of_qubits: int
@@ -98,10 +97,7 @@ class Device(Schema, DeviceUpsert):
     """The Schema for the devices"""
 
     __storage__ = StorageSpec(table="devices", key="name", indexes=("name",))
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="allow",
-    )
+    model_config = ConfigDict(from_attributes=True)
 
     id: Id
     created_at: Optional[str] = None
@@ -142,12 +138,20 @@ type DeviceEventHandler = Callable[..., Awaitable[GeneralMessage]]
 """An event's handler, called with the device, the event's data and the database"""
 
 
-_EVENT_DATA_CLASSES: Dict[DeviceEventName, Type[DeviceEventData]] = {
-    DeviceEventName.INITIALIZED: DeviceUpsert,
-    DeviceEventName.RECALIBRATED: DeviceCalibrationCreate,
-    DeviceEventName.JOB_UPDATED: JobUpdate,
-    DeviceEventName.SWITCHED_OFF: DeviceSwitchData,
-    DeviceEventName.SWITCHED_ON: DeviceSwitchData,
+# a job's update carries what changed, as an older backend sent it
+_SentJobUpdate = create_partial_model("SentJobUpdate", original=bcc_events.Job)
+# what each event carries, as the backend's spec declares it, and what MSS keeps of it
+_EVENT_DATA_CLASSES: Dict[
+    DeviceEventName, Tuple[Type[BaseModel], Type[DeviceEventData]]
+] = {
+    DeviceEventName.INITIALIZED: (bcc_events.Device, DeviceUpsert),
+    DeviceEventName.RECALIBRATED: (
+        bcc_events.DeviceCalibration,
+        DeviceCalibrationCreate,
+    ),
+    DeviceEventName.JOB_UPDATED: (_SentJobUpdate, JobUpdate),
+    DeviceEventName.SWITCHED_OFF: (bcc_events.DeviceSwitchData, DeviceSwitchData),
+    DeviceEventName.SWITCHED_ON: (bcc_events.DeviceSwitchData, DeviceSwitchData),
 }
 
 
@@ -158,27 +162,29 @@ class DeviceEvent(BaseModel):
     name: DeviceEventName
     data: DeviceEventData
 
-    @field_validator("data", mode="after")
+    @field_validator("data", mode="before")
     @classmethod
-    def validate_data(
-        cls, value: DeviceEventData, info: ValidationInfo
-    ) -> DeviceEventData:
-        """Validates the data depending on the name type
+    def validate_data(cls, value: Any, info: ValidationInfo) -> DeviceEventData:
+        """Reads the event's data as the backend's spec declares what the event's name
+        carries, dropping what it does not declare, then as what MSS keeps of it
 
         Args:
-            value: the event's data
+            value: the event's data, as the backend sent it
             info: the event's fields validated so far, including its name
 
         Returns:
-            the data, if it is of the type the event's name expects
-        """
-        expected_data_cls = _EVENT_DATA_CLASSES[info.data["name"]]
-        if not isinstance(value, expected_data_cls):
-            raise ValueError(
-                f"data must be of type {expected_data_cls.__name__}, was {type(value)}"
-            )
+            what MSS keeps of the data
 
-        return value
+        Raises:
+            ValueError: the data is not what the event's name carries
+        """
+        if "name" not in info.data:
+            raise ValueError("the event has no valid name")
+        sent_cls, kept_cls = _EVENT_DATA_CLASSES[info.data["name"]]
+        if isinstance(value, kept_cls):
+            return value
+        sent = sent_cls.model_validate(value)
+        return kept_cls.model_validate(sent.model_dump(mode="json", exclude_unset=True))
 
 
 DeviceQuery = create_partial_model(

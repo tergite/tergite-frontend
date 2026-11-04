@@ -119,6 +119,22 @@ test mss:
     - echo "PYTEST_ARGS='${PYTEST_ARGS:-}'"
     - uv run pytest ${PYTEST_ARGS:-}
 
+# the API tests again with the app on each SQL database, a job each, beside test mss, which
+# runs it on MongoDB only, where the packages set up PostgreSQL; none of these runs the
+# storage tests, which empty the PostgreSQL database per test
+test mss api on sql:
+  needs: []
+  stage: tests
+  <<: *setup_mss
+  parallel:
+    matrix:
+      - VERSION: ["3.13"]
+        TEST_DATABASE_URL:
+          - "sqlite+aiosqlite:////tmp/mss-api.db"
+          - "postgresql+asyncpg://tergite:tergite@postgres:5432/tergite_test"
+  script:
+    - uv run pytest tests/api
+
 # On a v* tag, as .github/workflows/release.yml does on GitHub: MSS's deb and macOS
 # installer, with the dashboard it serves at /ui, each built on its platform as Nuitka cannot
 # cross-compile, uploaded to this project's package registry and linked from the release.

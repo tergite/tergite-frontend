@@ -1931,6 +1931,8 @@ export interface components {
          */
         CouplersCalibration: {
             anharmonicity?: components["schemas"]["CalibrationValue"] | null;
+            /** Control Qubit */
+            control_qubit?: string | null;
             control_rz_lambda?: components["schemas"]["CalibrationValue"] | null;
             coupling_strength_02?: components["schemas"]["CalibrationValue"] | null;
             coupling_strength_12?: components["schemas"]["CalibrationValue"] | null;
@@ -1942,12 +1944,16 @@ export interface components {
             cz_pulse_phase_offset?: components["schemas"]["CalibrationValue"] | null;
             frequency?: components["schemas"]["CalibrationValue"] | null;
             frequency_detuning?: components["schemas"]["CalibrationValue"] | null;
+            /** Full Name */
+            full_name?: string | null;
             /** Id */
             id?: number | null;
             pulse_type?: components["schemas"]["CalibrationValue"] | null;
+            /** Short Name */
+            short_name?: string | null;
+            /** Target Qubit */
+            target_qubit?: string | null;
             target_rz_lambda?: components["schemas"]["CalibrationValue"] | null;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * CreatedJobResponse
@@ -2069,8 +2075,6 @@ export interface components {
             updated_at?: string | null;
             /** Version */
             version: string;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * DeviceCalibration
@@ -2193,8 +2197,6 @@ export interface components {
             updated_at?: string | null;
             /** User Id */
             user_id?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * JobCreate
@@ -2227,8 +2229,6 @@ export interface components {
             ][][][];
             /** Shots */
             shots?: number | null;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * JobResultCircuit
@@ -2685,6 +2685,8 @@ export interface components {
             /** Id */
             id?: number | null;
             index?: components["schemas"]["CalibrationValue"] | null;
+            /** Name */
+            name?: string | null;
             pi_pulse_amplitude?: components["schemas"]["CalibrationValue"] | null;
             pi_pulse_duration?: components["schemas"]["CalibrationValue"] | null;
             pi_pulse_motzoi?: components["schemas"]["CalibrationValue"] | null;
@@ -2697,8 +2699,6 @@ export interface components {
             xy_drive_line?: components["schemas"]["CalibrationValue"] | null;
             y_position?: components["schemas"]["CalibrationValue"] | null;
             z_drive_line?: components["schemas"]["CalibrationValue"] | null;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * RecalibrationInfo
@@ -2833,6 +2833,8 @@ export interface components {
             /** Id */
             id?: number | null;
             index?: components["schemas"]["CalibrationValue"] | null;
+            /** Name */
+            name?: string | null;
             pulse_amplitude?: components["schemas"]["CalibrationValue"] | null;
             pulse_delay?: components["schemas"]["CalibrationValue"] | null;
             pulse_duration?: components["schemas"]["CalibrationValue"] | null;
@@ -2840,8 +2842,6 @@ export interface components {
             readout_line?: components["schemas"]["CalibrationValue"] | null;
             x_position?: components["schemas"]["CalibrationValue"] | null;
             y_position?: components["schemas"]["CalibrationValue"] | null;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * RqJobStatus

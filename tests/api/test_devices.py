@@ -130,6 +130,39 @@ def test_read_one_device(db, client, name: str, user_jwt_cookie):
         assert expected == got
 
 
+def test_create_device_drops_fields_the_backend_does_not_declare(db, client):
+    """rc.7's backend sent its config's values twice, the second time under names neither
+    side declares, which SQL refused"""
+    payload = _SAMPLE_DEVICES[0]
+    name = payload["name"]
+    duplicates = {
+        "num_qubits": payload["number_of_qubits"],
+        "num_couplers": 0,
+        "num_resonators": 0,
+        "online_date": "2026-11-04T00:00:00Z",
+        "simulator": False,
+    }
+
+    with client as client:
+        with client.websocket_connect(
+            f"/devices/ws/{name}", headers=create_bcc_headers(name)
+        ) as client:
+            client.send_json(
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "initialized",
+                    "data": {**payload, **duplicates},
+                }
+            )
+            json_response = client.receive_json()
+            final_data_in_db = _get_stored_devices(db)
+
+    assert json_response["status"] == "success"
+    pop_field(final_data_in_db, "created_at")
+    pop_field(final_data_in_db, "updated_at")
+    assert final_data_in_db == [_get_connected(payload)]
+
+
 @pytest.mark.parametrize("payload", _SAMPLE_DEVICES)
 def test_create_device(db, client, payload: Dict[str, Any]):
     """DeviceEvent with name 'initialized' to /devices/ws/{name} creates a new device if it does not exist"""

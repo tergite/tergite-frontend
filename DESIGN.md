@@ -357,9 +357,28 @@ handler for its name:
 
 Handlers reply with an `EventResponse` per frame and never kill the socket: validation
 errors become `{"status": "error", "detail": …}`, and a device attempting to edit another
-device's record raises `ForbiddenError` → `forbidden`. Adding an event means adding an
-enum member in `services/devices/dtos.py`, and a handler and its entry in `EVENT_HANDLERS` in
+device's record raises `ForbiddenError` → `forbidden`. Adding an event means adding it to
+tergite-backend's spec first, then an enum member and its entry in `_EVENT_DATA_CLASSES` in
+`services/devices/dtos.py`, and a handler and its entry in `EVENT_HANDLERS` in
 `services/devices/events.py`.
+
+#### The events' schemas
+
+tergite-backend's OpenAPI spec is the source of what its events carry: `DeviceEvent`, with
+`Device`, `DeviceCalibration`, `Job` and `DeviceSwitchData`, and `EventResponse`, MSS's reply.
+`dev/openapi/sync.sh` copies it into `dev/openapi/bcc.json` and generates
+`services/external/bcc/events.py` from it, which `tests/test_openapi.py` fails on when stale.
+
+- **Nothing undeclared passes.** An event's data is read with the generated model of what its
+  name carries, a `job_updated` as a partial job, which drops what the spec does not declare,
+  and what MSS keeps is read from that; MSS's device, calibration and job schemas declare their
+  fields alone. A test fails on a field the spec declares, however deep, that MSS neither
+  declares nor lists in `_NOT_KEPT` with why it leaves it out.
+- **Changes are additive.** A field is added as optional with a default, so that an MSS
+  without it drops it and a backend without it is still read; it is never renamed, retyped or
+  removed in a release, but kept, and deprecated, for one release before it goes.
+- **In order:** the backend's spec first, then MSS syncs it and declares where it keeps the
+  field, then the SDK regenerates its models from both specs.
 
 ## 8. Data
 

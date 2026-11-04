@@ -28,6 +28,8 @@ APP_ROOT = Path(__file__).resolve().parent.parent
 BASELINE_FILE = Path(__file__).parent / "fixtures" / "styleguide_baseline.txt"
 SOURCE_ROOTS = ("api", "services", "utils", "libs", "settings.py")
 ALL_ROOTS = SOURCE_ROOTS + ("tests",)
+# generated from tergite-backend's spec, in its names
+EXCLUDED_FILES = ("services/external/bcc/events.py",)
 
 # a new verb is added here in review, never to the baseline; from_* and to_* convert a DTO
 VERBS = frozenset(
@@ -334,7 +336,10 @@ def _iter_python_files(app_root: Path, roots: Tuple[str, ...]) -> Iterator[Path]
             yield path
         elif path.is_dir():
             yield from sorted(
-                file for file in path.rglob("*.py") if "__pycache__" not in file.parts
+                file
+                for file in path.rglob("*.py")
+                if "__pycache__" not in file.parts
+                and file.relative_to(app_root).as_posix() not in EXCLUDED_FILES
             )
 
 
