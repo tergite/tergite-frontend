@@ -25,7 +25,7 @@ from typing import (
 )
 
 from fastapi import Query
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer
+from pydantic import BaseModel, Field, computed_field, field_serializer
 
 from libs.storage import Id, Schema, StorageSpec
 from utils.crypto import get_uuid4_str
@@ -128,10 +128,6 @@ class JobResultCircuit(BaseModel):
 class JobResult(BaseModel):
     """The results of the job"""
 
-    model_config = ConfigDict(
-        extra="allow",
-    )
-
     memory: Union[HexMemory, IQMemory] = []
     # how the job ran, which the backend sends with its memory, so that a client can read
     # the memory back without the job's payload; none from an older backend
@@ -147,10 +143,6 @@ class Job(Schema, JobCreate):
     __storage__ = StorageSpec(
         table="jobs", key="job_id", indexes=("job_id",), should_skip_invalid=True
     )
-    model_config = ConfigDict(
-        extra="allow",
-    )
-
     # never stored nor sent: a job is known by its job_id
     id: Optional[Id] = Field(default=None, exclude=True)
     job_id: str = Field(default_factory=get_uuid4_str)

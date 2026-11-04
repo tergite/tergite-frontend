@@ -101,12 +101,11 @@ async def upsert_device(database: Database, payload: DeviceUpsert) -> Device:
         ValidationError: if the final object could not be validated
     """
     timestamp = get_current_timestamp()
-    payload.updated_at = timestamp
     await database.update_one(
         Device,
         filter={"name": payload.name},
         update={
-            "$set": payload.model_dump(exclude_none=True),
+            "$set": {**payload.model_dump(exclude_none=True), "updated_at": timestamp},
             "$setOnInsert": {"created_at": timestamp},
         },
         should_upsert=True,

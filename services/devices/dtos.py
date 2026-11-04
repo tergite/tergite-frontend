@@ -67,8 +67,6 @@ class DeviceSwitchData(BaseModel):
 class DeviceUpsert(BaseModel):
     """The schema for upserting device"""
 
-    model_config = ConfigDict(extra="allow")
-
     name: str
     version: str
     number_of_qubits: int
@@ -99,10 +97,7 @@ class Device(Schema, DeviceUpsert):
     """The Schema for the devices"""
 
     __storage__ = StorageSpec(table="devices", key="name", indexes=("name",))
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="allow",
-    )
+    model_config = ConfigDict(from_attributes=True)
 
     id: Id
     created_at: Optional[str] = None

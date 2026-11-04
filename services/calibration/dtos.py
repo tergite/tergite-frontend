@@ -44,7 +44,7 @@ class CalibrationValue(BaseModel):
     date: Optional[str] = None
 
 
-class QubitCalibration(BaseModel, extra="allow"):
+class QubitCalibration(BaseModel):
     """Schema for the calibration data of the qubit"""
 
     t1_decoherence: Optional[CalibrationValue] = None
@@ -64,9 +64,11 @@ class QubitCalibration(BaseModel, extra="allow"):
     y_position: Optional[CalibrationValue] = None
     xy_drive_line: Optional[CalibrationValue] = None
     z_drive_line: Optional[CalibrationValue] = None
+    # e.g. q12, which the backend computes from the id
+    name: Optional[str] = None
 
 
-class ResonatorCalibration(BaseModel, extra="allow"):
+class ResonatorCalibration(BaseModel):
     """Schema for the calibration data of the resonator"""
 
     acq_delay: Optional[CalibrationValue] = None
@@ -81,9 +83,11 @@ class ResonatorCalibration(BaseModel, extra="allow"):
     x_position: Optional[CalibrationValue] = None
     y_position: Optional[CalibrationValue] = None
     readout_line: Optional[CalibrationValue] = None
+    # e.g. q12, which the backend computes from the id
+    name: Optional[str] = None
 
 
-class CouplersCalibration(BaseModel, extra="allow"):
+class CouplersCalibration(BaseModel):
     """Schema for the calibration data of the coupler"""
 
     frequency: Optional[CalibrationValue] = None
@@ -101,6 +105,12 @@ class CouplersCalibration(BaseModel, extra="allow"):
     target_rz_lambda: Optional[CalibrationValue] = None
     pulse_type: Optional[CalibrationValue] = None
     id: Optional[int] = None
+    # e.g. u1, which the backend computes from the id
+    short_name: Optional[str] = None
+    # the qubits it couples, e.g. q12_q13
+    full_name: Optional[str] = None
+    control_qubit: Optional[str] = None
+    target_qubit: Optional[str] = None
 
 
 class PulseFrameKind(str, enum.Enum):
