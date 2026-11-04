@@ -5,8 +5,8 @@
 FROM ubuntu:24.04
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /usr/local/bin/
-COPY --from=node:20-bookworm-slim /usr/local/bin/node /usr/local/bin/
-COPY --from=node:20-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node:26-bookworm-slim /usr/local/bin/node /usr/local/bin/
+COPY --from=node:26-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 RUN apt-get update -qq \
   # make, for Nuitka's parallel LTO linking

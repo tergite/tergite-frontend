@@ -11,7 +11,7 @@ variables:
   NFPM_SHA256: 6d7f9a28b2f397934403950fcbba83f598b08d02edbe79a0815b3b4897341750
 
 .setup_dashboard: &setup_dashboard
-  image: mcr.microsoft.com/playwright:v1.64.0-noble
+  image: mcr.microsoft.com/playwright:v1.64.1-noble
   variables:
     FF_NETWORK_PER_BUILD: 1
   cache:
@@ -75,7 +75,7 @@ test dashboard:
 # the dashboard's Playwright suite against MSS and the backends, seeded from its fixtures
 e2e:
   needs: []
-  image: mcr.microsoft.com/playwright:v1.64.0-noble
+  image: mcr.microsoft.com/playwright:v1.64.1-noble
   stage: e2e
   variables:
     BACKEND_REPO: "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_NAMESPACE}/tergite-backend.git"

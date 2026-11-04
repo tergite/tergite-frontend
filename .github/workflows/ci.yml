@@ -71,7 +71,7 @@ jobs:
       - name: Set up Nodejs 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 26
       - name: Lint
         run: |
           cd ui
@@ -92,7 +92,7 @@ jobs:
       - name: Set up Nodejs 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 26
       - uses: astral-sh/setup-uv@v6
       - name: Install MongoDB and SQLite
         run: |
