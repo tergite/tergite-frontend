@@ -94,7 +94,8 @@ cookie_domain = "127.0.0.1"
 # name of the cookie to be used when authenticating
 cookie_name = "tergiteauth"
 
-# The OAuth2 or OpenID providers users log in with.
+# The OAuth2 or OpenID providers users log in with. In development, `npm run dev` serves
+# http://127.0.0.1:8002/ui/dev-login.html, which logs in as any seeded user without one.
 # PRODUCTION: add at least one
 #
 # [[auth.clients]]

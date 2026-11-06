@@ -15,8 +15,8 @@ if [ "$(uname -s)" = Darwin ]; then
 else
 	installed_at=/usr/lib/tergite-mss
 fi
-[ -f ui/dist/index.html ] || {
-	echo "ui/dist has no dashboard: run npm ci and npm run build in ui/ first" >&2
+[ -f ui/dist/index.html ] && [ ! -f ui/dist/dev-login.html ] || {
+	echo "ui/dist has no dashboard, or npm run dev's stub: run npm ci and npm run build in ui/ first" >&2
 	exit 1
 }
 

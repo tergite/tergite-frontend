@@ -10,6 +10,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Added
+
+- Dashboard: Added a development-only login as any seeded user, linked from the login page under `npm run dev`,
+  where before logging in locally needed an OAuth app registered with a provider
+
 ### Changed
 
 - Dashboard: Changed `npm run dev` to replace `ui/dist` with a page that redirects MSS's `/ui` to vite, and to start
