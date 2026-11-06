@@ -194,7 +194,7 @@ interface RunData {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function loadRun(queryClient: QueryClient) {
+export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(async ({ request }): Promise<RunData> => {
     const [devices, projects, currentUser] = await Promise.all([
       queryClient.ensureQueryData(devicesQuery),

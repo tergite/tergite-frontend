@@ -35,7 +35,7 @@ import {
 import { Approvals, loader as approvalsLoader } from "./pages/approvals";
 import { Settings, loader as settingsLoader } from "./pages/settings";
 import { MyRequests, loader as myRequestsLoader } from "./pages/requests";
-import { Run, loadRun } from "./pages/run";
+import { Run, loader as runLoader } from "./pages/run";
 
 export const routes = createRoutesFromElements(
   <>
@@ -47,7 +47,7 @@ export const routes = createRoutesFromElements(
     >
       <Route errorElement={<ErrorAlert />}>
         <Route index element={<Home />} loader={homeLoader(queryClient)} />
-        <Route path="run" element={<Run />} loader={loadRun(queryClient)} />
+        <Route path="run" element={<Run />} loader={runLoader(queryClient)} />
         <Route
           path="devices"
           element={<Devices />}
