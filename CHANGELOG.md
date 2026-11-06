@@ -10,6 +10,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed MSS failing to start on a SQLite url with a relative path, e.g. `sqlite+aiosqlite:///db.sqlite3`, which it
+  turned into an unparseable `sqlite+aiosqlite:/db.sqlite3`
+
 ## [2026.11.0-rc.6] - 2026-11-04
 
 ### Added

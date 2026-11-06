@@ -26,6 +26,8 @@ from utils.config import DatabaseConfig
             "mongodb+srv://user:pw@cluster.example.com/?retryWrites=true",
             "mongodb+srv://user:pw@cluster.example.com/tergite?retryWrites=true",
         ),
+        ("sqlite+aiosqlite:///db.sqlite3", "sqlite+aiosqlite:///db.sqlite3"),
+        ("sqlite+aiosqlite:////srv/db.sqlite3", "sqlite+aiosqlite:////srv/db.sqlite3"),
     ],
 )
 def test_the_database_name_fills_a_url_without_a_path(url, expected):
