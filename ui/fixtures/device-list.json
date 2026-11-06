@@ -340,5 +340,76 @@
     "number_of_couplers": 5,
     "number_of_resonators": 5,
     "qubit_ids": ["q0", "q1", "q2", "q3", "q4"]
+  },
+  {
+    "id": "6908f1a2c3d4e5f60718293c",
+    "name": "sim_1q",
+    "basis_gates": [
+      "rz",
+      "sx",
+      "x",
+      "rx",
+      "measure",
+      "reset",
+      "delay"
+    ],
+    "characterized": true,
+    "coordinates": [
+      [
+        0,
+        0
+      ]
+    ],
+    "coupling_dict": {},
+    "coupling_map": [
+      [
+        0,
+        0
+      ]
+    ],
+    "description": "A simulated transmon",
+    "dt": 1e-09,
+    "dtm": 1e-09,
+    "gates": {
+      "u": {
+        "qubits": [
+          0
+        ],
+        "qasm_def": "gate id q { U(0, 0, 0) q; }",
+        "parameters": []
+      },
+      "h": {
+        "qubits": [
+          0
+        ],
+        "qasm_def": "gate id q { U(0, 0, 0) q; }",
+        "parameters": []
+      },
+      "x": {
+        "qubits": [
+          0
+        ],
+        "qasm_def": "gate id q { U(0, 0, 0) q; }",
+        "parameters": []
+      }
+    },
+    "is_active": true,
+    "is_online": true,
+    "is_simulator": true,
+    "last_online": null,
+    "meas_map": [
+      [
+        0
+      ]
+    ],
+    "number_of_couplers": 0,
+    "number_of_qubits": 1,
+    "number_of_resonators": 1,
+    "open_pulse": true,
+    "qubit_ids": [
+      "q12"
+    ],
+    "qubit_ids_coupler_map": [],
+    "version": "1.0.0"
   }
 ]

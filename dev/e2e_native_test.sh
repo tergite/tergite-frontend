@@ -76,6 +76,8 @@ BACKENDS=(
 )
 # the backends whose databases a reset reloads
 RESET_BACKENDS=(sim_2q sim_1q Loke Thor Pingu Pegu)
+# the one backend with workers, which runs jobs; the others serve their API alone
+RUNNING_BACKEND=sim_1q
 PIDS=()
 
 # Logging function for errors
@@ -144,6 +146,19 @@ wait_for_url() {
   done
 }
 
+# waits until a heavy worker has loaded its device, which it records in the device's database,
+# failing if the worker exits or it takes over five minutes, as it imports quantify first
+# usage:
+#   wait_for_device name database device pid
+wait_for_device() {
+  local deadline=$(( $(date +%s) + 300 ));
+  until [[ "$(sqlite3 "$2" "SELECT 1 FROM device_parameters WHERE backend_name = '$3'" 2>/dev/null)" = "1" ]]; do
+    kill -0 "$4" 2>/dev/null || exit_with_log "$1" "$1 stopped";
+    [[ $(date +%s) -lt $deadline ]] || exit_with_log "$1" "$1 did not load $3 within five minutes";
+    sleep 1;
+  done
+}
+
 # exits with the error after the end of the service's log in temp-native/logs/, as a CI job
 # shows its output and keeps the logs only as an artifact
 # usage:
@@ -195,6 +210,7 @@ else
   git clone -q --single-branch --branch "$BACKEND_BRANCH" "$BACKEND_REPO" "$WORK_PATH/tergite-backend"
   BACKEND_PATH="$WORK_PATH/tergite-backend"
 fi
+BACKEND_FIXTURES="$BACKEND_PATH/tests/fixtures"
 
 # environments of their own, so that a checkout's .venv stays as it is
 echo "Installing MSS and the backend"
@@ -252,14 +268,27 @@ for backend in "${BACKENDS[@]}"; do
     echo "BCC_MSS_MACHINE_ROOT_URL=http://127.0.0.1:$MSS_PORT"
     echo "BCC_STORAGE_ROOT=$dir/storage"
     echo "BCC_BOOKING_DB_URL=sqlite:///$dir/booking_db.db"
-    echo "BCC_BACKEND_SETTINGS=$FIXTURES_PATH/$stem.toml"
-    echo "BCC_CALIBRATION_SEED=$FIXTURES_PATH/$stem.seed.toml"
     echo "BCC_PRIVATE_KEY_FILE=$FIXTURES_PATH/private-$(echo "$stem" | tr '_' '-')-key.pem"
     echo "BCC_MSS_PUBLIC_KEY_PATH=$FIXTURES_PATH/public-mss-key.pem"
-    # a bcc built with quantify checks that these exist, though its API never reads them
-    echo "BCC_CALIBRATION_NODE_CONFIG_FILE=$BACKEND_PATH/node_config.example.toml"
-    echo "BCC_CALIBRATION_DEVICE_CONFIG_FILE=$BACKEND_PATH/calib_device_config.example.toml"
-    echo "BCC_CALIBRATION_SPI_CONFIG_FILE=$BACKEND_PATH/spi_config.example.toml"
+    if [[ "$name" = "$RUNNING_BACKEND" ]]; then
+      # the device its workers run jobs on: the backend's own simulated transmon behind dummy
+      # clusters, as the SDK's e2e runs it; a recalibration writes over the seed, so it is copied
+      cp "$BACKEND_FIXTURES/sim_1q.seed.toml" "$dir/calibration.seed.toml"
+      echo "BCC_BACKEND_SETTINGS=$BACKEND_FIXTURES/backend_config.simq1.toml"
+      echo "BCC_CALIBRATION_SEED=$dir/calibration.seed.toml"
+      echo "BCC_QUANTIFY_CONFIG_FILE=$BACKEND_FIXTURES/dummy-quantify-config.json"
+      echo "BCC_QUANTIFY_METADATA_FILE=$BACKEND_FIXTURES/dummy-quantify-metadata.yml"
+      echo "BCC_CALIBRATION_NODE_CONFIG_FILE=$BACKEND_FIXTURES/chip_node_config.toml"
+      echo "BCC_CALIBRATION_DEVICE_CONFIG_FILE=$BACKEND_FIXTURES/chip_calib_device_config.toml"
+      echo "BCC_CALIBRATION_SPI_CONFIG_FILE=$BACKEND_FIXTURES/dummy_spi_config.calib.toml"
+    else
+      echo "BCC_BACKEND_SETTINGS=$FIXTURES_PATH/$stem.toml"
+      echo "BCC_CALIBRATION_SEED=$FIXTURES_PATH/$stem.seed.toml"
+      # a bcc built with quantify checks that these exist, though its API never reads them
+      echo "BCC_CALIBRATION_NODE_CONFIG_FILE=$BACKEND_PATH/node_config.example.toml"
+      echo "BCC_CALIBRATION_DEVICE_CONFIG_FILE=$BACKEND_PATH/calib_device_config.example.toml"
+      echo "BCC_CALIBRATION_SPI_CONFIG_FILE=$BACKEND_PATH/spi_config.example.toml"
+    fi
     [[ -z "$max_slot" ]] || echo "BCC_MAX_TIME_SLOT_LENGTH=$max_slot"
     [[ -z "$min_slot" ]] || echo "BCC_MIN_TIME_SLOT_LENGTH=$min_slot"
     [[ -z "$slots_a_day" ]] || echo "BCC_MAX_SLOTS_PER_DAY=$slots_a_day"
@@ -273,6 +302,15 @@ backend_command="'$WORK_PATH/venvs/backend/bin/python' '$BACKEND_PATH/main.py'"
 [[ -z "$BACKEND_BINARY" ]] || backend_command="'$BACKEND_BINARY'"
 start_service backends bash -c "cd '$WORK_PATH/backends' && exec $backend_command serve --host 127.0.0.1 --port $BACKEND_PORT ${env_file_args[*]}"
 wait_for_url backends "http://127.0.0.1:$BACKEND_PORT/docs" $SERVICE_PID
+
+# one device runs jobs: a heavy worker loads it and runs them, a light worker finishes them;
+# the others serve their API alone, having no quantify config for a worker to load
+echo "Starting the workers of $RUNNING_BACKEND"
+running_env="$WORK_PATH/backends/$RUNNING_BACKEND/backend.env"
+start_service "$RUNNING_BACKEND-heavy" bash -c "cd '$WORK_PATH/backends' && exec $backend_command worker --kind heavy --device $RUNNING_BACKEND --env-file '$running_env'"
+heavy_pid=$SERVICE_PID
+start_service "$RUNNING_BACKEND-light" bash -c "cd '$WORK_PATH/backends' && exec $backend_command worker --kind light --env-file '$running_env'"
+wait_for_device "$RUNNING_BACKEND-heavy" "$WORK_PATH/backends/$RUNNING_BACKEND/booking_db.db" "$RUNNING_BACKEND" $heavy_pid
 
 echo "Starting the reset service"
 start_service reset "$WORK_PATH/venvs/mss/bin/python" "$ROOT_PATH/dev/e2e_reset_server.py" \

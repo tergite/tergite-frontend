@@ -344,9 +344,10 @@ Each feature's happy path, and the spec that walks it:
 | Error page | `error-alert.spec.ts` |
 | Run | `run.spec.ts` |
 
-The e2e stack serves the backends' API without their workers, so no backend has a device to run
-on: `run.spec.ts` follows a circuit through MSS to the backend's refusal, and a finished run's
-counts come from a seeded job. A job's run to completion is the backend's own test suite's.
+The e2e stack serves the backends' API alone but for `sim_1q`, which also gets a heavy and a
+light worker, on the backend's own simulated transmon behind dummy clusters, as the SDK's e2e
+runs it: `run.spec.ts` runs a circuit there to its counts. `sim_1q` is in `fixtures/` as its
+worker publishes it, since every reset re-seeds MSS's devices and a worker publishes only at start.
 
 The specs reuse the dashboard's own pure helpers (`extendAppToken`, `getUserRequestDetails`)
 rather than copies; a module they import must not build the HTTP client, whose base URL only

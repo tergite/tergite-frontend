@@ -59,7 +59,12 @@ def _reset(mss_path: str, sql: str, databases: list[str]) -> None:
     )
     for database in databases:
         with open(sql, "rb") as sql_file:
-            subprocess.run(["sqlite3", database], stdin=sql_file, check=True)
+            # the running backend's workers write to its database too, so wait out their locks
+            subprocess.run(
+                ["sqlite3", "-cmd", ".timeout 5000", database],
+                stdin=sql_file,
+                check=True,
+            )
 
 
 if __name__ == "__main__":

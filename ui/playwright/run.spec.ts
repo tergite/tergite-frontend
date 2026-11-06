@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import type { Job, User } from "./types";
 
@@ -12,6 +12,8 @@ const FLIP_CIRCUIT = [
   "c[0] = measure q[0];",
 ];
 const BROKEN_CIRCUIT = ["OPENQASM 3.0;", "qubit[1] q;", "x q[0]", "bit[1] c;"];
+// the run's compile and simulation take seconds; the page then polls every 2 s
+const RUN_TIMEOUT_MS = 60_000;
 
 const jane = readFixture<User[]>("users").find(
   (v) => v.email === "jane.doe@example.com",
@@ -68,15 +70,12 @@ test.describe("run page for jane.doe", () => {
     await expect(page.locator(".cm-lintRange-error")).toBeVisible();
   });
 
-  // the stack serves the backends' API without workers, so a backend has no device to run
-  // on and refuses the upload; that still carries the circuit through MSS to the backend
-  test("sends a circuit to the backend and reports what it answers", async ({
-    page,
-    loginAs,
-  }) => {
+  // sim_1q is the stack's one device with workers: a simulated transmon behind dummy clusters
+  test("runs a circuit on sim_1q and counts its shots", async ({ page, loginAs }) => {
+    test.setTimeout(RUN_TIMEOUT_MS + 30_000);
     await loginAs(jane, `./run?job=${bellRun.job_id}`);
     await page.locator("#run-device").click();
-    await page.getByRole("option", { name: /^Thor/ }).click();
+    await page.getByRole("option", { name: /^sim_1q/ }).click();
     await page.locator("#run-name").fill("flip");
     await page.locator("#run-shots").fill("100");
     await replaceCircuit(page, FLIP_CIRCUIT);
@@ -86,14 +85,30 @@ test.describe("run page for jane.doe", () => {
       page.getByRole("button", { name: "Run" }).click(),
     ]);
 
-    expect(response.status()).toBe(404);
-    await expect(page.locator("#circuit [role=alert]")).toHaveText("'Thor' not found");
+    expect(response.status()).toBe(201);
+    const results = page.locator("#results");
+    await expect(results).toContainText("successful", { timeout: RUN_TIMEOUT_MS });
+    await expect(results).toContainText("flip · sim_1q · 100 shots");
+    const counts = await readCounts(results.getByRole("img", { name: /^Counts of flip/ }));
+    expect(Object.values(counts).reduce((total, count) => total + count, 0)).toBe(100);
+    // the flipped qubit reads 1 but for the simulator's readout noise and decay
+    expect(counts["1"]).toBeGreaterThan(80);
     const run = page.locator("#runs").getByRole("row", { name: /flip/ });
-    await expect(run).toContainText("Thor");
-    await expect(run).toContainText("100");
-    await expect(run).toContainText("failed");
+    await expect(run).toContainText("successful");
   });
 });
+
+/** The counts a histogram's label names, by outcome */
+async function readCounts(histogram: Locator): Promise<Record<string, number>> {
+  const label = (await histogram.getAttribute("aria-label"))!;
+  const pairs = label.replace(/^Counts of \w+: /, "").split(", ");
+  return Object.fromEntries(
+    pairs.map((pair) => {
+      const [outcome, count] = pair.split(": ");
+      return [outcome, Number(count)];
+    }),
+  );
+}
 
 /** Types the circuit over the editor's, closing completion before each new line */
 async function replaceCircuit(page: Page, lines: string[]) {
