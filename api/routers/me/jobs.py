@@ -76,6 +76,7 @@ async def submit_my_job(
 
     Raises:
         401: the project is inactive, or the user is not its member
+        400: MSS knows no backend for the device, or the device has no calibration
         403: the project has no QPU seconds left
         404: no such device
         422: a circuit the device cannot run, at body.circuits.<index>.qasm, with the line
@@ -91,7 +92,6 @@ async def submit_my_job(
     try:
         return await jobs_service.submit_job(
             database,
-            bcc_client=bcc.get_client(payload.device),
             submission=payload,
             user=user,
             number_of_qubits=device.number_of_qubits,

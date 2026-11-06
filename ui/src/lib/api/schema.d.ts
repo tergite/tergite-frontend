@@ -1191,6 +1191,7 @@ export interface paths {
          *
          *     Raises:
          *         401: the project is inactive, or the user is not its member
+         *         400: MSS knows no backend for the device, or the device has no calibration
          *         403: the project has no QPU seconds left
          *         404: no such device
          *         422: a circuit the device cannot run, at body.circuits.<index>.qasm, with the line

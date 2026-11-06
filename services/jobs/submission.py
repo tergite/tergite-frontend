@@ -21,7 +21,7 @@ from loguru import logger
 
 from libs.qasm import QasmError, read_circuit
 from libs.storage import Database
-from services.external.bcc import BccClient
+from services.external import bcc
 from utils.date_time import get_current_timestamp
 from utils.exc import BccHttpError, InvalidInputError, ServiceUnavailableError
 
@@ -66,7 +66,6 @@ class InvalidCircuitError(InvalidInputError):
 
 async def submit_job(
     database: Database,
-    bcc_client: BccClient,
     submission: JobSubmission,
     user: User,
     number_of_qubits: int,
@@ -76,7 +75,6 @@ async def submit_job(
 
     Args:
         database: the database where the jobs and projects are stored
-        bcc_client: the client of the backend of the submission's device
         submission: the circuits, their settings, the device and the project
         user: the user submitting
         number_of_qubits: the device's qubits
@@ -89,12 +87,14 @@ async def submit_job(
         UnauthorizedError: the project is inactive, or the user is not its member
         ForbiddenError: the project has no QPU seconds left
         InvalidCircuitError: a circuit the device cannot run
+        UnknownBccError: MSS knows no backend for the device
         ServiceUnavailableError: the device is unavailable
         BccHttpError: the backend refused the job file
     """
     project = await _get_project_with_qpu(database, submission.project_id, user)
     num_clbits = _read_circuits(submission, project, number_of_qubits)
 
+    bcc_client = bcc.get_client(submission.device)
     created = await create_job(
         database,
         bcc_client=bcc_client,
