@@ -17,6 +17,7 @@ from .dtos import (
     JobQuery,
     JobStatus,
     JobStatusResponse,
+    JobSubmission,
     JobUpdate,
 )
 from .service import (
@@ -31,6 +32,7 @@ from .service import (
     update_job,
     update_qpu_usage,
 )
+from .submission import InvalidCircuitError, submit_job
 
 SCHEMAS = (Job,)
 
@@ -42,7 +44,10 @@ __all__ = [
     "JobQuery",
     "JobStatus",
     "JobStatusResponse",
+    "JobSubmission",
     "JobUpdate",
+    "InvalidCircuitError",
+    "submit_job",
     "cancel_job",
     "count_job_submitters",
     "create_job",

@@ -1175,6 +1175,91 @@ export interface paths {
          */
         get: operations["get_my_jobs_me_jobs__get"];
         put?: never;
+        /**
+         * Submit My Job
+         * @description Runs OpenQASM 3 circuits on a device, as a job billed to one of the user's projects
+         *
+         *     MSS checks the circuits and uploads the job to the device's backend itself.
+         *
+         *     Args:
+         *         database: the database where the jobs, projects and devices are stored
+         *         user: the current user
+         *         payload: the circuits, their settings, the device and the project
+         *
+         *     Returns:
+         *         the job, pending, or failed with the backend's reason
+         *
+         *     Raises:
+         *         401: the project is inactive, or the user is not its member
+         *         403: the project has no QPU seconds left
+         *         404: no such device
+         *         422: a circuit the device cannot run, at body.circuits.<index>.qasm, with the line
+         *             and column in its ctx when known
+         *         503: the device is unavailable
+         */
+        post: operations["submit_my_job_me_jobs__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get My Job
+         * @description Gets one of the user's jobs, with its source if it was submitted from the dashboard
+         *
+         *     Args:
+         *         database: the database where the jobs are stored
+         *         user: the current user
+         *         job_id: the id of the job
+         *
+         *     Returns:
+         *         the job, without its backend token
+         *
+         *     Raises:
+         *         404: no such job, or not the user's
+         */
+        get: operations["get_my_job_me_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/jobs/{job_id}/logfile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get My Job Logfile
+         * @description Downloads one of the user's jobs' logfile, which MSS fetches from the backend
+         *
+         *     Args:
+         *         database: the database where the jobs are stored
+         *         user: the current user
+         *         job_id: the id of the job
+         *
+         *     Returns:
+         *         the job's HDF5 logfile
+         *
+         *     Raises:
+         *         404: no such job, not the user's, or it has no logfile yet
+         *         503: the device is unavailable
+         */
+        get: operations["get_my_job_logfile_me_jobs__job_id__logfile_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1836,11 +1921,13 @@ export interface components {
         /** Body_get_many_jobs__get */
         Body_get_many_jobs__get: {
             result?: components["schemas"]["JobResult"] | null;
+            source?: components["schemas"]["JobSource"] | null;
             timestamps?: components["schemas"]["JobTimestamps"] | null;
         };
         /** Body_get_my_jobs_me_jobs__get */
         Body_get_my_jobs_me_jobs__get: {
             result?: components["schemas"]["JobResult"] | null;
+            source?: components["schemas"]["JobSource"] | null;
             timestamps?: components["schemas"]["JobTimestamps"] | null;
         };
         /**
@@ -1916,6 +2003,16 @@ export interface components {
         CancellationDetails: {
             /** Reason */
             reason?: string | null;
+        };
+        /**
+         * CircuitSource
+         * @description A circuit as its author wrote it: OpenQASM 3, OpenPulse included
+         */
+        CircuitSource: {
+            /** Name */
+            name: string;
+            /** Qasm */
+            qasm: string;
         };
         /**
          * CountsResponse
@@ -2190,6 +2287,7 @@ export interface components {
             /** Project Id */
             project_id?: string | null;
             result?: components["schemas"]["JobResult"] | null;
+            source?: components["schemas"]["JobSource"] | null;
             /** @default pending */
             status: components["schemas"]["JobStatus"];
             timestamps?: components["schemas"]["JobTimestamps"] | null;
@@ -2241,6 +2339,28 @@ export interface components {
             num_clbits: number;
         };
         /**
+         * JobSource
+         * @description The circuits and settings a job was submitted with, kept so it can be run again
+         */
+        JobSource: {
+            /** Circuits */
+            circuits: components["schemas"]["CircuitSource"][];
+            /**
+             * Meas Level
+             * @default 2
+             * @enum {integer}
+             */
+            meas_level: 1 | 2;
+            /**
+             * Meas Return
+             * @default single
+             * @enum {string}
+             */
+            meas_return: "single" | "avg";
+            /** Shots */
+            shots: number;
+        };
+        /**
          * JobStatus
          * @description The status of a job
          * @enum {string}
@@ -2252,6 +2372,32 @@ export interface components {
          */
         JobStatusResponse: {
             status: components["schemas"]["JobStatus"];
+        };
+        /**
+         * JobSubmission
+         * @description A job as the dashboard submits it, for the project it is billed to
+         */
+        JobSubmission: {
+            /** Circuits */
+            circuits: components["schemas"]["CircuitSource"][];
+            /** Device */
+            device: string;
+            /**
+             * Meas Level
+             * @default 2
+             * @enum {integer}
+             */
+            meas_level: 1 | 2;
+            /**
+             * Meas Return
+             * @default single
+             * @enum {string}
+             */
+            meas_return: "single" | "avg";
+            /** Project Id */
+            project_id: string;
+            /** Shots */
+            shots: number;
         };
         /**
          * JobTimestamps
@@ -4420,6 +4566,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedListResponse_Job_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_my_job_me_jobs__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobSubmission"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_my_job_me_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_my_job_logfile_me_jobs__job_id__logfile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-hdf5": unknown;
                 };
             };
             /** @description Validation Error */

@@ -53,6 +53,8 @@ dependencies = [
     "alembic~=1.16",
     "pymongo~=4.17.0",
     "pyjwt[crypto]~=2.10.1",
+    "openpulse~=1.0.1",
+    "openqasm3[parser]~=1.0.1",
 ]
 
 [project.optional-dependencies]

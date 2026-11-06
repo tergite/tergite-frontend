@@ -10,6 +10,12 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Added
+
+- Added `POST /me/jobs/`, which runs OpenQASM 3 circuits, OpenPulse included, as a job billed to one of the user's
+  projects: MSS refuses what the backend cannot run, with its line and column, uploads the job itself and keeps its
+  source, which `GET /me/jobs/{job_id}` returns; `GET /me/jobs/{job_id}/logfile` downloads its logfile
+
 ## [2026.11.0-rc.8] - 2026-11-06
 
 ### Changed
