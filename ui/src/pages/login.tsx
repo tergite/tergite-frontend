@@ -108,6 +108,16 @@ export default function LoginForm() {
               </form>
             </Form>
           )}
+          {import.meta.env.DEV && (
+            <p className="mt-8 text-center text-sm">
+              <a
+                href={`${import.meta.env.VITE_API_BASE_URL}/ui/dev-login.html`}
+                className="underline"
+              >
+                Log in as a seeded user (development only)
+              </a>
+            </p>
+          )}
         </div>
       </div>
     </main>

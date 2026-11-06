@@ -151,7 +151,8 @@ BACKEND_PATH="../tergite-backend" ./dev/e2e_native_test.sh playwright/home.spec.
 ## How to Build
 
 - Follow the first three steps of [How to Test](#how-to-test)
-- Build the dashboard in `ui/` into `ui/dist`, which the build includes for MSS to serve at `/ui`
+- Build the dashboard in `ui/` into `ui/dist`, which the build includes for MSS to serve at `/ui`;
+  `npm run dev` empties `ui/dist`, so build again after it
 
 ```shell
 (cd ui && npm ci && npm run build)
@@ -168,10 +169,10 @@ pkg/build.sh
 - After the build, the app is `build/mss/mss`, which runs the Python beside it. You can run it.
 
 ```shell
-# create the mss-config.toml
+# create the mss-config.toml, a development config
 cp mss-config.example.toml mss-config.toml
-# create the mss private key
-openssl genpkey -algorithm RSA -out private-mss-key.pem -pkeyopt rsa_keygen_bits:4096 -aes-256-cbc
+# create the mss private key, unencrypted as the development config expects
+openssl genpkey -algorithm RSA -out private-mss-key.pem -pkeyopt rsa_keygen_bits:4096
 # migrate the database, MongoDB or SQL, and run the app, with any of `--port`, `--host`,
 # `--forwarded-allow-ips`, `--workers` and `--reload`; `build/mss/mss migrate` or `build/mss/mss serve` does one alone
 MSS_CONFIG_FILE="$PWD/mss-config.toml" PRIVATE_KEY_FILE="$PWD/private-mss-key.pem" build/mss/mss start --port 8002

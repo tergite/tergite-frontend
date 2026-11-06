@@ -44,7 +44,7 @@ export function CreateProjectForm({
   const queryClient = useQueryClient();
   const now = DateTime.now();
 
-  const createForm = useForm<z.infer<typeof formSchema>>({
+  const createForm = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: `${now.toLocaleString()} project`,

@@ -10,6 +10,25 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.7] - 2026-11-06
+
+### Added
+
+- Dashboard: Added a development-only login as any seeded user, linked from the login page under `npm run dev`,
+  where before logging in locally needed an OAuth app registered with a provider
+
+### Changed
+
+- Dashboard: Changed `npm run dev` to replace `ui/dist` with a page that redirects MSS's `/ui` to vite, and to start
+  vite on port 5173 or fail, where before MSS could serve a stale build and `npm run dev` never started vite
+- Changed `mss-config.example.toml` into a working development config on SQLite, marking what production changes,
+  where before a copy of it needed editing before `npm run dev` would seed or MSS would start
+
+### Fixed
+
+- Fixed MSS failing to start on a SQLite url with a relative path, e.g. `sqlite+aiosqlite:///db.sqlite3`, which it
+  turned into an unparseable `sqlite+aiosqlite:/db.sqlite3`
+
 ## [2026.11.0-rc.6] - 2026-11-04
 
 ### Added

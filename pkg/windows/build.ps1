@@ -5,6 +5,10 @@
 
 $ErrorActionPreference = "Stop"
 
+if (-not (Test-Path ui\dist\index.html) -or (Test-Path ui\dist\dev-login.html)) {
+    throw "ui\dist has no dashboard, or npm run dev's stub: run npm ci and npm run build in ui\ first"
+}
+
 $winswUrl = "https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe"
 $winswSha256 = "05B82D46AD331CC16BDC00DE5C6332C1EF818DF8CEEFCD49C726553209B3A0DA"
 

@@ -55,10 +55,12 @@ class DatabaseConfig(BaseModel):
     @property
     def full_url(self) -> str:
         """The url, with the name as its path if it has none"""
-        parts = urlsplit(str(self.url))
-        if parts.path in ("", "/"):
-            parts = parts._replace(path=f"/{self.name}")
-        return urlunsplit(parts)
+        url = str(self.url)
+        parts = urlsplit(url)
+        if parts.path not in ("", "/"):
+            # urlunsplit would drop the empty host of sqlite:///relative.db
+            return url
+        return urlunsplit(parts._replace(path=f"/{self.name}"))
 
 
 class BccConfig(BaseModel):
