@@ -106,9 +106,9 @@ means giving the other side its new public key.
 ./start_mss.sh
 ```
 
-- Visit the http://localhost:8002/auth/github/authorize endpoint in your browser if you are running on local host.
+- Visit the http://127.0.0.1:8002/auth/github/authorize endpoint in your browser.
 - Copy the “authorization_url” from the response and paste it in another tab in your browser. Follow any prompts the browser gives you.
-- After you are redirected back to http://localhost:8002/auth/github/callback, you should see an “access_token”. Copy it to your clipboard.  
+- After you are redirected back to http://127.0.0.1:8002/auth/github/callback, you should see an “access_token”. Copy it to your clipboard.  
   If you run into any errors, ensure that the `client_id` and `client_secret` for the `client` table with `name = tergite` in your `mss-config.toml` file are appropriately set.
 - You can then try to create an app token or anything auth related using `curl` or [postman](https://www.postman.com/).  
   To authenticate those requests, you must always pass an "Authorization" header of format `Bearer <access_token>`.  
