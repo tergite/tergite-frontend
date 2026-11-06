@@ -13,13 +13,14 @@
 
 import copy
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import pytest
 from fastapi.websockets import WebSocketDisconnect
 
 from libs.storage import generate_id
-from services.devices import Device
+from services.devices import Device, DeviceConnection
 from tests._utils.bcc import create_bcc_headers
 from tests._utils.date_time import is_not_older_than
 from tests._utils.fixtures import load_json_fixture
@@ -33,6 +34,7 @@ from tests._utils.records import (
 from tests._utils.storage import to_record
 
 _DEVICE_LIST = load_json_fixture("device_list.json")
+_MINUTE = timedelta(minutes=1)
 _SKIP_LIMIT_SORT_PARAMS = [
     (0, 1, ["-version", "updated_at"]),
     (2, 4, None),
@@ -217,6 +219,31 @@ def test_a_replayed_nonce_is_refused(client):
                 pass
 
     assert exp.value.code == 1008
+
+
+def test_at_startup_only_devices_with_a_live_connection_are_online(
+    db, fresh_app, client
+):
+    connected = {**_DEVICE_LIST[0], "is_online": True, "id": generate_id()}
+    stale = {**connected, "name": "Odin", "id": generate_id()}
+    lapsed = {**connected, "name": "Frigg", "id": generate_id()}
+    db.insert_many(Device, [to_record(Device, v) for v in (connected, stale, lapsed)])
+    now = datetime.now(timezone.utc)
+    db.insert_many(
+        DeviceConnection,
+        [
+            DeviceConnection(device_name=connected["name"], expires_at=now + _MINUTE),
+            DeviceConnection(device_name="Frigg", expires_at=now - _MINUTE),
+        ],
+    )
+
+    with client as client:
+        flags = {
+            v["name"]: v["is_online"]
+            for v in client.get("/devices/").json()["data"]
+        }
+
+    assert flags == {connected["name"]: True, "Odin": False, "Frigg": False}
 
 
 def test_a_device_stays_online_while_any_of_its_sockets_is_open(db, client):

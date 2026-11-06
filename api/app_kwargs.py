@@ -25,6 +25,7 @@ from loguru import logger
 
 import settings
 from libs.storage import Database
+from services import devices as devices_service
 from services import jobs as jobs_service
 from services import notices
 from services.auth import service as auth_service
@@ -73,6 +74,9 @@ async def lifespan(app: FastAPI):
     )
     await bcc.create_clients(settings.CONFIG.backends, private_key=private_key)
     database = await open_database(app, settings.CONFIG.database)
+    # a device left online from before a restart stays so only while its backend's connection
+    # is live
+    await devices_service.sync_online_flags(database)
     devices_ws_manager.start_refreshing(database)
     await auth_service.on_startup(database, conf=settings.CONFIG.auth)
     await jobs_service.on_startup(

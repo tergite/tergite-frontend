@@ -69,8 +69,8 @@ APP_TOKEN_LIST = load_json_fixture("app_token_list.json")
 NOTICE_LIST = load_json_fixture("notices.json")
 USER_REQUEST_LIST = load_json_fixture("user_requests.json")
 pytest_plugins = ["tests._utils.oauth", "tests._utils.mock_backend"]
-# fixtures that change what the app starts with, so it must start afresh
-_FRESH_APP_FIXTURES = {"unconfigured_email"}
+# fixtures that change what the app starts with, or test its startup, so it must start afresh
+_FRESH_APP_FIXTURES = {"unconfigured_email", "fresh_app"}
 _SCHEMAS_KEPT_ACROSS_TESTS = {"NoticeTemplate", "Role"}
 
 
@@ -357,6 +357,12 @@ def unconfigured_email(mocker):
     import settings
 
     yield mocker.patch.object(settings.CONFIG, "email", None)
+
+
+@pytest.fixture
+def fresh_app():
+    """Starts the app afresh in the client's `with` block, for a test of what startup does"""
+    yield
 
 
 class _AppRunner:

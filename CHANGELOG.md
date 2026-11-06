@@ -14,6 +14,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 - Dashboard: Changed the Run page to let only online devices be picked, where before a run on an offline one failed
   at upload
+- Changed MSS to mark a device offline as it starts unless its backend holds a live connection, where before the
+  flag a stopped MSS left stood until its first refresh 30 s later
 
 ## [2026.11.0-rc.9] - 2026-11-06
 
