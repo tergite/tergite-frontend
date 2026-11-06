@@ -61,7 +61,8 @@ export function CircuitPanel({
   );
   const booking = bookings[0];
   const hasQpu = project.qpu_seconds > 0;
-  const isRunnable = !!device && hasQpu && draft.qasm.trim().length > 0;
+  const isRunnable =
+    !!device?.is_online && hasQpu && draft.qasm.trim().length > 0;
   const pythonScript = makePythonScript(draft, apiToken);
 
   return (
@@ -81,7 +82,11 @@ export function CircuitPanel({
               </SelectTrigger>
               <SelectContent>
                 {devices.map((v) => (
-                  <SelectItem key={v.name} value={v.name}>
+                  <SelectItem
+                    key={v.name}
+                    value={v.name}
+                    disabled={!v.is_online}
+                  >
                     {v.name} · {v.number_of_qubits} qubits ·{" "}
                     {v.is_online ? "online" : "offline"}
                   </SelectItem>

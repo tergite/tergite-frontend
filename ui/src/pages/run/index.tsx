@@ -111,8 +111,6 @@ export function Run() {
 
   return (
     <main className="grid flex-1 content-start items-start gap-4 p-4 sm:px-6 sm:py-0">
-      <h1 className="text-2xl font-semibold tracking-tight">Run</h1>
-
       {project ? (
         <>
           <div className="grid gap-4 xl:grid-cols-2">

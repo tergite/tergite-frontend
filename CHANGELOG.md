@@ -10,6 +10,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Changed
+
+- Dashboard: Changed the Run page to let only online devices be picked, where before a run on an offline one failed
+  at upload
+
 ## [2026.11.0-rc.9] - 2026-11-06
 
 ### Added
