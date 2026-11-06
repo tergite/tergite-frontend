@@ -2,7 +2,7 @@ import React, { MouseEvent } from "react";
 import { Button } from "../button";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ControllerRenderProps, useForm } from "react-hook-form";
+import { ControllerRenderProps, Resolver, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -21,7 +21,7 @@ export function DataFilterForm({
 }: Props) {
   const [rawSchemaObj, defaultValues] = React.useMemo(
     () =>
-      Object.entries(fieldsConfig).reduce(
+      Object.entries(fieldsConfig).reduce<[z.ZodRawShape, FilterValues]>(
         (prev, [field, conf]) => [
           { ...prev[0], [field]: conf.validation },
           { ...prev[1], [field]: conf.defaultValue },
@@ -30,11 +30,17 @@ export function DataFilterForm({
       ),
     [fieldsConfig]
   );
+  // values holds only the filters applied; the form resets to it, so the others need their defaults
+  const formValues = React.useMemo(
+    () => ({ ...defaultValues, ...values }),
+    [defaultValues, values]
+  );
 
   const filterForm = useForm<FilterValues>({
-    resolver: zodResolver(z.object(rawSchemaObj)),
+    // the schema is put together from fieldsConfig at runtime, so there is no static type to infer
+    resolver: zodResolver(z.object(rawSchemaObj)) as Resolver<FilterValues>,
     defaultValues,
-    values,
+    values: formValues,
   });
 
   const resetHandler = React.useCallback(
@@ -101,7 +107,7 @@ interface Props {
 export interface DataTableFormConfig {
   [key: string]: {
     validation: z.ZodType<unknown>;
-    defaultValue: unknown;
+    defaultValue: FilterValues[string];
     label: string;
     /**
      * Generates the form field for the given key in the filter form

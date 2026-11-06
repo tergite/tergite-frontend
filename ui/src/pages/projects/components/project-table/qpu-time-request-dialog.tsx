@@ -52,7 +52,7 @@ export function QpuTimeRequestDialog({
 }: Props) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const editForm = useForm<z.infer<typeof formSchema>>({
+  const editForm = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       days: 0,
