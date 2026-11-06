@@ -10,6 +10,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.7] - 2026-11-06
+
 ### Added
 
 - Dashboard: Added a development-only login as any seeded user, linked from the login page under `npm run dev`,
