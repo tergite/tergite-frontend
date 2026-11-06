@@ -10,13 +10,6 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
-### Changed
-
-- Dashboard: Changed the Run page to let only online devices be picked, where before a run on an offline one failed
-  at upload
-- Changed MSS to mark a device offline as it starts unless its backend holds a live connection, where before the
-  flag a stopped MSS left stood until its first refresh 30 s later
-
 ## [2026.11.0-rc.9] - 2026-11-06
 
 ### Added
@@ -32,6 +25,10 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 - Dashboard: Changed the look to an indigo palette, the Inter font, rounder cards and softer shadows, with single-word
   labels on the home page, where before dark mode's background and cards were written in a form opacity broke
+- Dashboard: Changed the Run page to let only online devices be picked, where before a run on an offline one failed
+  at upload
+- Changed MSS to mark a device offline as it starts unless its backend holds a live connection, where before the
+  flag a stopped MSS left stood until its first refresh 30 s later
 
 ## [2026.11.0-rc.8] - 2026-11-06
 
