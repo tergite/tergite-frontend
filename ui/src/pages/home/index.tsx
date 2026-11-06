@@ -67,7 +67,7 @@ export function Home() {
         <div className="grid gap-4 sm:grid-cols-[250px_auto_auto]">
           <Card id="devices-online-piechart" className="grid-fit-content">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Devices Online</CardTitle>
+              <CardTitle className="text-lg">Online</CardTitle>
             </CardHeader>
             <CardContent>
               <DonutChart
@@ -82,13 +82,10 @@ export function Home() {
             x-chunk="dashboard-05-chunk-0"
           >
             <CardHeader className="pb-3">
-              <div className="flex justify-between">
-                <div className="space-y-1.5">
-                  <CardTitle>Devices</CardTitle>
-                  <CardDescription>List of available devices</CardDescription>
-                </div>
-                <Link to="/devices" className="font-normal underline">
-                  View all
+              <div className="flex items-center justify-between">
+                <CardTitle>Devices</CardTitle>
+                <Link to="/devices" className="text-sm font-normal underline">
+                  All
                 </Link>
               </div>
             </CardHeader>
@@ -100,11 +97,17 @@ export function Home() {
         <div className="grid gap-4 sm:grid-cols-6">
           <Card id="jobs-table" className="sm:col-span-4">
             <CardHeader className="px-7">
-              <CardTitle>Jobs</CardTitle>
-              <CardDescription>
-                The status of your jobs in{" "}
-                {currentProject?.name || "all projects"}
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1.5">
+                  <CardTitle>Jobs</CardTitle>
+                  <CardDescription>
+                    {currentProject?.name || "All projects"}
+                  </CardDescription>
+                </div>
+                <Link to="/run" className="text-sm font-normal underline">
+                  Run
+                </Link>
+              </div>
             </CardHeader>
             <CardContent>
               <JobsTable data={jobs} />
@@ -113,8 +116,7 @@ export function Home() {
 
           <Card id="bookings-table" className="sm:col-span-2">
             <CardHeader className="px-7">
-              <CardTitle>Upcoming Bookings</CardTitle>
-              <CardDescription>My upcoming bookings</CardDescription>
+              <CardTitle>Bookings</CardTitle>
             </CardHeader>
             <CardContent>
               <BookingsTable data={bookings} />

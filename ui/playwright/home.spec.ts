@@ -53,14 +53,14 @@ for (const user of users) {
     test("renders the device online status chart", async ({ page }) => {
       const percentOnline = Math.round((onlineDevices.length / devices.length) * 100);
       const chart = page
-        .locator(".bg-card", { hasText: /devices online/i })
+        .locator("#devices-online-piechart")
         .locator("svg", { hasText: `${percentOnline}%` });
       await expect(chart).toHaveAttribute("aria-valuenow", `${percentOnline}`);
     });
 
     test("renders the first 3 devices", async ({ page }) => {
       await page.setViewportSize({ width: 1080, height: 750 });
-      const card = page.locator(".bg-card", { hasText: /list of available devices/i });
+      const card = page.locator("#devices-table");
 
       await expectTable(
         card,
@@ -76,7 +76,7 @@ for (const user of users) {
 
     test("renders the list of all user's jobs with no project selected", async ({ page }) => {
       await page.setViewportSize({ width: 1080, height: 750 });
-      const card = page.locator(".bg-card", { hasText: /status of your jobs in all projects/i });
+      const card = page.locator("#jobs-table", { hasText: /all projects/i });
 
       await expectTable(card, JOB_TABLE_HEADERS, allUserJobs.map(toJobCells));
     });
@@ -87,8 +87,8 @@ for (const user of users) {
         await page.locator('[data-testid="topbar"] button', { hasText: /project:/i }).click();
         await page.locator('#project-selector [role="option"]', { hasText: project.name }).click();
 
-        const card = page.locator(".bg-card", {
-          hasText: new RegExp(`status of your jobs in ${project.name}`, "i"),
+        const card = page.locator("#jobs-table", {
+          has: page.getByText(project.name, { exact: true }),
         });
         const projectJobs = allUserJobs.filter((v) => v.project_id === project.id);
         await expectTable(card, JOB_TABLE_HEADERS, projectJobs.map(toJobCells));
@@ -115,7 +115,7 @@ for (const user of users) {
         page.goto("./"),
       ]);
 
-      const card = page.locator(".bg-card", { hasText: /my upcoming bookings/i });
+      const card = page.locator("#bookings-table");
       const bookings = await fetchUpcomingBookings(page, apiUrl, user, availableDevices);
       await expectTable(
         card,

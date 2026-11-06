@@ -342,8 +342,12 @@ Each feature's happy path, and the spec that walks it:
 | Admin requests | `admin-requests.spec.ts` |
 | Admin control | `admin-control.spec.ts` |
 | Error page | `error-alert.spec.ts` |
+| Run | `run.spec.ts` |
 
-Job submission has no UI; its happy path is the MSS pytest flow in `tests/api/test_jobs.py`.
+The e2e stack serves the backends' API alone but for `sim_1q`, which also gets a heavy and a
+light worker, on the backend's own simulated transmon behind dummy clusters, as the SDK's e2e
+runs it: `run.spec.ts` runs a circuit there to its counts. `sim_1q` is in `fixtures/` as its
+worker publishes it, since every reset re-seeds MSS's devices and a worker publishes only at start.
 
 The specs reuse the dashboard's own pure helpers (`extendAppToken`, `getUserRequestDetails`)
 rather than copies; a module they import must not build the HTTP client, whose base URL only

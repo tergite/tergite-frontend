@@ -34,9 +34,16 @@ from services.external.bcc.dtos import (
 from utils.api import GeneralMessage
 from utils.config import BccConfig
 from utils.crypto import decrypt_message, get_uuid4_str, sign_message
-from utils.exc import BccHttpError, ServiceUnavailableError, UnknownBccError
+from utils.exc import (
+    BccHttpError,
+    InvalidCircuitError,
+    ServiceUnavailableError,
+    UnknownBccError,
+)
 
 _BCC_CLIENTS: Dict[str, "BccClient"] = {}
+# the SDK's upload timeout: the BCC reads the circuits as it takes the file
+_UPLOAD_TIMEOUT = 300
 
 BccClientHeaders = TypedDict(
     "BccClientHeaders",
@@ -210,6 +217,62 @@ class BccClient:
             user_id=user_id,
             is_admin=is_admin,
         )
+
+    async def upload_job(self, job_id: str, job_file: str, token: str) -> None:
+        """Uploads a job file to the BCC, as the SDK would, with the job's own token
+
+        Args:
+            job_id: the id of the job
+            job_file: the job file, as JSON
+            token: the job's plain token, which the BCC issued for it
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            InvalidCircuitError: a circuit the BCC cannot run, where in the file and its text
+            BccHttpError: the BCC refused the file otherwise, e.g. a pulse-level job without
+                leave
+        """
+        files = {"upload_file": (f"{job_id}.json", job_file, "application/json")}
+        try:
+            response = await self._client.post(
+                "/jobs",
+                files=files,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=_UPLOAD_TIMEOUT,
+            )
+        except (httpx.ConnectError, httpx.TimeoutException):
+            logger.exception("BCC connection failed")
+            raise ServiceUnavailableError("device is currently unavailable")
+        _raise_for_invalid_circuit(response)
+        _raise_for_bcc_error(response)
+
+    async def open_logfile(self, download_url: str, token: str) -> httpx.Response:
+        """Opens the stream of a job's logfile, which the caller must close
+
+        Args:
+            download_url: where the BCC serves the logfile, as it reported it
+            token: the job's plain token
+
+        Returns:
+            the open response, whose body is the HDF5 logfile
+
+        Raises:
+            ServiceUnavailableError: device is currently unavailable
+            BccHttpError: the BCC answered with an error, e.g. no such logfile
+        """
+        request = self._client.build_request(
+            "GET", download_url, headers={"Authorization": f"Bearer {token}"}
+        )
+        try:
+            response = await self._client.send(request, stream=True)
+        except (httpx.ConnectError, httpx.TimeoutException):
+            logger.exception("BCC connection failed")
+            raise ServiceUnavailableError("device is currently unavailable")
+        if response.is_error:
+            await response.aread()
+            await response.aclose()
+            _raise_for_bcc_error(response)
+        return response
 
     async def view_users(
         self,
@@ -670,6 +733,32 @@ def _raise_for_bcc_error(response: httpx.Response) -> None:
         message = _extract_error_message(response)
         logger.warning(f"BCC returned HTTP error {response.status_code}: {message}")
         raise BccHttpError(response.status_code, message)
+
+
+def _raise_for_invalid_circuit(response: httpx.Response) -> None:
+    """Raises the circuit the BCC refused, if its 422 names one
+
+    The BCC's own 422 names the circuit's index, and for a syntax error the line, from 1, and
+    the column, from 0; FastAPI's 422 for an unreadable form has a list for its detail.
+
+    Raises:
+        InvalidCircuitError: the circuit, its message, and its line and column from 1
+    """
+    if response.status_code != 422:
+        return
+    try:
+        detail = response.json().get("detail")
+    except JSONDecodeError:
+        return
+    if not isinstance(detail, dict) or "circuit_index" not in detail:
+        return
+    column = detail.get("column")
+    raise InvalidCircuitError(
+        index=detail["circuit_index"],
+        message=detail.get("message", ""),
+        line=detail.get("line"),
+        column=None if column is None else column + 1,
+    )
 
 
 def _extract_error_message(response: httpx.Response) -> str:

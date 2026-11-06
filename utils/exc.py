@@ -11,6 +11,8 @@
 # that they have been altered from the originals.
 """Exceptions for usage in application"""
 
+from typing import Optional
+
 
 class BaseMssException(Exception):
     """The base of MSS's own errors, shown by their message, or class name if none"""
@@ -53,6 +55,30 @@ class UnauthorizedError(BaseMssException):
 
 class InvalidInputError(BaseMssException):
     """Exception when a client sends a value that cannot be used"""
+
+
+class InvalidCircuitError(InvalidInputError):
+    """A circuit a backend cannot run, and where in the submission and its text the problem is
+
+    Attributes:
+        index: the circuit's place in the submission
+        message: what is wrong, as the backend words it
+        line: the line, from 1, if known
+        column: the column, from 1, if known
+    """
+
+    def __init__(
+        self,
+        index: int,
+        message: str,
+        line: Optional[int] = None,
+        column: Optional[int] = None,
+    ):
+        super().__init__(message)
+        self.index = index
+        self.message = message
+        self.line = line
+        self.column = column
 
 
 class TooManyListQueryParams(InvalidInputError):

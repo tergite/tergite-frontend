@@ -36,6 +36,9 @@ npm run dev
 
 Then open [http://127.0.0.1:5173/ui/](http://127.0.0.1:5173/ui/), click **Log in as a seeded
 user** and pick one: `jane.doe@example.com` is an admin, `john.doe@example.com` a plain user.
+**Run** is where circuits are written in OpenQASM 3 and run; open jane.doe's runs in project
+ATest 2 to see their counts. Running a new one needs a
+[tergite backend](https://github.com/tergite/tergite-backend) at the url of `[[backends]]`.
 
 ## Documentation
 

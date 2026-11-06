@@ -10,6 +10,26 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.9] - 2026-11-06
+
+### Added
+
+- Dashboard: Added a Run page, where a user writes OpenQASM 3 with highlighting and completion, runs it on a device
+  and reads its counts as a histogram or table, and opens, resubmits or cancels past runs, where before a job could
+  only be sent from the SDK
+- Added `POST /me/jobs/`, which runs OpenQASM 3 circuits, OpenPulse included, as a job billed to one of the user's
+  projects: MSS uploads the job itself, answers with the backend's refusal of a circuit at its line and column, and
+  keeps the source, which `GET /me/jobs/{job_id}` returns; `GET /me/jobs/{job_id}/logfile` downloads its logfile
+
+### Changed
+
+- Dashboard: Changed the look to an indigo palette, the Inter font, rounder cards and softer shadows, with single-word
+  labels on the home page, where before dark mode's background and cards were written in a form opacity broke
+- Dashboard: Changed the Run page to let only online devices be picked, where before a run on an offline one failed
+  at upload
+- Changed MSS to mark a device offline as it starts unless its backend holds a live connection, where before the
+  flag a stopped MSS left stood until its first refresh 30 s later
+
 ## [2026.11.0-rc.8] - 2026-11-06
 
 ### Changed

@@ -36,6 +36,8 @@ const VERBS = new Set([
   "update", "upload", "use", "validate", "verify", "view", "wait", "write",
 ]);
 const HOOK_PREFIX = "on";
+// the name react-router gives a route's data function, which every page exports
+const ROUTE_LOADER = "loader";
 const BOOLEAN_NAME = /^_?(is|should)[A-Z0-9_]/;
 const PASCAL_CASE = /^[A-Z][A-Za-z0-9]*$/;
 const CONSTANT_NAME = /^_?[A-Z][A-Z0-9_]*$/;
@@ -164,7 +166,10 @@ function parseModule(name: string, text: string): Module {
 
 function checkVerbs(module: Module): Violation[] {
   return findFunctions(module.source)
-    .filter(({ name }) => !PASCAL_CASE.test(name) && !startsWithVerb(name))
+    .filter(
+      ({ name }) =>
+        !PASCAL_CASE.test(name) && name !== ROUTE_LOADER && !startsWithVerb(name),
+    )
     .map(({ name }) => ({ rule: "verb", location: `${module.name}::${name}` }));
 }
 

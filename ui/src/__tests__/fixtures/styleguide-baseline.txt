@@ -21,7 +21,6 @@ props-position: src/pages/admin-control/components/backend-control-card/toggle.t
 props-position: src/pages/admin-control/components/calibration-card/actions.tsx::Props
 props-position: src/pages/admin-control/components/calibration-card/index.tsx::Props
 verb: src/components/layouts/dashboard/components/top-banner.tsx::mutationFn
-verb: src/components/layouts/dashboard/index.tsx::loader
 verb: src/components/ui/duration-input.tsx::toLooseISOFormat
 verb: src/components/ui/multi-input.tsx::_MultiInput
 verb: src/components/ui/multi-input.tsx::toStringValue
@@ -38,16 +37,5 @@ verb: src/pages/admin-control/components/calibration-card/metrics.tsx::median
 verb: src/pages/admin-control/components/calibration-card/metrics.tsx::statusBadgeVariant
 verb: src/pages/admin-control/components/notices-card/banner.tsx::mutationFn
 verb: src/pages/admin-control/components/notices-card/form.tsx::mutationFn
-verb: src/pages/admin-control/index.tsx::loader
-verb: src/pages/admin-projects/index.tsx::loader
-verb: src/pages/admin-requests/index.tsx::loader
-verb: src/pages/approvals/index.tsx::loader
-verb: src/pages/device-detail/index.tsx::loader
-verb: src/pages/devices.tsx::loader
 verb: src/pages/home/components/devices-table/index.tsx::goToDevice
 verb: src/pages/home/index.tsx::combineMyBookingsQueries
-verb: src/pages/home/index.tsx::loader
-verb: src/pages/projects/index.tsx::loader
-verb: src/pages/requests/index.tsx::loader
-verb: src/pages/settings/index.tsx::loader
-verb: src/pages/tokens/index.tsx::loader

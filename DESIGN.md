@@ -85,6 +85,12 @@ sequenceDiagram
     M->>D: update the job, take its QPU seconds from the project
 ```
 
+A job from the dashboard's Run page takes the same journey with MSS in the SDK's place:
+`POST /me/jobs/` (session cookie) carries OpenQASM 3 text, and `services/jobs/submission.py`
+creates the job and uploads the job file itself. The backend reads the circuits at upload and
+refuses one it cannot run with a 422 naming the circuit, line and column, which MSS answers
+the dashboard with; a refused job is not kept, and a taken one keeps its text as its `source`.
+
 MSS and each backend trust each other through key pairs, not tokens: MSS signs its HTTP calls
 with its private key, and each backend signs its websocket handshake with its own. See
 [docs/backends.md](docs/backends.md).

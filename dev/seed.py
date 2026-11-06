@@ -95,24 +95,30 @@ async def _insert_fixtures(database: Database) -> None:
         DeviceCalibration,
         [DeviceCalibration.model_validate(v) for v in _read("calibrations")],
     )
-    devices = _read("device-list")
-    await database.insert_many(Device, [Device.model_validate(v) for v in devices])
     # the e2e runs each backend's API alone, which opens no websocket until it sends an
     # event, so the devices the fixtures show online get a connection that does not lapse,
-    # as their workers' would be, and those shown offline are switched off
+    # as their workers' would be, and those shown offline are switched off; only the devices
+    # MSS has a backend for could have connected
+    fixture_devices = _read("device-list")
+    connected_names = [
+        v["name"]
+        for v in fixture_devices
+        if v["is_online"] and v["name"] in settings.CONFIG.backends_dict
+    ]
+    devices = [{**v, "is_online": v["name"] in connected_names} for v in fixture_devices]
+    await database.insert_many(Device, [Device.model_validate(v) for v in devices])
     await database.insert_many(
         DeviceConnection,
         [
-            DeviceConnection(device_name=v["name"], expires_at=now + _NEVER)
-            for v in devices
-            if v["is_online"]
+            DeviceConnection(device_name=name, expires_at=now + _NEVER)
+            for name in connected_names
         ],
     )
     await database.insert_many(
         SwitchedOffDevice,
         [
             SwitchedOffDevice(name=v["name"], switched_off_at=v["last_online"])
-            for v in devices
+            for v in fixture_devices
             if not v["is_online"]
         ],
     )
@@ -149,11 +155,17 @@ def _get_bot_token(
 
 
 def _get_job(fixture: Dict[str, Any], now: datetime) -> Job:
-    """Gets the job of the fixture: a successful one has results, and a timed one timestamps"""
+    """Gets the job of the fixture: a successful one has results, and a timed one timestamps
+
+    A fixture's own result and download_url are kept; a successful one without gets empty
+    results and a logfile URL.
+    """
     fields = {k: v for k, v in fixture.items() if k != "duration_in_secs"}
     if fixture["status"] == "successful":
-        fields["result"] = {"memory": []}
-        fields["download_url"] = f"http://{fixture['device']}/logfiles/{fixture['id']}"
+        fields.setdefault("result", {"memory": []})
+        fields.setdefault(
+            "download_url", f"http://{fixture['device']}/logfiles/{fixture['id']}"
+        )
     duration = fixture.get("duration_in_secs")
     if duration is not None:
         execution = {"started": now, "finished": now + timedelta(seconds=duration)}

@@ -137,6 +137,78 @@ class JobResult(BaseModel):
     circuits: Optional[List[JobResultCircuit]] = None
 
 
+class CircuitSource(BaseModel):
+    """A circuit as its author wrote it: OpenQASM 3, OpenPulse included"""
+
+    name: str = Field(min_length=1, max_length=64)
+    qasm: str = Field(min_length=1, max_length=200_000)
+
+
+class JobSource(BaseModel):
+    """The circuits and settings a job was submitted with, kept so it can be run again"""
+
+    shots: int = Field(gt=0, le=1_000_000)
+    meas_level: Literal[1, 2] = 2
+    meas_return: Literal["single", "avg"] = "single"
+    circuits: List[CircuitSource] = Field(min_length=1, max_length=20)
+
+
+class JobSubmission(JobSource):
+    """A job as the dashboard submits it, for the project it is billed to"""
+
+    project_id: Id
+    device: str
+
+
+class QasmCircuit(BaseModel):
+    """A circuit of a job file, as the backend takes it"""
+
+    name: str
+    qasm: str
+
+
+class CircuitJobParams(BaseModel):
+    """How a job file's circuits are run, as the backend takes them"""
+
+    circuits: List[QasmCircuit]
+    shots: int
+    meas_level: Literal[1, 2]
+    meas_return: Literal["single", "avg"]
+
+
+class JobFile(BaseModel):
+    """The file uploaded to a backend to run a job"""
+
+    job_id: str
+    params: CircuitJobParams
+
+    @classmethod
+    def from_source(cls, job_id: str, source: JobSource) -> Self:
+        """The job file that runs the source's circuits as written; the backend counts each
+        circuit's classical bits itself
+
+        Args:
+            job_id: the id of the job
+            source: the circuits and settings to run
+
+        Returns:
+            the job file
+        """
+        circuits = [
+            QasmCircuit(name=circuit.name, qasm=circuit.qasm)
+            for circuit in source.circuits
+        ]
+        return cls(
+            job_id=job_id,
+            params=CircuitJobParams(
+                circuits=circuits,
+                shots=source.shots,
+                meas_level=source.meas_level,
+                meas_return=source.meas_return,
+            ),
+        )
+
+
 class Job(Schema, JobCreate):
     """the job schema"""
 
@@ -156,6 +228,8 @@ class Job(Schema, JobCreate):
     result: Optional[JobResult] = None
     estimated_duration: Optional[float] = None
     actual_duration: Optional[float] = None
+    # what the dashboard submitted; none for a job sent by the SDK
+    source: Optional[JobSource] = None
     # encrypted JWT token for use to get logfiles from BCC, and submit job to BCC
     access_token: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=get_current_timestamp)

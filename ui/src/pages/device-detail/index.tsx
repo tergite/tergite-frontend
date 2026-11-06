@@ -8,9 +8,7 @@ import type {
   DeviceCalibration,
   User,
 } from "@/lib/api/types";
-import type {
-  QubitProp,
-} from "@/pages/device-detail/components/calibration-points";
+import type { QubitProp } from "@/pages/device-detail/components/calibration-points";
 import { LoaderFunctionArgs, useLoaderData } from "react-router-dom";
 
 import { DeviceSummary } from "./components/device-summary";
@@ -22,6 +20,7 @@ import { CalibrationMapChart } from "./components/calibration-map-chart";
 import { useState } from "react";
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
+import type { ErrorInfo } from "@/lib/api/client";
 import {
   BookingsCalendar,
   BookingsMetadata,
@@ -41,18 +40,28 @@ export function DeviceDetail() {
     calibrationData: defaultCalibrationData,
     bookingsMetadata,
     bookingsConfig,
+    bookingsError,
     currentUser,
     isAdmin,
   } = useLoaderData() as DeviceDetailData;
   const { data: device = defaultDevice } = useQuery(
-    getDeviceQuery(defaultDevice.name)
+    getDeviceQuery(defaultDevice.name),
   );
-  const { data: calibrationData = defaultCalibrationData } = useQuery(
-    getDeviceCalibrationQuery(defaultDevice.name)
+  // a device not calibrated yet has no calibration to poll for
+  const { data: calibrationData = defaultCalibrationData } = useQuery({
+    ...getDeviceCalibrationQuery(defaultDevice.name),
+    enabled: !!defaultCalibrationData,
+    // the loader's failed fetch stays in the cache, which a disabled query still throws
+    throwOnError: false,
+  });
+  const notCalibrated = (
+    <Card>
+      <CardContent className="p-6 text-sm text-muted-foreground">
+        {device.name} is not calibrated yet.
+      </CardContent>
+    </Card>
   );
-  const [currentData, setCurrentData] = useState<QubitProp>(
-    "t1_decoherence"
-  );
+  const [currentData, setCurrentData] = useState<QubitProp>("t1_decoherence");
 
   return (
     <main className="grid flex-1 items-start gap-4 grid-cols-1 p-4 sm:px-6 sm:py-0 md:gap-8 xl:grid-cols-4">
@@ -64,62 +73,83 @@ export function DeviceDetail() {
           <TabsTrigger value="calendar">Bookings</TabsTrigger>
         </TabsList>
         <TabsContent id="map-view" value="map">
-          <Card>
-            <CalibrationHeader
-              device={device}
-              currentData={currentData}
-              fieldLabels={fieldLabels}
-              onCurrentDataChange={setCurrentData}
-            />
-            <CardContent className="w-full min-w-[250px] h-[60vh] overflow-auto">
-              <CalibrationMapChart
-                data={calibrationData}
-                minWidth={250}
-                fieldLabels={fieldLabels}
+          {!calibrationData ? (
+            notCalibrated
+          ) : (
+            <Card>
+              <CalibrationHeader
                 device={device}
-                currentProp={currentData}
-                currentLabel={fieldLabels[currentData]}
+                currentData={currentData}
+                fieldLabels={fieldLabels}
+                onCurrentDataChange={setCurrentData}
               />
-            </CardContent>
-          </Card>
+              <CardContent className="w-full min-w-[250px] h-[60vh] overflow-auto">
+                <CalibrationMapChart
+                  data={calibrationData}
+                  minWidth={250}
+                  fieldLabels={fieldLabels}
+                  device={device}
+                  currentProp={currentData}
+                  currentLabel={fieldLabels[currentData]}
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         <TabsContent id="graph-view" value="graph">
-          <Card className=" overflow-auto">
-            <CalibrationHeader
-              device={device}
-              currentData={currentData}
-              fieldLabels={fieldLabels}
-              onCurrentDataChange={setCurrentData}
-            />
-            <CardContent className="w-full min-w-[250px] h-[60vh] overflow-auto">
-              <CalibrationBarChart
-                data={calibrationData}
-                minWidth={250}
+          {!calibrationData ? (
+            notCalibrated
+          ) : (
+            <Card className=" overflow-auto">
+              <CalibrationHeader
+                device={device}
+                currentData={currentData}
                 fieldLabels={fieldLabels}
-                currentProp={currentData}
+                onCurrentDataChange={setCurrentData}
               />
-            </CardContent>
-          </Card>
+              <CardContent className="w-full min-w-[250px] h-[60vh] overflow-auto">
+                <CalibrationBarChart
+                  data={calibrationData}
+                  minWidth={250}
+                  fieldLabels={fieldLabels}
+                  currentProp={currentData}
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         <TabsContent id="table-view" value="table">
-          <Card>
-            <CalibrationHeader device={device} currentData="Calibration" />
-            <CardContent>
-              <CalibrationDataTable data={calibrationData} />
-            </CardContent>
-          </Card>
+          {!calibrationData ? (
+            notCalibrated
+          ) : (
+            <Card>
+              <CalibrationHeader device={device} currentData="Calibration" />
+              <CardContent>
+                <CalibrationDataTable data={calibrationData} />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         <TabsContent id="calendar-view" value="calendar">
           <Card>
             <CalibrationHeader device={device} currentData="Bookings" />
             <CardContent>
-              <BookingsCalendar
-                bookingsMetadata={bookingsMetadata}
-                isAdmin={isAdmin}
-                currentUser={currentUser}
-                backend={device.name}
-                bookingsConfig={bookingsConfig}
-              />
+              {bookingsConfig ? (
+                <BookingsCalendar
+                  bookingsMetadata={bookingsMetadata}
+                  isAdmin={isAdmin}
+                  currentUser={currentUser}
+                  backend={device.name}
+                  bookingsConfig={bookingsConfig}
+                />
+              ) : (
+                <p
+                  id="bookings-unavailable"
+                  className="text-sm text-muted-foreground"
+                >
+                  Bookings are unavailable: {bookingsError}
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -136,15 +166,22 @@ export function DeviceDetail() {
 // eslint-disable-next-line react-refresh/only-export-components
 export function loader(queryClient: QueryClient) {
   return loadOrRedirectIfAuthErr(
-    async ({ params, request }: LoaderFunctionArgs): Promise<DeviceDetailData> => {
+    async ({
+      params,
+      request,
+    }: LoaderFunctionArgs): Promise<DeviceDetailData> => {
       const { deviceName = "" } = params;
-      const [device, calibrationData, bookingsConfig, currentUser] =
-        await Promise.all([
-          queryClient.ensureQueryData(getDeviceQuery(deviceName)),
+      // the calibration and the backend's bookings may be missing, and the rest still shows
+      const [device, calibration, bookings, currentUser] = await Promise.all([
+        queryClient.ensureQueryData(getDeviceQuery(deviceName)),
+        fetchOrGetReason(
           queryClient.ensureQueryData(getDeviceCalibrationQuery(deviceName)),
+        ),
+        fetchOrGetReason(
           queryClient.ensureQueryData(getBookingsConfigQuery(deviceName)),
-          queryClient.ensureQueryData(currentUserQuery),
-        ]);
+        ),
+        queryClient.ensureQueryData(currentUserQuery),
+      ]);
       const searchParams = new URL(request.url).searchParams;
       const bookingsMetadata: BookingsMetadata = {
         backend: deviceName,
@@ -162,21 +199,40 @@ export function loader(queryClient: QueryClient) {
 
       return {
         device,
-        calibrationData,
-        bookingsConfig,
+        calibrationData: calibration.data,
+        bookingsConfig: bookings.data,
+        bookingsError: bookings.reason,
         bookingsMetadata,
         currentUser,
         isAdmin,
       };
-    }
+    },
   );
 }
 
 interface DeviceDetailData {
   device: Device;
-  calibrationData: DeviceCalibration;
+  // none for a device not calibrated yet
+  calibrationData?: DeviceCalibration;
   bookingsMetadata: BookingsMetadata;
-  bookingsConfig: BookingsConfig;
+  // none when the device's backend cannot be reached, for the reason in bookingsError
+  bookingsConfig?: BookingsConfig;
+  bookingsError?: string;
   currentUser: User;
   isAdmin: boolean;
+}
+
+/** The fetch's data, or why it failed; a sign-in error is thrown on, to redirect */
+async function fetchOrGetReason<T>(
+  request: Promise<T>,
+): Promise<{ data?: T; reason?: string }> {
+  try {
+    return { data: await request };
+  } catch (error) {
+    const { status, message } = error as ErrorInfo;
+    if (status === 401 || status === 403) {
+      throw error;
+    }
+    return { reason: message };
+  }
 }

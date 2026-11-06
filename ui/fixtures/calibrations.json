@@ -717,5 +717,113 @@
         }
       }
     ]
+  },
+  {
+    "id": "6908f1a2c3d4e5f60718293d",
+    "name": "sim_1q",
+    "couplers": [],
+    "defcals": null,
+    "discriminators": {
+      "lda": {
+        "q12": {
+          "coef_0": -1735.394415958757,
+          "coef_1": 6254.284998331873,
+          "intercept": -7.047913271055627
+        }
+      }
+    },
+    "frames": null,
+    "last_calibrated": "2025-09-30T12:00:00.000Z",
+    "qubits": [
+      {
+        "t1_decoherence": null,
+        "t2_decoherence": null,
+        "frequency": {
+          "unit": "Hz",
+          "value": 4511600250.540639,
+          "date": null
+        },
+        "anharmonicity": null,
+        "readout_assignment_error": null,
+        "pi_pulse_amplitude": {
+          "unit": "",
+          "value": 0.35595428737685286,
+          "date": null
+        },
+        "pi_pulse_duration": {
+          "unit": "s",
+          "value": 2.8e-08,
+          "date": null
+        },
+        "pi_pulse_motzoi": {
+          "unit": "",
+          "value": -0.10512820512820514,
+          "date": null
+        },
+        "pulse_type": {
+          "unit": "",
+          "value": "Gaussian",
+          "date": null
+        },
+        "pulse_sigma": {
+          "unit": "",
+          "value": 0,
+          "date": null
+        },
+        "id": 12,
+        "index": null,
+        "x_position": null,
+        "y_position": null,
+        "xy_drive_line": null,
+        "z_drive_line": null,
+        "name": "q12"
+      }
+    ],
+    "resonators": [
+      {
+        "acq_delay": {
+          "unit": "s",
+          "value": 2.2e-07,
+          "date": null
+        },
+        "acq_integration_time": {
+          "unit": "s",
+          "value": 2.5e-06,
+          "date": null
+        },
+        "frequency": {
+          "unit": "Hz",
+          "value": 7259855555.555555,
+          "date": null
+        },
+        "pulse_amplitude": {
+          "unit": "",
+          "value": 0.04936363636363636,
+          "date": null
+        },
+        "pulse_delay": {
+          "unit": "s",
+          "value": 0,
+          "date": null
+        },
+        "pulse_duration": {
+          "unit": "s",
+          "value": 2.5e-06,
+          "date": null
+        },
+        "pulse_type": {
+          "unit": "",
+          "value": "Square",
+          "date": null
+        },
+        "id": 12,
+        "index": null,
+        "x_position": null,
+        "y_position": null,
+        "readout_line": null,
+        "name": "q12"
+      }
+    ],
+    "version": "1.0.0"
   }
 ]

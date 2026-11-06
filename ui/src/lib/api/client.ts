@@ -15,21 +15,38 @@ client.use({
 
 async function getErrorInfo(response: Response): Promise<ErrorInfo> {
   const text = await response.text();
-  const error = new Error(parseDetail(text)) as ErrorInfo;
+  const detail = parseDetail(text);
+  const error = new Error(formatDetail(detail, text)) as ErrorInfo;
   error.status = response.status;
+  error.detail = detail;
   return error;
 }
 
-function parseDetail(text: string): string {
+function parseDetail(text: string): unknown {
   try {
-    const { detail } = JSON.parse(text);
-    return typeof detail === "string" ? detail : text;
+    return JSON.parse(text).detail;
   } catch {
-    return text;
+    return undefined;
   }
+}
+
+/** The detail as a sentence: as given, or a validation error's messages joined */
+function formatDetail(detail: unknown, text: string): string {
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (
+    Array.isArray(detail) &&
+    detail.every((v) => typeof v?.msg === "string")
+  ) {
+    return detail.map((v) => v.msg).join("; ");
+  }
+  return text;
 }
 
 export type ErrorInfo = Error & {
   status?: number;
   statusText?: string;
+  // the response's detail as MSS sent it, e.g. a 422's list of errors
+  detail?: unknown;
 };
