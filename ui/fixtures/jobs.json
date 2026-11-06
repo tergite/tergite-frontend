@@ -66,19 +66,13 @@
   },
   {
     "id": "6908f1a2c3d4e5f60718293a",
-    "job_id": "0b6b4f43-2f1d-4a8e-9a55-5c7f1d1e3b21",
+    "job_id": "0b0b0f07-7f8d-8a8e-9a99-0c7f8d8e0b90",
     "device": "Loke",
     "project_id": "653a8f19e736d76276597a6c",
     "user_id": "5ddc8d9fb69602723cd3c38f",
     "status": "successful",
     "created_at": "2024-06-21T10:02:00.000Z",
     "calibration_date": "2024-05-23T09:12:00.733Z",
-    "timestamps": {
-      "execution": {
-        "started": "2024-06-21T10:02:03.000Z",
-        "finished": "2024-06-21T10:02:09.200Z"
-      }
-    },
     "source": {
       "shots": 1024,
       "meas_level": 2,
@@ -1129,11 +1123,12 @@
         }
       ]
     },
-    "download_url": null
+    "download_url": null,
+    "duration_in_secs": 6
   },
   {
     "id": "6908f1a2c3d4e5f60718293b",
-    "job_id": "7e1d2c3b-4a59-4f68-8e7d-6c5b4a392817",
+    "job_id": "7e0d0c0b-8a79-8f08-8e7d-0c9b8a09a807",
     "device": "Thor",
     "project_id": "653a8f19e736d76276597a6c",
     "user_id": "5ddc8d9fb69602723cd3c38f",
