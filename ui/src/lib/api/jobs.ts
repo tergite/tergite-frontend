@@ -2,8 +2,13 @@ import { QueryClient, queryOptions } from "@tanstack/react-query";
 import type { Job, JobStatus, JobSubmission } from "./types";
 import { client } from "./client";
 
-// a running job is polled this often, until it is final
-const RUNNING_JOB_REFETCH_MS = 2_000;
+// a job not yet final is polled often while it is young, and less as it waits in the queue:
+// [up to this age in ms, poll every ms], the last for any older job
+const POLL_INTERVALS: [number, number][] = [
+  [60_000, 2_000],
+  [600_000, 10_000],
+  [Infinity, 30_000],
+];
 const FINAL_STATUSES: JobStatus[] = ["successful", "failed", "cancelled"];
 
 export function getMyJobsQuery(options: { project_id?: string } = {}) {
@@ -20,7 +25,10 @@ export function getMyJobsQuery(options: { project_id?: string } = {}) {
   });
 }
 
-/** One of the user's jobs, polled every 2 s until it is final */
+/**
+ * One of the user's jobs, polled until it is final: every 2 s in its first minute, every
+ * 10 s up to ten minutes, then every 30 s, as a job waiting out a booking can wait for hours
+ */
 export function getMyJobQuery(jobId: string) {
   return queryOptions({
     queryKey: ["me", "jobs", "one", jobId],
@@ -30,9 +38,17 @@ export function getMyJobQuery(jobId: string) {
       });
       return data! as Job;
     },
-    refetchInterval: (query) =>
-      isFinal(query.state.data?.status) ? false : RUNNING_JOB_REFETCH_MS,
+    refetchInterval: (query) => {
+      const job = query.state.data;
+      return isFinal(job?.status) ? false : getPollInterval(job?.created_at);
+    },
   });
+}
+
+/** How often to poll a job not yet final, from how long ago it was created */
+export function getPollInterval(createdAt?: string, now = Date.now()): number {
+  const age = createdAt ? now - Date.parse(createdAt) : 0;
+  return POLL_INTERVALS.find(([maxAge]) => age < maxAge)![1];
 }
 
 /** Runs OpenQASM 3 circuits on a device; a circuit it cannot run fails with a 422 */
