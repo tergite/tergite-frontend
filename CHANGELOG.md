@@ -10,6 +10,11 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Changed
+
+- Dashboard: Changed `npm run dev` to replace `ui/dist` with a page that redirects MSS's `/ui` to vite, and to start
+  vite on port 5173 or fail, where before MSS could serve a stale build and `npm run dev` never started vite
+
 ### Fixed
 
 - Fixed MSS failing to start on a SQLite url with a relative path, e.g. `sqlite+aiosqlite:///db.sqlite3`, which it

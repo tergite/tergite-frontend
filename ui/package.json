@@ -4,7 +4,7 @@
   "version": "2026.11.0-rc.6",
   "type": "module",
   "scripts": {
-    "dev": "uv run --directory .. python -m dev.seed && start-server-and-test mss http://127.0.0.1:8002/health \"vite --host 0.0.0.0\"",
+    "dev": "uv run --directory .. python -m dev.seed && uv run --directory .. python -m dev.stub_dashboard && start-server-and-test mss http-get://127.0.0.1:8002/health \"vite --host 127.0.0.1 --port 5173 --strictPort\"",
     "mss": "uv run --directory .. python main.py serve --port 8002",
     "build": "tsc && vite build",
     "test": "vitest ",
