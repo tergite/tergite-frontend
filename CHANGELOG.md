@@ -10,6 +10,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.9] - 2026-11-06
+
 ### Added
 
 - Dashboard: Added a Run page, where a user writes OpenQASM 3 with highlighting and completion, runs it on a device
