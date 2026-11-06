@@ -24,14 +24,15 @@ export function DeviceSummary({
   calibrationData,
   className = "",
 }: Props) {
+  const qubits = calibrationData?.qubits;
   const deviceMedians: DeviceCalibrationMedians = useMemo(
     () =>
-      getCalibrationMedians(calibrationData.qubits, [
+      getCalibrationMedians(qubits ?? [], [
         "t1_decoherence",
         "t2_decoherence",
         "readout_assignment_error",
       ]),
-    [calibrationData.qubits]
+    [qubits]
   );
 
   return (
@@ -89,11 +90,17 @@ export function DeviceSummary({
       </CardContent>
       <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3">
         <div className="text-xs text-muted-foreground">
-          Last calibrated{" "}
-          <time dateTime={calibrationData.last_calibrated ?? undefined}>
-            {calibrationData.last_calibrated &&
-              DateTime.fromISO(calibrationData.last_calibrated).toRelative()}
-          </time>
+          {calibrationData ? (
+            <>
+              Last calibrated{" "}
+              <time dateTime={calibrationData.last_calibrated ?? undefined}>
+                {calibrationData.last_calibrated &&
+                  DateTime.fromISO(calibrationData.last_calibrated).toRelative()}
+              </time>
+            </>
+          ) : (
+            "Not calibrated yet"
+          )}
         </div>
       </CardFooter>
     </Card>
@@ -102,7 +109,8 @@ export function DeviceSummary({
 
 interface Props {
   device: Device;
-  calibrationData: DeviceCalibration;
+  // none for a device not calibrated yet
+  calibrationData?: DeviceCalibration;
   className?: string;
 }
 
