@@ -6,7 +6,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { QasmError } from "@/components/ui/qasm-editor";
 import { currentUserQuery } from "@/lib/api/auth";
 import type { ErrorInfo } from "@/lib/api/client";
@@ -23,7 +22,6 @@ import type { Device, Job, Project, User } from "@/lib/api/types";
 import { useAppStore } from "@/lib/app-state";
 import { loadOrRedirectIfAuthErr } from "@/lib/loaders";
 import { BELL_CIRCUIT } from "@/lib/qasm/language";
-import { cn } from "@/lib/utils";
 import { CircuitPanel, type Draft } from "./components/circuit-panel";
 import { ResultsPanel } from "./components/results-panel";
 import { RunsList } from "./components/runs-list";
@@ -111,34 +109,9 @@ export function Run() {
     }
   };
 
-  const steps = [
-    { label: "Device", isDone: !!draft.device },
-    { label: "Circuit", isDone: draft.qasm.trim().length > 0 },
-    { label: "Run", isDone: !!selectedJob },
-    { label: "Results", isDone: selectedJob?.status === "successful" },
-  ];
-
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Run</h1>
-        <ol aria-label="Steps" className="flex flex-wrap gap-2 text-sm">
-          {steps.map((step) => (
-            <li
-              key={step.label}
-              className={cn(
-                "rounded-full px-3 py-1",
-                step.isDone
-                  ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {step.label}
-              {step.isDone && " ✓"}
-            </li>
-          ))}
-        </ol>
-      </div>
+    <main className="grid flex-1 content-start items-start gap-4 p-4 sm:px-6 sm:py-0">
+      <h1 className="text-2xl font-semibold tracking-tight">Run</h1>
 
       {project ? (
         <>
@@ -168,17 +141,16 @@ export function Run() {
           />
         </>
       ) : (
-        <Card id="run-no-project">
-          <CardHeader>
-            <CardTitle>Project</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Pick a project in the top bar; its QPU time pays for the run.{" "}
-            <Link to="/projects" className="underline">
-              Projects
-            </Link>
-          </CardContent>
-        </Card>
+        <p
+          id="run-no-project"
+          className="rounded-lg border bg-card px-4 py-3 text-sm text-muted-foreground"
+        >
+          Pick a project in the top bar to run circuits; its QPU time pays for
+          them.{" "}
+          <Link to="/projects" className="underline">
+            Projects
+          </Link>
+        </p>
       )}
     </main>
   );
