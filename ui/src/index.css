@@ -24,6 +24,12 @@
     --input: 220 13% 91%;
     --ring: 262.1 83.3% 57.8%;
     --radius: 0.5rem;
+    --code-keyword: 262 70% 50%;
+    --code-type: 199 89% 32%;
+    --code-gate: 201 96% 28%;
+    --code-number: 26 90% 37%;
+    --code-string: 142 64% 28%;
+    --code-comment: 215 16% 47%;
   }
 
   .dark {
@@ -46,6 +52,44 @@
     --border: 215 27.9% 16.9%;
     --input: 215 27.9% 16.9%;
     --ring: 263.4 70% 50.4%;
+    --code-keyword: 263 90% 76%;
+    --code-type: 199 89% 70%;
+    --code-gate: 198 93% 66%;
+    --code-number: 32 95% 66%;
+    --code-string: 142 60% 62%;
+    --code-comment: 215 16% 60%;
+  }
+}
+
+/* CodeMirror's base theme beats EditorView.theme, so the editor is dressed here */
+@layer components {
+  .qasm-editor .cm-editor {
+    @apply h-full bg-transparent text-[13px];
+  }
+  .qasm-editor .cm-editor.cm-focused {
+    @apply outline-none;
+  }
+  .qasm-editor .cm-scroller {
+    @apply font-mono leading-relaxed;
+  }
+  .qasm-editor .cm-gutters {
+    @apply border-r border-border bg-transparent text-muted-foreground;
+  }
+  .qasm-editor .cm-activeLine,
+  .qasm-editor .cm-activeLineGutter {
+    @apply bg-muted/40;
+  }
+  .qasm-editor .cm-cursor {
+    @apply border-l-foreground;
+  }
+  .qasm-editor .cm-tooltip {
+    @apply rounded-md border border-border bg-popover text-popover-foreground shadow-md;
+  }
+  .qasm-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+    @apply bg-accent text-accent-foreground;
+  }
+  .qasm-editor .cm-lintRange-error {
+    @apply bg-none underline decoration-destructive decoration-wavy;
   }
 }
 
