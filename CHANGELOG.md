@@ -14,6 +14,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 - Dashboard: Changed `npm run dev` to replace `ui/dist` with a page that redirects MSS's `/ui` to vite, and to start
   vite on port 5173 or fail, where before MSS could serve a stale build and `npm run dev` never started vite
+- Changed `mss-config.example.toml` into a working development config on SQLite, marking what production changes,
+  where before a copy of it needed editing before `npm run dev` would seed or MSS would start
 
 ### Fixed
 
