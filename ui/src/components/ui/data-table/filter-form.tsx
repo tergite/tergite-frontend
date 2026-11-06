@@ -31,8 +31,7 @@ export function DataFilterForm({
     [fieldsConfig]
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filterForm = useForm<z.infer<z.ZodObject<any, any, any>>>({
+  const filterForm = useForm<FilterValues>({
     resolver: zodResolver(z.object(rawSchemaObj)),
     defaultValues,
     values,
@@ -96,12 +95,12 @@ interface Props {
   onReset: () => void;
   fieldsConfig: DataTableFormConfig;
   isFiltered: boolean;
-  values: { [k: string]: unknown };
+  values: FilterValues;
 }
 
 export interface DataTableFormConfig {
   [key: string]: {
-    validation: z.ZodType<unknown, object, unknown>;
+    validation: z.ZodType<unknown>;
     defaultValue: unknown;
     label: string;
     /**
@@ -114,9 +113,8 @@ export interface DataTableFormConfig {
   };
 }
 
-export type DataTableFilterField = ControllerRenderProps<
-  {
-    [x: string]: string | number | readonly string[] | undefined;
-  },
-  string
->;
+type FilterValues = {
+  [x: string]: string | number | readonly string[] | undefined;
+};
+
+export type DataTableFilterField = ControllerRenderProps<FilterValues, string>;
