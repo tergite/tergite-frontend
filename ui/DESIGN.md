@@ -342,8 +342,11 @@ Each feature's happy path, and the spec that walks it:
 | Admin requests | `admin-requests.spec.ts` |
 | Admin control | `admin-control.spec.ts` |
 | Error page | `error-alert.spec.ts` |
+| Run | `run.spec.ts` |
 
-Job submission has no UI; its happy path is the MSS pytest flow in `tests/api/test_jobs.py`.
+The e2e stack serves the backends' API without their workers, so no backend has a device to run
+on: `run.spec.ts` follows a circuit through MSS to the backend's refusal, and a finished run's
+counts come from a seeded job. A job's run to completion is the backend's own test suite's.
 
 The specs reuse the dashboard's own pure helpers (`extendAppToken`, `getUserRequestDetails`)
 rather than copies; a module they import must not build the HTTP client, whose base URL only
