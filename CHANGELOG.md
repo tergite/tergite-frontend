@@ -16,8 +16,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
   and reads its counts as a histogram or table, and opens, resubmits or cancels past runs, where before a job could
   only be sent from the SDK
 - Added `POST /me/jobs/`, which runs OpenQASM 3 circuits, OpenPulse included, as a job billed to one of the user's
-  projects: MSS refuses what the backend cannot run, with its line and column, uploads the job itself and keeps its
-  source, which `GET /me/jobs/{job_id}` returns; `GET /me/jobs/{job_id}/logfile` downloads its logfile
+  projects: MSS uploads the job itself, answers with the backend's refusal of a circuit at its line and column, and
+  keeps the source, which `GET /me/jobs/{job_id}` returns; `GET /me/jobs/{job_id}/logfile` downloads its logfile
 
 ### Changed
 

@@ -165,7 +165,6 @@ class QasmCircuit(BaseModel):
 
     name: str
     qasm: str
-    num_clbits: int
 
 
 class CircuitJobParams(BaseModel):
@@ -184,20 +183,20 @@ class JobFile(BaseModel):
     params: CircuitJobParams
 
     @classmethod
-    def from_source(cls, job_id: str, source: JobSource, num_clbits: List[int]) -> Self:
-        """The job file that runs the source's circuits as written
+    def from_source(cls, job_id: str, source: JobSource) -> Self:
+        """The job file that runs the source's circuits as written; the backend counts each
+        circuit's classical bits itself
 
         Args:
             job_id: the id of the job
             source: the circuits and settings to run
-            num_clbits: the classical bits each circuit declares, in the source's order
 
         Returns:
             the job file
         """
         circuits = [
-            QasmCircuit(name=circuit.name, qasm=circuit.qasm, num_clbits=clbits)
-            for circuit, clbits in zip(source.circuits, num_clbits, strict=True)
+            QasmCircuit(name=circuit.name, qasm=circuit.qasm)
+            for circuit in source.circuits
         ]
         return cls(
             job_id=job_id,

@@ -32,7 +32,7 @@ from .service import (
     update_job,
     update_qpu_usage,
 )
-from .submission import InvalidCircuitError, submit_job
+from .submission import submit_job
 
 SCHEMAS = (Job,)
 
@@ -46,7 +46,6 @@ __all__ = [
     "JobStatusResponse",
     "JobSubmission",
     "JobUpdate",
-    "InvalidCircuitError",
     "submit_job",
     "cancel_job",
     "count_job_submitters",

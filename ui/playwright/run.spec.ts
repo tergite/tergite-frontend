@@ -54,8 +54,10 @@ test.describe("run page for jane.doe", () => {
     ]);
   });
 
-  test("marks a circuit MSS refuses at its line", async ({ page, loginAs }) => {
+  test("marks a circuit the backend refuses at its line", async ({ page, loginAs }) => {
     await loginAs(jane, `./run?job=${bellRun.job_id}`);
+    await page.locator("#run-device").click();
+    await page.getByRole("option", { name: /^sim_1q/ }).click();
     await replaceCircuit(page, BROKEN_CIRCUIT);
 
     const [response] = await Promise.all([
@@ -65,7 +67,7 @@ test.describe("run page for jane.doe", () => {
 
     expect(response.status()).toBe(422);
     await expect(page.locator("#circuit [role=alert]")).toHaveText(
-      "Line 4: missing ';' at 'bit'",
+      "circuit bell is not valid OpenQASM 3: line 4, column 0: missing ';' at 'bit'",
     );
     await expect(page.locator(".cm-lintRange-error")).toBeVisible();
   });

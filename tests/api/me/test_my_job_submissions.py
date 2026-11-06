@@ -90,7 +90,7 @@ def test_submitting_a_job_uploads_its_file_and_keeps_its_source(
     assert _read_job_file(upload) == {
         "job_id": job["job_id"],
         "params": {
-            "circuits": [{"name": "bell", "qasm": _BELL, "num_clbits": 2}],
+            "circuits": [{"name": "bell", "qasm": _BELL}],
             "shots": 1024,
             "meas_level": 2,
             "meas_return": "single",
@@ -99,34 +99,37 @@ def test_submitting_a_job_uploads_its_file_and_keeps_its_source(
 
 
 @pytest.mark.parametrize(
-    "qasm, message, line, column",
+    "refusal, ctx",
     [
         (
-            "OPENQASM 3.0;\nqubit[2] q;\nh q[0]\ncx q[0], q[1];\n",
-            "missing ';' at 'cx'",
-            4,
-            1,
+            {
+                "message": "circuit second is not valid OpenQASM 3: line 4, column 0: "
+                "missing ';' at 'cx'",
+                "circuit_index": 1,
+                "line": 4,
+                "column": 0,
+            },
+            {"line": 4, "column": 1},
         ),
         (
-            "OPENQASM 3.0;\nqubit[9] q;\nbit[1] c;\nc[0] = measure q[0];\n",
-            "the circuit uses 9 qubits, but Loke has 8",
-            None,
-            None,
-        ),
-        (
-            'OPENQASM 3.0;\ndefcalgrammar "openpulse";\nbit[1] c;\n'
-            "cal { c[0] = capture_v1(q12_readout, 2us); }\n",
-            "project test-project may not send pulse-level programs; an admin can allow it",
-            None,
-            None,
+            {
+                "message": "gate rx takes 1 parameter and 1 qubit, but got 0 parameters",
+                "circuit_index": 1,
+                "line": None,
+                "column": None,
+            },
+            {"line": None, "column": None},
         ),
     ],
-    ids=["syntax", "too-many-qubits", "pulse-without-leave"],
+    ids=["syntax", "wrong-arity"],
 )
-def test_a_circuit_the_device_cannot_run_is_refused_before_a_job_is_made(
-    db, client, loke, uploads, user_jwt_cookie, qasm, message, line, column
+def test_a_circuit_the_backend_refuses_is_reported_at_it_and_no_job_is_kept(
+    db, client, loke, mock_bcc, user_jwt_cookie, refusal, ctx
 ):
-    second = {"name": "second", "qasm": qasm}
+    mock_bcc.post(f"{_BCC_URL}/jobs").mock(
+        return_value=httpx.Response(422, json={"detail": refusal})
+    )
+    second = {"name": "second", "qasm": "OPENQASM 3.0;"}
     payload = {**_SUBMISSION, "circuits": [*_SUBMISSION["circuits"], second]}
 
     with client as client:
@@ -137,13 +140,12 @@ def test_a_circuit_the_device_cannot_run_is_refused_before_a_job_is_made(
         {
             "type": "invalid_circuit",
             "loc": ["body", "circuits", 1, "qasm"],
-            "msg": message,
+            "msg": refusal["message"],
             "input": None,
-            "ctx": {"line": line, "column": column},
+            "ctx": ctx,
         }
     ]
     assert db.find(Job, {}) == []
-    assert not uploads.called
 
 
 @pytest.mark.parametrize(
@@ -163,21 +165,42 @@ def test_a_job_needs_a_project_of_the_users_with_qpu_left(
     assert db.find(Job, {}) == []
 
 
-def test_a_job_file_the_backend_refuses_fails_the_job_with_its_reason(
-    db, client, loke, mock_bcc, user_jwt_cookie
+@pytest.mark.parametrize(
+    "backend_answer, status_code, detail",
+    [
+        (
+            httpx.Response(
+                403, json={"detail": "the job's project may not send pulse-level jobs"}
+            ),
+            403,
+            "the job's project may not send pulse-level jobs",
+        ),
+        (
+            httpx.Response(
+                400, json={"detail": "the device takes no pulse-level jobs"}
+            ),
+            400,
+            "the device takes no pulse-level jobs",
+        ),
+        (httpx.ConnectError("refused"), 503, "device is currently unavailable"),
+    ],
+    ids=["pulse-without-leave", "beyond-pulse-limits", "unreachable"],
+)
+def test_a_job_file_the_backend_refuses_is_answered_with_its_reason_and_not_kept(
+    db, client, loke, mock_bcc, user_jwt_cookie, backend_answer, status_code, detail
 ):
-    reason = "the device takes no pulse-level jobs"
-    mock_bcc.post(f"{_BCC_URL}/jobs").mock(
-        return_value=httpx.Response(400, json={"detail": reason})
-    )
+    route = mock_bcc.post(f"{_BCC_URL}/jobs")
+    if isinstance(backend_answer, Exception):
+        route.mock(side_effect=backend_answer)
+    else:
+        route.mock(return_value=backend_answer)
 
     with client as client:
         response = client.post("/me/jobs/", json=_SUBMISSION, cookies=user_jwt_cookie)
 
-    (stored,) = db.find(Job, {})
-    assert response.status_code == 400
-    assert response.json()["detail"] == reason
-    assert (stored.status, stored.failure_reason) == ("failed", reason)
+    assert response.status_code == status_code
+    assert response.json()["detail"] == detail
+    assert db.find(Job, {}) == []
 
 
 def test_reading_a_job_shows_its_source_but_not_its_token(

@@ -1179,7 +1179,8 @@ export interface paths {
          * Submit My Job
          * @description Runs OpenQASM 3 circuits on a device, as a job billed to one of the user's projects
          *
-         *     MSS checks the circuits and uploads the job to the device's backend itself.
+         *     MSS uploads the job to the device's backend itself; the backend reads the circuits and
+         *     refuses one it cannot run, and a job it refuses is not kept.
          *
          *     Args:
          *         database: the database where the jobs, projects and devices are stored
@@ -1187,15 +1188,16 @@ export interface paths {
          *         payload: the circuits, their settings, the device and the project
          *
          *     Returns:
-         *         the job, pending, or failed with the backend's reason
+         *         the job, pending
          *
          *     Raises:
          *         401: the project is inactive, or the user is not its member
-         *         400: MSS knows no backend for the device, or the device has no calibration
-         *         403: the project has no QPU seconds left
+         *         400: MSS knows no backend for the device, or the device has no calibration, or
+         *             the backend refused the job file otherwise, e.g. beyond its pulse limits
+         *         403: the project has no QPU seconds left, or may not send pulse-level programs
          *         404: no such device
-         *         422: a circuit the device cannot run, at body.circuits.<index>.qasm, with the line
-         *             and column in its ctx when known
+         *         422: a circuit the backend cannot run, at body.circuits.<index>.qasm, with the line
+         *             and column, from 1, in its ctx when known
          *         503: the device is unavailable
          */
         post: operations["submit_my_job_me_jobs__post"];

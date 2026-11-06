@@ -165,10 +165,7 @@ export function CircuitPanel({
               className="border-t px-4 py-2 text-sm text-destructive"
             >
               {errors.map((error, index) => (
-                <li key={index}>
-                  {error.line ? `Line ${error.line}: ` : ""}
-                  {error.message}
-                </li>
+                <li key={index}>{error.message}</li>
               ))}
             </ul>
           )}
