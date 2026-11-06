@@ -1,74 +1,62 @@
-# API Design
+# API design
 
-This document contains the basic API (Application Programming Interface) design followed for the RESTful API exposed by MSS.
+The rules MSS's REST API follows, so that anyone who knows a resource's name can guess its
+endpoints. For contributors adding or changing routes.
 
-It contains rules we follow so that any developer working with the API can find it predictable to work with.
+## Goals
+
+- A small surface, with as few endpoints as possible.
+- One way of doing one thing, unless performance or readability clearly outweighs it.
+- Predictable URLs: knowing the resource's name is enough to build any of its endpoints.
+- JSON responses only, so client code stays simple.
 
 ## Rules
 
-- The format for the URL for each resource is `http(s)://{subdomain}.{domain}/{resource}/({id})` 
-  _Note: the parts in `()` are optional._
-- Every resource has a schema that represents the JSON object for every instance of that resource. 
-  For example, the jobs resource has a `Job` JSON object schema. 
-- Endpoints that return many results return a paginated object of format:
+- **URLs** are `/{resource}/({id})`. Every resource has a DTO named after it, e.g. `Job`.
+- **Lists** return a paginated object. Build it with `get_paginated_json(data, skip, limit)`,
+  and declare `PaginatedListResponse[Item]` as the route's response:
 
-```json
-{
-  "skip": "<number>",
-  "limit": "<number | null>",
-  "data": "<ResourceJSONSchema[]>"
-}
-```
+  ```json
+  {"skip": 0, "limit": 100, "data": [ ... ]}
+  ```
 
-- Endpoints that perform an action (e.g. trigger calibration) return a status message object of format:
+- **Actions** (e.g. cancelling a job) return a `GeneralMessage`:
 
-```json
-{
-  "status": "<'SUCCESS' | 'FAILURE' | 'PENDING' | 'ERROR'>",
-  "message": "<string | null>"
-}
-```
+  ```json
+  {"status": "SUCCESS", "message": "..."}
+  ```
 
-- When an error is thrown in the endpoint, the status code is set to a value outside the 200-30X range 
-  and the response is a JSON object of format:
+- **Errors** return a non-2xx status and `{"detail": "..."}`. The central exception handlers
+  produce them; routes don't try/except.
+- **Filtering** a list uses a Pydantic query model injected with `Depends()` (e.g. `JobQuery`,
+  `DeviceQuery`), usually made with `create_partial_model` so every field is optional. `sort`
+  is a repeated query parameter, where a leading `-` means descending.
+- **A property-only route** (e.g. `GET /jobs/{id}/status`) is allowed only when that property
+  is requested far more often than the whole object. It returns `{"{property}": …}`.
+- **Every route declares its response**, so the OpenAPI schema describes every body:
+  - a route that returns a model gets it as its return annotation;
+  - a route that returns a dict it dumped itself, e.g. with `exclude_none=True` (`Job`,
+    `Project`, `Device`, the paginated list), declares `responses={200: {"model": …}}`
+    instead, as a `response_model` would re-serialise the body and undo that shaping.
 
-```json
-{
-  "detail": "<string>"
-}
-```
+  No model overrides `model_dump`; a call site passes the flags it needs.
+- **The schema is committed** as `dev/openapi/openapi.json`, written by
+  `python -m dev.openapi.export`. `tests/test_openapi.py` fails when it no longer matches the
+  app. The dashboard generates its API types from it.
 
-- Every resource has at least five endpoints:
+## Endpoint map
 
-    - GetOne (GET `/{resource}/({id})`)
-    - GetMany (GET `/{resource}/?{query_param1}={query_param1_value}&{query_param2}={query_param2_value}`)
-    - UpdateOne (PUT `/{resource}/({id})`)
-    - CreateOne (POST `/{resource}/`)
+| Prefix | Auth | Notes |
+| --- | --- | --- |
+| `/auth/{provider}/…` | none | `authorize`, `auto-authorize`, `callback`; plus `GET /auth/providers/` and `POST /auth/logout`. There is no password login. |
+| `/me` | JWT | the current user: `/me/profile`, `/me/jobs/`, `/me/projects/…`, `/me/tokens/…`, `/me/requests/…`, `/me/notices/…` |
+| `/devices` | app token, or none for reads | `GET /`, `GET /{name}`, `WS /ws/{name}` |
+| `/calibrations` | none for reads | `GET /`, `GET /{name}` |
+| `/jobs` | app token (strict on `POST`) | list, get, `/{id}/status`, create, `/{id}/cancel`, delete. Reads return only the token user's jobs (and jobs with no recorded submitter) unless the user is an admin. |
+| `/bookings/{backend}` | JWT | forwarded to the backend: create, cancel, list, `/config` |
+| `/counts` | JWT | `/notices`; `/job-submitters` (superusers only) |
+| `/admin` | superuser | `/projects/…`, `/users/emails/`, `/notices/…`, and the backend's `/bcc/users/{backend}/…`, `/bcc/recalibration/{backend}/…`, `/bcc/switch/{backend}/on|off` |
+| `/health` | none | 200 while MSS runs |
 
-- Resources may also have the following optional endpoints:
-
-    - UpdateMany (PUT `/{resource}/?{query_param1}={query_param1_value}&{query_param2}={query_param2_value}`)
-    - DeleteOne (DELETE `/{resource}/({id})`)
-    - DeleteMany (DELETE `/{resource}/?{query_param1}={query_param1_value}&{query_param2}={query_param2_value}`)
-
-- We can also have `GET`-only endpoints for specific properties of a resource with path format `/{resource}/{property}`
-  Such endpoints are only allowed if:
-
-    - The given property is much more frequently requested for, compared to the rest of the object e.g. 'status' of a job
-- The response from endpoints that return specific properties of a resource is a JSON object format:
-
-```json
-{
-  "{property}": "<any>"
-}
-```
-
-## Objectives
-
-- Ensure a very minimal interface surface, with as few endpoints as possible
-- Have only one way of doing one thing, except only for cases where the performance or/and readability heavily outweigh
-  the advantage of a shallow learning curve
-- The endpoint pattern should be predictable enough that if one knows the resource name, one can easily construct 
-  any endpoint without having to check the API documentation.
-- All responses need to be JSON-compatible so that client code is simple. 
-  It will not need to handle other types of responses.
+JWT and app tokens are explained in [auth.md](auth.md#how-it-works-in-mss). Interactive docs
+are at `/docs` when `general.environment` is `development`.

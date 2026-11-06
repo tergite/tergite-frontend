@@ -41,8 +41,7 @@ roles = ["partner", "user"]
 openid_configuration_endpoint = "https://example.com/.well-known/openid-configuration"
 ```
 
-- Start the frontend.
-  Instructions are on the [tergite-frontend/README.md](../README.md)
+- Restart MSS: see [deployment.md](deployment.md), or the [README's quick start](../README.md#quick-start) in development.
 
 ## Authorization
 
@@ -63,7 +62,42 @@ Here is an interaction diagram of QAL9000 auth showcasing authentication via [My
 
 **The raw editable drawio diagram can be found [in the assets folder](./assets/qal9000-auth.drawio)**
 
-### FAQs
+## How it works in MSS
+
+Two separate mechanisms, and most endpoints need one specific one.
+
+### Users and sessions: who you are
+
+Users sign in through `libs/authlib`, which began as a copy of
+[fastapi-users](https://fastapi-users.github.io/).
+
+- Login is **OAuth2/OpenID only**. There is no password login, and authentication cannot be
+  disabled.
+- Each `[[auth.clients]]` entry is a provider, served at `/auth/{provider}/…` (and the legacy
+  `/auth/app/{provider}/…`): `authorize`, `auto-authorize` (which the dashboard links to, and
+  which redirects at once) and `callback`. An unknown provider is a 404.
+- A provider's `email_regex` limits which emails may use it; its `roles` are granted on
+  sign-in; `email_domain` is what `GET /auth/providers/?email_domain=…` matches, so the login
+  page offers the right button; `associate_by_email` decides whether a returning user who
+  used a different provider is linked to their existing account.
+- A session is one JWT, read from the bearer header, then from the cookie the callback sets
+  (which the dashboard uses).
+- Roles are `user`, `researcher`, `admin`, `partner` and `system`. An `admin` is a superuser.
+
+### Projects and app tokens: what you may spend
+
+- An **app token** is a bearer token for one user in one project, with a lifespan. Users make
+  and revoke them in the dashboard; the SDK and other Tergite components use them.
+- A **project** has `qpu_seconds`. Creating a job needs an active project with positive QPU
+  seconds; a finished job's time is taken from it.
+- A missing token or an inactive project is 401; too few QPU seconds or a missing role is 403
+  (`AccessRule`s in `services/auth/access.py`).
+
+**A session JWT and an app token are not interchangeable.** A JWT works on `/auth…`, `/me…`
+and admin routes; an app token works on the resource routes (`/jobs`, `/devices`, …). Using
+the wrong one gives 401 or 403, the most common confusion when testing by hand.
+
+## FAQs
 
 #### - How do we bypass authentication in development?
 
@@ -75,7 +109,7 @@ We no longer support disabling authentication.
 
 With key pairs, not app tokens: MSS and each backend (BCC) sign what they send each other with
 their private keys, and check what they receive against the other's public key, as
-[DESIGN.md §3.2](../DESIGN.md#32-job-submission--the-one-flow-that-crosses-everything) details.
+[backends.md](backends.md) details.
 
 - MSS signs every request it sends a backend with its private key, `PRIVATE_KEY_FILE`; the
   backend checks it against its copy of MSS's public key, `BCC_MSS_PUBLIC_KEY_PATH`.
@@ -91,7 +125,7 @@ means giving the other side its new public key.
 #### - How do I log in?
 
 - Open the dashboard, which MSS serves at `/ui`, e.g. http://127.0.0.1:8002/ui; it builds into
-  `ui/dist` for MSS to serve, as the [README](../README.md) describes.
+  `ui/dist` for MSS to serve, as [CONTRIBUTING.md](../CONTRIBUTING.md#how-to-build) describes.
 - **Make sure that your `mss-config.toml` file has all variables filled appropriately**.
 - The dashboard redirects you to the login page if you are not already logged in.
 - However, you can also log in without running the dashboard first. See the next FAQ.
