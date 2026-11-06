@@ -10,6 +10,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.8] - 2026-11-06
+
 ### Changed
 
 - Repository: Changed the README to the quick start and an index of the docs, with deployment, storage and backends each
