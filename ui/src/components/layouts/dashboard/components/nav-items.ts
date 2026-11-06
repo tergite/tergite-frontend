@@ -7,6 +7,7 @@ import {
   Home,
   KeyRound,
   KeySquare,
+  Play,
   Settings2,
   SlidersHorizontal,
   type LucideIcon,
@@ -18,6 +19,7 @@ export const NAV_GROUPS: NavGroup[] = [
     name: "main",
     links: [
       { to: "/", text: "Dashboard", Icon: Home },
+      { to: "/run", text: "Run", Icon: Play },
       { to: "/devices", text: "Devices", Icon: Cpu },
     ],
   },

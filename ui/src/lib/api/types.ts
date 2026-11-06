@@ -10,8 +10,12 @@ export type DeviceCalibration = Schemas["DeviceCalibration"];
 export type Qubit = Schemas["QubitCalibration"];
 export type CalibrationValue = Schemas["CalibrationValue"];
 
-export type Job = Stored<Schemas["Job"]>;
+// MSS makes every job's job_id, though its schema marks it optional with a default
+export type Job = Stored<Schemas["Job"]> & { job_id: string };
 export type JobStatus = Schemas["JobStatus"];
+export type JobResult = Schemas["JobResult"];
+export type JobSource = Schemas["JobSource"];
+export type JobSubmission = Schemas["JobSubmission"];
 
 export type Project = Schemas["ProjectRead"];
 export type AdminProject = Schemas["ProjectAdminView"];

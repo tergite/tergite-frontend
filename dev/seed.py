@@ -149,11 +149,17 @@ def _get_bot_token(
 
 
 def _get_job(fixture: Dict[str, Any], now: datetime) -> Job:
-    """Gets the job of the fixture: a successful one has results, and a timed one timestamps"""
+    """Gets the job of the fixture: a successful one has results, and a timed one timestamps
+
+    A fixture's own result and download_url are kept; a successful one without gets empty
+    results and a logfile URL.
+    """
     fields = {k: v for k, v in fixture.items() if k != "duration_in_secs"}
     if fixture["status"] == "successful":
-        fields["result"] = {"memory": []}
-        fields["download_url"] = f"http://{fixture['device']}/logfiles/{fixture['id']}"
+        fields.setdefault("result", {"memory": []})
+        fields.setdefault(
+            "download_url", f"http://{fixture['device']}/logfiles/{fixture['id']}"
+        )
     duration = fixture.get("duration_in_secs")
     if duration is not None:
         execution = {"started": now, "finished": now + timedelta(seconds=duration)}
