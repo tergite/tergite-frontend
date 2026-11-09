@@ -229,12 +229,10 @@ for (const user of users) {
         await expect(page.getByText(/\b(info|warning|critical)\b/i).first()).toBeVisible();
       });
 
-      test("shows the active notice banner on an admin screen too", async ({ page }) => {
-        const banner = page.getByTestId("top-banner");
-        await expect(banner).toBeVisible();
-        await expect(banner.getByLabel("Dismiss notice").first()).toBeVisible();
+      test("shows the notifications bell on an admin screen too", async ({ page }) => {
+        await expect(page.getByTestId("topbar").getByTestId("notices-bell-icon")).toBeVisible();
         // no project is selected here, so no API token
-        await expect(banner.locator("input#api-token")).toHaveCount(0);
+        await expect(page.getByTestId("top-banner").locator("input#api-token")).toHaveCount(0);
       });
 
       test("creates a new notice and increments the active count, showing a success toast", async ({

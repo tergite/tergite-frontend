@@ -40,14 +40,14 @@ export function NotificationsBell({ userId }: Props) {
           aria-label="Notifications"
           variant="outline"
           size="icon"
-          className="relative"
+          className="relative rounded-full bg-card"
         >
           <BellIcon className="h-4 w-4" data-testid="notices-bell-icon" />
           {unreadCount > 0 && (
             <Badge
               data-cy-unread-count
               variant="default"
-              className="absolute -top-2 -right-2 px-1.5 py-0 text-xs"
+              className="absolute -right-1.5 -top-1.5 px-1.5 py-0 text-[10px]"
             >
               {unreadCount}
             </Badge>
@@ -57,10 +57,12 @@ export function NotificationsBell({ userId }: Props) {
       <PopoverContent
         id="notifications-panel"
         align="end"
-        className="w-96 p-0 max-h-96 overflow-y-auto"
+        className="max-h-[28rem] w-96 overflow-y-auto rounded-xl p-0 shadow-card"
       >
-        <div className="flex items-center justify-between px-4 py-2 border-b">
-          <span className="font-semibold text-sm">Notifications</span>
+        <div className="sticky top-0 flex items-center justify-between border-b bg-popover px-4 py-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Notifications
+          </span>
           {unreadCount > 0 && (
             <Button
               type="button"

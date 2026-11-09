@@ -14,8 +14,8 @@ export function NavItem({
   const colorsClass = React.useMemo(
     () =>
       location.pathname === to
-        ? "bg-accent text-accent-foreground font-medium"
-        : "text-muted-foreground",
+        ? "bg-sidebar-highlight/[0.1] text-sidebar-highlight shadow-nav-active"
+        : "text-sidebar-muted",
     [location.pathname, to]
   );
 
@@ -35,7 +35,7 @@ export function NavItem({
     <Link
       to={to}
       title={showText ? undefined : text}
-      className={`flex h-9 px-2 items-center ${colorsClass} rounded-md transition-colors hover:text-foreground hover:bg-accent`}
+      className={`flex h-10 px-3 items-center ${colorsClass} rounded-lg transition-all hover:bg-sidebar-highlight/[0.06] hover:text-sidebar-highlight`}
     >
       <div className={`flex ${sizeClass.gap} items-center`}>
         {Icon && (

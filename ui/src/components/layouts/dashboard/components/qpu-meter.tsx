@@ -38,7 +38,7 @@ export function QpuMeter({ project, isExpanded }: Props) {
             <Gauge
               className={cn(
                 "h-4 w-4",
-                isEmpty ? "text-destructive" : "text-muted-foreground",
+                isEmpty ? "text-destructive" : "text-sidebar-muted",
               )}
             />
           </div>
@@ -49,8 +49,11 @@ export function QpuMeter({ project, isExpanded }: Props) {
   }
 
   return (
-    <div data-cy-qpu-meter className="grid gap-1 px-6 w-full text-xs">
-      <span className="text-muted-foreground">My QPU time</span>
+    <div
+      data-cy-qpu-meter
+      className="mx-4 grid w-[calc(100%-2rem)] gap-1 rounded-lg border border-sidebar-highlight/10 bg-sidebar-highlight/[0.04] px-3 py-3 text-xs"
+    >
+      <span className="text-sidebar-subtle">My QPU time</span>
       {isEmpty ? (
         // a user cannot grant themselves time, so this points at the request flow
         <Link
@@ -61,7 +64,7 @@ export function QpuMeter({ project, isExpanded }: Props) {
           None left — request more
         </Link>
       ) : (
-        <span data-cy-qpu-remaining className="font-medium">
+        <span data-cy-qpu-remaining className="font-medium text-sidebar-strong">
           {formatSeconds(remaining)} left
         </span>
       )}

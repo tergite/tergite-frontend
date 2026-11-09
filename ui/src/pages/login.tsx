@@ -14,6 +14,8 @@ import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { AuthProviderResponse } from "@/lib/api/types";
 import { z } from "zod";
+import { ArrowRight, ShieldCheck } from "lucide-react";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 const formSchema = z.object({
   email: z.string().email("invalid email; expected xxx@bxxxx.xxx"),
@@ -41,45 +43,77 @@ export default function LoginForm() {
   );
 
   return (
-    <main className=" grid gap-4 p-4 md:gap-8 grid-cols-1 lg:grid-cols-2 h-screen">
-      <div className="w-full h-full hidden lg:block m-4 rounded-md my-auto bg-[url('/img/quantum-computer.jpg')] bg-no-repeat bg-center bg-cover"></div>
-      <div className="w-full">
-        <div className="w-full text-right">
-          <DarkToggleBtn />
-        </div>
-        <div className="my-40 p-4 ">
-          <div data-cy-logo className="text-center">
-            <p className="text-3xl font-bold mb-2">WACQT</p>
-
-            <p className="font-light text-lg">
-              Wallenberg Centre for <br /> Quantum Technology
-            </p>
-            <span className="sr-only">
-              WACQT: Wallenberg Centre for Quantum Technology
+    <main className="grid min-h-screen bg-background lg:grid-cols-[1.08fr_0.92fr]">
+      <section className="relative hidden overflow-hidden bg-sidebar lg:block">
+        <div className="absolute inset-0 bg-[url('/img/quantum-computer.jpg')] bg-cover bg-center opacity-45 mix-blend-luminosity" />
+        <div className="quantum-grid absolute inset-0 opacity-50" />
+        <div className="absolute inset-0 bg-gradient-to-b from-sidebar-veil/15 to-sidebar-veil/[0.92]" />
+        <div className="relative flex h-full flex-col justify-between p-12 text-sidebar-highlight xl:p-16">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl border border-sidebar-highlight/20 bg-sidebar-highlight/10">
+              <LogoMark className="h-7 w-7" />
+            </span>
+            <span className="font-display text-lg font-semibold tracking-[0.14em]">
+              WACQT
             </span>
           </div>
+          <div className="max-w-xl">
+            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-sidebar-primary/25 bg-sidebar-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-sidebar-primary-soft">
+              Quantum computer platform
+            </span>
+            <h1 className="text-5xl font-semibold leading-[1.08] tracking-tight xl:text-6xl">
+              Precision control for quantum systems.
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-relaxed text-sidebar-soft">
+              Monitor device health, manage compute access, and move
+              experiments from queue to execution with confidence.
+            </p>
+          </div>
+          <p className="text-xs text-sidebar-subtle">
+            Wallenberg Centre for Quantum Technology
+          </p>
+        </div>
+      </section>
+
+      <section className="flex min-h-screen flex-col px-6 py-6 sm:px-12 lg:px-16 xl:px-24">
+        <div className="flex w-full items-center justify-between">
+          <div className="flex items-center gap-2 lg:hidden" data-cy-logo>
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-sidebar">
+              <LogoMark className="h-6 w-6" />
+            </span>
+            <span className="font-display font-semibold tracking-[0.12em]">
+              WACQT
+            </span>
+          </div>
+          <DarkToggleBtn />
         </div>
 
-        <div className="w-full">
-          <h2 className="text-3xl mb-4 text-center font-semibold">
-            Welcome back
-          </h2>
-          <div className="pb-5 border-b mx-auto max-w-48 mb-20 text-center">
-            <h2 className="text-xl font-thin">Sign in</h2>
+        <div className="my-auto w-full max-w-md self-center py-16">
+          <div className="mb-10">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              Secure workspace
+            </p>
+            <h2 className="text-4xl font-semibold tracking-tight">
+              Welcome back
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              Sign in with your institutional email to access the quantum
+              computer dashboard.
+            </p>
           </div>
-
           {providers ? (
             providers.map((provider) => (
               <div
                 key={provider.name}
-                className="grid gap-4 w-2/3 mx-auto max-w-80 mb-2"
+                className="mb-2 grid gap-4"
               >
-                <Button variant="outline" asChild>
+                <Button size="lg" asChild className="w-full justify-between">
                   <a
                     href={`${provider.url}?next=${window.location.origin}${import.meta.env.BASE_URL}`}
                     data-cy-login-link
                   >
-                    Login with {provider.name}
+                    Continue with {provider.name}
+                    <ArrowRight className="h-4 w-4" />
                   </a>
                 </Button>
               </div>
@@ -88,7 +122,8 @@ export default function LoginForm() {
             <Form {...signinForm}>
               <form
                 onSubmit={signinForm.handleSubmit(onFormSubmit)}
-                className="grid gap-4 w-2/3 mx-auto max-w-80"
+                noValidate
+                className="grid gap-4"
               >
                 <FormField
                   control={signinForm.control}
@@ -96,30 +131,45 @@ export default function LoginForm() {
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
                       <FormControl>
-                        <Input placeholder="Email address:" {...field} />
+                        <Input
+                          type="email"
+                          placeholder="name@institution.se"
+                          className="h-11 rounded-lg bg-card"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={!signinForm.formState.isDirty}>
-                  Next
+                <Button
+                  size="lg"
+                  type="submit"
+                  className="w-full justify-between"
+                  disabled={!signinForm.formState.isDirty}
+                >
+                  Continue
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </form>
             </Form>
           )}
           {import.meta.env.DEV && (
-            <p className="mt-8 text-center text-sm">
+            <p className="mt-6 text-center text-xs text-muted-foreground">
               <a
                 href={`${import.meta.env.VITE_API_BASE_URL}/ui/dev-login.html`}
-                className="underline"
+                className="font-medium text-primary hover:underline"
               >
                 Log in as a seeded user (development only)
               </a>
             </p>
           )}
+          <div className="mt-10 flex items-center justify-center gap-2 border-t pt-6 text-xs text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 text-signal" />
+            Protected institutional access
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   );
 }

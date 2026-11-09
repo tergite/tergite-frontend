@@ -35,6 +35,8 @@ import { loadOrRedirectIfAuthErr, tryQueryFetchMany } from "@/lib/loaders";
 import { useAppStore } from "@/lib/app-state";
 import { DateTime } from "luxon";
 import { BookingsTable } from "./components/bookings-table";
+import { Activity, ArrowUpRight, CalendarClock, Cpu } from "lucide-react";
+import { MetricCard } from "./components/metric-card";
 
 export function Home() {
   const {
@@ -54,22 +56,68 @@ export function Home() {
     combine: combineMyBookingsQueries,
   });
   const devicesOnlineRatio = React.useMemo(
-    () =>
-      Math.round(
-        (devices.filter((v) => v.is_online).length / devices.length) * 100
-      ),
+    () => {
+      if (!devices.length) return 0;
+      return Math.round(
+        (devices.filter((v) => v.is_online).length / devices.length) * 100,
+      );
+    },
     [devices]
   );
+  const onlineDevices = devices.filter((device) => device.is_online).length;
+  const pendingJobs = jobs.filter((job) => job.status === "pending").length;
+  const firstName = currentUser.email.split("@")[0].split(".")[0];
 
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 lg:grid-cols-3 xl:grid-cols-3">
-      <div className="grid auto-rows-max items-start gap-4 lg:col-span-3">
-        <div className="grid gap-4 sm:grid-cols-[250px_auto_auto]">
-          <Card id="devices-online-piechart" className="grid-fit-content">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Online</CardTitle>
+    <main className="grid flex-1 items-start gap-6 px-4 pb-6 sm:px-7">
+      <section className="flex flex-col justify-between gap-4 pt-2 sm:flex-row sm:items-end">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Quantum computer
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Welcome back, <span className="capitalize">{firstName}</span>
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Monitor your quantum systems, compute queue, and reserved access.
+          </p>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <MetricCard
+          label="Quantum systems"
+          value={`${onlineDevices}/${devices.length}`}
+          detail={`${devicesOnlineRatio}% available`}
+          Icon={Cpu}
+        />
+        <MetricCard
+          label="Compute queue"
+          value={String(pendingJobs)}
+          detail={`${jobs.length} recent jobs`}
+          Icon={Activity}
+        />
+        <MetricCard
+          label="Reserved sessions"
+          value={String(bookings.length)}
+          detail="Upcoming bookings"
+          Icon={CalendarClock}
+        />
+      </section>
+
+      <div className="grid auto-rows-max items-start gap-5">
+        <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
+          <Card
+            id="devices-online-piechart"
+            className="relative overflow-hidden"
+          >
+            <CardHeader className="pb-2">
+              <CardDescription className="text-xs font-semibold uppercase tracking-[0.14em]">
+                Fleet availability
+              </CardDescription>
+              <CardTitle className="text-lg">Devices online</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-5">
               <DonutChart
                 percentFill={devicesOnlineRatio}
                 thickness="5%"
@@ -78,14 +126,22 @@ export function Home() {
           </Card>
           <Card
             id="devices-table"
-            className="sm:col-span-2"
+            className="min-w-0"
             x-chunk="dashboard-05-chunk-0"
           >
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle>Devices</CardTitle>
-                <Link to="/devices" className="text-sm font-normal underline">
-                  All
+              <div className="flex justify-between">
+                <div className="space-y-1.5">
+                  <CardTitle>Devices</CardTitle>
+                  <CardDescription>
+                    Live availability across connected quantum systems
+                  </CardDescription>
+                </div>
+                <Link
+                  to="/devices"
+                  className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  View fleet <ArrowUpRight className="h-4 w-4" />
                 </Link>
               </div>
             </CardHeader>
@@ -94,18 +150,22 @@ export function Home() {
             </CardContent>
           </Card>
         </div>
-        <div className="grid gap-4 sm:grid-cols-6">
-          <Card id="jobs-table" className="sm:col-span-4">
+        <div className="grid gap-5 xl:grid-cols-5">
+          <Card id="jobs-table" className="min-w-0 xl:col-span-3">
             <CardHeader className="px-7">
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between">
                 <div className="space-y-1.5">
                   <CardTitle>Jobs</CardTitle>
                   <CardDescription>
-                    {currentProject?.name || "All projects"}
+                    The status of your jobs in{" "}
+                    {currentProject?.name || "all projects"}
                   </CardDescription>
                 </div>
-                <Link to="/run" className="text-sm font-normal underline">
-                  Run
+                <Link
+                  to="/run"
+                  className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  Run <ArrowUpRight className="h-4 w-4" />
                 </Link>
               </div>
             </CardHeader>
@@ -114,9 +174,10 @@ export function Home() {
             </CardContent>
           </Card>
 
-          <Card id="bookings-table" className="sm:col-span-2">
+          <Card id="bookings-table" className="min-w-0 xl:col-span-2">
             <CardHeader className="px-7">
-              <CardTitle>Bookings</CardTitle>
+              <CardTitle>Upcoming Bookings</CardTitle>
+              <CardDescription>My upcoming bookings</CardDescription>
             </CardHeader>
             <CardContent>
               <BookingsTable data={bookings} />

@@ -152,7 +152,7 @@ for (const user of users) {
 
     test("renders the topbar", async ({ page }) => {
       const topbar = page.getByTestId("topbar");
-      await expect(topbar.getByText(/project:/i).first()).toBeVisible();
+      await expect(topbar.getByRole("combobox")).toBeVisible();
       await expect(topbar.locator("[aria-label='UserRound']")).toBeVisible();
       await expect(topbar.locator("[aria-label='Moon']")).toBeVisible();
     });
@@ -180,7 +180,17 @@ for (const user of users) {
       await expect(banner.locator("input")).toBeVisible();
       await expect(banner.locator("[aria-label='RefreshCcw']")).toBeVisible();
       await expect(banner.locator("[aria-label='Copy']")).toBeVisible();
-      await expect(banner.getByTestId("notices-bell-icon")).toBeAttached();
+    });
+
+    test("renders the notifications bell in the topbar", async ({ page }) => {
+      const topbar = page.getByTestId("topbar");
+      await expect(topbar.getByTestId("notices-bell-icon")).toBeVisible();
+      await expect(page.locator("#notifications-panel")).toHaveCount(0);
+    });
+
+    test("names the release at the foot of the sidebar", async ({ page }) => {
+      await page.setViewportSize({ width: 1080, height: 750 });
+      await expect(page.locator("[data-cy-release]")).toHaveText(/^Release \d{4}\.\d{2}$/);
     });
 
     test("logout button logs current user out", async ({ page }) => {
@@ -193,18 +203,18 @@ for (const user of users) {
     });
 
     test("current project can be selected from list of projects", async ({ page }) => {
-      const projectSelectBtn = page.getByTestId("topbar").locator("button", { hasText: /project:/i });
-      await expect(projectSelectBtn).toHaveText("Project: Select project");
+      const projectSelectBtn = page.getByTestId("topbar").getByRole("combobox");
+      await expect(projectSelectBtn).toHaveText("Project Select project");
 
       for (const project of userProjects) {
         await projectSelectBtn.click();
         await page.locator("#project-selector").getByText(project.name).first().click();
-        await expect(projectSelectBtn).toHaveText(`Project: ${project.name}`);
+        await expect(projectSelectBtn).toHaveText(`Project ${project.name}`);
       }
     });
 
     test("generates new api token on token-refresh button click", async ({ page }) => {
-      const projectSelectBtn = page.getByTestId("topbar").locator("button", { hasText: /project:/i });
+      const projectSelectBtn = page.getByTestId("topbar").getByRole("combobox");
       const newTokenBtn = page.locator('[data-testid="top-banner"] [aria-label="RefreshCcw"]');
       const appTokenInput = page.locator('[data-testid="top-banner"] input#api-token');
 
@@ -218,7 +228,7 @@ for (const user of users) {
 
     test("copies current api token on token-copy button click", async ({ page }) => {
       await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-      const projectSelectBtn = page.getByTestId("topbar").locator("button", { hasText: /project:/i });
+      const projectSelectBtn = page.getByTestId("topbar").getByRole("combobox");
       const newTokenBtn = page.locator('[data-testid="top-banner"] [aria-label="RefreshCcw"]');
       const copyBtn = page.locator('[data-testid="top-banner"] [aria-label="Copy"]');
       const appTokenInput = page.locator('[data-testid="top-banner"] input#api-token');

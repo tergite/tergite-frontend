@@ -29,13 +29,13 @@ export function MobileMenu({ pendingRequestsCount, isAdmin }: Props) {
       <SheetContent
         data-testid="mobile-menu"
         side="left"
-        className="sm:max-w-xs"
+        className="border-sidebar-highlight/10 bg-sidebar p-0 text-sidebar-foreground sm:max-w-xs"
       >
         <SheetTitle>
           <Logo />
         </SheetTitle>
 
-        <nav className="grid gap-4 text-lg font-medium overflow-y-auto max-h-[75vh]">
+        <nav className="grid max-h-[75vh] gap-4 overflow-y-auto px-4 py-6 text-lg font-medium">
           {NAV_GROUPS.filter(
             (group) => isAdmin || !group.isAdminOnly
           ).map((group) => (
@@ -72,13 +72,13 @@ function MobileMenuGroup({ group, pendingRequestsCount }: GroupProps) {
       <CollapsibleTrigger asChild>
         <Button
           variant="ghost"
-          className={`flex text-lg font-medium gap-4 h-9 px-2 justify-start rounded-sm transition-colors text-muted-foreground active:text-accent-foreground hover:text-foreground w-full`}
+          className="flex h-9 w-full justify-start gap-4 px-3 text-sm font-semibold uppercase tracking-[0.14em] text-sidebar-subtle hover:bg-sidebar-highlight/[0.04] hover:text-sidebar-soft"
         >
           <group.Icon className="h-5 w-5 font-medium" />
           {group.title}
         </Button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="flex flex-col gap-6 my-6 ml-4 -mr-4">
+      <CollapsibleContent className="my-2 flex flex-col gap-1">
         {links}
       </CollapsibleContent>
     </Collapsible>
