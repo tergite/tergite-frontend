@@ -239,8 +239,7 @@ def test_at_startup_only_devices_with_a_live_connection_are_online(
 
     with client as client:
         flags = {
-            v["name"]: v["is_online"]
-            for v in client.get("/devices/").json()["data"]
+            v["name"]: v["is_online"] for v in client.get("/devices/").json()["data"]
         }
 
     assert flags == {connected["name"]: True, "Odin": False, "Frigg": False}
