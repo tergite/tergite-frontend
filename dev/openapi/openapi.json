@@ -3590,7 +3590,7 @@
   "info": {
     "description": "A frontend to all our quantum backends",
     "title": "Main Service Server",
-    "version": "2026.11.0-rc.9"
+    "version": "2026.11.0-rc.10"
   },
   "openapi": "3.1.0",
   "paths": {
