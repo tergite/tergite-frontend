@@ -105,7 +105,9 @@ async def _insert_fixtures(database: Database) -> None:
         for v in fixture_devices
         if v["is_online"] and v["name"] in settings.CONFIG.backends_dict
     ]
-    devices = [{**v, "is_online": v["name"] in connected_names} for v in fixture_devices]
+    devices = [
+        {**v, "is_online": v["name"] in connected_names} for v in fixture_devices
+    ]
     await database.insert_many(Device, [Device.model_validate(v) for v in devices])
     await database.insert_many(
         DeviceConnection,

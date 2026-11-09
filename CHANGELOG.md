@@ -10,6 +10,13 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.10] - 2026-11-09
+
+### Added
+
+- Added a device's `pulse_limits` to `GET /devices/` and `GET /devices/{name}`, as its backend sends them, where before
+  users could learn a limit only from a pulse-level job refused for going beyond it
+
 ## [2026.11.0-rc.9] - 2026-11-06
 
 ### Added

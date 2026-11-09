@@ -15,9 +15,9 @@
 from __future__ import annotations
 
 from enum import Enum, IntEnum
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, confloat, conint
 
 
 class CalibrationValue(BaseModel):
@@ -76,40 +76,6 @@ class CouplerCalibration(BaseModel):
     )
     target_qubit: str | None = Field(None, title="Target Qubit")
     target_rz_lambda: CalibrationValue | None = None
-
-
-class Device(BaseModel):
-    """
-    The device's information, as the backend sends it MSS: these fields alone, as MSS keeps
-    only the fields it declares
-    """
-
-    basis_gates: list[str] = Field(..., title="Basis Gates")
-    characterized: bool = Field(..., title="Characterized")
-    coordinates: list[tuple[int, int]] = Field(..., title="Coordinates")
-    coupling_dict: dict[str, str | list[str]] = Field(..., title="Coupling Dict")
-    coupling_map: list[tuple[int, int]] = Field(..., title="Coupling Map")
-    description: str | None = Field(None, title="Description")
-    dt: float | None = Field(None, title="Dt")
-    dtm: float | None = Field(None, title="Dtm")
-    gates: dict[str, Any] | None = Field(None, title="Gates")
-    is_active: bool | None = Field(None, title="Is Active")
-    is_online: bool = Field(..., title="Is Online")
-    is_simulator: bool = Field(..., title="Is Simulator")
-    last_online: str | None = Field(None, title="Last Online")
-    meas_lo_freq: list[int] | None = Field(None, title="Meas Lo Freq")
-    meas_map: list[list[int]] = Field(..., title="Meas Map")
-    name: str = Field(..., title="Name")
-    number_of_couplers: int | None = Field(0, title="Number Of Couplers")
-    number_of_qubits: int = Field(..., title="Number Of Qubits")
-    number_of_resonators: int | None = Field(0, title="Number Of Resonators")
-    open_pulse: bool = Field(..., title="Open Pulse")
-    qubit_ids: list[str] | None = Field([], title="Qubit Ids")
-    qubit_ids_coupler_map: list[tuple[tuple[int, int], int]] | None = Field(
-        [], title="Qubit Ids Coupler Map"
-    )
-    qubit_lo_freq: list[int] | None = Field(None, title="Qubit Lo Freq")
-    version: str = Field(..., title="Version")
 
 
 class DeviceEventName(Enum):
@@ -208,6 +174,31 @@ class PulseFrame(BaseModel):
     qubits: list[int] = Field(..., title="Qubits")
 
 
+class PulseLimits(BaseModel):
+    """
+    What a device's pulse-level jobs may play, which its operators set in the backend
+    config's pulse_limits: amplitudes as fractions of full scale, energies in full scale
+    squared times seconds, on one frame. A kind of frame a limit by kind leaves out may not
+    be played
+    """
+
+    max_amplitude: dict[Literal["drive", "readout", "coupler"], confloat(ge=0.0)] = (
+        Field(..., title="Max Amplitude")
+    )
+    max_capture_duration: confloat(ge=0.0) = Field(..., title="Max Capture Duration")
+    max_energy_per_job: dict[
+        Literal["drive", "readout", "coupler"], confloat(ge=0.0)
+    ] = Field(..., title="Max Energy Per Job")
+    max_energy_per_shot: dict[
+        Literal["drive", "readout", "coupler"], confloat(ge=0.0)
+    ] = Field(..., title="Max Energy Per Shot")
+    max_frequency_offset: confloat(ge=0.0) = Field(..., title="Max Frequency Offset")
+    max_pulse_duration: confloat(ge=0.0) = Field(..., title="Max Pulse Duration")
+    max_samples_per_waveform: conint(ge=0) = Field(
+        ..., title="Max Samples Per Waveform"
+    )
+
+
 class QubitCalibration(BaseModel):
     """
     Schema for the calibration data of the qubit
@@ -300,6 +291,41 @@ class Timestamps(BaseModel):
     post_processing: TimestampPair | None = None
     pre_processing: TimestampPair | None = None
     registration: TimestampPair | None = None
+
+
+class Device(BaseModel):
+    """
+    The device's information, as the backend sends it MSS: these fields alone, as MSS keeps
+    only the fields it declares
+    """
+
+    basis_gates: list[str] = Field(..., title="Basis Gates")
+    characterized: bool = Field(..., title="Characterized")
+    coordinates: list[tuple[int, int]] = Field(..., title="Coordinates")
+    coupling_dict: dict[str, str | list[str]] = Field(..., title="Coupling Dict")
+    coupling_map: list[tuple[int, int]] = Field(..., title="Coupling Map")
+    description: str | None = Field(None, title="Description")
+    dt: float | None = Field(None, title="Dt")
+    dtm: float | None = Field(None, title="Dtm")
+    gates: dict[str, Any] | None = Field(None, title="Gates")
+    is_active: bool | None = Field(None, title="Is Active")
+    is_online: bool = Field(..., title="Is Online")
+    is_simulator: bool = Field(..., title="Is Simulator")
+    last_online: str | None = Field(None, title="Last Online")
+    meas_lo_freq: list[int] | None = Field(None, title="Meas Lo Freq")
+    meas_map: list[list[int]] = Field(..., title="Meas Map")
+    name: str = Field(..., title="Name")
+    number_of_couplers: int | None = Field(0, title="Number Of Couplers")
+    number_of_qubits: int = Field(..., title="Number Of Qubits")
+    number_of_resonators: int | None = Field(0, title="Number Of Resonators")
+    open_pulse: bool = Field(..., title="Open Pulse")
+    pulse_limits: PulseLimits | None = None
+    qubit_ids: list[str] | None = Field([], title="Qubit Ids")
+    qubit_ids_coupler_map: list[tuple[tuple[int, int], int]] | None = Field(
+        [], title="Qubit Ids Coupler Map"
+    )
+    qubit_lo_freq: list[int] | None = Field(None, title="Qubit Lo Freq")
+    version: str = Field(..., title="Version")
 
 
 class DeviceCalibration(BaseModel):

@@ -925,6 +925,16 @@
             "title": "Open Pulse",
             "type": "boolean"
           },
+          "pulse_limits": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PulseLimits"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "qubit_ids": {
             "default": [],
             "items": {
@@ -2627,6 +2637,75 @@
         "title": "PulseFrameKind",
         "type": "string"
       },
+      "PulseLimits": {
+        "description": "What a device's pulse-level jobs may play, as its operators set them; a kind of frame\nthat a limit by kind leaves out may not be played at all",
+        "properties": {
+          "max_amplitude": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "the largest |sample| of a waveform, as a fraction of full scale",
+            "propertyNames": {
+              "$ref": "#/components/schemas/PulseFrameKind"
+            },
+            "title": "Max Amplitude",
+            "type": "object"
+          },
+          "max_capture_duration": {
+            "description": "seconds of one capture",
+            "title": "Max Capture Duration",
+            "type": "number"
+          },
+          "max_energy_per_job": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "the energy on one frame over the job, in full scale^2 s",
+            "propertyNames": {
+              "$ref": "#/components/schemas/PulseFrameKind"
+            },
+            "title": "Max Energy Per Job",
+            "type": "object"
+          },
+          "max_energy_per_shot": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "the sum of |sample|^2 * dt on one frame in one shot, in full scale^2 s",
+            "propertyNames": {
+              "$ref": "#/components/schemas/PulseFrameKind"
+            },
+            "title": "Max Energy Per Shot",
+            "type": "object"
+          },
+          "max_frequency_offset": {
+            "description": "hertz a frame may move from its calibrated frequency",
+            "title": "Max Frequency Offset",
+            "type": "number"
+          },
+          "max_pulse_duration": {
+            "description": "seconds of a circuit's pulse-level blocks in one shot",
+            "title": "Max Pulse Duration",
+            "type": "number"
+          },
+          "max_samples_per_waveform": {
+            "description": "the samples of one waveform, as played",
+            "title": "Max Samples Per Waveform",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_amplitude",
+          "max_frequency_offset",
+          "max_energy_per_shot",
+          "max_energy_per_job",
+          "max_pulse_duration",
+          "max_samples_per_waveform",
+          "max_capture_duration"
+        ],
+        "title": "PulseLimits",
+        "type": "object"
+      },
       "QubitCalibration": {
         "description": "Schema for the calibration data of the qubit",
         "properties": {
@@ -3511,7 +3590,7 @@
   "info": {
     "description": "A frontend to all our quantum backends",
     "title": "Main Service Server",
-    "version": "2026.11.0-rc.9"
+    "version": "2026.11.0-rc.10"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6419,6 +6498,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PulseLimits"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Pulse Limits"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

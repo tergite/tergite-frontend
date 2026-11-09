@@ -108,7 +108,9 @@ def make_lenient(node: Any) -> Any:
 
     - a read-only field is optional: the backend dumps a job with exclude_none, so a null
       one, such as its duration_in_secs, is left out though the schema requires it;
-    - a string has no pattern: the backend validates its own ids, and MSS keeps them as given.
+    - a string has no pattern: the backend validates its own ids, and MSS keeps them as given;
+    - an object takes fields it does not declare: a newer backend may send more, which MSS
+      drops, where refusing them would refuse the whole event.
 
     Args:
         node: a node of the spec
@@ -122,7 +124,9 @@ def make_lenient(node: Any) -> Any:
         return node
 
     schema = {
-        key: make_lenient(value) for key, value in node.items() if key != "pattern"
+        key: make_lenient(value)
+        for key, value in node.items()
+        if key != "pattern" and not (key == "additionalProperties" and value is False)
     }
     if "required" in schema and isinstance(schema.get("properties"), dict):
         properties = schema["properties"]
