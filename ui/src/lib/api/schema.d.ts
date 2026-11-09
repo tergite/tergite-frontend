@@ -2153,6 +2153,7 @@ export interface components {
             number_of_resonators: number;
             /** Open Pulse */
             open_pulse: boolean;
+            pulse_limits?: components["schemas"]["PulseLimits"] | null;
             /**
              * Qubit Ids
              * @default []
@@ -2824,6 +2825,54 @@ export interface components {
          * @enum {string}
          */
         PulseFrameKind: "drive" | "readout" | "coupler";
+        /**
+         * PulseLimits
+         * @description What a device's pulse-level jobs may play, as its operators set them; a kind of frame
+         *     that a limit by kind leaves out may not be played at all
+         */
+        PulseLimits: {
+            /**
+             * Max Amplitude
+             * @description the largest |sample| of a waveform, as a fraction of full scale
+             */
+            max_amplitude: {
+                [key: string]: number;
+            };
+            /**
+             * Max Capture Duration
+             * @description seconds of one capture
+             */
+            max_capture_duration: number;
+            /**
+             * Max Energy Per Job
+             * @description the energy on one frame over the job, in full scale^2 s
+             */
+            max_energy_per_job: {
+                [key: string]: number;
+            };
+            /**
+             * Max Energy Per Shot
+             * @description the sum of |sample|^2 * dt on one frame in one shot, in full scale^2 s
+             */
+            max_energy_per_shot: {
+                [key: string]: number;
+            };
+            /**
+             * Max Frequency Offset
+             * @description hertz a frame may move from its calibrated frequency
+             */
+            max_frequency_offset: number;
+            /**
+             * Max Pulse Duration
+             * @description seconds of a circuit's pulse-level blocks in one shot
+             */
+            max_pulse_duration: number;
+            /**
+             * Max Samples Per Waveform
+             * @description the samples of one waveform, as played
+             */
+            max_samples_per_waveform: number;
+        };
         /**
          * QubitCalibration
          * @description Schema for the calibration data of the qubit
@@ -4264,7 +4313,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PulseLimits"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

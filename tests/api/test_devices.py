@@ -165,6 +165,30 @@ def test_create_device_drops_fields_the_backend_does_not_declare(db, client):
     assert final_data_in_db == [_get_connected(payload)]
 
 
+def test_create_device_drops_pulse_limits_mss_does_not_declare(db, client):
+    """A newer backend may set limits this MSS does not know; the device is kept without them"""
+    payload = _SAMPLE_DEVICES[0]
+    name = payload["name"]
+    limits = {**payload["pulse_limits"], "max_phase_jumps": 3}
+
+    with client as client:
+        with client.websocket_connect(
+            f"/devices/ws/{name}", headers=create_bcc_headers(name)
+        ) as client:
+            client.send_json(
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "initialized",
+                    "data": {**payload, "pulse_limits": limits},
+                }
+            )
+            json_response = client.receive_json()
+            final_data_in_db = _get_stored_devices(db)
+
+    assert json_response["status"] == "success"
+    assert [v["pulse_limits"] for v in final_data_in_db] == [payload["pulse_limits"]]
+
+
 @pytest.mark.parametrize("payload", _SAMPLE_DEVICES)
 def test_create_device(db, client, payload: Dict[str, Any]):
     """DeviceEvent with name 'initialized' to /devices/ws/{name} creates a new device if it does not exist"""

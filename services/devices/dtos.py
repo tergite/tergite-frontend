@@ -38,7 +38,7 @@ from services.external.bcc import events as bcc_events
 from utils.api import GeneralMessage
 from utils.models import create_partial_model
 
-from ..calibration.dtos import DeviceCalibrationCreate
+from ..calibration.dtos import DeviceCalibrationCreate, PulseFrameKind
 from ..jobs.dtos import JobUpdate
 
 if TYPE_CHECKING:
@@ -62,6 +62,31 @@ class DeviceSwitchData(BaseModel):
     """The data of a device's switched_off or switched_on event"""
 
     date: datetime
+
+
+class PulseLimits(BaseModel):
+    """What a device's pulse-level jobs may play, as its operators set them; a kind of frame
+    that a limit by kind leaves out may not be played at all"""
+
+    max_amplitude: Dict[PulseFrameKind, float] = Field(
+        description="the largest |sample| of a waveform, as a fraction of full scale"
+    )
+    max_frequency_offset: float = Field(
+        description="hertz a frame may move from its calibrated frequency"
+    )
+    max_energy_per_shot: Dict[PulseFrameKind, float] = Field(
+        description="the sum of |sample|^2 * dt on one frame in one shot, in full scale^2 s"
+    )
+    max_energy_per_job: Dict[PulseFrameKind, float] = Field(
+        description="the energy on one frame over the job, in full scale^2 s"
+    )
+    max_pulse_duration: float = Field(
+        description="seconds of a circuit's pulse-level blocks in one shot"
+    )
+    max_samples_per_waveform: int = Field(
+        description="the samples of one waveform, as played"
+    )
+    max_capture_duration: float = Field(description="seconds of one capture")
 
 
 class DeviceUpsert(BaseModel):
@@ -91,6 +116,8 @@ class DeviceUpsert(BaseModel):
     gates: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
     qubit_ids_coupler_map: List[Tuple[Tuple[int, int], int]] = []
+    # none for a device that takes no pulse-level jobs
+    pulse_limits: Optional[PulseLimits] = None
 
 
 class Device(Schema, DeviceUpsert):

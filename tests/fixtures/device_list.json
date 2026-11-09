@@ -43,6 +43,15 @@
       [1, 3],
       [3, 3]
     ],
+    "pulse_limits": {
+      "max_amplitude": { "drive": 0.5, "readout": 0.3 },
+      "max_frequency_offset": 20000000.0,
+      "max_energy_per_shot": { "drive": 1e-8, "readout": 1e-7 },
+      "max_energy_per_job": { "drive": 0.0001, "readout": 0.001 },
+      "max_pulse_duration": 5e-5,
+      "max_samples_per_waveform": 16384,
+      "max_capture_duration": 1.6e-5
+    },
     "qubit_ids_coupler_map": [
       [[12, 13], 0],
       [[13, 14], 1],
