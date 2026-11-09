@@ -62,6 +62,9 @@ Implemented parts of version v2 of the API
 - Setup of CI/CD pipeline configurations for both GitLab and GitHub
 - Setup of docker configurations
 - End-to-end test set up
+- Merging of tergite-dashboard with tergite-mss to be served as one application
+- Authentication/Authorization using project tokens
+- Secure websocket connection between mss and backend
 
 ### Pontus Vikstål
 
@@ -100,7 +103,3 @@ Integration to tergite:
 
 - **Abdullah-Al Amin**
 - **Martin Ahindura**
-
-## [Martin Ahindura](https://github.com/ch-ahindura)
-
-The tergite-frontend monorepo, which brought MSS and the dashboard together
