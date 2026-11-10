@@ -10,6 +10,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.12] - 2026-11-10
+
 ### Fixed
 
 - Fixed a `job_updated` event changing how a job had ended, as when a cancel and the job's results crossed from two of
