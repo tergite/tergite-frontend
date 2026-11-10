@@ -15,6 +15,9 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - Fixed a `job_updated` event changing how a job had ended, as when a cancel and the job's results crossed from two of
   the backend's processes; an event sent again could then take the job's QPU seconds from its project twice. An ended
   job's status is now final
+- Fixed a request decided twice at once, as by two admins or from two tabs, doing its actions twice: a QPU-seconds
+  request added its seconds twice, and one approved and rejected at once added them and was stored rejected; the
+  slower decision now gets a 404
 
 ## [2026.11.0-rc.11] - 2026-11-09
 

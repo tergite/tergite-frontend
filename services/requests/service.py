@@ -11,7 +11,7 @@
 # that they have been altered from the originals.
 from typing import List, Optional, Sequence, Tuple
 
-from libs.storage import Database
+from libs.storage import Database, Returning
 from services import notices
 from services.auth.projects.dtos import Project
 from services.auth.users.dtos import User
@@ -157,9 +157,9 @@ async def update(
     for the same reason of the potential of misalignment. Better
     to make a new request.
 
-    Approval side effects are applied before the request is marked decided, so that a
-    failure leaves a retryable pending request rather than an approved request with
-    nothing done.
+    The decision is recorded, on a request still pending, before its side effects, so that
+    of two decisions at once only one acts; a failure of the side effects puts the request
+    back to pending, so that it can be decided again.
 
     Args:
         database: the database where the requests are stored
@@ -176,10 +176,13 @@ async def update(
         NotFoundError: no users of emails {emails}
         ConflictError: a project named '{name}' already exists
     """
-    request = await _find_pending_for_approver(database, pk, approver=current_user)
+    request, decided = await _record_decision(database, pk, current_user, payload)
     if payload.status == RequestStatus.APPROVED:
-        await actions.do_many_actions(database, [request], approver=current_user)
-    decided = await _record_decision(database, request, current_user, payload)
+        try:
+            await actions.do_many_actions(database, [request], approver=current_user)
+        except BaseException:
+            await _restore_pending(database, request)
+            raise
     if payload.status in _DECIDED_STATUSES:
         await _clear_approver_notices(database, decided)
         await _notify_requester(database, decided)
@@ -256,31 +259,18 @@ async def _get_target_user_ids(
     return []
 
 
-async def _find_pending_for_approver(
-    database: Database, pk: str, approver: User
-) -> Request:
-    """Finds the pending request of the given id that awaits the approver
+async def _record_decision(
+    database: Database, pk: str, approver: User, decision: RequestUpdate
+) -> Tuple[Request, Request]:
+    """Stores the approver's decision on the request of the given id, if it is pending and
+    awaits them, in one update
+
+    Returns:
+        the request as it was, and as decided
 
     Raises:
         NotFoundError: no match found
     """
-    request = await database.find_one(
-        Request,
-        filter={
-            "id": str(pk),
-            "target_user_ids": str(approver.id),
-            "status": RequestStatus.PENDING,
-        },
-    )
-    if request is None:
-        raise NotFoundError("no match found")
-    return request
-
-
-async def _record_decision(
-    database: Database, request: Request, approver: User, decision: RequestUpdate
-) -> Request:
-    """Stores the approver's decision on the request, and gets the request as decided"""
     # updated_at is never set by the client, so exclude_unset would drop its default
     changes = decision.model_dump(exclude_unset=True)
     changes.update(
@@ -290,8 +280,38 @@ async def _record_decision(
             "updated_at": decision.updated_at,
         }
     )
-    await database.update_one(Request, {"id": request.id}, {"$set": changes})
-    return request.model_copy(update=changes)
+    request = await database.update_one(
+        Request,
+        filter={
+            "id": str(pk),
+            "target_user_ids": str(approver.id),
+            "status": RequestStatus.PENDING,
+        },
+        update={"$set": changes},
+        returning=Returning.BEFORE,
+    )
+    if request is None:
+        raise NotFoundError("no match found")
+    return request, request.model_copy(update=changes)
+
+
+async def _restore_pending(database: Database, request: Request) -> None:
+    """Puts the request back as it was before it was decided"""
+    await database.update_one(
+        Request,
+        filter={"id": request.id},
+        update={
+            "$set": request.model_dump(
+                include={
+                    "status",
+                    "approver_id",
+                    "approver_name",
+                    "rejection_reason",
+                    "updated_at",
+                }
+            )
+        },
+    )
 
 
 async def _clear_approver_notices(database: Database, request: Request) -> None:
