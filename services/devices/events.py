@@ -46,17 +46,20 @@ async def on_job_updated_event(
         kwargs: any other arguments the event handlers are called with, ignored
 
     An update that would change the status of a job that has ended is ignored, and the
-    job is returned as it is.
+    job is returned as it is. An update of another device's job is refused.
 
     Returns:
         the general message with the updated job
 
     Raises:
         pydantic.error_wrappers.ValidationError: job with an unexpected structure
+        ForbiddenError: updating the job of '{job.device}' is not allowed
     """
     job_id = data.job_id
     try:
-        old_job = await jobs_service.update_job(database, job_id=job_id, payload=data)
+        old_job = await jobs_service.update_job(
+            database, job_id=job_id, payload=data, device=device
+        )
     except JobAlreadyEndedError as exp:
         # another ending, crossing this one; a refusal would only be logged
         logger.info(f"ignored the job_updated event of {device}: {exp}")

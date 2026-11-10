@@ -101,15 +101,15 @@ _PAGINATE_AND_SEARCH_PARAMS = [
 # and fields the job does not have
 _READ_JOB_IDS = [_JOB_IDS[0], _JOB_IDS[3]]
 _JOB_UPDATES_OF_EACH_SHAPE = [_JOB_UPDATES[i] for i in (0, 1, 3, 4, 5, 9, 10)]
+_JOB_DEVICES = {job["job_id"]: job["device"] for job in _JOBS_LIST}
 _DEVICES_AND_JOB_UPDATES = [
-    *((_DEVICES[0], job_update) for job_update in _JOB_UPDATES_OF_EACH_SHAPE),
-    (_DEVICES[1], _JOB_UPDATES[0]),
+    (_JOB_DEVICES[job_update["job_id"]], job_update)
+    for job_update in _JOB_UPDATES_OF_EACH_SHAPE
 ]
 # the first with a result, the last with a status alone
 _DEVICES_AND_JOB_TIMESTAMPED_UPDATES = [
-    (_DEVICES[0], _JOB_TIMESTAMPED_UPDATES[0]),
-    (_DEVICES[0], _JOB_TIMESTAMPED_UPDATES[-1]),
-    (_DEVICES[1], _JOB_TIMESTAMPED_UPDATES[0]),
+    (_JOB_DEVICES[job_update["job_id"]], job_update)
+    for job_update in (_JOB_TIMESTAMPED_UPDATES[0], _JOB_TIMESTAMPED_UPDATES[-1])
 ]
 _BILLED_JOB_UPDATE = _JOB_TIMESTAMPED_UPDATES[0]
 _BILLED_JOB_COST = (
@@ -503,6 +503,40 @@ def test_a_job_event_arriving_after_the_job_ended_leaves_it_as_it_ended(
     assert project_before.qpu_seconds - project_after.qpu_seconds == pytest.approx(
         _BILLED_JOB_COST
     )
+
+
+def test_a_job_event_from_another_device_is_refused(db, client, project_id, freezer):
+    raw_jobs = with_incremental_timestamps(
+        _JOBS_LIST, fields=["created_at", "calibration_date"]
+    )
+    raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
+    _insert_jobs(db, [{**item, "project_id": str(project_id)} for item in raw_jobs])
+    project_before = db.get(Project, TEST_PROJECT_ID)
+    [job_before] = _get_stored_jobs(db, {"job_id": _BILLED_JOB_UPDATE["job_id"]})
+    other_device = next(
+        device
+        for device in _DEVICES
+        if device != _JOB_DEVICES[_BILLED_JOB_UPDATE["job_id"]]
+    )
+
+    with client as client:
+        with client.websocket_connect(
+            f"/devices/ws/{other_device}", headers=create_bcc_headers(other_device)
+        ) as websocket:
+            websocket.send_json(
+                {
+                    "id": str(uuid.uuid4()),
+                    "name": "job_updated",
+                    "data": _BILLED_JOB_UPDATE,
+                }
+            )
+            response = websocket.receive_json()
+
+    [job_after] = _get_stored_jobs(db, {"job_id": _BILLED_JOB_UPDATE["job_id"]})
+    assert response["status"] == "error"
+    assert response["detail"].startswith("forbidden")
+    assert job_after == job_before
+    assert db.get(Project, TEST_PROJECT_ID).qpu_seconds == project_before.qpu_seconds
 
 
 @pytest.mark.parametrize("device, payload", _DEVICES_AND_JOB_TIMESTAMPED_UPDATES)

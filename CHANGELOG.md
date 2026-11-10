@@ -20,6 +20,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
   slower decision now gets a 404
 - Fixed `DELETE /jobs/{id}` refusing, with the backend's 404, a job its backend does not have: one the SDK registered
   but could not upload, or any job past the backend's `BCC_JOBS_STORE_TTL`, two weeks by default; MSS now deletes its copy
+- Fixed a backend's `job_updated` event updating, and charging, a job of another device; it now gets an error reply,
+  as an `initialized` event naming another device does
 
 ## [2026.11.0-rc.11] - 2026-11-09
 

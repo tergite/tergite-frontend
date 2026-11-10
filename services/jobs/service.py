@@ -29,7 +29,12 @@ from utils.api import GeneralMessage
 from utils.config import ProjectsConfig
 from utils.crypto import decrypt_message
 from utils.date_time import datetime_to_zulu, get_current_timestamp
-from utils.exc import BccHttpError, JobAlreadyEndedError, NotFoundError
+from utils.exc import (
+    BccHttpError,
+    ForbiddenError,
+    JobAlreadyEndedError,
+    NotFoundError,
+)
 
 from ..auth import Project, User, increment_qpu_seconds
 from ..notices import NoticeTypeId
@@ -161,7 +166,9 @@ async def get_latest_many(
     return [job.model_copy(update={field: None for field in exclude}) for job in jobs]
 
 
-async def update_job(database: Database, job_id: str, payload: JobUpdate) -> Job:
+async def update_job(
+    database: Database, job_id: str, payload: JobUpdate, device: Optional[str] = None
+) -> Job:
     """Updates the job of the given job_id, unless it has ended with another status than
     the update's, as an ended job's status is final
 
@@ -172,18 +179,22 @@ async def update_job(database: Database, job_id: str, payload: JobUpdate) -> Job
         database: the database where the jobs are stored
         job_id: the job id of the job
         payload: the new payload to update in job
+        device: the device updating the job, which must be the job's; None for MSS
 
     Returns:
         the job before it was modified
 
     Raises:
         NotFoundError: no documents matching {"job_id": job_id} were found
+        ForbiddenError: updating the job of '{job.device}' is not allowed
         JobAlreadyEndedError: the job has ended with another status than the update's
     """
     changes = payload.model_dump(
         exclude_unset=True, exclude_defaults=True, exclude_none=True
     )
     job_filter: dict = {"job_id": job_id}
+    if device is not None:
+        job_filter["device"] = device
     if "status" in changes:
         job_filter["$or"] = [
             {"status": {"$nin": list(_ENDED_STATUSES)}},
@@ -196,9 +207,13 @@ async def update_job(database: Database, job_id: str, payload: JobUpdate) -> Job
         returning=Returning.BEFORE,
     )
     if job is None:
-        ended_job = await get_job(database, job_id=UUID(job_id))
+        stored_job = await get_job(database, job_id=UUID(job_id))
+        if device is not None and stored_job.device != device:
+            raise ForbiddenError(
+                f"updating the job of '{stored_job.device}' is not allowed"
+            )
         raise JobAlreadyEndedError(
-            f"job '{job_id}' has ended {ended_job.status.value}, not {changes['status']}"
+            f"job '{job_id}' has ended {stored_job.status.value}, not {changes['status']}"
         )
     return job
 
