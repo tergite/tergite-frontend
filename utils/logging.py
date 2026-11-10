@@ -141,7 +141,7 @@ def get_log_level(environment: str) -> str:
         return "INFO"
     if environment == "test":
         return "WARNING"
-    return "DEBUG"
+    return "INFO"
 
 
 def _add_sink(environment: str, log_level: str) -> None:

@@ -10,6 +10,14 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+## [2026.11.0-rc.11] - 2026-11-09
+
+### Changed
+
+- Dashboard: Changed the look to a dark sidebar, a gridded background, the DM Sans and Space Grotesk fonts, a split
+  login page, and page headings and counts on the home and devices pages; notices, the yellow banner before, now wait
+  behind the bell in the top bar, and the sidebar names the release
+
 ## [2026.11.0-rc.10] - 2026-11-09
 
 ### Added

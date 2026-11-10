@@ -96,19 +96,16 @@ for (const user of users) {
     }
 
     // every user has the broadcasts ntc_007 and ntc_009 in force
-    test("shows a notice in force in the top banner", async ({ page }) => {
-      const banner = page.getByTestId("top-banner");
-      await expect(banner.getByLabel("Dismiss notice").first()).toBeVisible();
-      await expect(banner.getByText(/\b(info|warning|critical)\b/i).first()).toBeVisible();
-    });
+    test("keeps the notices in force behind the bell until it is clicked", async ({ page }) => {
+      await expect(page.getByLabel("Dismiss notice")).toHaveCount(0);
+      await expect(page.locator("#notifications-panel")).toHaveCount(0);
 
-    test("takes a notice dismissed from the top banner off the bell", async ({ page }) => {
-      await Promise.all([
-        waitForApi(page, "POST", "/me/notices/"),
-        page.getByTestId("top-banner").getByLabel("Dismiss notice").click(),
-      ]);
-
-      await expect(page.locator("[data-cy-unread-count]")).toContainText(`${unread.length - 1}`);
+      await page.locator("[data-cy-notifications-bell]").click();
+      const panel = page.locator("#notifications-panel");
+      for (const id of ["ntc_007", "ntc_009"]) {
+        const title = notices.find((v) => v.id === id)!.title;
+        await expect(panel.locator("li", { hasText: title }).first()).toBeAttached();
+      }
     });
   });
 }

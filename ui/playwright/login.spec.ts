@@ -67,13 +67,12 @@ for (const user of users) {
     });
 
     test("renders correctly", async ({ page }) => {
-      const logo = page.locator("[data-cy-logo]");
-      await expect(logo).toContainText("WACQT");
-      await expect(logo).toContainText("Wallenberg Centre for Quantum Technology");
+      await expect(page.locator("[data-cy-logo]")).toContainText("WACQT");
+      await expect(page.getByText("Wallenberg Centre for Quantum Technology")).toBeVisible();
 
       await expect(page.locator("input[name=email]")).toHaveAttribute(
         "placeholder",
-        /email address:/i,
+        "name@institution.se",
       );
 
       await expect(nextButton(page)).toBeVisible();
@@ -148,7 +147,7 @@ for (const user of users) {
 
         for (const provider of availableAuthProviders) {
           await expect(
-            page.locator("a", { hasText: new RegExp(`login with ${provider.name}`, "i") }).first(),
+            page.locator("a", { hasText: new RegExp(`continue with ${provider.name}`, "i") }).first(),
           ).toHaveAttribute(
             "href",
             `${apiBaseUrl}/auth/${provider.name}/auto-authorize?next=${dashboardUrl}`,
@@ -180,5 +179,5 @@ for (const email of invalidFormatEmailAddresses) {
 }
 
 function nextButton(page: Page) {
-  return page.locator("button[type=submit]", { hasText: /next/i });
+  return page.locator("button[type=submit]", { hasText: /continue/i });
 }

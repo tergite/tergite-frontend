@@ -1,5 +1,3 @@
-const defaultTheme = require("tailwindcss/defaultTheme");
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
@@ -20,7 +18,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ['"Inter Variable"', ...defaultTheme.fontFamily.sans],
+        sans: ['"DM Sans"', "sans-serif"],
+        display: ['"Space Grotesk"'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -56,6 +55,32 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        signal: "hsl(var(--signal))",
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          tint: "hsl(var(--success-tint))",
+        },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          highlight: "hsl(var(--sidebar-highlight))",
+          strong: "hsl(var(--sidebar-strong))",
+          soft: "hsl(var(--sidebar-soft))",
+          muted: "hsl(var(--sidebar-muted))",
+          subtle: "hsl(var(--sidebar-subtle))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-soft": "hsl(var(--sidebar-primary-soft))",
+          ring: "hsl(var(--sidebar-ring))",
+          veil: "hsl(var(--sidebar-veil))",
+        },
+      },
+      // Tailwind drops the alpha of an hsl(var()) colour in a shadow, so these live in index.css
+      boxShadow: {
+        card: "var(--shadow-card)",
+        "metric-hover": "var(--shadow-metric-hover)",
+        "device-hover": "var(--shadow-device-hover)",
+        sidebar: "var(--shadow-sidebar)",
+        "nav-active": "var(--shadow-nav-active)",
       },
       borderRadius: {
         lg: "var(--radius)",

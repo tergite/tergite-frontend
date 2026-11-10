@@ -39,7 +39,7 @@ export function Dashboard() {
   );
   const [isExpanded, setIsExpanded] = useState(true);
   const navigate = useNavigate();
-  const contentAreaPaddingCls = isExpanded ? "sm:pl-56" : "sm:pl-20";
+  const contentAreaPaddingCls = isExpanded ? "sm:pl-60" : "sm:pl-20";
   const darkModeCls = appState.isDark ? "dark" : "";
   const toggleIsExpanded = useCallback(() => {
     setIsExpanded(!isExpanded);
@@ -59,7 +59,10 @@ export function Dashboard() {
   return (
     <TooltipProvider>
       <div
-        className={cn("flex h-screen w-full flex-col bg-muted/40", darkModeCls)}
+        className={cn(
+          "quantum-grid flex min-h-screen w-full flex-col bg-background",
+          darkModeCls,
+        )}
       >
         <Sidebar
           isExpanded={isExpanded}
@@ -69,7 +72,7 @@ export function Dashboard() {
           personalProject={personalProject}
         />
         <div
-          className={`flex flex-col sm:gap-4 h-full sm:pt-4 ${contentAreaPaddingCls}`}
+          className={`flex min-h-screen flex-col transition-[padding] duration-300 ${contentAreaPaddingCls}`}
         >
           <Topbar
             currentProject={useAppStore.getState().currentProjectId}
@@ -82,7 +85,6 @@ export function Dashboard() {
           />
 
           <TopBanner
-            currentUser={currentUser}
             shouldShowApiToken={!isAdminScreen}
           />
           <ErrorBoundary FallbackComponent={ErrorAlert} resetKeys={[location]}>

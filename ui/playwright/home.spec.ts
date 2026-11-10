@@ -84,11 +84,11 @@ for (const user of users) {
     test("renders the list of user's jobs in selected project", async ({ page }) => {
       await page.setViewportSize({ width: 1080, height: 750 });
       for (const project of userProjects) {
-        await page.locator('[data-testid="topbar"] button', { hasText: /project:/i }).click();
+        await page.getByTestId("topbar").getByRole("combobox").click();
         await page.locator('#project-selector [role="option"]', { hasText: project.name }).click();
 
         const card = page.locator("#jobs-table", {
-          has: page.getByText(project.name, { exact: true }),
+          has: page.getByText(`The status of your jobs in ${project.name}`, { exact: true }),
         });
         const projectJobs = allUserJobs.filter((v) => v.project_id === project.id);
         await expectTable(card, JOB_TABLE_HEADERS, projectJobs.map(toJobCells));

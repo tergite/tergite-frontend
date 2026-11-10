@@ -1302,7 +1302,7 @@ wheels = [
 
 [[package]]
 name = "tergite-mss"
-version = "2026.11.0rc10"
+version = "2026.11.0rc11"
 source = { editable = "." }
 dependencies = [
     { name = "aiosmtplib" },

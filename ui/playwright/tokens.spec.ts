@@ -313,7 +313,7 @@ function tokenFilters(tokens: ExtendedAppToken[]): TableFilter[] {
 
 /** Selects the project and waits for its tokens, which replace the table and any filter form open on it */
 async function selectProject(page: Page, project: Project) {
-  await page.locator('[data-testid="topbar"] button', { hasText: /project:/i }).click();
+  await page.getByTestId("topbar").getByRole("combobox").click();
   await Promise.all([
     page.waitForResponse((v) => v.url().endsWith(`/me/tokens/?project_id=${project.id}`)),
     page.locator('#project-selector [role="option"]', { hasText: project.name }).first().click(),

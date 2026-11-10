@@ -22,7 +22,7 @@ for (const user of users) {
         const card = page.locator(".bg-card", { hasText: device.name }).first();
         const status = device.is_online ? /online/i : /offline/i;
         const lastOnline = device.last_online ? LAST_ONLINE_PATTERN : /N\/A/i;
-        const lastSeen = card.locator("div", { hasText: /last seen/i }).last();
+        const lastSeen = card.locator("div", { hasText: /last telemetry/i }).last();
         const qubits = card.locator("div", { hasText: /qubits/i }).last();
 
         await expect(card.getByText(device.name).first()).toBeVisible();

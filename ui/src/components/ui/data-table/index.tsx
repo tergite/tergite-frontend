@@ -84,13 +84,11 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="flex">
+      <div className="flex justify-end gap-2">
         {onRefreshData && (
           <IconButton
             variant="outline"
-            className={`ml-auto focus:mr-[1px] rounded-none  ${
-              isFilterFormAvailable ? "" : "rounded-tr-md"
-            }`}
+            className="mb-3 rounded-lg"
             Icon={RefreshCcw}
             onClick={onRefreshData}
           />
@@ -100,9 +98,7 @@ export function DataTable<TData, TValue>({
             <PopoverTrigger asChild>
               <IconButton
                 variant="outline"
-                className={`${
-                  onRefreshData ? "" : "ml-auto"
-                } rounded-l-none rounded-br-none`}
+                className="mb-3 rounded-lg"
                 Icon={Filter}
                 iconClassName={isFiltered ? "fill-secondary-foreground" : ""}
               />
@@ -120,7 +116,7 @@ export function DataTable<TData, TValue>({
         )}
       </div>
 
-      <div className="border rounded-l-md">
+      <div className="overflow-hidden rounded-lg border border-border/80">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -171,10 +167,10 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2">
+      <div className="mt-3 flex items-center justify-end gap-2">
         <IconButton
           Icon={ChevronLeft}
-          className="rounded-none rounded-bl-md disabled:text-muted-foreground disabled:bg-muted"
+          className="h-8 w-8 rounded-lg"
           variant="outline"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
@@ -182,7 +178,7 @@ export function DataTable<TData, TValue>({
         <IconButton
           Icon={ChevronRight}
           variant="outline"
-          className="rounded-none rounded-br-md disabled:text-muted-foreground disabled:bg-muted"
+          className="h-8 w-8 rounded-lg"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         />

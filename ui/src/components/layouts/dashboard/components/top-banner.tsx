@@ -1,22 +1,15 @@
 import { Copy, RefreshCcw } from "lucide-react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback } from "react";
 import { useAppStore } from "@/lib/app-state";
 import { createAppToken, refreshMyTokensQueries } from "@/lib/api/tokens";
-import { getMyNoticesQuery } from "@/lib/api/notices";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { NoticeBanner } from "@/components/ui/notice-banner";
-import { DateTime } from "luxon";
-import { CUSTOM_NOTICE_TYPES } from "@/lib/api/notices";
-import type { User } from "@/lib/api/types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { NotificationsBell } from "./notifications";
 
-export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
+export function TopBanner({ shouldShowApiToken }: Props) {
   const { apiToken, setApiToken, currentProjectId } = useAppStore();
   const queryClient = useQueryClient();
-  const [timestamp, setTimestamp] = useState(DateTime.now().toISO());
 
   const appTokenCreation = useMutation({
     mutationKey: [
@@ -44,54 +37,19 @@ export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
     throwOnError: true,
   });
 
-  const { data: unreadNotices } = useQuery(
-    getMyNoticesQuery({ type: CUSTOM_NOTICE_TYPES, is_read: false })
-  );
-  // the most severe of the announcements in force, earliest first
-  const notices = useMemo(
-    () =>
-      unreadNotices
-        ?.filter(
-          (v) =>
-            (!v.starts_at || v.starts_at <= timestamp) &&
-            (!v.expires_at || v.expires_at > timestamp)
-        )
-        .sort(
-          (a, b) =>
-            a.severity - b.severity ||
-            (a.starts_at ?? "").localeCompare(b.starts_at ?? "")
-        ),
-    [unreadNotices, timestamp]
-  );
-
   const handleApiTokenCopy = useCallback(
     () => navigator.clipboard.writeText(apiToken || ""),
     [apiToken]
   );
 
-  // FIXME: Use react query, come on!
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimestamp(DateTime.now().toISO());
-    }, 60000); // Update every minute
-
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <header data-testid="top-banner" className="flex px-4 sm:px-6 py-4">
-      <div className="relative w-full gap-2 flex flex-wrap lg:flex-nowrap">
-        <div className="w-full">
-          {notices?.slice(0, 1).map((notice) => (
-            <NoticeBanner key={notice.id} notice={notice} />
-          ))}
-          <div className="flex items-center gap-2">
-            <NotificationsBell userId={currentUser.id} />
-          </div>
-        </div>
-
+    <header
+      data-testid="top-banner"
+      className="flex justify-end px-4 py-4 sm:px-7"
+    >
+      <div className="relative flex flex-wrap gap-2 lg:flex-nowrap">
         {shouldShowApiToken && (
-          <ButtonGroup>
+          <ButtonGroup className="shadow-sm">
             <Button
               variant="outline"
               type="button"
@@ -130,7 +88,6 @@ export function TopBanner({ currentUser, shouldShowApiToken }: Props) {
 }
 
 interface Props {
-  currentUser: User;
   // admin screens have no project selected, so a token minted there would be meaningless
   shouldShowApiToken: boolean;
 }

@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_COOKIE_NAME: string;
   readonly VITE_COOKIE_DOMAIN: string;
   readonly VITE_REFETCH_INTERVAL_MS: string;
+  readonly VITE_APP_VERSION: string;
 }
 
 interface ImportMeta {

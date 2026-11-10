@@ -22,6 +22,8 @@ import { MobileMenu } from "./mobile-menu";
 import { TopbarBreadcrumb } from "./breadcrumb";
 import { useState } from "react";
 import { DarkToggleBtn } from "@/components/ui/dark-toggle-btn";
+import { NotificationsBell } from "../notifications";
+
 
 export function Topbar({
   currentProject = "",
@@ -38,7 +40,7 @@ export function Topbar({
   return (
     <header
       data-testid="topbar"
-      className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6"
+      className="sticky top-0 z-30 flex h-[70px] items-center gap-3 border-b bg-background/85 px-4 backdrop-blur-xl sm:px-7"
     >
       <MobileMenu
         pendingRequestsCount={pendingRequestsTotal}
@@ -46,16 +48,19 @@ export function Topbar({
       />
 
       <TopbarBreadcrumb />
-      <DarkToggleBtn className="ml-auto" />
+      <div className="ml-auto">
+        <NotificationsBell userId={currentUser.id} />
+      </div>
+      <DarkToggleBtn />
       <Select
         key={selectKey}
         data-testid="project-select"
         value={currentProject}
         onValueChange={onProjectChange}
       >
-        <SelectTrigger className="w-fit">
-          <span className="hidden sm:inline text-muted-foreground pr-1">
-            Project:{" "}
+        <SelectTrigger className="w-fit min-w-36 rounded-lg bg-card">
+          <span className="hidden pr-1 text-xs font-medium uppercase tracking-wider text-muted-foreground sm:inline">
+            Project{" "}
           </span>
           <SelectValue placeholder="Select project" />
         </SelectTrigger>
@@ -84,7 +89,7 @@ export function Topbar({
         <DropdownMenuTrigger asChild>
           <IconButton
             variant="outline"
-            className="rounded-full overflow-hidden focus:mr-[1px]"
+            className="overflow-hidden rounded-full bg-card focus:mr-[1px]"
             Icon={UserRound}
           />
         </DropdownMenuTrigger>

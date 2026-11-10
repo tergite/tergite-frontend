@@ -48,8 +48,8 @@ for (const user of users) {
       await Promise.all([
         waitForApi(page, "GET", "/me/projects/"),
         isAdmin && waitForApi(page, "GET", "/admin/projects/"),
-        // the notice banner shows on admin screens too; letting it land keeps it from
-        // shifting the layout under a click
+        // the bell loads its notices on every screen; letting them land first keeps a late
+        // render from coming under a click
         waitForApi(page, "GET", "/me/notices/"),
         waitForApi(page, "GET", "/counts/notices"),
         loginAs(user, "admin-projects"),
@@ -450,7 +450,7 @@ for (const user of users) {
           if (topBarRefresh) {
             await topBarRefresh;
             // the projects drop down in the top bar should be updated if user is project member
-            await page.locator('[data-testid="topbar"] button', { hasText: /project:/i }).click();
+            await page.getByTestId("topbar").getByRole("combobox").click();
             await expect(
               page.locator('#project-selector [role="option"]', { hasText: expected.name }),
             ).toBeVisible();
@@ -691,7 +691,7 @@ async function expectEditableFields(
 }
 
 async function expectInTopBar(page: Page, name: string, isListed: boolean) {
-  await page.locator('[data-testid="topbar"] button', { hasText: /project:/i }).click();
+  await page.getByTestId("topbar").getByRole("combobox").click();
   const option = page.locator('#project-selector [role="option"]', { hasText: name });
   await (isListed ? expect(option).toBeVisible() : expect(option).toHaveCount(0));
   // closes the drop down
