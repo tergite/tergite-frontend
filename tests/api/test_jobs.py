@@ -461,6 +461,49 @@ def test_update_job_resource_usage(
     assert actual_resource_usage == expected_resource_usage
 
 
+def test_a_job_event_arriving_after_the_job_ended_leaves_it_as_it_ended(
+    db, client, project_id, freezer
+):
+    """A backend's processes each hold a websocket, so a cancel and the job's results can
+    cross, and an event MSS took but did not answer in time is sent again"""
+    raw_jobs = with_incremental_timestamps(
+        _JOBS_LIST, fields=["created_at", "calibration_date"]
+    )
+    raw_jobs = with_current_timestamps(raw_jobs, fields=["updated_at"])
+    _insert_jobs(db, [{**item, "project_id": str(project_id)} for item in raw_jobs])
+    project_before = db.get(Project, TEST_PROJECT_ID)
+    ended = _BILLED_JOB_UPDATE
+    execution = ended["timestamps"]["execution"]
+    stale = {
+        "job_id": ended["job_id"],
+        "status": "cancelled",
+        "timestamps": {
+            **ended["timestamps"],
+            "execution": {"started": execution["started"], "finished": None},
+        },
+    }
+
+    with client as client:
+        with client.websocket_connect(
+            "/devices/ws/Loke", headers=create_bcc_headers("Loke")
+        ) as websocket:
+            for event in (ended, stale, ended):
+                websocket.send_json(
+                    {"id": str(uuid.uuid4()), "name": "job_updated", "data": event}
+                )
+                assert websocket.receive_json()["status"] == "success"
+
+    [job] = _get_stored_jobs(db, {"job_id": ended["job_id"]})
+    project_after = db.get(Project, TEST_PROJECT_ID)
+    assert (job["status"], job["timestamps"]["execution"]["finished"]) == (
+        "successful",
+        execution["finished"],
+    )
+    assert project_before.qpu_seconds - project_after.qpu_seconds == pytest.approx(
+        _BILLED_JOB_COST
+    )
+
+
 @pytest.mark.parametrize("device, payload", _DEVICES_AND_JOB_TIMESTAMPED_UPDATES)
 def test_update_job_resource_usage_advanced(
     db, client, project_id, device: str, payload: dict, freezer

@@ -14,13 +14,15 @@
 
 from typing import Dict
 
+from loguru import logger
+
 from libs.storage import Database
 from services import calibration as calibration_service
 from services import jobs as jobs_service
 from services.calibration import DeviceCalibration
 from services.jobs import JobUpdate
 from utils.api import GeneralMessage
-from utils.exc import ForbiddenError
+from utils.exc import ForbiddenError, JobAlreadyEndedError
 
 from .dtos import DeviceEventHandler, DeviceEventName, DeviceSwitchData, DeviceUpsert
 from .service import switch_off_device, switch_on_device, upsert_device
@@ -43,6 +45,9 @@ async def on_job_updated_event(
         database: the database where the jobs and projects are stored
         kwargs: any other arguments the event handlers are called with, ignored
 
+    An update that would change the status of a job that has ended is ignored, and the
+    job is returned as it is.
+
     Returns:
         the general message with the updated job
 
@@ -50,10 +55,19 @@ async def on_job_updated_event(
         pydantic.error_wrappers.ValidationError: job with an unexpected structure
     """
     job_id = data.job_id
-    old_job = await jobs_service.update_job(database, job_id=job_id, payload=data)
+    try:
+        old_job = await jobs_service.update_job(database, job_id=job_id, payload=data)
+    except JobAlreadyEndedError as exp:
+        # another ending, crossing this one; a refusal would only be logged
+        logger.info(f"ignored the job_updated event of {device}: {exp}")
+        old_job = None
 
     qpu_usage = getattr(data.timestamps, "resource_usage", None)
-    if old_job.duration_in_secs is None and qpu_usage is not None:
+    if (
+        old_job is not None
+        and old_job.duration_in_secs is None
+        and qpu_usage is not None
+    ):
         await jobs_service.update_qpu_usage(
             database, job_id=job_id, qpu_usage=qpu_usage
         )

@@ -49,6 +49,10 @@ class ConflictError(BaseMssException):
     """Exception when a request conflicts with the current state of a resource"""
 
 
+class JobAlreadyEndedError(ConflictError):
+    """Exception when an update would change the status of a job that has ended"""
+
+
 class UnauthorizedError(BaseMssException):
     """Exception when a request carries no valid credentials"""
 

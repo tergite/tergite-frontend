@@ -10,6 +10,12 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a `job_updated` event changing how a job had ended, as when a cancel and the job's results crossed from two of
+  the backend's processes; an event sent again could then take the job's QPU seconds from its project twice. An ended
+  job's status is now final
+
 ## [2026.11.0-rc.11] - 2026-11-09
 
 ### Changed
