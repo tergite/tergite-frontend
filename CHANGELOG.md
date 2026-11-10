@@ -18,6 +18,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
 - Fixed a request decided twice at once, as by two admins or from two tabs, doing its actions twice: a QPU-seconds
   request added its seconds twice, and one approved and rejected at once added them and was stored rejected; the
   slower decision now gets a 404
+- Fixed `DELETE /jobs/{id}` refusing, with the backend's 404, a job its backend does not have: one the SDK registered
+  but could not upload, or any job past the backend's `BCC_JOBS_STORE_TTL`, two weeks by default; MSS now deletes its copy
 
 ## [2026.11.0-rc.11] - 2026-11-09
 

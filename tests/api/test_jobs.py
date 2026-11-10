@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
+import httpx
 import pytest
 from pytest_lazyfixture import lazy_fixture
 from pytest_mock import MockerFixture
@@ -639,6 +640,31 @@ def test_remove_job(db, client, user_jwt_cookie, idx: int, mock_bcc, freezer):
         }
 
         assert jobs_in_db == [_get_job_values(job) for job in expected_jobs]
+
+
+def test_a_job_its_backend_does_not_have_is_removed(
+    db, client, user_jwt_cookie, mock_bcc, respx_mock, freezer
+):
+    """A job the SDK could not upload, or whose backend's copy expired, is only MSS's"""
+    [job] = with_incremental_timestamps(
+        [_JOBS_LIST[0]], fields=["created_at", "calibration_date"]
+    )
+    job = {
+        **job,
+        "job_id": str(uuid.uuid4()),
+        "device": "Loke",
+        "user_id": TEST_USER_ID,
+    }
+    _insert_jobs(db, [job])
+    respx_mock.delete(f"{TEST_BACKENDS_MAP['Loke']['url']}/jobs/{job['job_id']}").mock(
+        return_value=httpx.Response(404, json={"detail": "job not found"})
+    )
+
+    with client as client:
+        response = client.delete(f"/jobs/{job['job_id']}", cookies=user_jwt_cookie)
+
+    assert response.status_code == 200
+    assert _get_stored_jobs(db, {"job_id": job["job_id"]}) == []
 
 
 @pytest.mark.parametrize("idx", range(1))

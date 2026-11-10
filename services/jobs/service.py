@@ -29,7 +29,7 @@ from utils.api import GeneralMessage
 from utils.config import ProjectsConfig
 from utils.crypto import decrypt_message
 from utils.date_time import datetime_to_zulu, get_current_timestamp
-from utils.exc import JobAlreadyEndedError, NotFoundError
+from utils.exc import BccHttpError, JobAlreadyEndedError, NotFoundError
 
 from ..auth import Project, User, increment_qpu_seconds
 from ..notices import NoticeTypeId
@@ -281,7 +281,8 @@ async def delete_job(
     job_id: UUID,
     user_id: str,
 ) -> GeneralMessage:
-    """Deletes the job from its BCC, then from the database if the BCC succeeded
+    """Deletes the job from its BCC, then from the database if the BCC succeeded or has no
+    such job, as one never uploaded or expired there
 
     Args:
         database: the database where the jobs are stored
@@ -294,8 +295,14 @@ async def delete_job(
 
     Raises:
         NotFoundError: no matches for {filter}
+        BccHttpError: the BCC refused to delete the job
     """
-    response = await bcc_client.delete_job(job_id, user_id=user_id)
+    try:
+        response = await bcc_client.delete_job(job_id, user_id=user_id)
+    except BccHttpError as exp:
+        if exp.status_code != 404:
+            raise
+        response = {"status": "success", "detail": f"Job of id {job_id} deleted"}
     if response["status"] == "success":
         count = await database.delete_many(Job, filter={"job_id": str(job_id)})
         if count == 0:
