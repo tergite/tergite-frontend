@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type { Locator, Page } from "@playwright/test";
 import { expect, readFixture, test, waitForApi } from "./fixtures";
 import type { Job, User } from "./types";
@@ -14,6 +15,8 @@ const FLIP_CIRCUIT = [
 const BROKEN_CIRCUIT = ["OPENQASM 3.0;", "qubit[1] q;", "x q[0]", "bit[1] c;"];
 // the run's compile and simulation take seconds; the page then polls every 2 s
 const RUN_TIMEOUT_MS = 60_000;
+// the eight bytes every HDF5 file opens with
+const HDF5_SIGNATURE = [0x89, 0x48, 0x44, 0x46, 0x0d, 0x0a, 0x1a, 0x0a];
 
 const jane = readFixture<User[]>("users").find(
   (v) => v.email === "jane.doe@example.com",
@@ -89,6 +92,8 @@ test.describe("run page for jane.doe", () => {
 
     expect(response.status()).toBe(201);
     const results = page.locator("#results");
+    // the panel shows the opened bell run, already successful, until the new one replaces it
+    await expect(results).toContainText("flip · sim_1q");
     await expect(results).toContainText("successful", { timeout: RUN_TIMEOUT_MS });
     await expect(results).toContainText("flip · sim_1q · 100 shots");
     const counts = await readCounts(results.getByRole("img", { name: /^Counts of flip/ }));
@@ -97,6 +102,14 @@ test.describe("run page for jane.doe", () => {
     expect(counts["1"]).toBeGreaterThan(80);
     const run = page.locator("#runs").getByRole("row", { name: /flip/ });
     await expect(run).toContainText("successful");
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      results.getByRole("link", { name: "Logfile" }).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe(`${(await response.json()).job_id}.hdf5`);
+    const logfile = await readFile((await download.path())!);
+    expect([...logfile.subarray(0, HDF5_SIGNATURE.length)]).toEqual(HDF5_SIGNATURE);
   });
 });
 

@@ -11,6 +11,7 @@
 # that they have been altered from the originals.
 """The requests service on each database: requests found by their targets"""
 
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -19,8 +20,16 @@ from libs.storage import Database, generate_id
 from services import auth, notices, requests
 from services.auth import Project
 from services.notices import service as notices_service
-from services.requests import RequestPostBody, RequestStatus, RequestType, RequestUpdate
+from services.requests import (
+    Request,
+    RequestPostBody,
+    RequestStatus,
+    RequestType,
+    RequestUpdate,
+)
+from services.requests.dtos import ProjectQpuSecondsMetadata
 from utils.config import NoticesConfig
+from utils.exc import NotFoundError
 
 _ADMIN = SimpleNamespace(id=generate_id(), username="admin", is_superuser=False)
 _MEMBER = SimpleNamespace(id=generate_id(), username="ann", is_superuser=False)
@@ -83,3 +92,67 @@ async def test_the_target_rejects_a_request(database, project):
     )
     assert rejected.status == RequestStatus.REJECTED
     assert pending == []
+
+
+async def test_a_request_approved_twice_at_once_is_acted_on_once(database, project):
+    """An approver clicking twice, or two admins at once, decide the same request"""
+    request = await _insert_qpu_seconds_request(database, project, seconds=10)
+    approval = RequestUpdate(status=RequestStatus.APPROVED)
+
+    decisions = await asyncio.gather(
+        requests.update(database, request.id, approval, current_user=_ADMIN),
+        requests.update(database, request.id, approval, current_user=_ADMIN),
+        return_exceptions=True,
+    )
+
+    project_after = await database.get(Project, project.id)
+    assert project_after.qpu_seconds == project.qpu_seconds + 10
+    assert sorted(type(decision).__name__ for decision in decisions) == [
+        NotFoundError.__name__,
+        Request.__name__,
+    ]
+
+
+async def test_a_request_approved_and_rejected_at_once_is_stored_as_acted_on(
+    database, project
+):
+    request = await _insert_qpu_seconds_request(database, project, seconds=10)
+
+    await asyncio.gather(
+        requests.update(
+            database,
+            request.id,
+            RequestUpdate(status=RequestStatus.APPROVED),
+            current_user=_ADMIN,
+        ),
+        requests.update(
+            database,
+            request.id,
+            RequestUpdate(status=RequestStatus.REJECTED, rejection_reason="no"),
+            current_user=_ADMIN,
+        ),
+        return_exceptions=True,
+    )
+
+    stored = await database.get(Request, request.id)
+    project_after = await database.get(Project, project.id)
+    is_seconds_added = project_after.qpu_seconds == project.qpu_seconds + 10
+    assert (stored.status, is_seconds_added) in (
+        (RequestStatus.APPROVED, True),
+        (RequestStatus.REJECTED, False),
+    )
+
+
+async def _insert_qpu_seconds_request(
+    database: Database, project: Project, seconds: float
+) -> Request:
+    """A pending request of the project's member for more QPU seconds, awaiting the admin"""
+    request = Request(
+        resource_id=project.id,
+        type=RequestType.PROJECT_QPU_SECONDS,
+        reason="more",
+        metadata=ProjectQpuSecondsMetadata(seconds=seconds),
+        requester_id=_MEMBER.id,
+        target_user_ids=[_ADMIN.id],
+    )
+    return await database.insert(Request, request)
