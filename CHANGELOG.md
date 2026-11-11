@@ -24,6 +24,8 @@ their entries are merged here, the dashboard's marked `Dashboard:` and the repos
   but could not upload, or any job past the backend's `BCC_JOBS_STORE_TTL`, two weeks by default; MSS now deletes its copy
 - Fixed a backend's `job_updated` event updating, and charging, a job of another device; it now gets an error reply,
   as an `initialized` event naming another device does
+- Repository: Fixed the e2e's data reset failing against a tergite-backend that keeps each booking's device, as
+  `booking.device_name` is required there; each backend's database now gets the fixture's bookings as its device's own
 
 ## [2026.11.0-rc.11] - 2026-11-09
 

@@ -13,9 +13,15 @@
 the fixtures: see dev/e2e_native_test.sh, which runs it in MSS's environment and config"""
 
 import argparse
+import sqlite3
 import subprocess
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+
+# the running backend's workers write to its database too, so wait out their locks
+_LOCK_TIMEOUT_SECONDS = 5.0
+_BOOKING_COLUMNS = "id, user_id, start_utc, end_utc, total_duration"
 
 
 def main() -> None:
@@ -27,7 +33,11 @@ def main() -> None:
     parser.add_argument(
         "--sql", required=True, help="the SQL to load into each database"
     )
-    parser.add_argument("databases", nargs="*", help="the backends' SQLite files")
+    parser.add_argument(
+        "databases",
+        nargs="*",
+        help="the backends' SQLite files, each in a folder named for its device",
+    )
     args = parser.parse_args()
 
     class ResetHandler(BaseHTTPRequestHandler):
@@ -57,14 +67,32 @@ def _reset(mss_path: str, sql: str, databases: list[str]) -> None:
         check=True,
         capture_output=True,
     )
+    script = Path(sql).read_text()
     for database in databases:
-        with open(sql, "rb") as sql_file:
-            # the running backend's workers write to its database too, so wait out their locks
-            subprocess.run(
-                ["sqlite3", "-cmd", ".timeout 5000", database],
-                stdin=sql_file,
-                check=True,
+        _refill_backend_database(Path(database), script)
+
+
+def _refill_backend_database(database: Path, script: str) -> None:
+    """Runs the fixture's SQL on a backend's database, then gives it the fixture's bookings,
+    as its device's own where the backend keys bookings by device"""
+    connection = sqlite3.connect(database, timeout=_LOCK_TIMEOUT_SECONDS)
+    try:
+        connection.executescript(script)
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(booking)")}
+        if "device_name" in columns:
+            connection.execute(
+                f"INSERT INTO booking ({_BOOKING_COLUMNS}, device_name) "
+                f"SELECT {_BOOKING_COLUMNS}, ? FROM fixture_booking",
+                (database.parent.name,),
             )
+        else:
+            connection.execute(
+                f"INSERT INTO booking ({_BOOKING_COLUMNS}) "
+                f"SELECT {_BOOKING_COLUMNS} FROM fixture_booking"
+            )
+        connection.commit()
+    finally:
+        connection.close()
 
 
 if __name__ == "__main__":
