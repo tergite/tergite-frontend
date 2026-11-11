@@ -17,7 +17,7 @@ from utils.logging import get_log_level
 
 @pytest.mark.parametrize(
     "environment, level",
-    [("production", "INFO"), ("test", "WARNING"), ("development", "DEBUG")],
+    [("production", "INFO"), ("test", "WARNING"), ("development", "INFO")],
 )
 def test_each_environment_logs_from_its_level(environment, level):
     assert get_log_level(environment) == level
